@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Celestial Vocab ✨</title>
+	<meta name="theme-color" content="#8a2be2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Nạp Anime.js từ CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+	<script type="module" src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"></script>
+	<script type="module" src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"></script>
+	<script type="module" src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- === HEADER === -->
+		<header class="app-header">
+			<h1><i class="ph ph-shooting-star"></i> Ultimate Celestial Vocab</h1>
+			
+			<button id="toggle-taskbar-btn" class="icon-btn" title="Mở menu công cụ">
+				<i class="ph ph-list"></i>
+			</button>
+
+			<div id="taskbar-menu" class="settings-controls">
+				<select id="main-topic-filter" title="Chọn chủ đề học">
+					<option value="all">📚 Tất cả chủ đề</option>
+				</select>
+				<button id="manual-sync-btn" class="icon-btn" title="Đồng bộ dữ liệu lên Cloud">
+					<i class="ph ph-arrows-clockwise"></i>
+				</button>
+
+				<button id="start-quiz-btn" class="icon-btn-text" title="Làm bài kiểm tra"><i class="ph ph-timer"></i> Kiểm tra</button>
+				<button id="add-word-btn-open" class="icon-btn-text" title="Thêm từ mới"><i class="ph ph-plus-square"></i> Thêm Từ</button>
+				<button id="manage-words-btn-open" class="icon-btn-text" title="Quản lý từ vựng"><i class="ph ph-list-checks"></i> Quản Lý</button>
+				<button id="profile-btn" class="icon-btn-text" title="Hồ sơ & Thống kê"><i class="ph ph-user"></i> <span class="btn-label">Hồ sơ</span></button>
+				<button id="toggle-dark-mode-btn" class="icon-btn-text" title="Chuyển chế độ Tối"><i class="ph ph-moon"></i> <span class="btn-label">Giao diện Tối/Sáng</span></button> 
+				<button id="toggle-sound-btn" class="icon-btn-text" title="Tắt âm thanh"><i class="ph ph-speaker-high"></i> <span class="btn-label">Bật/Tắt Âm thanh</span></button>
+			</div>
+		</header>
+
+        <!-- === MAIN FLASHCARD/TYPING AREA === -->
+        <main id="main-flashcard-view" class="main-content">
+            <div id="flashcard-area">
+                <div class="flashcard-perspective">
+                    <div class="flashcard" id="flashcard">
+                        <div class="card-face card-front">
+                            <h2 id="card-english">English Word</h2>
+                            <div class="card-actions-front">
+                                <button id="tts-btn" class="icon-btn" title="Phát âm (P)" aria-label="Phát âm từ"><i class="ph ph-waveform"></i></button>
+                                <button id="star-btn" class="icon-btn" title="Đánh dấu sao (S)" aria-label="Đánh dấu hoặc bỏ đánh dấu sao"><i class="ph ph-star"></i></button> 
+                            </div>
+                        </div>
+                        <div class="card-face card-back">
+                            <div class="card-back-content">
+                                <div class="detail-row"> <span class="label">Nghĩa:</span> <span class="content" id="card-vietnamese">Meaning</span> </div>
+                                <div class="detail-row"> <span class="label">Loại từ:</span> <span class="content" id="card-type">Type</span> </div>
+                                <div class="detail-row"> <span class="label">Phiên âm:</span> <span class="content pronounce-clickable" id="card-pronunciation" title="Nghe lại">/Pronunciation/</span> </div>
+                                <div class="detail-row tags-row"> <span class="label">Chủ đề:</span> <span class="content" id="card-tags">Tags</span> </div>
+                                <div class="detail-row example-row"> <span class="label">Ví dụ:</span> <span class="content" id="card-example">Example sentence.</span> </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div id="controls-area" class="hidden">
+                <button id="reveal-btn"><i class="ph ph-arrow-clockwise"></i> Lật thẻ (F)</button>
+                <div id="srs-feedback-buttons" class="hidden srs-feedback-grid">
+                     <button class="srs-btn srs-btn-again" data-rating="0" title="Quên (1)"><i class="ph ph-brain"></i> <span>Quên</span></button>
+                     <button class="srs-btn srs-btn-good" data-rating="1" title="Nhớ (2)"><i class="ph ph-smiley"></i> <span>Nhớ</span></button>
+                     <button class="srs-btn srs-btn-easy" data-rating="2" title="Dễ (3)"><i class="ph ph-smiley-sticker"></i> <span>Dễ</span></button>
+                 </div>
+                 <button id="next-card-btn" class="hidden" title="Tiếp theo (Enter/N)">Tiếp theo <i class="ph ph-arrow-right"></i></button>
+            </div>
+            <p id="no-card-message" class="hidden">Hết thẻ để học hoặc không có thẻ nào khớp bộ lọc!</p>
+
+
+             <div id="stats-area">
+                 <p> <span title="Tổng số từ">Tổng: <strong id="stat-total">0</strong></span> | <span title="Số từ khớp bộ lọc">Đang lọc: <strong id="stat-filtered">0</strong></span> | <span title="Số từ cần ôn (đã lọc)" class="stat-due">Cần ôn: <strong id="stat-due">0</strong></span> </p>
+                 <p class="sub-stats"> <span class="stat-new">Mới: <strong id="stat-new">0</strong></span> | <span class="stat-learning">Đang học: <strong id="stat-learning">0</strong></span> | <span class="stat-mastered">Đã thuộc: <strong id="stat-mastered">0</strong></span> </p>
+             </div>
+        </main>
+
+        <!-- === QUIZ AREA (Initially Hidden) === -->
+        <section id="quiz-area" class="quiz-container hidden">
+            <div class="quiz-header hidden"><h2><i class="ph ph-timer"></i> Bài Kiểm Tra</h2><div class="quiz-info"><span id="quiz-timer">TG: 00:00</span><span id="quiz-progress">Câu: 1/10</span><span id="quiz-score">Điểm: 0</span></div><button id="end-quiz-btn" class="danger-btn icon-btn-text"><i class="ph ph-stop-circle"></i> Kết thúc</button></div>
+            <div class="quiz-question-area hidden"><p class="quiz-prompt">Nghĩa của từ sau là gì?</p><h3 id="quiz-vietnamese-prompt">Meaning</h3><input type="text" id="quiz-answer-input" placeholder="Gõ từ tiếng Anh..."><p id="quiz-feedback" class="quiz-feedback" aria-live="polite"></p></div>
+            <div class="quiz-controls"><button id="skip-quiz-btn" class="icon-btn-text"><i class="ph ph-skip-forward"></i> Bỏ qua</button></div> 
+            <div id="quiz-results-area" class="hidden"><h3>Kết quả</h3><p>Đúng: <strong id="results-correct">0</strong></p><p>Sai/Bỏ qua: <strong id="results-incorrect">0</strong></p><p>Điểm: <strong id="results-score">0</strong></p><button id="review-incorrect-btn" class="icon-btn-text hidden"><i class="ph ph-binoculars"></i> Xem lại từ sai</button>
+            <button id="restart-quiz-btn" class="icon-btn-text"><i class="ph ph-arrow-counter-clockwise"></i> Làm lại</button><button id="return-to-flashcards-btn" class="icon-btn-text"><i class="ph ph-house"></i> Quay lại</button></div>
+            <div id="quiz-setup-area"><h3>Thiết lập kiểm tra</h3><label for="quiz-num-questions">Số câu:</label><select id="quiz-num-questions"><option value="10">10</option><option value="20">20</option><option value="all">Tất cả cần ôn</option></select><label for="quiz-time-limit">TG (phút):</label><input type="number" id="quiz-time-limit" value="5" min="1"><button id="confirm-start-quiz-btn" class="icon-btn-text"><i class="ph ph-play"></i> Bắt đầu</button></div>
+        </section>
+
+        <!-- === MODALS === -->
+        <div id="add-edit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="form-title">
+             <div class="modal-overlay" tabindex="-1"></div>
+             <div class="modal-content">
+                 <button id="close-add-edit-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                 <form id="add-edit-form">
+                     <h3 id="form-title">Thêm từ mới</h3>
+                     <input type="hidden" id="edit-word-id">
+                     <div class="form-group"> <label for="input-english">Tiếng Anh:</label> <input type="text" id="input-english" required> </div>
+                     <div class="form-group"> <label for="input-vietnamese">Nghĩa TV:</label> <input type="text" id="input-vietnamese" required> </div>
+                     <div class="form-group"> <label for="input-type">Loại từ:</label> <input type="text" id="input-type"> </div>
+                     <div class="form-group"> <label for="input-pronunciation">Phiên âm:</label> <input type="text" id="input-pronunciation"> </div>
+                     <div class="form-group"> <label for="input-tags">Chủ đề (Tags - cách nhau bởi dấu phẩy):</label> <input type="text" id="input-tags" placeholder="Ví dụ: Work, Travel, Technology"> </div>
+                     <div class="form-group"> <label for="input-example">Câu ví dụ:</label> <textarea id="input-example" rows="3"></textarea> </div>
+                     <button type="submit" id="save-word-btn"><i class="ph ph-floppy-disk"></i> Lưu Từ</button>
+                     <button type="button" id="cancel-edit-btn" class="hidden"><i class="ph ph-prohibit"></i> Hủy Sửa</button>
+                 </form>
+             </div>
+        </div>
+
+        <div id="manage-modal" class="modal modal-large hidden" role="dialog" aria-modal="true" aria-labelledby="manage-title">
+             <div class="modal-overlay" tabindex="-1"></div>
+             <div class="modal-content manage-panel">
+                 <button id="close-manage-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                 <h2 id="manage-title" class="manage-panel-title"><i class="ph ph-books"></i> Quản Lý Từ Vựng</h2>
+                 
+                 <section class="manage-controls">
+                     <div class="search-bar-wrapper">
+                         <i class="ph ph-magnifying-glass search-icon"></i>
+                         <input type="search" id="manage-search-input" placeholder="Tìm kiếm từ vựng..." aria-label="Tìm kiếm từ vựng">
+                     </div>
+                     <div class="filter-chips">
+                         <select id="panel-topic-filter" aria-label="Lọc theo chủ đề">
+                             <option value="all">Tất cả chủ đề</option>
+                         </select>
+                         <select id="panel-status-filter" aria-label="Lọc theo trạng thái">
+                             <option value="all">Tất cả trạng thái</option>
+                             <option value="New">Mới</option>
+                             <option value="Learning">Đang học</option>
+                             <option value="Mastered">Đã thuộc</option>
+                             <option value="Suspended">Bị tạm ngưng</option>
+                         </select>
+                         <button id="manage-refresh-list-btn" class="icon-btn filter-refresh-btn" title="Làm mới danh sách" aria-label="Làm mới danh sách từ vựng"><i class="ph ph-arrow-counter-clockwise"></i></button>
+                     </div>
+                 </section>
+
+                 <section id="word-list-section" class="word-list-cards-container">
+                     <div id="word-list-display">
+                         <p>Đang tải danh sách từ vựng...</p>
+                     </div>
+                 </section>
+                 <div class="manage-actions-footer">
+                     <button id="bulk-delete-btn" class="danger-btn icon-btn-text hidden"><i class="ph ph-trash"></i> Xóa mục đã chọn</button>
+                 </div>
+
+                 <div class="manage-divider"></div>
+
+                 <section id="manage-io-section" class="manage-io-surface">
+                     <h3 class="io-section-title"><i class="ph ph-cloud-arrow-down"></i> Nhập & Xuất Dữ liệu</h3>
+                     <div class="io-grid">
+                         <div class="io-column io-export-card">
+                             <div class="io-icon-wrapper export-icon">
+                                 <svg class="premium-svg" width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                     <defs>
+                                         <linearGradient id="exportGrad" x1="0" y1="0" x2="64" y2="64">
+                                             <stop offset="0%" stop-color="var(--secondary-color)"/>
+                                             <stop offset="100%" stop-color="var(--primary-color)"/>
+                                         </linearGradient>
+                                         <filter id="glowExp" x="-20%" y="-20%" width="140%" height="140%">
+                                             <feGaussianBlur stdDeviation="2" result="blur"/>
+                                             <feMerge>
+                                                 <feMergeNode in="blur"/>
+                                                 <feMergeNode in="SourceGraphic"/>
+                                             </feMerge>
+                                         </filter>
+                                     </defs>
+                                     <g filter="url(#glowExp)">
+                                         <path d="M32 44 L32 14 M20 26 L32 14 L44 26" stroke="url(#exportGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                                         <path d="M14 44 V48 C14 51.3137 16.6863 54 20 54 H44 C47.3137 54 50 51.3137 50 48 V44" stroke="url(#exportGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                                     </g>
+                                 </svg>
+                             </div>
+                             <h4>Xuất Dữ liệu</h4>
+                             <p class="small-note">Xuất toàn bộ từ vựng ra file TSV để sao lưu hoặc chỉnh sửa.</p>
+                             <button id="export-btn" class="io-action-btn"><i class="ph ph-download-simple"></i> Xuất Toàn Bộ (.tsv)</button>
+                         </div>
+                         <div class="io-column io-import-card">
+                             <div class="io-icon-wrapper import-icon">
+                                 <svg class="premium-svg" width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                     <defs>
+                                         <linearGradient id="importGrad" x1="0" y1="0" x2="64" y2="64">
+                                             <stop offset="0%" stop-color="var(--primary-color)"/>
+                                             <stop offset="100%" stop-color="var(--accent-color)"/>
+                                         </linearGradient>
+                                         <filter id="glowImp" x="-20%" y="-20%" width="140%" height="140%">
+                                             <feGaussianBlur stdDeviation="2" result="blur"/>
+                                             <feMerge>
+                                                 <feMergeNode in="blur"/>
+                                                 <feMergeNode in="SourceGraphic"/>
+                                             </feMerge>
+                                         </filter>
+                                     </defs>
+                                     <g filter="url(#glowImp)">
+                                         <path d="M32 10 L32 40 M20 28 L32 40 L44 28" stroke="url(#importGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                                         <path d="M14 44 V48 C14 51.3137 16.6863 54 20 54 H44 C47.3137 54 50 51.3137 50 48 V44" stroke="url(#importGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                                     </g>
+                                 </svg>
+                             </div>
+                             <h4>Nhập Dữ liệu</h4>
+                             <div class="import-tabs">
+                                 <button class="import-tab active" data-target="import-file-panel">📁 Tải File .tsv</button>
+                                 <button class="import-tab" data-target="import-text-panel">📝 Dán Văn bản</button>
+                             </div>
+
+                             <div id="import-file-panel" class="import-panel active">
+                                 <div class="form-group">
+                                     <label for="import-file" class="file-label">
+                                         <i class="ph ph-upload-simple"></i>
+                                         <span>Chọn file .tsv hoặc kéo thả</span>
+                                     </label>
+                                     <input type="file" id="import-file" accept=".txt,.tsv" class="file-input">
+                                 </div>
+                             </div>
+
+                             <div id="import-text-panel" class="import-panel hidden">
+                                 <textarea id="import-text-area" placeholder="Dán nội dung TSV vào đây (English [tab] Vietnamese)"></textarea>
+                                 <button id="import-text-btn" class="io-action-btn"><i class="ph ph-check-circle"></i> Xác nhận Nhập</button>
+                             </div>
+                             <p class="small-note">Các từ trùng lặp (dựa trên từ tiếng Anh) sẽ được bỏ qua.</p>
+                         </div>
+                     </div>
+                     <div class="io-danger-zone">
+                         <button id="clear-all-btn" class="danger-btn-outlined"><i class="ph ph-warning"></i> Xóa Toàn Bộ Dữ Liệu</button>
+                     </div>
+                 </section>
+             </div>
+        </div>
+
+        <!-- MODAL MỚI: Modal xem trước khi nhập -->
+        <div id="import-preview-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="import-preview-title">
+            <div class="modal-overlay" tabindex="-1"></div>
+            <div class="modal-content modal-large">
+                <button id="close-import-preview-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                <h3 id="import-preview-title"><i class="ph ph-file-magnifying-glass"></i> Xem trước Dữ liệu Nhập</h3>
+                <div id="import-preview-stats">
+                    <p>Phân tích file: <strong id="import-filename"></strong></p>
+                    <ul>
+                        <li><i class="ph ph-check-circle"></i> Từ mới sẽ được thêm: <strong id="import-stats-new">0</strong></li>
+                        <li><i class="ph ph-skip-forward-circle"></i> Từ trùng lặp sẽ bỏ qua: <strong id="import-stats-skipped">0</strong></li>
+                        <li><i class="ph ph-warning-circle"></i> Dòng lỗi/không hợp lệ: <strong id="import-stats-errors">0</strong></li>
+                    </ul>
+                </div>
+                <h4>Xem trước một vài dòng đầu tiên:</h4>
+                <div id="import-preview-table-container">
+                    <table id="import-preview-table">
+                        <!-- Nội dung xem trước sẽ được JS chèn vào đây -->
+                    </table>
+                </div>
+                <div class="modal-actions">
+                    <button id="cancel-import-btn" class="icon-btn-text"><i class="ph ph-x-circle"></i> Hủy bỏ</button>
+                    <button id="confirm-import-btn" class="icon-btn-text"><i class="ph ph-arrow-down"></i> Xác nhận Nhập</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Gamification & Profile Dashboard -->
+        <div id="profile-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+             <div class="modal-overlay" tabindex="-1"></div>
+             <div class="modal-content modal-large profile-panel">
+                 <button id="close-profile-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                 <h2 id="profile-title" class="manage-panel-title"><i class="ph ph-trophy"></i> Hồ sơ & Thống kê</h2>
+                 
+                 <div class="profile-grid">
+                     <!-- Cấp độ & XP -->
+                     <section class="profile-card level-card">
+                         <h3>Cấp độ Học giả</h3>
+                         <div class="level-display">
+                             <div class="level-circle">
+                                 <span class="level-number" id="profile-level">1</span>
+                             </div>
+                             <div class="xp-info">
+                                 <p>Tổng XP: <strong id="profile-total-xp">0</strong></p>
+                                 <div class="xp-bar-container">
+                                     <div class="xp-bar-fill" id="profile-xp-fill" style="width: 0%;"></div>
+                                 </div>
+                                 <p class="xp-to-next-level">Còn <span id="profile-xp-needed">0</span> XP để lên cấp</p>
+                             </div>
+                         </div>
+                     </section>
+
+                     <!-- Streak -->
+                     <section class="profile-card streak-card">
+                         <h3>Chuỗi ngày học</h3>
+                         <div class="streak-display">
+                             <i class="ph-fill ph-fire"></i>
+                             <div class="streak-info">
+                                 <span class="streak-number" id="profile-streak">0</span>
+                                 <span class="streak-text">ngày liên tục</span>
+                             </div>
+                         </div>
+                     </section>
+
+                     <!-- Dự báo (Forecast) -->
+                     <section class="profile-card forecast-card">
+                         <h3>Dự báo Ôn tập (7 ngày tới)</h3>
+                         <div class="forecast-chart-container" id="forecast-chart">
+                             <!-- Cột biểu đồ sẽ được render bằng JS -->
+                         </div>
+                     </section>
+
+                     <!-- Heatmap (Biểu đồ nhiệt) -->
+                     <section class="profile-card heatmap-card">
+                         <h3>Hoạt động Ôn tập</h3>
+                         <div class="heatmap-container" id="activity-heatmap">
+                             <!-- Lưới ô vuông sẽ được render bằng JS -->
+                         </div>
+                     </section>
+
+                     <!-- Thành tựu (Achievements) -->
+                     <section class="profile-card achievements-card" style="grid-column: 1 / -1;">
+                         <h3>Huy hiệu Thành tựu</h3>
+                         <div class="achievements-container" id="achievements-list">
+                             <!-- Render JS -->
+                         </div>
+                     </section>
+                 </div>
+             </div>
+        </div>
+
+        <div id="popup-modal" class="modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="popup-message">
+             <div class="modal-overlay" tabindex="-1"></div>
+             <div class="modal-content small-modal">
+                 <button id="close-popup-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng thông báo"><i class="ph ph-x"></i></button>
+                 <p id="popup-message" aria-live="polite">Nội dung...</p>
+                 <div id="popup-actions" class="modal-actions"> <button id="popup-ok-btn">OK</button> <button id="popup-cancel-btn" class="hidden">Hủy</button> </div>
+             </div>
+        </div>
+
+    </div> <!-- End #app-container -->
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
