@@ -12,7 +12,7 @@
 
 **Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới với thuật toán FSRS-7 (34 tham số), Heuristics ngôn ngữ học và Hệ sinh thái Offline-First PWA.**
 
-[🌐 Trải Nghiệm Ứng Dụng (Live Demo)](https://chat-wywy.web.app) • [📖 Xem Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [⚡ Khởi Chạy Local](#-hướng-dẫn-cài-đặt-cho-lập-trình-viên)
+[⚡ Hướng Dẫn Khởi Chạy Cục Bộ (Localhost)](#-hướng-dẫn-cài-đặt-cho-lập-trình-viên) • [📖 Xem Tài Liệu Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [📊 Xem Dữ Liệu Benchmark](#4-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
 
 <br/>
 
@@ -54,6 +54,20 @@ Hầu hết các phần mềm học từ vựng truyền thống hiện nay (Ank
 - **Lõi FSRS-7 (Free Spaced Repetition Scheduler - Thế hệ 7):** Mô hình trí nhớ toán học chính xác nhất hiện nay với 34 tham số thích ứng sinh học.
 - **Linguistic Heuristics v2:** Bộ máy phân tích âm tiết, cấu trúc cụm từ và hình thái ngôn ngữ để tính toán độ khó xuất phát điểm $D_0$ khách quan ngay cả khi người học chưa chạm vào thẻ.
 - **Hệ thống Huấn luyện Cục bộ 1-Click (`train_fsrs7.bat`):** Cho phép người học tự trích xuất dữ liệu, tối ưu hóa bộ 34 số độc bản cho riêng não bộ của mình mà không phụ thuộc vào máy chủ đám mây.
+
+<br/>
+
+### 📸 Trải Nghiệm Học Tập Trực Quan (Active Recall & Audio Waveform)
+
+<div align="center">
+
+| Mặt Trước (Câu hỏi, Phiên âm IPA & Sóng âm) | Mặt Sau (Định nghĩa, Ngữ cảnh & 4 Nút đánh giá SRS) |
+| :---: | :---: |
+| <img src="docs/screenshots/card_study_front.png" width="480" alt="Mặt trước thẻ flashcard"/> | <img src="docs/screenshots/card_study_back.png" width="480" alt="Mặt sau thẻ flashcard"/> |
+
+*Giao diện học từ vựng trực quan với nền sao chuyển động mượt mà, tích hợp đọc phát âm Web Audio API và chế độ gõ phím chính tả.*
+
+</div>
 
 ---
 
@@ -223,6 +237,20 @@ sequenceDiagram
    * Hiển thị bảng kiểm định TimeSeriesSplit và Calibration.
    * **Tự động sao chép chuỗi 34 số vào Clipboard** của bạn!
 3. **Bước 3 — Nạp vào ứng dụng:** Quay lại Web $\to$ Bấm **"Cấu Hình 34 Tham Số"** $\to$ Nhấn `Ctrl + V` $\to$ Bấm **"Lưu & Áp Dụng"**. Hệ thống sẽ tự động đồng bộ tham số mới lên Cloud Firestore để dùng chung cho mọi thiết bị.
+
+<br/>
+
+### 📸 Giao Diện Quản Lý Bento & Cấu Hình 34 Tham Số FSRS-7
+
+<div align="center">
+
+| Thẻ Quản Lý Bento & Xuất Review Logs | Hộp Thoại Cấu Hình & Xác Thực 34 Tham Số |
+| :---: | :---: |
+| <img src="docs/screenshots/bento_management_fsrs7.png" width="480" alt="Bento Grid Quản lý FSRS-7"/> | <img src="docs/screenshots/fsrs7_config_modal.png" width="480" alt="Modal Cấu hình FSRS-7"/> |
+
+*Giao diện Bento tối tân cho phép xuất log JSON chỉ với 1 click, và modal cấu hình FSRS-7 hỗ trợ xác thực dữ liệu thời gian thực kèm nút khôi phục về mặc định.*
+
+</div>
 
 ---
 
