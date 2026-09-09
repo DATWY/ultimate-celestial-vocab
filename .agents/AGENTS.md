@@ -1,0 +1,2 @@
+# General Rules
+- **Firebase Deployments**: You MUST NEVER run `npm run build`, `firebase deploy`, or any deployment commands automatically. You MUST ALWAYS ask for explicit user confirmation before deploying to production. Whenever running a `firebase deploy` command (e.g. `firebase deploy --only hosting`), you MUST always include a detailed and descriptive message using the `-m` flag (e.g. `firebase deploy --only hosting -m "Fixed nested array bug in sync logic"`). Do not deploy without a comment.

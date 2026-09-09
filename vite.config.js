@@ -121,5 +121,17 @@ export default defineConfig({
         ]
       }
     })
-  ]
+  ],
+  resolve: {
+    preserveSymlinks: true
+  },
+  optimizeDeps: {
+    noDiscovery: true,
+    include: []
+  },
+  server: {
+    fs: {
+      strict: false
+    }
+  }
 });

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "train": "node tools/train_fsrs7.js"
   },
   "devDependencies": {
     "vite": "^5.0.0",
@@ -15,8 +16,6 @@
   },
   "dependencies": {
     "animejs": "^3.2.1",
-    "axios": "^1.11.0",
-    "express": "^5.1.0",
     "idb": "^8.0.3"
   }
 }

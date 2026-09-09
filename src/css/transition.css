@@ -1,0 +1,150 @@
+/* Shipper Transition CSS */
+.shipper-curtain-container {
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: 99999;
+    pointer-events: none;
+    user-select: none;
+    overflow: hidden;
+}
+
+.shipper-curtain-container.hidden {
+    display: none;
+}
+
+.curtain-left, .curtain-right {
+    position: fixed;
+    top: 0; bottom: 0;
+    width: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.curtain-left {
+    left: 0;
+    transform: translateX(-100%);
+}
+
+.curtain-right {
+    right: 0;
+    transform: translateX(100%);
+}
+
+/* Dark Mode Curtain Styles (To Night/Dark) */
+.curtain-dark-left {
+    background: linear-gradient(to bottom right, #020617, #0f172a, #1e1b4b);
+    border-right: 2px solid rgba(99, 102, 241, 0.4);
+    box-shadow: 8px 0 25px rgba(99, 102, 241, 0.3);
+}
+
+.curtain-dark-right {
+    background: linear-gradient(to bottom left, #020617, #0f172a, #1e1b4b);
+    border-left: 2px solid rgba(99, 102, 241, 0.4);
+    box-shadow: -8px 0 25px rgba(99, 102, 241, 0.3);
+}
+
+/* Light Mode Curtain Styles (To Day/Light) */
+.curtain-light-left {
+    background: linear-gradient(to bottom right, #f59e0b, #fb923c, #fef3c7);
+    border-right: 2px solid rgba(249, 115, 22, 0.4);
+    box-shadow: 8px 0 25px rgba(245, 158, 11, 0.3);
+}
+
+.curtain-light-right {
+    background: linear-gradient(to bottom left, #f59e0b, #fb923c, #fef3c7);
+    border-left: 2px solid rgba(249, 115, 22, 0.4);
+    box-shadow: -8px 0 25px rgba(245, 158, 11, 0.3);
+}
+
+/* Badge Styles */
+.curtain-badge {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100000;
+    width: 6rem; height: 6rem;
+    border-radius: 9999px;
+    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    opacity: 0;
+}
+
+.curtain-badge-dark {
+    background-color: rgba(2, 6, 23, 0.95);
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 40px rgba(99, 102, 241, 0.4);
+    backdrop-filter: blur(12px);
+}
+
+.curtain-badge-light {
+    background-color: #ffffff;
+    border-color: #fb923c;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 40px rgba(249, 115, 22, 0.4);
+    backdrop-filter: blur(12px);
+}
+
+.badge-icon {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+    user-select: none;
+}
+
+.badge-icon-dark {
+    color: #22d3ee;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.badge-icon-light {
+    color: #ea580c;
+    animation: spin 4s linear infinite;
+}
+
+.badge-text {
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.badge-text-dark {
+    color: #a5b4fc;
+}
+
+.badge-text-light {
+    color: #ea580c;
+}
+
+/* Animations */
+@keyframes slideInLeft { 0% { transform: translateX(-100%); } 100% { transform: translateX(0); } }
+@keyframes slideOutLeft { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+@keyframes slideInRight { 0% { transform: translateX(100%); } 100% { transform: translateX(0); } }
+@keyframes slideOutRight { 0% { transform: translateX(0); } 100% { transform: translateX(100%); } }
+
+.curtain-left-closing { animation: slideInLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.curtain-left-opening { animation: slideOutLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.curtain-right-closing { animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.curtain-right-opening { animation: slideOutRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+@keyframes popIn {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; }
+    70% { transform: translate(-50%, -50%) scale(1.2) rotate(20deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes popOut {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+.badge-in { animation: popIn 0.5s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.badge-out { animation: popOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
