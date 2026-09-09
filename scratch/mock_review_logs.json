@@ -1,0 +1,13 @@
+{
+  "exportedAt": "2026-09-08T23:45:00.000Z",
+  "version": "FSRS-7",
+  "totalReviews": 6,
+  "logs": [
+    { "cardId": "card_1", "english": "serendipity", "rating": 3, "t": 0, "ts": 1720000000000, "isTyping": false },
+    { "cardId": "card_1", "english": "serendipity", "rating": 3, "t": 3.5, "ts": 1720302400000, "isTyping": false },
+    { "cardId": "card_1", "english": "serendipity", "rating": 4, "t": 9.2, "ts": 1721097200000, "isTyping": true },
+    { "cardId": "card_2", "english": "ephemeral", "rating": 1, "t": 0, "ts": 1720000000000, "isTyping": false },
+    { "cardId": "card_2", "english": "ephemeral", "rating": 2, "t": 0.5, "ts": 1720043200000, "isTyping": false },
+    { "cardId": "card_2", "english": "ephemeral", "rating": 3, "t": 2.1, "ts": 1720224640000, "isTyping": false }
+  ]
+}

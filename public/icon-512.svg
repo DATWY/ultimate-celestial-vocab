@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z" fill="#8a2be2"/><path d="M128,80v96" fill="none" stroke="#8a2be2" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><path d="M80,128h96" fill="none" stroke="#8a2be2" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512">
+  <defs>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff00ff" />
+      <stop offset="100%" stop-color="#8a2be2" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" fill="none"/>
+  <path d="M216,40H72A16,16,0,0,0,56,56V72H40A16,16,0,0,0,24,88V200a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V184h16a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM184,200H40V88H184V200Zm32-32H200V88a16,16,0,0,0-16-16H72V56H216V168Z" fill="url(#cardGrad)"/>
+</svg>

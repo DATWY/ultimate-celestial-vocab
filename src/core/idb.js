@@ -47,6 +47,12 @@ export async function deleteWordFromDB(id) {
     return db.delete(VOCAB_STORE, id);
 }
 
+export async function clearVocabularyDB() {
+    const db = await dbPromise;
+    if (!db) return;
+    return db.clear(VOCAB_STORE);
+}
+
 export async function getSettingFromDB(key) {
     const db = await dbPromise;
     if (!db) return null;

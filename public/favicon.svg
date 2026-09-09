@@ -1,10 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="192" height="192">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <defs>
     <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ff00ff" />
       <stop offset="100%" stop-color="#8a2be2" />
     </linearGradient>
   </defs>
-  <rect width="256" height="256" fill="none"/>
   <path d="M216,40H72A16,16,0,0,0,56,56V72H40A16,16,0,0,0,24,88V200a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V184h16a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM184,200H40V88H184V200Zm32-32H200V88a16,16,0,0,0-16-16H72V56H216V168Z" fill="url(#cardGrad)"/>
 </svg>

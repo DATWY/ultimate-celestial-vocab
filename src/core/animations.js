@@ -139,9 +139,112 @@ export function animateShake(element) {
         translateX: [
             { value: -10, duration: 50, easing: 'easeInOutSine' },
             { value: 10, duration: 100, easing: 'easeInOutSine' },
-            { value: -10, duration: 100, easing: 'easeInOutSine' },
-            { value: 10, duration: 100, easing: 'easeInOutSine' },
-            { value: 0, duration: 50, easing: 'easeInOutSine' }
         ],
+    });
+}
+
+/**
+ * Animate đếm số (Animated Stats).
+ * @param {HTMLElement} element - Phần tử cần animate số.
+ * @param {number} endValue - Giá trị kết thúc.
+ * @param {number} duration - Thời gian chạy animation (ms).
+ */
+export function animateNumber(element, endValue, duration = 2500, format = false) {
+    if (!element) return;
+    const startValue = parseInt(element.textContent.replace(/\D/g, '')) || 0;
+    if (startValue === endValue) {
+        element.textContent = format ? endValue.toLocaleString('vi-VN') : endValue;
+        return;
+    }
+
+    // Tối ưu hóa: Xóa animation cũ đang chạy trên element này để tránh giật lag
+    if (element._animeObj) {
+        anime.remove(element._animeObj);
+    }
+
+    const obj = { val: startValue };
+    element._animeObj = obj; // Lưu tham chiếu
+
+    let lastRenderedVal = null; // Tối ưu DOM Update (chỉ render khi số thực sự thay đổi)
+
+    anime({
+        targets: obj,
+        val: endValue,
+        round: 1, // Làm tròn đến số nguyên
+        duration: duration,
+        easing: 'easeOutCubic', // Chuyển từ easeOutExpo sang easeOutCubic để mượt mà hơn, đỡ gắt lúc đầu
+        update: function() {
+            if (lastRenderedVal !== obj.val) {
+                element.textContent = format ? obj.val.toLocaleString('vi-VN') : obj.val;
+                lastRenderedVal = obj.val;
+            }
+        }
+    });
+}
+
+/**
+ * Animate biểu đồ Forecast (Dự báo ôn tập)
+ * @param {HTMLElement} chartContainer 
+ */
+export function animateForecastChart(chartContainer) {
+    if (!chartContainer) return;
+    const bars = chartContainer.querySelectorAll('.forecast-bar');
+    const counts = chartContainer.querySelectorAll('.forecast-count');
+    const days = chartContainer.querySelectorAll('.forecast-day');
+
+    if (bars.length === 0) return;
+
+    // Chuẩn bị trạng thái ban đầu
+    bars.forEach(bar => {
+        bar.dataset.targetHeight = bar.style.height || '2px';
+        bar.style.height = '0%';
+    });
+    anime.set(counts, { opacity: 0, translateY: 15 });
+    anime.set(days, { opacity: 0, translateY: -10 });
+
+    // Timeline cho biểu đồ
+    const tl = anime.timeline({
+        easing: 'easeOutElastic(1, 0.8)',
+    });
+
+    // 1. Cột mọc lên tuần tự
+    tl.add({
+        targets: bars,
+        height: function(el) { return el.dataset.targetHeight; },
+        duration: 1000,
+        delay: anime.stagger(80)
+    })
+    // 2. Hiện số và tên ngày
+    .add({
+        targets: [counts, days],
+        opacity: 1,
+        translateY: 0,
+        duration: 600,
+        easing: 'easeOutCubic',
+        delay: anime.stagger(50)
+    }, '-=800');
+}
+
+/**
+ * Animate biểu đồ Heatmap (Chuỗi hoạt động)
+ * @param {HTMLElement} heatmapContainer 
+ */
+export function animateHeatmap(heatmapContainer) {
+    if (!heatmapContainer) return;
+    const cells = heatmapContainer.querySelectorAll('.heatmap-cell');
+    if (cells.length === 0) return;
+
+    anime.set(cells, { scale: 0, opacity: 0, borderRadius: '50%' });
+
+    anime({
+        targets: cells,
+        scale: [
+            { value: 1.3, easing: 'easeOutSine', duration: 200 },
+            { value: 1, easing: 'easeInOutQuad', duration: 400 }
+        ],
+        opacity: [0, 1],
+        borderRadius: ['50%', '4px'],
+        delay: anime.stagger(30, { from: 'last' }), // Lan tỏa từ ngày gần nhất ngược về quá khứ
+        easing: 'easeOutQuad'
     });
 }
