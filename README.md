@@ -12,7 +12,7 @@
 
 **Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới với thuật toán FSRS-7 (34 tham số), Heuristics ngôn ngữ học và Hệ sinh thái Offline-First PWA.**
 
-[⚡ Hướng Dẫn Khởi Chạy Cục Bộ (Localhost)](#-hướng-dẫn-cài-đặt-cho-lập-trình-viên) • [📖 Xem Tài Liệu Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [📊 Xem Dữ Liệu Benchmark](#4-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
+[⚡ Hướng Dẫn Khởi Chạy Cục Bộ (Localhost)](#cai-dat) • [📖 Xem Tài Liệu Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [📊 Xem Dữ Liệu Benchmark](#benchmark)
 
 <br/>
 
@@ -23,26 +23,27 @@
 ---
 
 ## 📑 Mục Lục
-- [1. Giới Thiệu & Tầm Nhìn](#1-giới-thiệu--tầm-nhìn)
-- [2. Cơ Sở Khoa Học & Thuật Toán FSRS-7](#2-cơ-sở-khoa-học--thuật-toán-fsrs-7)
-  - [2.1. Mô hình DSR (Difficulty - Stability - Retrievability)](#21-mô-hình-dsr-difficulty---stability---retrievability)
-  - [2.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)](#22-kiến-trúc-trí-nhớ-kép-dual-track-stability)
-  - [2.3. Động Học Độ Khó & Hội Tụ Trung Bình (Mean Reversion)](#23-động-học-độ-khó--hội-tụ-trung-bình-mean-reversion)
-  - [2.4. Ba Đột Phá Độc Quyền Của Celestial Vocab](#24-ba-đột-phá-độc-quyền-của-celestial-vocab)
-- [3. Bộ Tối Ưu Hóa Tham Số Ngoại Tuyến (Offline Optimizer)](#3-bộ-tối-ưu-hóa-tham-số-ngoại-tuyến-offline-optimizer)
-  - [3.1. Thuật Toán Chiến Lược Tiến Hóa (1+λ)-ES](#31-thuật-toán-chiến-lược-tiến-hóa-1λ-es)
-  - [3.2. Kiểm Định Ngoại Suất Tương Lai (TimeSeriesSplit)](#32-kiểm-định-ngoại-suất-tương-lai-timeseriessplit)
-- [4. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)](#4-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
-  - [4.1. Tập Dữ Liệu Thực Tế (4.046 Lượt Ôn Tập)](#41-tập-dữ-liệu-thực-tế-4046-lượt-ôn-tập)
-  - [4.2. Bảng Hiệu Chuẩn Xác Suất Trí Nhớ (Calibration Table)](#42-bảng-hiệu-chuẩn-xác-suất-trí-nhớ-calibration-table)
-- [5. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click](#5-hướng-dẫn-sử-dụng--huấn-luyện-1-click)
-- [6. Kiến Trúc Hệ Thống & Luồng Dữ Liệu](#6-kiến-trúc-hệ-thống--luồng-dữ-liệu)
-- [7. Bảo Mật & Quản Lý Biến Môi Trường](#7-bảo-mật--quản-lý-biến-môi-trường)
-- [8. Hướng Dẫn Cài Đặt Cho Lập Trình Viên](#8-hướng-dẫn-cài-đặt-cho-lập-trình-viên)
-- [9. Giấy Phép & Tác Giả](#9-giấy-phép--tác-giả)
+- [1. Giới Thiệu & Tầm Nhìn](#gioi-thieu)
+- [2. Cơ Sở Khoa Học & Thuật Toán FSRS-7](#co-so-khoa-hoc)
+  - [2.1. Mô hình DSR (Difficulty - Stability - Retrievability)](#dsr-model)
+  - [2.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)](#dual-track)
+  - [2.3. Động Học Độ Khó & Hội Tụ Trung Bình (Mean Reversion)](#mean-reversion)
+  - [2.4. Ba Đột Phá Độc Quyền Của Celestial Vocab](#dot-pha)
+- [3. Bộ Tối Ưu Hóa Tham Số Ngoại Tuyến (Offline Optimizer)](#bo-toi-uu-hoa)
+  - [3.1. Thuật Toán Chiến Lược Tiến Hóa (1+λ)-ES](#thuat-toan-es)
+  - [3.2. Kiểm Định Ngoại Suất Tương Lai (TimeSeriesSplit)](#timeseriessplit)
+- [4. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)](#benchmark)
+  - [4.1. Tập Dữ Liệu Thực Tế (4.046 Lượt Ôn Tập)](#tap-du-lieu)
+  - [4.2. Bảng Hiệu Chuẩn Xác Suất Trí Nhớ (Calibration Table)](#calibration-table)
+- [5. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click](#huong-dan-su-dung)
+- [6. Kiến Trúc Hệ Thống & Luồng Dữ Liệu](#kien-truc-he-thong)
+- [7. Bảo Mật & Quản Lý Biến Môi Trường](#bao-mat)
+- [8. Hướng Dẫn Cài Đặt Cho Lập Trình Viên](#cai-dat)
+- [9. Giấy Phép & Tác Giả](#giay-phep)
 
 ---
 
+<a id="gioi-thieu"></a>
 ## 1. Giới Thiệu & Tầm Nhìn
 
 Hầu hết các phần mềm học từ vựng truyền thống hiện nay (Anki cổ điển, Quizlet, SuperMemo SM-2) đều gặp phải các giới hạn sinh học cố hữu:
@@ -71,8 +72,10 @@ Hầu hết các phần mềm học từ vựng truyền thống hiện nay (Ank
 
 ---
 
+<a id="co-so-khoa-hoc"></a>
 ## 2. Cơ Sở Khoa Học & Thuật Toán FSRS-7
 
+<a id="dsr-model"></a>
 ### 2.1. Mô hình DSR (Difficulty - Stability - Retrievability)
 Trí nhớ con người đối với một thông tin được mô hình hóa bởi 3 biến trạng thái cốt lõi:
 - **Độ khó ($D \in [1, 10]$):** Thước đo độ phức tạp vốn có của từ vựng đối với não bộ người học.
@@ -92,6 +95,7 @@ $$R(S, S) = \left(1 + \frac{19}{81}\right)^{-0.1443} = 0.90 \quad (90\%)$$
 
 ---
 
+<a id="dual-track"></a>
 ### 2.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)
 Không giống như các thuật toán đời cũ chỉ theo dõi một con số Interval duy nhất, FSRS-7 chia tách độ bền trí nhớ thành hai quỹ đạo song song:
 
@@ -117,6 +121,7 @@ $$S_{\text{new}} = S \cdot \left(e^{w_8} \cdot (11 - D) \cdot S^{-w_9} \cdot \le
 
 ---
 
+<a id="mean-reversion"></a>
 ### 2.3. Động Học Độ Khó & Hội Tụ Trung Bình (Mean Reversion)
 Độ khó $D$ không cố định mà biến thiên linh hoạt theo từng phản hồi của người học (Again = 1, Hard = 2, Good = 3, Easy = 4):
 
@@ -128,6 +133,7 @@ $$D_{\text{next}} = w_5 \cdot D_0 + (1 - w_5) \cdot \text{clamp}(D + \Delta D, 1
 
 ---
 
+<a id="dot-pha"></a>
 ### 2.4. Ba Đột Phá Độc Quyền Của Celestial Vocab
 
 | Tính Năng | Cơ Chế Toán Học | Lợi Ích Thực Tiễn |
@@ -138,6 +144,7 @@ $$D_{\text{next}} = w_5 \cdot D_0 + (1 - w_5) \cdot \text{clamp}(D + \Delta D, 1
 
 ---
 
+<a id="bo-toi-uu-hoa"></a>
 ## 3. Bộ Tối Ưu Hóa Tham Số Ngoại Tuyến (Offline Optimizer)
 
 Nằm trong thư mục [tools/train_fsrs7.js](file:///c:/Users/ASUS/Desktop/CODING/test%20v3/test1/ultimate-celestial-vocab%20-%20vipper%201/tools/train_fsrs7.js), công cụ huấn luyện cá nhân hóa hoạt động hoàn toàn độc lập với các ưu điểm vượt trội:
@@ -145,6 +152,7 @@ Nằm trong thư mục [tools/train_fsrs7.js](file:///c:/Users/ASUS/Desktop/CODI
 - **Tương thích toàn diện:** Tích hợp sẵn `train_fsrs7.bat` hỗ trợ kéo-thả (Drag & Drop) và tự động nhận diện file log trong thư mục `Downloads`.
 - **Tự động sao chép Clipboard:** Đưa ngay 34 tham số đã tối ưu vào bộ nhớ đệm máy tính để người dùng dán vào Web (`Ctrl + V`).
 
+<a id="thuat-toan-es"></a>
 ### 3.1. Thuật Toán Chiến Lược Tiến Hóa (1+λ)-ES
 Để tối ưu hóa không gian 34 chiều phi lồi (non-convex), bộ optimizer áp dụng thuật toán **Evolutionary Strategy** kết hợp phân phối đột biến Cauchy:
 - **Cá thể cha (Parent Vector):** Khởi tạo từ bộ tham số chuẩn mặc định $W_{\text{base}} \in \mathbb{R}^{34}$.
@@ -158,6 +166,7 @@ $$\mathcal{L}(W) = -\frac{1}{N} \sum_{i=1}^N \left[ Y_i \ln(P_i) + (1 - Y_i) \ln
 
 ---
 
+<a id="timeseriessplit"></a>
 ### 3.2. Kiểm Định Ngoại Suất Tương Lai (TimeSeriesSplit)
 Để đảm bảo bộ tham số tìm được không bị Overfitting (học thuộc lòng dữ liệu quá khứ), bộ optimizer triển khai phương pháp phân tách chuỗi thời gian:
 1. Sắp xếp toàn bộ dữ liệu lịch sử theo thứ tự thời gian tăng dần từ quá khứ đến hiện tại.
@@ -167,8 +176,10 @@ $$\mathcal{L}(W) = -\frac{1}{N} \sum_{i=1}^N \left[ Y_i \ln(P_i) + (1 - Y_i) \ln
 
 ---
 
+<a id="benchmark"></a>
 ## 4. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)
 
+<a id="tap-du-lieu"></a>
 ### 4.1. Tập Dữ Liệu Thực Tế (4.046 Lượt Ôn Tập)
 Dữ liệu được kiểm định trực tiếp trên tập log học tập thực tế của người dùng:
 - **Tổng số lượt ôn tập:** $4.046$ lượt.
@@ -192,6 +203,7 @@ Dữ liệu được kiểm định trực tiếp trên tập log học tập th
 
 ---
 
+<a id="calibration-table"></a>
 ### 4.2. Bảng Hiệu Chuẩn Xác Suất Trí Nhớ (Calibration Table)
 Bảng hiệu chuẩn đo đạc mức độ trùng khớp giữa xác suất mô hình dự đoán ($P$) và tỷ lệ thực tế người học bấm nhớ được ($Y=1$):
 
@@ -209,6 +221,7 @@ Bảng hiệu chuẩn đo đạc mức độ trùng khớp giữa xác suất m�
 
 ---
 
+<a id="huong-dan-su-dung"></a>
 ## 5. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click
 
 Chỉ với 3 bước đơn giản, bạn có thể biến mô hình FSRS-7 thành trợ lý học tập độc bản cho riêng mình:
@@ -254,6 +267,7 @@ sequenceDiagram
 
 ---
 
+<a id="kien-truc-he-thong"></a>
 ## 6. Kiến Trúc Hệ Thống & Luồng Dữ Liệu
 
 ```
@@ -299,6 +313,7 @@ ultimate-celestial-vocab/
 
 ---
 
+<a id="bao-mat"></a>
 ## 7. Bảo Mật & Quản Lý Biến Môi Trường
 
 Dự án áp dụng tiêu chuẩn bảo mật phân tách hoàn toàn mã nguồn và thông tin xác thực:
@@ -309,6 +324,7 @@ Dự án áp dụng tiêu chuẩn bảo mật phân tách hoàn toàn mã nguồ
 
 ---
 
+<a id="cai-dat"></a>
 ## 8. Hướng Dẫn Cài Đặt Cho Lập Trình Viên
 
 ### Yêu cầu hệ thống
@@ -357,6 +373,7 @@ Dự án áp dụng tiêu chuẩn bảo mật phân tách hoàn toàn mã nguồ
 
 ---
 
+<a id="giay-phep"></a>
 ## 9. Giấy Phép & Tác Giả
 
 Dự án được phát triển và duy trì bởi **[DATWY](https://github.com/DATWY)**.  
