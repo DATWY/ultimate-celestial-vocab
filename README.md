@@ -13,7 +13,7 @@
 
 **Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới kết hợp thuật toán lặp lại ngắt quãng FSRS-7 (34 tham số), Heuristics ngôn ngữ học, Bộ đồng bộ đa thiết bị 4-Vector và Hệ sinh thái Offline-First PWA.**
 
-[🌐 Trải Nghiệm Ứng Dụng Thực Tế](https://chat-wywy.web.app) • [📖 Xem Tài Liệu Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [📊 Xem Dữ Liệu Benchmark](#benchmark)
+ [📖 Xem Tài Liệu Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [📊 Xem Dữ Liệu Benchmark](#benchmark)
 
 <br/>
 
