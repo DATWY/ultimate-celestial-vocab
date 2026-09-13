@@ -45,14 +45,16 @@ graph LR
 ```
 
 #### Điểm đột phá kỹ thuật:
-1. **Mô hình DSR 3 chiều**: 
-   - **Difficulty ($D$)**: Đo lường độ phức tạp nội tại của từ vựng (thang điểm 1–10).
-   - **Stability ($S$)**: Thời gian (tính bằng ngày) mà trí nhớ giữ được xác suất hồi tưởng $\ge 90\%$.
-   - **Retrievability ($R$)**: Ước lượng xác suất bạn còn nhớ từ vựng tại thời điểm hiện tại: $R(t) = (1 + 19 \cdot t / S)^{-0.5}$.
-2. **Dual-Track Stability & Heuristics v2**: Xử lý thông minh khi ôn tập lệch thời gian:
-   - *Ôn trễ (Overdue Review)*: Thưởng độ bền cấp số cộng nếu bạn vẫn nhớ được từ vựng sau một thời gian dài bỏ quên.
-   - *Ôn sớm (Early Review)*: Điều chỉnh bước nhảy vừa phải để tránh lãng phí thời gian ôn tập thừa.
-3. **In-Browser Calibration Engine**: Ứng dụng tích hợp bộ giải thuật tối ưu hóa phi tuyến tính cục bộ ngay trên trình duyệt (Offline Optimization), tự động tinh chỉnh 21 siêu tham số của FSRS dựa trên lịch sử bấm nút (`Again`, `Hard`, `Good`, `Easy`) của chính người dùng.
+
+- **1. Mô hình DSR 3 chiều:**
+  - **Difficulty (D):** Đo lường độ phức tạp nội tại của từ vựng (thang điểm 1–10).
+  - **Stability (S):** Thời gian (tính bằng ngày) mà trí nhớ giữ được xác suất hồi tưởng ≥ 90%.
+  - **Retrievability (R):** Ước lượng xác suất bạn còn nhớ từ vựng tại thời điểm hiện tại:
+    > `R(t) = (1 + 19 · t / S)^(-0.5)`
+- **2. Dual-Track Stability & Heuristics v2:** Xử lý thông minh khi ôn tập lệch thời gian:
+  - *Ôn trễ (Overdue Review):* Thưởng độ bền cấp số cộng nếu bạn vẫn nhớ được từ vựng sau một thời gian dài bỏ quên.
+  - *Ôn sớm (Early Review):* Điều chỉnh bước nhảy vừa phải để tránh lãng phí thời gian ôn tập thừa.
+- **3. In-Browser Calibration Engine:** Ứng dụng tích hợp bộ giải thuật tối ưu hóa phi tuyến tính cục bộ ngay trên trình duyệt (Offline Optimization), tự động tinh chỉnh 21 siêu tham số của FSRS dựa trên lịch sử bấm nút (`Again`, `Hard`, `Good`, `Easy`) của chính người dùng.
 
 ---
 
