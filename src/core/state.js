@@ -525,21 +525,23 @@ export async function setUserSrsParams(recall, lapse) {
     await saveSettingToDB('userParamsTrainedAt', Date.now());
 }
 
-export async function setUserFsrs7Params(params34) {
+export async function setUserFsrs7Params(params34, trainedAtTimestamp = null) {
     if (params34 === null) {
         _userFsrs7Params = null;
         _userFsrs7TrainedAt = null;
         if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = null;
         await saveSettingToDB('userFsrs7Params', null);
         await saveSettingToDB('userFsrs7TrainedAt', null);
+        await saveSettingToDB('userParamsTrainedAt', null);
         return { success: true, reset: true };
     }
     if (Array.isArray(params34) && params34.length === 34 && params34.every(n => typeof n === 'number' && !isNaN(n) && isFinite(n))) {
         _userFsrs7Params = params34;
-        _userFsrs7TrainedAt = Date.now();
+        _userFsrs7TrainedAt = trainedAtTimestamp || Date.now();
         if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = _userFsrs7Params;
         await saveSettingToDB('userFsrs7Params', params34);
         await saveSettingToDB('userFsrs7TrainedAt', _userFsrs7TrainedAt);
+        await saveSettingToDB('userParamsTrainedAt', _userFsrs7TrainedAt);
         return { success: true, reset: false };
     }
     return { success: false, error: 'Phải chứa đúng 34 số thực hợp lệ' };

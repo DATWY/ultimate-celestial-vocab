@@ -1,7 +1,7 @@
 // src/core/firebase.js — Smart Sync v2
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, writeBatch, doc, query, where, getDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, writeBatch, doc, query, where, getDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
@@ -23,9 +23,15 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-});
+let _db;
+try {
+    _db = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+} catch (_) {
+    _db = getFirestore(app);
+}
+export const db = _db;
 const VOCAB_COLLECTION = "celestial_vocab_sync";
 const USER_SYNC_COLLECTION = "celestial_user_sync";
 export const storage = getStorage(app);
@@ -636,22 +642,75 @@ async function syncUserSettings() {
     const { isPreviewMode } = await import('./state.js');
     if (isPreviewMode()) return;
 
+    const m = await import('./state.js');
+    const { userRecallParams, userLapseParams, userFsrs7Params, userFsrs7TrainedAt } = m.getState();
     const settingsRef = doc(db, USER_SYNC_COLLECTION, "settings");
-    const remoteSettingsSnap = await getDoc(settingsRef);
-    if (remoteSettingsSnap.exists()) {
-        const remoteSettings = remoteSettingsSnap.data();
-        const localTrainedAt = await getSettingFromDB('userParamsTrainedAt') || 0;
-        const remoteTrainedAt = remoteSettings.trainedAt || 0;
+    
+    // Đọc timestamp local (ưu tiên userFsrs7TrainedAt, fallback userParamsTrainedAt)
+    const localFsrs7Time = (await getSettingFromDB('userFsrs7TrainedAt')) || userFsrs7TrainedAt || 0;
+    const localLegacyTime = (await getSettingFromDB('userParamsTrainedAt')) || 0;
+    const localTrainedAt = Math.max(localFsrs7Time, localLegacyTime);
 
-        if (remoteTrainedAt > localTrainedAt) {
-            const m = await import('./state.js');
-            m.setUserSrsParams(remoteSettings.userRecallParams || null, remoteSettings.userLapseParams || null);
-            if (remoteSettings.userFsrs7Params && Array.isArray(remoteSettings.userFsrs7Params) && remoteSettings.userFsrs7Params.length === 34) {
-                await m.setUserFsrs7Params(remoteSettings.userFsrs7Params);
+    try {
+        const remoteSettingsSnap = await getDoc(settingsRef);
+        if (remoteSettingsSnap.exists()) {
+            const remoteSettings = remoteSettingsSnap.data();
+            const remoteTrainedAt = Math.max(remoteSettings.trainedAt || 0, remoteSettings.userFsrs7TrainedAt || 0);
+
+            if (remoteTrainedAt > localTrainedAt) {
+                // Remote mới hơn -> Kéo từ Cloud về máy
+                if (remoteSettings.userRecallParams || remoteSettings.userLapseParams) {
+                    m.setUserSrsParams(remoteSettings.userRecallParams || null, remoteSettings.userLapseParams || null);
+                }
+                if (remoteSettings.userFsrs7Params && Array.isArray(remoteSettings.userFsrs7Params) && remoteSettings.userFsrs7Params.length === 34) {
+                    await m.setUserFsrs7Params(remoteSettings.userFsrs7Params, remoteTrainedAt);
+                    
+                    // Cập nhật ngay UI nếu modal đang mở
+                    if (DOM.fsrs7CurrentStatus) {
+                        DOM.fsrs7CurrentStatus.textContent = "Đang dùng: Bộ Cá Nhân Hóa (34 params)";
+                        DOM.fsrs7CurrentStatus.style.color = "#a855f7";
+                    }
+                    if (DOM.fsrs7TrainedTime) {
+                        DOM.fsrs7TrainedTime.textContent = `Cập nhật: ${new Date(remoteTrainedAt).toLocaleString('vi-VN')}`;
+                    }
+                    if (DOM.fsrs7ParamsInput) {
+                        DOM.fsrs7ParamsInput.value = JSON.stringify(remoteSettings.userFsrs7Params, null, 2);
+                    }
+                }
+                await saveSettingToDB('userFsrs7TrainedAt', remoteTrainedAt);
+                await saveSettingToDB('userParamsTrainedAt', remoteTrainedAt);
+                console.log("☁️ Đã tải bộ thông số cá nhân hoá FSRS-7 từ Firebase về máy.");
+            } else if (localTrainedAt > remoteTrainedAt && userFsrs7Params && Array.isArray(userFsrs7Params) && userFsrs7Params.length === 34) {
+                // Local mới hơn -> Đẩy từ máy lên Cloud
+                await setDoc(settingsRef, {
+                    userRecallParams: userRecallParams || null,
+                    userLapseParams: userLapseParams || null,
+                    userFsrs7Params: userFsrs7Params,
+                    userFsrs7TrainedAt: localTrainedAt,
+                    trainedAt: localTrainedAt,
+                    version: '7.0',
+                    source: 'personal',
+                    _lastModifiedBy: getDeviceId()
+                }, { merge: true });
+                console.log("☁️ Đã đồng bộ bộ thông số cá nhân hoá FSRS-7 từ máy lên Firebase.");
             }
-            await saveSettingToDB('userParamsTrainedAt', remoteTrainedAt);
-            console.log("☁️ Đã tải bộ thông số cá nhân hoá FSRS-7 từ Firebase về máy.");
+        } else if (userFsrs7Params && Array.isArray(userFsrs7Params) && userFsrs7Params.length === 34) {
+            // Chưa có tài liệu settings trên Cloud -> Khởi tạo
+            const now = localTrainedAt || Date.now();
+            await setDoc(settingsRef, {
+                userRecallParams: userRecallParams || null,
+                userLapseParams: userLapseParams || null,
+                userFsrs7Params: userFsrs7Params,
+                userFsrs7TrainedAt: now,
+                trainedAt: now,
+                version: '7.0',
+                source: 'personal',
+                _lastModifiedBy: getDeviceId()
+            }, { merge: true });
+            console.log("☁️ Khởi tạo bộ thông số FSRS-7 cá nhân hoá lên Firebase.");
         }
+    } catch (err) {
+        console.warn("Lỗi kiểm tra/đồng bộ userSettings:", err);
     }
 }
 
