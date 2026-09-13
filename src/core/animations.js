@@ -81,7 +81,7 @@ export function animateModalOpen(modalElement) {
     // Stagger children — manage panel vs form modal
     const isManagePanel = content.classList.contains('manage-panel');
     const childSelector = isManagePanel 
-        ? '.manage-panel-title, .manage-controls, #word-list-section, .manage-divider, .manage-io-surface'
+        ? '.manage-panel-header, .manage-controls, #word-list-section, .manage-io-clean-grid'
         : '.form-group, h3, button[type="submit"]';
     
     const children = content.querySelectorAll(childSelector);

@@ -664,6 +664,44 @@ export function setupEventListeners() {
     DOM.addEditOverlay?.addEventListener('click', () => closeModal(DOM.addEditModal));
     DOM.cancelEditBtn?.addEventListener('click', cancelEdit);
     DOM.closeManageModalBtn?.addEventListener('click', () => closeModal(DOM.manageModal));
+    DOM.manageOverlay?.addEventListener('click', () => closeModal(DOM.manageModal));
+    DOM.manageModal?.addEventListener('click', (e) => {
+        if (e.target === DOM.manageModal || e.target.classList.contains('modal-overlay')) {
+            closeModal(DOM.manageModal);
+        }
+    });
+
+    // Manage Panel Navigation Tabs
+    const tabWords = document.getElementById('tab-vocab-list');
+    const tabIO = document.getElementById('tab-data-io');
+    const paneWords = document.getElementById('manage-view-words');
+    const paneIO = document.getElementById('manage-view-io');
+
+    const switchManageTab = (tab) => {
+        if (tab === 'words') {
+            tabWords?.classList.add('active');
+            tabWords?.setAttribute('aria-selected', 'true');
+            tabIO?.classList.remove('active');
+            tabIO?.setAttribute('aria-selected', 'false');
+            paneWords?.classList.remove('hidden');
+            paneWords?.classList.add('active');
+            paneIO?.classList.add('hidden');
+            paneIO?.classList.remove('active');
+            updatePanelWordList(false);
+        } else {
+            tabIO?.classList.add('active');
+            tabIO?.setAttribute('aria-selected', 'true');
+            tabWords?.classList.remove('active');
+            tabWords?.setAttribute('aria-selected', 'false');
+            paneIO?.classList.remove('hidden');
+            paneIO?.classList.add('active');
+            paneWords?.classList.add('hidden');
+            paneWords?.classList.remove('active');
+        }
+    };
+
+    tabWords?.addEventListener('click', () => switchManageTab('words'));
+    tabIO?.addEventListener('click', () => switchManageTab('io'));
     DOM.closeProfileModalBtn?.addEventListener('click', () => closeModal(DOM.profileModal));
     DOM.profileOverlay?.addEventListener('click', () => closeModal(DOM.profileModal));
     DOM.scanDuplicatesBtn?.addEventListener('click', () => {
@@ -694,7 +732,7 @@ export function setupEventListeners() {
     document.addEventListener('keydown', handleGlobalShortcuts);
 	DOM.manualSyncBtn?.addEventListener('click', () => {
         import('./core/state.js').then(s => s.trackEvent('syncSpamCount'));
-        smartSync();
+        smartSync({ forceFullPull: true });
     });
 }
 

@@ -186,6 +186,13 @@ export function openManageModal() {
     if (!DOM.manageModal) return;
     DOM.panelTopicFilter.value = getState().currentTopicFilter;
     DOM.manageSearchInput.value = '';
+    
+    // Đảm bảo mở tab Danh sách từ vựng mặc định
+    const tabWords = document.getElementById('tab-vocab-list');
+    if (tabWords && !tabWords.classList.contains('active')) {
+        tabWords.click();
+    }
+    
     updatePanelWordList();
     import('../events.js').then(m => m.updateUndoButtonState());
     openModal(DOM.manageModal);
