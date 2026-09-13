@@ -569,7 +569,8 @@ export function updatePanelWordList(resetScroll = true) {
     const countBadge = document.getElementById('manage-total-count');
     if (countBadge) {
         const totalCount = vocabulary.filter(w => !w.isDeleted).length;
-        countBadge.innerHTML = `<i class="ph-bold ph-cards"></i> ${filteredWordsCache.length} / ${totalCount} từ`;
+        const countText = filteredWordsCache.length === totalCount ? `${totalCount} từ` : `${filteredWordsCache.length}/${totalCount}`;
+        countBadge.innerHTML = `<i class="ph-bold ph-cards"></i> ${countText}`;
     }
 
     if (filteredWordsCache.length === 0) {
