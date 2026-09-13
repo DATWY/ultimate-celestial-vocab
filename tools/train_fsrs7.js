@@ -444,9 +444,23 @@ function findReviewLogsFile(cliArg) {
         // Sắp xếp file có thời gian chỉnh sửa mới nhất lên đầu
         candidateFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
         const best = candidateFiles[0];
+        
+        if (candidateFiles.length > 1 && !cliArg) {
+            console.log(`🔍 Tìm thấy ${candidateFiles.length} file review logs trong máy tính:`);
+            candidateFiles.slice(0, 5).forEach((f, idx) => {
+                const isLatest = idx === 0 ? " ➔ [⭐ TỰ ĐỘNG CHỌN MỚI NHẤT]" : "";
+                console.log(`   [${idx + 1}] ${f.filename} (${f.mtimeStr})${isLatest}`);
+            });
+            if (candidateFiles.length > 5) {
+                console.log(`   ... và ${candidateFiles.length - 5} file logs khác.`);
+            }
+            console.log(`💡 Mẹo: Chạy 'node tools/train_fsrs7.js --merge-all' nếu bạn muốn gộp tất cả các file trên.\n`);
+        }
+
         return {
             path: best.path,
-            source: `${best.label} -> "${best.filename}" (sửa đổi lúc: ${best.mtimeStr})`
+            source: `${best.label} -> "${best.filename}" (sửa đổi lúc: ${best.mtimeStr})`,
+            allCandidates: candidateFiles
         };
     }
 
@@ -454,7 +468,10 @@ function findReviewLogsFile(cliArg) {
 }
 
 const args = process.argv.slice(2);
-const foundLogFile = findReviewLogsFile(args[0]);
+const isMergeAll = args.includes('--merge-all') || args.includes('-m');
+const targetArg = args.find(a => !a.startsWith('-'));
+
+const foundLogFile = findReviewLogsFile(targetArg);
 
 if (!foundLogFile) {
     console.log("💡 Hướng dẫn sử dụng:");
@@ -467,20 +484,45 @@ if (!foundLogFile) {
     process.exit(1);
 }
 
-const inputPath = foundLogFile.path;
-console.log(`📂 Nguồn dữ liệu: ${foundLogFile.source}`);
-console.log(`📍 Đường dẫn file: ${inputPath}`);
-const rawFile = fs.readFileSync(inputPath, 'utf8');
-let rawData = null;
-try {
-    rawData = JSON.parse(rawFile);
-} catch (e) {
-    console.error("❌ Lỗi cú pháp JSON trong file logs:", e.message);
-    process.exit(1);
-}
+let rawList = [];
 
-const rawList = Array.isArray(rawData) ? rawData : (rawData.logs || []);
-console.log(`📊 Tổng số lượt ôn tập phát hiện: ${rawList.length}`);
+if (isMergeAll && foundLogFile.allCandidates && foundLogFile.allCandidates.length > 1) {
+    console.log(`🔄 Đang gộp dữ liệu từ toàn bộ ${foundLogFile.allCandidates.length} file review logs phát hiện...`);
+    const seenReviews = new Set();
+    for (const cand of foundLogFile.allCandidates) {
+        try {
+            const content = fs.readFileSync(cand.path, 'utf8');
+            const data = JSON.parse(content);
+            const list = Array.isArray(data) ? data : (data.logs || []);
+            for (const item of list) {
+                const cardId = item.cardId || item[0] || 'unknown';
+                const ts = item.ts || item[3] || 0;
+                const key = `${cardId}_${ts}`;
+                if (!seenReviews.has(key)) {
+                    seenReviews.add(key);
+                    rawList.push(item);
+                }
+            }
+        } catch (err) {
+            console.warn(`   ⚠️ Bỏ qua file lỗi: ${cand.filename} (${err.message})`);
+        }
+    }
+    console.log(`✅ Đã gộp và khử trùng lặp thành công: ${rawList.length} lượt ôn tập duy nhất.`);
+} else {
+    const inputPath = foundLogFile.path;
+    console.log(`📂 Nguồn dữ liệu: ${foundLogFile.source}`);
+    console.log(`📍 Đường dẫn file: ${inputPath}`);
+    const rawFile = fs.readFileSync(inputPath, 'utf8');
+    let rawData = null;
+    try {
+        rawData = JSON.parse(rawFile);
+    } catch (e) {
+        console.error("❌ Lỗi cú pháp JSON trong file logs:", e.message);
+        process.exit(1);
+    }
+    rawList = Array.isArray(rawData) ? rawData : (rawData.logs || []);
+    console.log(`📊 Tổng số lượt ôn tập phát hiện: ${rawList.length}`);
+}
 
 if (rawList.length < 50) {
     console.warn("\n⚠️ CẢNH BÁO: Bạn có dưới 50 lượt ôn bài.");
