@@ -17,6 +17,10 @@
 
 <br/>
 
+![Ultimate Celestial Vocab Hero Artwork](docs/screenshots/project_thumbnail.webp)
+
+<br/>
+
 ![Ultimate Celestial Vocab Dashboard](docs/screenshots/app_dashboard.webp)
 
 </div>

@@ -14,7 +14,7 @@
 | **Phụ đề (Subtitle)** | `Đóng gói thuật toán khoa học nhận thức FSRS-7, động cơ đồng bộ 4-Vector thời gian thực và ngôn ngữ thiết kế Celestial Universe vào một Web App học ngoại ngữ đỉnh cao.` |
 | **Thẻ chủ đề (Tags)** | `WebDev, FSRS7, SpacedRepetition, Firebase, UIUX, Celestial, OpenSource` |
 | **Liên kết (Link)** | `https://chat-wywy.web.app` |
-| **Ảnh bìa (Cover)** | `https://raw.githubusercontent.com/DATWY/ultimate-celestial-vocab/main/docs/screenshots/app_dashboard.webp` |
+| **Ảnh bìa (Cover)** | `https://raw.githubusercontent.com/DATWY/ultimate-celestial-vocab/main/docs/screenshots/project_thumbnail.webp` |
 
 ---
 
