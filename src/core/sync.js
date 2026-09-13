@@ -165,16 +165,20 @@ export async function syncUserSettingsToFirebase() {
         const { userRecallParams, userLapseParams, userFsrs7Params, userFsrs7TrainedAt } = m.getState();
         try {
             const docRef = doc(db, USER_SYNC_COLLECTION, 'settings');
+            const now = userFsrs7TrainedAt || getCalibratedNow();
             await setDoc(docRef, {
                 userRecallParams: userRecallParams || null,
                 userLapseParams: userLapseParams || null,
                 userFsrs7Params: userFsrs7Params || null,
-                userFsrs7TrainedAt: userFsrs7TrainedAt || null,
-                trainedAt: getCalibratedNow(),
+                userFsrs7TrainedAt: now,
+                trainedAt: now,
                 version: '7.0',
                 source: 'personal',
                 _lastModifiedBy: getDeviceId()
             }, { merge: true });
+            const { saveSettingToDB } = await import('./idb.js');
+            await saveSettingToDB('userFsrs7TrainedAt', now);
+            await saveSettingToDB('userParamsTrainedAt', now);
             console.log("☁️ Đã đồng bộ thông số cá nhân hoá FSRS-7 lên Firebase.");
         } catch (e) {
             console.error("Lỗi đồng bộ thông số:", e);
