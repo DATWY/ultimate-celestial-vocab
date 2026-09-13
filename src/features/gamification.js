@@ -91,6 +91,26 @@ export function renderGamificationUI() {
     if (elStability) elStability.textContent = `${avgStability} ngày`;
     if (elTotalRev) animateNumber(elTotalRev, totalReviews, 2000, true);
 
+    // Micro-meter visual telemetry bars
+    const elRetentionMeter = document.getElementById('profile-retention-meter');
+    if (elRetentionMeter) {
+        elRetentionMeter.style.width = `${Math.min(100, Math.max(0, retentionRateNum))}%`;
+    }
+
+    const elStabilityMeter = document.getElementById('profile-stability-meter');
+    if (elStabilityMeter) {
+        // Map 0 - 30 days to 0 - 100% with a minimum 12% for visibility
+        const stabPct = Math.min(100, Math.max(12, (avgStabilityNum / 30) * 100));
+        elStabilityMeter.style.width = `${stabPct.toFixed(1)}%`;
+    }
+
+    const elReviewsMeter = document.getElementById('profile-reviews-meter');
+    if (elReviewsMeter) {
+        // Progressive scale up to 10k reviews
+        const reviewsPct = totalReviews <= 0 ? 15 : Math.min(100, Math.max(18, (Math.log10(Math.max(1, totalReviews)) / 4) * 100));
+        elReviewsMeter.style.width = `${reviewsPct.toFixed(1)}%`;
+    }
+
     if (elRetentionSub) {
         elRetentionSub.textContent = retentionRateNum >= 88 ? '🎯 Đang nhớ rất sâu' : (retentionRateNum >= 75 ? '👍 Duy trì ổn định' : '⚠️ Cần củng cố thêm');
     }

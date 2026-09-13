@@ -52,13 +52,34 @@ export function getCalibratedNow() {
     return Date.now() + _serverTimeOffset;
 }
 
+// ===== DEVICE FINGERPRINT & ANTI-ECHO =====
+let _cachedDeviceId = null;
+export function getDeviceId() {
+    if (_cachedDeviceId) return _cachedDeviceId;
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            let id = localStorage.getItem('celestial_device_id');
+            if (!id) {
+                id = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+                localStorage.setItem('celestial_device_id', id);
+            }
+            _cachedDeviceId = id;
+            return _cachedDeviceId;
+        }
+    } catch (e) {
+        // Fallback if localStorage is restricted
+    }
+    _cachedDeviceId = 'temp_dev_' + Math.random().toString(36).substring(2, 8);
+    return _cachedDeviceId;
+}
+
 // ===== HELPERS =====
 
 /**
  * Chuyển đổi updatedAt từ nhiều format (Firestore Timestamp, number, Date) về milliseconds.
  * Tự động cân chỉnh _serverTimeOffset nếu có dữ liệu từ Cloud.
  */
-function toMillis(val) {
+export function toMillis(val) {
     if (!val) return 0;
     let millis = 0;
     if (typeof val === 'number') millis = val;
@@ -73,67 +94,197 @@ function toMillis(val) {
 }
 
 /**
- * Field-level SRS-aware merge: Merge 2 versions của cùng 1 card.
- * Luật:
- *   - isDeleted: true luôn thắng (tombstone)
- *   - Tất cả fields khác: lấy từ bản có updatedAt mới hơn
+ * True Field-Level SRS-Aware Merge: Hợp nhất 2 phiên bản của cùng 1 thẻ từ vựng
+ * từ 2 thiết bị khác nhau một cách toàn diện và chính xác tuyệt đối.
  * 
- * Trả về merged card.
+ * Chia thành 4 Vectors độc lập:
+ * 1. Tombstone Vector (Trạng thái xóa):
+ *    - isDeleted = true thắng nếu thời điểm xóa >= thời điểm cập nhật còn lại.
+ *    - Nếu một bên xóa nhưng bên kia có sửa đổi mới hơn sau thời điểm xóa -> phục hồi thẻ (resurrect).
+ * 
+ * 2. SRS Memory Vector (Bộ trạng thái trí nhớ Spaced Repetition):
+ *    - srsStatus, srsDueDate, srsInterval, stability, stabilityShort, difficulty,
+ *      reps, lapses, lastReviewDate, consecutiveCorrect
+ *    - Nguyên tắc: Lấy TOÀN BỘ vector SRS từ phiên bản có lượt review gần nhất (lastReviewDate mới hơn,
+ *      hoặc số reps cao hơn nếu hòa). Giữ nguyên tính toàn vẹn toán học của thuật toán FSRS-7.
+ * 
+ * 3. Content Vector (Dữ liệu từ vựng con người biên soạn):
+ *    - english, vietnamese, phonetic, type, example, exampleMeaning, notes,
+ *      synonyms, antonyms, collocations, audio
+ *    - Lấy từ phiên bản có nội dung đầy đủ hơn hoặc có updatedAt mới hơn.
+ * 
+ * 4. Tags & Flags Vector:
+ *    - tags: Hợp nhất Set Union (không bao giờ làm mất tag thêm từ thiết bị khác).
+ *    - isStarred, isSuspended: Lấy từ phiên bản cập nhật gần nhất.
  */
-function mergeCardFields(local, remote) {
-    const localTime = toMillis(local.updatedAt);
-    const remoteTime = toMillis(remote.updatedAt);
-    
-    // Tombstone rule: isDeleted = true luôn thắng
-    if (remote.isDeleted && !local.isDeleted) {
-        return { ...remote, updatedAt: Math.max(localTime, remoteTime) };
+export function mergeCardFields(local, remote) {
+    if (!local) return remote;
+    if (!remote) return local;
+
+    const localTime = toMillis(local.updatedAt) || 0;
+    const remoteTime = toMillis(remote.updatedAt) || 0;
+    const maxUpdatedTime = Math.max(localTime, remoteTime, getCalibratedNow());
+
+    // --- VECTOR 1: TOMBSTONE (DELETION) ---
+    const localDeleted = !!local.isDeleted;
+    const remoteDeleted = !!remote.isDeleted;
+
+    if (localDeleted !== remoteDeleted) {
+        if (remoteDeleted) {
+            // Remote xóa: nếu local không có sửa đổi nào mới hơn remoteTime, remote xóa thắng
+            if (remoteTime >= localTime) {
+                return { ...remote, isDeleted: true, updatedAt: maxUpdatedTime };
+            }
+        } else {
+            // Local xóa: nếu remote không có sửa đổi nào mới hơn localTime, local xóa thắng
+            if (localTime >= remoteTime) {
+                return { ...local, isDeleted: true, updatedAt: maxUpdatedTime };
+            }
+        }
+    } else if (localDeleted && remoteDeleted) {
+        return { ...local, ...remote, isDeleted: true, updatedAt: maxUpdatedTime };
     }
-    if (local.isDeleted && !remote.isDeleted) {
-        return { ...local, updatedAt: Math.max(localTime, remoteTime) };
+
+    // --- VECTOR 2: SRS MEMORY STATE ---
+    const localReviewTime = toMillis(local.lastReviewDate) || 0;
+    const remoteReviewTime = toMillis(remote.lastReviewDate) || 0;
+    const localReps = Number(local.reps) || 0;
+    const remoteReps = Number(remote.reps) || 0;
+
+    let srsWinner = local;
+    if (remoteReviewTime > localReviewTime) {
+        srsWinner = remote;
+    } else if (localReviewTime > remoteReviewTime) {
+        srsWinner = local;
+    } else {
+        // Cùng thời gian review (hoặc cả 2 đều chưa review):
+        if (remoteReps > localReps) {
+            srsWinner = remote;
+        } else if (localReps > remoteReps) {
+            srsWinner = local;
+        } else {
+            // Nếu cả 2 đều chưa review, ưu tiên thẻ có trạng thái đã học
+            const localIsNew = !local.srsStatus || local.srsStatus === 'New';
+            const remoteIsNew = !remote.srsStatus || remote.srsStatus === 'New';
+            if (localIsNew && !remoteIsNew) srsWinner = remote;
+            else if (!localIsNew && remoteIsNew) srsWinner = local;
+            else srsWinner = remoteTime > localTime ? remote : local;
+        }
     }
-    
-    // Lấy bản có updatedAt mới nhất làm base, merge từ bản còn lại
-    if (remoteTime > localTime) {
-        // Remote mới hơn: dùng remote làm base
-        return { ...remote, updatedAt: remoteTime };
-    } else if (localTime > remoteTime) {
-        // Local mới hơn: giữ local
-        return { ...local, updatedAt: localTime };
-    }
-    
-    // Cùng thời gian: ưu tiên local (vì user đang dùng thiết bị này)
-    return { ...local, updatedAt: localTime };
+
+    // --- VECTOR 3: CONTENT EDITORIAL DATA ---
+    const contentWinner = remoteTime > localTime ? remote : local;
+    const contentFallback = contentWinner === remote ? local : remote;
+
+    const pickNonEmpty = (key) => {
+        const val1 = contentWinner[key];
+        const val2 = contentFallback[key];
+        if (val1 !== undefined && val1 !== null && val1 !== '') return val1;
+        return val2 !== undefined && val2 !== null ? val2 : val1;
+    };
+
+    // --- VECTOR 4: TAGS UNION ---
+    const localTags = Array.isArray(local.tags) ? local.tags : [];
+    const remoteTags = Array.isArray(remote.tags) ? remote.tags : [];
+    const mergedTags = Array.from(new Set([...localTags, ...remoteTags]))
+        .map(t => typeof t === 'string' ? t.trim() : String(t))
+        .filter(t => t.length > 0 && t.toLowerCase() !== 'all');
+
+    // --- VECTOR 5: FLAGS ---
+    const flagsWinner = remoteTime > localTime ? remote : local;
+
+    return {
+        id: local.id || remote.id,
+        english: pickNonEmpty('english') || local.english || remote.english,
+        vietnamese: pickNonEmpty('vietnamese') || local.vietnamese || remote.vietnamese,
+        phonetic: pickNonEmpty('phonetic') || '',
+        type: pickNonEmpty('type') || local.type || remote.type || '',
+        example: pickNonEmpty('example') || '',
+        exampleMeaning: pickNonEmpty('exampleMeaning') || pickNonEmpty('exampleVi') || '',
+        exampleVi: pickNonEmpty('exampleVi') || pickNonEmpty('exampleMeaning') || '',
+        notes: pickNonEmpty('notes') || '',
+        synonyms: pickNonEmpty('synonyms') || [],
+        antonyms: pickNonEmpty('antonyms') || [],
+        collocations: pickNonEmpty('collocations') || [],
+        audio: pickNonEmpty('audio') || '',
+        
+        // Tags union
+        tags: mergedTags,
+
+        // Flags
+        isStarred: typeof flagsWinner.isStarred === 'boolean' ? flagsWinner.isStarred : (local.isStarred || remote.isStarred || false),
+        isSuspended: typeof flagsWinner.isSuspended === 'boolean' ? flagsWinner.isSuspended : (local.isSuspended || remote.isSuspended || false),
+        isDeleted: false,
+
+        // SRS Atomic State Vector (Bảo toàn 100% logic FSRS-7)
+        srsStatus: srsWinner.srsStatus || 'New',
+        srsDueDate: srsWinner.srsDueDate ? toMillis(srsWinner.srsDueDate) : null,
+        srsInterval: srsWinner.srsInterval !== undefined ? srsWinner.srsInterval : 0,
+        stability: srsWinner.stability !== undefined ? srsWinner.stability : 0,
+        stabilityShort: srsWinner.stabilityShort !== undefined ? srsWinner.stabilityShort : (srsWinner.stability || 0),
+        difficulty: srsWinner.difficulty !== undefined ? srsWinner.difficulty : 0,
+        reps: Number(srsWinner.reps) || 0,
+        lapses: Number(srsWinner.lapses) || 0,
+        lastReviewDate: srsWinner.lastReviewDate ? toMillis(srsWinner.lastReviewDate) : null,
+        consecutiveCorrect: srsWinner.consecutiveCorrect !== undefined ? srsWinner.consecutiveCorrect : 0,
+
+        // Convergence Timestamp & Origin
+        updatedAt: maxUpdatedTime,
+        _lastModifiedBy: getDeviceId()
+    };
 }
 
-// ===== SMART SYNC v2 =====
+// ===== SMART SYNC v3 =====
 
 /**
- * BUG-12 FIX: So sánh nhanh 2 card objects.
- * Chỉ check các fields SRS thay đổi thường xuyên thay vì stringify toàn bộ.
- * Trả về true nếu 2 object giống nhau ở các fields quan trọng.
+ * So sánh toàn diện 2 card objects.
+ * Kiểm tra cả SRS metrics, nội dung, cờ, và danh sách tags.
+ * Trả về true nếu 2 object hoàn toàn tương đương về dữ liệu người dùng.
  */
-function isSrsEqual(a, b) {
+export function isSrsEqual(a, b) {
     if (!a || !b) return a === b;
-    return (
-        a.stability === b.stability &&
-        a.difficulty === b.difficulty &&
-        a.srsInterval === b.srsInterval &&
-        a.srsDueDate === b.srsDueDate &&
-        a.srsStatus === b.srsStatus &&
-        a.reps === b.reps &&
-        a.lapses === b.lapses &&
-        a.isDeleted === b.isDeleted &&
-        a.isStarred === b.isStarred &&
-        a.isSuspended === b.isSuspended &&
-        a.updatedAt === b.updatedAt &&
-        a.english === b.english &&
-        a.vietnamese === b.vietnamese
-    );
+    if (a === b) return true;
+
+    // So sánh các trường SRS và trạng thái
+    if (
+        a.stability !== b.stability ||
+        a.stabilityShort !== b.stabilityShort ||
+        a.difficulty !== b.difficulty ||
+        a.srsInterval !== b.srsInterval ||
+        a.srsDueDate !== b.srsDueDate ||
+        a.srsStatus !== b.srsStatus ||
+        a.reps !== b.reps ||
+        a.lapses !== b.lapses ||
+        a.lastReviewDate !== b.lastReviewDate ||
+        a.consecutiveCorrect !== b.consecutiveCorrect ||
+        a.isDeleted !== b.isDeleted ||
+        a.isStarred !== b.isStarred ||
+        a.isSuspended !== b.isSuspended ||
+        a.english !== b.english ||
+        a.vietnamese !== b.vietnamese ||
+        a.phonetic !== b.phonetic ||
+        a.type !== b.type ||
+        a.example !== b.example ||
+        (a.exampleMeaning || a.exampleVi || '') !== (b.exampleMeaning || b.exampleVi || '') ||
+        (a.notes || '') !== (b.notes || '')
+    ) {
+        return false;
+    }
+
+    // So sánh mảng tags
+    const aTags = Array.isArray(a.tags) ? a.tags : [];
+    const bTags = Array.isArray(b.tags) ? b.tags : [];
+    if (aTags.length !== bTags.length) return false;
+    for (let i = 0; i < aTags.length; i++) {
+        if (aTags[i] !== bTags[i]) return false;
+    }
+
+    return true;
 }
 
 let _lastLocalWriteTimestamp = 0;
 
-export async function smartSync() {
+export async function smartSync({ forceFullPull = false } = {}) {
     // --- MUTEX ---
     if (_isSyncing) {
         console.log("🔄 smartSync đã đang chạy. Đánh dấu pending...");
@@ -143,7 +294,7 @@ export async function smartSync() {
     _isSyncing = true;
     _syncPendingAfterCurrent = false;
 
-    console.log("🔄 [Smart Sync v2] Bắt đầu đồng bộ 2 chiều...");
+    console.log(`🔄 [Smart Sync v3] Bắt đầu đồng bộ 2 chiều (forceFullPull=${forceFullPull})...`);
     
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') {
         showPopup("⛔️ Tài khoản đang dùng Cheat. Chặn đồng bộ!", "warning");
@@ -156,9 +307,9 @@ export async function smartSync() {
 
     try {
         const stateModule = await import('./state.js');
-        const vocabulary = stateModule.getState().vocabulary;
+        const vocabulary = stateModule.getState().vocabulary || [];
         // CHÚ Ý: Tuyệt đối không dùng lastSyncTime làm lastPullTime vì nó là Date.now() local, sẽ làm miss data từ các thiết bị khác!
-        let lastPullTime = await getSettingFromDB('lastPullTime') || 0;
+        let lastPullTime = forceFullPull ? 0 : (await getSettingFromDB('lastPullTime') || 0);
         
         // Bắt buộc Full Pull nếu local chưa có từ vựng nào (thiết bị mới)
         if (!vocabulary || vocabulary.length === 0) {
@@ -174,11 +325,13 @@ export async function smartSync() {
         const flushedIds = new Set(await syncModule.flushSyncQueue());
         
         // ============================================================
-        // PHASE 1: PULL — Tải dữ liệu mới từ Cloud về
+        // PHASE 1: PULL — Tải dữ liệu mới từ Cloud về (với safety buffer 3 phút)
         // ============================================================
+        const PULL_SAFETY_BUFFER_MS = 180000; // 3 phút overlap phòng lệch đồng hồ giữa các máy
         let q;
         if (lastPullTime > 0) {
-            q = query(collection(db, VOCAB_COLLECTION), where("updatedAt", ">", lastPullTime));
+            const bufferedPullTime = Math.max(0, lastPullTime - PULL_SAFETY_BUFFER_MS);
+            q = query(collection(db, VOCAB_COLLECTION), where("updatedAt", ">", bufferedPullTime));
         } else {
             q = collection(db, VOCAB_COLLECTION);
         }
@@ -188,6 +341,8 @@ export async function smartSync() {
         let maxPullTime = lastPullTime;
         let needsLocalUpdate = false;
         const pulledIds = new Set();
+        const convergedCardsToPush = [];
+        const myDeviceId = getDeviceId();
         
         querySnapshot.forEach(docSnap => {
             const remote = docSnap.data();
@@ -212,35 +367,58 @@ export async function smartSync() {
                 const local = vocabulary[localIndex];
                 const localTime = toMillis(local.updatedAt);
                 
-                if (remoteTime === localTime) return; // Không thay đổi
+                if (remoteTime === localTime && isSrsEqual(local, remote)) {
+                    return; // Hoàn toàn đồng nhất
+                }
                 
-                // Field-level merge
+                // Field-level merge với 4 vector độc lập
                 const merged = mergeCardFields(local, remote);
                 if (merged.srsDueDate) merged.srsDueDate = toMillis(merged.srsDueDate);
                 if (merged.lastReviewDate) merged.lastReviewDate = toMillis(merged.lastReviewDate);
                 
+                // Cập nhật local nếu phiên bản merge có dữ liệu mới
                 if (!isSrsEqual(merged, local)) {
                     stateModule.updateCardInVocabulary(local.id, merged);
                     needsLocalUpdate = true;
+                }
+
+                // CRITICAL MULTI-DEVICE FIX:
+                // Nếu merged khác remote trên Cloud, tức là local có dữ liệu/review/tag mới hơn Cloud.
+                // Ta phải đẩy phiên bản hội tụ này ngược lên Cloud để các máy khác cùng nhận được!
+                if (!isSrsEqual(merged, remote)) {
+                    convergedCardsToPush.push(merged);
                 }
             }
         });
 
         // ============================================================
-        // PHASE 2: PUSH — Đẩy thẻ local có thay đổi chưa lên Cloud
+        // PHASE 2: PUSH — Đẩy thẻ local chưa lên Cloud + thẻ đã merge hội tụ
         // ============================================================
-        const cardsToPush = [];
+        const cardsToPushMap = new Map();
+
+        // 1. Thêm các thẻ cần đẩy do kết quả merge hội tụ
+        for (const card of convergedCardsToPush) {
+            if (card && card.id) {
+                cardsToPushMap.set(card.id, card);
+            }
+        }
+
+        // 2. Thêm các thẻ local mới sửa/tạo mà chưa sync
         for (const card of vocabulary) {
             if (!card || !card.id) continue;
             const cardTime = toMillis(card.updatedAt);
             
             if (cardTime > lastPullTime && !flushedIds.has(card.id) && !pulledIds.has(card.id)) {
-                cardsToPush.push(card);
+                if (!cardsToPushMap.has(card.id)) {
+                    cardsToPushMap.set(card.id, card);
+                }
             }
         }
         
+        const cardsToPush = Array.from(cardsToPushMap.values());
+
         if (cardsToPush.length > 0) {
-            console.log(`☁️ Push ${cardsToPush.length} thẻ local lên Cloud...`);
+            console.log(`☁️ Push ${cardsToPush.length} thẻ (${convergedCardsToPush.length} thẻ hội tụ) lên Cloud...`);
             
             const BATCH_LIMIT = 500;
             for (let i = 0; i < cardsToPush.length; i += BATCH_LIMIT) {
@@ -249,6 +427,7 @@ export async function smartSync() {
                 
                 for (const card of chunk) {
                     const cleanData = JSON.parse(JSON.stringify(card));
+                    cleanData._lastModifiedBy = myDeviceId;
                     const cardRef = doc(db, VOCAB_COLLECTION, card.id);
                     batch.set(cardRef, cleanData, { merge: true });
                 }
@@ -256,7 +435,7 @@ export async function smartSync() {
                 await batch.commit();
             }
             _lastLocalWriteTimestamp = Date.now();
-            console.log(`☁️ Đã push ${cardsToPush.length} thẻ.`);
+            console.log(`☁️ Đã push thành công ${cardsToPush.length} thẻ.`);
         }
 
         // ============================================================
@@ -382,7 +561,13 @@ async function syncGamification() {
     setGamification(mergedGamification);
     await saveGamification();
     const cleanGamification = JSON.parse(JSON.stringify(mergedGamification));
-    if (!remoteGamification || JSON.stringify(cleanGamification) !== JSON.stringify(remoteGamification)) {
+    const compareA = { ...cleanGamification };
+    delete compareA._lastModifiedBy;
+    const compareB = remoteGamification ? { ...remoteGamification } : null;
+    if (compareB) delete compareB._lastModifiedBy;
+
+    if (!compareB || JSON.stringify(compareA) !== JSON.stringify(compareB)) {
+        cleanGamification._lastModifiedBy = getDeviceId();
         await setDoc(gamificationRef, cleanGamification);
         _lastLocalWriteTimestamp = Date.now();
     }
@@ -435,7 +620,13 @@ async function syncDailyStats() {
     setDailyStats(mergedStats);
     await saveDailyStats();
     const cleanStats = JSON.parse(JSON.stringify(mergedStats));
-    if (!remoteStats || JSON.stringify(cleanStats) !== JSON.stringify(remoteStats)) {
+    const compareA = { ...cleanStats };
+    delete compareA._lastModifiedBy;
+    const compareB = remoteStats ? { ...remoteStats } : null;
+    if (compareB) delete compareB._lastModifiedBy;
+
+    if (!compareB || JSON.stringify(compareA) !== JSON.stringify(compareB)) {
+        cleanStats._lastModifiedBy = getDeviceId();
         await setDoc(statsRef, cleanStats);
         _lastLocalWriteTimestamp = Date.now();
     }
@@ -485,7 +676,10 @@ async function syncReviewLogs() {
             dict: mergedLogs.dict,
             logs: (mergedLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log))
         };
-        if (JSON.stringify(firestoreLogs) !== JSON.stringify(remoteLogsRaw)) {
+        const compareA = JSON.stringify(firestoreLogs);
+        const compareB = remoteLogsRaw ? JSON.stringify({ dict: remoteLogsRaw.dict || [], logs: remoteLogsRaw.logs || [] }) : null;
+        if (compareA !== compareB) {
+            firestoreLogs._lastModifiedBy = getDeviceId();
             await setDoc(reviewLogsRef, firestoreLogs);
             _lastLocalWriteTimestamp = Date.now();
             console.log(`☁️ Đã hợp nhất ${mergedLogs.logs.length} bản ghi học tập.`);
@@ -493,7 +687,8 @@ async function syncReviewLogs() {
     } else if (localLogs && localLogs.logs && localLogs.logs.length > 0) {
         const firestoreLogs = {
             dict: localLogs.dict,
-            logs: (localLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log))
+            logs: (localLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log)),
+            _lastModifiedBy: getDeviceId()
         };
         await setDoc(reviewLogsRef, firestoreLogs);
         _lastLocalWriteTimestamp = Date.now();
@@ -586,8 +781,13 @@ export function setupRealtimeSyncListener() {
             const unsub = onSnapshot(docRef, (snapshot) => {
                 // Chỉ kích hoạt sync nếu thay đổi tới từ xa (Cloud/thiết bị khác), không phải do local ghi
                 if (!snapshot.metadata.hasPendingWrites && snapshot.exists()) {
-                    // Nếu phản hồi snapshot này xảy ra ngay sau một thao tác ghi từ máy này, bỏ qua để tránh vòng lặp
-                    if (Date.now() - _lastLocalWriteTimestamp < 5000) return;
+                    const data = snapshot.data();
+                    // Bỏ qua nếu thay đổi được ghi từ chính thiết bị này (anti echo-loop)
+                    if (data && data._lastModifiedBy === getDeviceId()) {
+                        return;
+                    }
+                    // Nếu phản hồi snapshot này xảy ra ngay sau một thao tác ghi từ máy này, bỏ qua
+                    if (Date.now() - _lastLocalWriteTimestamp < 3000) return;
                     triggerDebouncedSync(docName);
                 }
             }, (err) => {

@@ -324,7 +324,9 @@ function toggleFlashcardControlButtons(showSRSAndNext) {
             DOM.typingArea?.classList.add('hidden');
         }
         
-        DOM.nextCardBtn?.classList.toggle('hidden', !showSRSAndNext);
+        // In standard flip mode: rating buttons (Again, Hard, Good, Easy) are the primary action.
+        // Hide nextCardBtn to prevent skipping SRS feedback without rating.
+        DOM.nextCardBtn?.classList.add('hidden');
     }
 }
 
@@ -505,13 +507,17 @@ export function applySoundSetting(mode) {
     DOM.toggleSoundBtn?.classList.toggle('muted', mode === 'off');
 }
 
-let visibleCount = 30;
-const INITIAL_LOAD_COUNT = 30;
+let visibleCount = 40;
+const INITIAL_LOAD_COUNT = 40;
 let filteredWordsCache = [];
 let scrollListenerAttached = false;
+let sentinelObserver = null;
 
 function loadMoreWords() {
-    if (visibleCount >= filteredWordsCache.length) return;
+    if (visibleCount >= filteredWordsCache.length) {
+        updateSentinelState();
+        return;
+    }
     
     const prevCount = visibleCount;
     visibleCount = Math.min(visibleCount + INITIAL_LOAD_COUNT, filteredWordsCache.length);
@@ -523,6 +529,22 @@ function loadMoreWords() {
     });
     
     DOM.wordListDisplay.appendChild(fragment);
+    updateSentinelState();
+}
+
+function updateSentinelState() {
+    const sentinel = document.getElementById('word-list-sentinel');
+    if (!sentinel) return;
+    if (filteredWordsCache.length === 0) {
+        sentinel.style.display = 'none';
+        sentinel.innerHTML = '';
+    } else if (visibleCount >= filteredWordsCache.length) {
+        sentinel.style.display = 'block';
+        sentinel.innerHTML = `<span class="word-list-end-msg"><i class="ph-fill ph-check-circle"></i> Đã hiển thị toàn bộ ${filteredWordsCache.length} từ vựng</span>`;
+    } else {
+        sentinel.style.display = 'block';
+        sentinel.innerHTML = `<span class="sentinel-spinner"><i class="ph-duotone ph-spinner animate-spin"></i> Đang tải thêm từ vựng... (${visibleCount}/${filteredWordsCache.length})</span>`;
+    }
 }
 
 export function updatePanelWordList(resetScroll = true) {
@@ -552,6 +574,7 @@ export function updatePanelWordList(resetScroll = true) {
 
     if (filteredWordsCache.length === 0) {
         DOM.wordListDisplay.innerHTML = `<p style="text-align:center; padding: 40px; opacity: 0.7;">Không có từ nào khớp với bộ lọc của bạn.</p>`;
+        updateSentinelState();
         return;
     }
 
@@ -568,18 +591,32 @@ export function updatePanelWordList(resetScroll = true) {
     });
 
     DOM.wordListDisplay.appendChild(fragment);
+    updateSentinelState();
 
-    // Gắn sự kiện cuộn nếu chưa gắn
-    if (!scrollListenerAttached) {
-        const section = document.getElementById('word-list-section');
-        if (section) {
-            section.addEventListener('scroll', () => {
-                if (section.scrollTop + section.clientHeight >= section.scrollHeight - 150) {
-                    loadMoreWords();
-                }
-            });
-            scrollListenerAttached = true;
-        }
+    // Thiết lập IntersectionObserver và scroll listener cho infinite scroll mượt mà
+    const section = document.getElementById('word-list-section');
+    const sentinel = document.getElementById('word-list-sentinel');
+
+    if (!scrollListenerAttached && section) {
+        section.addEventListener('scroll', () => {
+            if (section.scrollTop + section.clientHeight >= section.scrollHeight - 250) {
+                loadMoreWords();
+            }
+        }, { passive: true });
+        scrollListenerAttached = true;
+    }
+
+    if ('IntersectionObserver' in window && sentinel && section) {
+        if (sentinelObserver) sentinelObserver.disconnect();
+        sentinelObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                loadMoreWords();
+            }
+        }, {
+            root: section,
+            rootMargin: '300px 0px'
+        });
+        sentinelObserver.observe(sentinel);
     }
 }
 
@@ -590,6 +627,7 @@ function createWordCard(word) {
     if (word.isSuspended) {
         cardEl.classList.add('is-suspended');
     }
+    cardEl.classList.add(`status-${(word.srsStatus || 'New').toLowerCase()}`);
 
     // Determine status color
     const statusColors = {
@@ -641,7 +679,7 @@ function createWordCard(word) {
 
     // Nút Sửa
     const editBtn = document.createElement('button');
-    editBtn.className = 'icon-btn card-action-btn';
+    editBtn.className = 'icon-btn card-action-btn edit-btn-card';
     editBtn.title = 'Sửa từ';
     editBtn.innerHTML = '<i class="ph ph-pencil-simple"></i>';
     editBtn.onclick = () => {
@@ -651,7 +689,7 @@ function createWordCard(word) {
 
     // Nút Xóa
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'icon-btn card-action-btn danger-btn';
+    deleteBtn.className = 'icon-btn card-action-btn danger-btn delete-btn-card';
     deleteBtn.title = 'Xóa từ';
     deleteBtn.innerHTML = '<i class="ph ph-trash"></i>';
     deleteBtn.onclick = () => {

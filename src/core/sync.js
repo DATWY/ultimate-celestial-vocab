@@ -1,5 +1,5 @@
 import { doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { db, getCalibratedNow } from './firebase.js';
+import { db, getCalibratedNow, getDeviceId } from './firebase.js';
 
 const VOCAB_COLLECTION = "celestial_vocab_sync";
 const USER_SYNC_COLLECTION = "celestial_user_sync";
@@ -81,6 +81,7 @@ export async function flushSyncQueue() {
                 if (card) {
                     const cleanData = JSON.parse(JSON.stringify(card));
                     cleanData.updatedAt = card.updatedAt || getCalibratedNow();
+                    cleanData._lastModifiedBy = getDeviceId();
                     const cardRef = doc(db, VOCAB_COLLECTION, id);
                     batch.set(cardRef, cleanData, { merge: true });
                     flushedIds.push(id);
@@ -171,7 +172,8 @@ export async function syncUserSettingsToFirebase() {
                 userFsrs7TrainedAt: userFsrs7TrainedAt || null,
                 trainedAt: getCalibratedNow(),
                 version: '7.0',
-                source: 'personal'
+                source: 'personal',
+                _lastModifiedBy: getDeviceId()
             }, { merge: true });
             console.log("☁️ Đã đồng bộ thông số cá nhân hoá FSRS-7 lên Firebase.");
         } catch (e) {
@@ -203,13 +205,15 @@ export async function syncGamificationToFirebase() {
         try {
             if (gamification) {
                 const gamificationRef = doc(db, USER_SYNC_COLLECTION, 'gamification');
-                await setDoc(gamificationRef, gamification, { merge: true });
+                const cleanGamification = { ...gamification, _lastModifiedBy: getDeviceId() };
+                await setDoc(gamificationRef, cleanGamification, { merge: true });
                 console.log("☁️ Đã đồng bộ Gamification lên Firebase.");
             }
 
             if (dailyStats) {
                 const statsRef = doc(db, USER_SYNC_COLLECTION, 'dailyStats');
-                await setDoc(statsRef, dailyStats, { merge: true });
+                const cleanDailyStats = { ...dailyStats, _lastModifiedBy: getDeviceId() };
+                await setDoc(statsRef, cleanDailyStats, { merge: true });
                 console.log("☁️ Đã đồng bộ Daily Stats lên Firebase.");
             }
             
@@ -217,7 +221,8 @@ export async function syncGamificationToFirebase() {
                 const logsRef = doc(db, USER_SYNC_COLLECTION, 'reviewLogs');
                 const firestoreLogs = {
                     dict: reviewLogs.dict,
-                    logs: (reviewLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log))
+                    logs: (reviewLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log)),
+                    _lastModifiedBy: getDeviceId()
                 };
                 await setDoc(logsRef, firestoreLogs);
                 console.log(`☁️ Đã đồng bộ ${reviewLogs.logs.length} bản ghi học tập lên Firebase.`);

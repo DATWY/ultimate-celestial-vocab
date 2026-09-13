@@ -431,162 +431,149 @@
                 <button id="close-manage-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
                     aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
                 <div class="manage-panel-header">
-                    <h2 id="manage-title" class="manage-panel-title"><i class="ph ph-books"></i> Quản Lý Từ Vựng</h2>
+                    <div class="manage-header-main">
+                        <h2 id="manage-title" class="manage-panel-title"><i class="ph-duotone ph-books"></i> Quản Lý Từ Vựng</h2>
+                        <nav class="manage-nav-tabs" role="tablist" aria-label="Bộ chọn giao diện quản lý">
+                            <button id="tab-vocab-list" class="manage-nav-tab active" role="tab" aria-selected="true" data-tab="words">
+                                <i class="ph-bold ph-cards"></i> Từ Vựng
+                            </button>
+                            <button id="tab-data-io" class="manage-nav-tab" role="tab" aria-selected="false" data-tab="io">
+                                <i class="ph-bold ph-database"></i> Dữ Liệu & Sao Lưu
+                            </button>
+                        </nav>
+                    </div>
                     <div class="manage-header-actions">
+                        <span id="manage-total-count" class="manage-count-badge"><i class="ph-bold ph-cards"></i> 0 từ</span>
                         <button id="scan-duplicates-btn" class="icon-btn dedup-btn" title="Quét & Gộp từ vựng trùng lặp thông minh"
-                            aria-label="Quét trùng lặp"><i class="ph ph-copy"></i></button>
+                            aria-label="Quét trùng lặp"><i class="ph-bold ph-scan"></i></button>
                         <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Shift+Z)"
                             aria-label="Hoàn tác lượt đánh giá trước" disabled><i class="ph ph-arrow-u-up-left"></i></button>
-                        <span id="manage-total-count" class="manage-count-badge"><i class="ph-bold ph-cards"></i> 0 từ</span>
                     </div>
                 </div>
 
-                <section class="manage-controls">
-                    <div class="search-bar-wrapper">
-                        <i class="ph ph-magnifying-glass search-icon"></i>
-                        <input type="search" id="manage-search-input" placeholder="Tìm kiếm từ vựng, phiên âm, câu ví dụ..."
-                            aria-label="Tìm kiếm từ vựng">
-                    </div>
-                    <div class="filter-chips">
-                        <select id="panel-topic-filter" aria-label="Lọc theo chủ đề">
-                            <option value="all">Tất cả chủ đề</option>
-                        </select>
-                        <select id="panel-status-filter" aria-label="Lọc theo trạng thái">
-                            <option value="all">Tất cả trạng thái</option>
-                            <option value="New">Mới</option>
-                            <option value="Learning">Đang học</option>
-                            <option value="Mastered">Đã thuộc</option>
-                            <option value="Suspended">Bị tạm ngưng</option>
-                        </select>
-                        <button id="manage-refresh-list-btn" class="icon-btn filter-refresh-btn"
-                            title="Làm mới danh sách" aria-label="Làm mới danh sách từ vựng"><i
-                                class="ph ph-arrow-counter-clockwise"></i></button>
-                        <button id="manage-add-word-btn" class="primary-btn quick-add-btn" title="Thêm từ vựng mới"><i class="ph-bold ph-plus"></i> Thêm Từ Mới</button>
-                    </div>
-                </section>
+                <!-- TAB 1: Danh Sách Từ Vựng (Dedicated View) -->
+                <div id="manage-view-words" class="manage-tab-pane active">
+                    <section class="manage-controls">
+                        <div class="search-bar-wrapper">
+                            <i class="ph ph-magnifying-glass search-icon"></i>
+                            <input type="search" id="manage-search-input" placeholder="Tìm từ vựng, phiên âm, ví dụ..."
+                                aria-label="Tìm kiếm từ vựng">
+                        </div>
+                        <div class="filter-chips">
+                            <select id="panel-topic-filter" aria-label="Lọc theo chủ đề">
+                                <option value="all">Tất cả chủ đề</option>
+                            </select>
+                            <select id="panel-status-filter" aria-label="Lọc theo trạng thái">
+                                <option value="all">Tất cả trạng thái</option>
+                                <option value="New">Mới</option>
+                                <option value="Learning">Đang học</option>
+                                <option value="Mastered">Đã thuộc</option>
+                                <option value="Suspended">Bị tạm ngưng</option>
+                            </select>
+                            <button id="manage-refresh-list-btn" class="icon-btn filter-refresh-btn"
+                                title="Làm mới danh sách" aria-label="Làm mới danh sách từ vựng"><i
+                                    class="ph ph-arrow-counter-clockwise"></i></button>
+                        </div>
+                        <button id="manage-add-word-btn" class="primary-btn quick-add-btn" title="Thêm từ vựng mới"><i class="ph-bold ph-plus"></i> <span>Thêm Từ</span></button>
+                    </section>
 
-                <section id="word-list-section" class="word-list-cards-container">
-                    <div id="word-list-display">
-                        <p>Đang tải danh sách từ vựng...</p>
+                    <section id="word-list-section" class="word-list-cards-container">
+                        <div id="word-list-display">
+                            <p>Đang tải danh sách từ vựng...</p>
+                        </div>
+                        <div id="word-list-sentinel" class="word-list-sentinel">
+                            <span class="sentinel-spinner"><i class="ph-duotone ph-spinner animate-spin"></i> Đang tải thêm từ vựng...</span>
+                        </div>
+                    </section>
+                    
+                    <div class="manage-actions-footer">
+                        <button id="bulk-delete-btn" class="danger-btn icon-btn-text hidden"><i class="ph ph-trash"></i> Xóa mục đã chọn</button>
                     </div>
-                </section>
-                <div class="manage-actions-footer">
-                    <button id="bulk-delete-btn" class="danger-btn icon-btn-text hidden"><i class="ph ph-trash"></i> Xóa
-                        mục đã chọn</button>
                 </div>
 
-                <div class="manage-divider"></div>
-
-                <section id="manage-io-section" class="manage-io-surface bento-layout">
-                    <div class="io-header-banner">
-                        <div class="io-badge"><i class="ph ph-sparkle"></i> DATA ENGINE</div>
-                        <h3 class="io-section-title">Nhập & Xuất Dữ Liệu</h3>
-                        <p class="io-section-subtitle"><i class="ph ph-shield-check"></i> Quản lý, sao lưu & đồng bộ kho từ vựng cá nhân an toàn</p>
-                    </div>
-
-                    <div class="bento-grid">
-                        <!-- Bento Import Card -->
-                        <div class="bento-item bento-import">
-                            <div class="bento-glass-bg import-bg"></div>
-                            <div class="bento-content">
-                                <div class="bento-top-row">
-                                    <div class="bento-card-icon import-icon-bg">
-                                        <i class="ph ph-cloud-arrow-down"></i>
-                                    </div>
-                                    <div class="bento-card-header">
-                                        <h4>Nhập Dữ Liệu</h4>
-                                        <p class="io-card-desc">Thêm từ vựng mới hàng loạt. Tự động lọc trùng & Smart Merge bảo vệ tiến độ SRS.</p>
-                                    </div>
+                <!-- TAB 2: Nhập & Xuất Dữ Liệu (Clean, Single-Layer Grid) -->
+                <div id="manage-view-io" class="manage-tab-pane hidden">
+                    <section id="manage-io-section" class="manage-io-clean-grid">
+                        <!-- Card 1: Nhập Dữ Liệu -->
+                        <div class="io-clean-card io-card-import">
+                            <div class="io-card-header">
+                                <div class="io-card-icon import-icon"><i class="ph-duotone ph-cloud-arrow-down"></i></div>
+                                <div class="io-card-titles">
+                                    <h4 class="io-card-title">Nhập Dữ Liệu</h4>
+                                    <p class="io-card-desc">Thêm từ vựng hàng loạt từ file hoặc văn bản dán trực tiếp. Hỗ trợ Smart Merge bảo vệ tiến độ SRS.</p>
                                 </div>
+                            </div>
 
-                                <div class="io-segmented-tabs">
-                                    <button class="import-tab active" data-target="import-file-panel">
-                                        <i class="ph ph-file-text"></i> Tải File .tsv
-                                    </button>
-                                    <button class="import-tab" data-target="import-text-panel">
-                                        <i class="ph ph-textbox"></i> Dán Văn bản
-                                    </button>
-                                </div>
+                            <div class="io-segmented-tabs">
+                                <button class="import-tab active" data-target="import-file-panel">
+                                    <i class="ph-bold ph-file-text"></i> Tải File .tsv
+                                </button>
+                                <button class="import-tab" data-target="import-text-panel">
+                                    <i class="ph-bold ph-textbox"></i> Dán Văn Bản
+                                </button>
+                            </div>
 
-                                <div id="import-file-panel" class="import-panel active">
-                                    <div class="form-group" style="position: relative; margin: 0;">
-                                        <label for="import-file" id="drop-zone" class="io-dropzone">
-                                            <div class="dropzone-glow"></div>
-                                            <div class="dropzone-icon-box">
-                                                <i class="ph ph-upload-simple"></i>
-                                            </div>
-                                            <div class="dropzone-text-group">
-                                                <span class="dropzone-title">Kéo thả file .tsv vào đây</span>
-                                                <span class="dropzone-sub">hoặc <span class="browse-link">duyệt từ máy tính</span></span>
-                                            </div>
-                                            <span class="dropzone-tag"><i class="ph ph-lightning"></i> Tự động làm sạch & Smart Merge</span>
-                                        </label>
-                                        <input type="file" id="import-file" accept=".txt,.tsv" class="file-input" style="display: none !important;">
-                                    </div>
-                                </div>
+                            <div id="import-file-panel" class="import-panel active">
+                                <label for="import-file" id="drop-zone" class="io-dropzone-clean">
+                                    <div class="dropzone-icon-box"><i class="ph-duotone ph-upload-simple"></i></div>
+                                    <span class="dropzone-title">Kéo thả file .tsv hoặc .txt vào đây</span>
+                                    <span class="dropzone-sub">hoặc <span class="browse-link">duyệt từ máy tính</span></span>
+                                    <span class="dropzone-badge"><i class="ph-fill ph-lightning"></i> Tự động lọc trùng & Smart Merge FSRS-7</span>
+                                </label>
+                                <input type="file" id="import-file" accept=".txt,.tsv" class="file-input" style="display: none !important;">
+                            </div>
 
-                                <div id="import-text-panel" class="import-panel hidden">
-                                    <textarea id="import-text-area" class="io-textarea" placeholder="Dán nội dung TSV tại đây (English [tab] Vietnamese [tab] Type...)"></textarea>
-                                    <button id="import-text-btn" class="io-btn primary-btn"><i class="ph ph-sparkle"></i> Phân tích & Nạp Dữ Liệu</button>
-                                </div>
+                            <div id="import-text-panel" class="import-panel hidden">
+                                <textarea id="import-text-area" class="io-textarea-clean" placeholder="Dán nội dung TSV tại đây (English [tab] Vietnamese [tab] Type...)"></textarea>
+                                <button id="import-text-btn" class="primary-btn io-submit-btn"><i class="ph-bold ph-sparkle"></i> Phân Tích & Nạp Dữ Liệu</button>
                             </div>
                         </div>
 
-                        <!-- Bento Export Card -->
-                        <div class="bento-item bento-export">
-                            <div class="bento-glass-bg export-bg"></div>
-                            <div class="bento-content centered">
-                                <div class="bento-card-icon export-icon-bg">
-                                    <i class="ph ph-cloud-arrow-up"></i>
+                        <!-- Card 2: Xuất Dữ Liệu & Sao Lưu -->
+                        <div class="io-clean-card io-card-export">
+                            <div class="io-card-header">
+                                <div class="io-card-icon export-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></div>
+                                <div class="io-card-titles">
+                                    <h4 class="io-card-title">Xuất Dữ Liệu & Sao Lưu</h4>
+                                    <p class="io-card-desc">Tạo bản sao lưu toàn bộ kho từ vựng ra file TSV chuẩn để chỉnh sửa hoặc lưu trữ an toàn.</p>
                                 </div>
-                                <h4>Xuất Dữ Liệu</h4>
-                                <p class="io-card-desc">Tạo bản sao lưu toàn bộ kho từ vựng ra file TSV chuẩn để chỉnh sửa hoặc lưu trữ ngoài.</p>
-                                <button id="export-btn" class="io-btn export-btn-primary">
-                                    <i class="ph ph-download-simple"></i> Xuất File .tsv
+                            </div>
+                            <div class="io-card-actions">
+                                <button id="export-btn" class="secondary-btn io-action-btn export-tsv-btn">
+                                    <i class="ph-bold ph-download-simple"></i> Xuất File Từ Vựng (.tsv)
+                                </button>
+                                <button id="export-logs-btn" class="outline-btn io-action-btn export-logs-btn">
+                                    <i class="ph-bold ph-file-arrow-down"></i> Xuất Review Logs FSRS-7 (.json)
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Bento FSRS-7 Engine Card -->
-                        <div class="bento-item bento-fsrs">
-                            <div class="bento-glass-bg fsrs-bg"></div>
-                            <div class="bento-content centered">
-                                <div class="bento-card-icon fsrs-icon-bg">
-                                    <i class="ph-fill ph-brain"></i>
-                                </div>
-                                <h4>Trí Nhớ FSRS-7</h4>
-                                <p class="io-card-desc">Xuất nhật ký ôn tập để huấn luyện trên máy tính bằng tool Python/Node hoặc cấu hình 34 tham số tùy chỉnh.</p>
-                                <div class="bento-actions-stacked" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                                    <button id="export-logs-btn" class="io-btn export-btn-secondary" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); color: var(--text-color, #e2e8f0);">
-                                        <i class="ph ph-file-arrow-down"></i> Xuất Review Logs (.json)
-                                    </button>
-                                    <button id="config-fsrs7-btn" class="io-btn export-btn-primary">
-                                        <i class="ph ph-sliders-horizontal"></i> Cấu Hình 34 Tham Số FSRS-7
-                                    </button>
+                        <!-- Card 3: Cấu Hình FSRS & Quản Trị Hệ Thống -->
+                        <div class="io-clean-card io-card-admin">
+                            <div class="io-card-header">
+                                <div class="io-card-icon fsrs-icon"><i class="ph-duotone ph-brain"></i></div>
+                                <div class="io-card-titles">
+                                    <h4 class="io-card-title">Trí Nhớ FSRS & Quản Trị</h4>
+                                    <p class="io-card-desc">Cấu hình 34 tham số thuật toán trí nhớ FSRS-7 cá nhân hóa hoặc dọn dẹp cơ sở dữ liệu.</p>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Bento Danger Card -->
-                        <div class="bento-item bento-danger">
-                            <div class="bento-glass-bg danger-bg"></div>
-                            <div class="bento-content danger-content">
-                                <div class="bento-danger-info">
-                                    <div class="bento-card-icon danger-icon-bg">
-                                        <i class="ph ph-warning-octagon"></i>
-                                    </div>
-                                    <div class="danger-text-box">
-                                        <span class="danger-title">Khu vực nguy hiểm</span>
-                                        <span class="danger-desc">Xóa vĩnh viễn toàn bộ từ vựng trên ứng dụng. Hành động này không thể hoàn tác.</span>
-                                    </div>
-                                </div>
-                                <button id="clear-all-btn" class="io-btn danger-btn-glow">
-                                    <i class="ph ph-trash"></i> Xóa Toàn Bộ Dữ Liệu
+                            <div class="io-card-actions">
+                                <button id="config-fsrs7-btn" class="primary-btn io-action-btn config-btn">
+                                    <i class="ph-bold ph-sliders-horizontal"></i> Cấu Hình 34 Tham Số FSRS-7
                                 </button>
+                                <div class="io-danger-box">
+                                    <div class="danger-info-text">
+                                        <span class="danger-title"><i class="ph-bold ph-warning-octagon"></i> Khu Vực Nguy Hiểm</span>
+                                        <span class="danger-sub">Xóa vĩnh viễn toàn bộ từ vựng cục bộ. Không thể hoàn tác.</span>
+                                    </div>
+                                    <button id="clear-all-btn" class="danger-btn io-action-btn clear-btn">
+                                        <i class="ph-bold ph-trash"></i> Xóa Toàn Bộ Dữ Liệu
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                </div>
             </div>
         </div>
 
@@ -730,28 +717,43 @@
                             <span class="analytics-badge" id="profile-memory-status"><i class="ph-fill ph-sparkle"></i> Phong độ: Xuất sắc</span>
                         </div>
                         <div class="memory-analytics-grid">
-                            <div class="analytics-item">
+                            <div class="analytics-item" data-metric="retention">
                                 <div class="analytics-icon icon-retention"><i class="ph-bold ph-chart-line-up"></i></div>
                                 <div class="analytics-info">
-                                    <span class="analytics-value" id="profile-retention-rate">94.2%</span>
+                                    <div class="analytics-value-row">
+                                        <span class="analytics-value" id="profile-retention-rate">94.2%</span>
+                                        <span class="analytics-subtext" id="profile-retention-sub">🎯 Đang nhớ rất sâu</span>
+                                    </div>
                                     <span class="analytics-label">Mức Độ Thuộc Bài</span>
-                                    <span class="analytics-subtext" id="profile-retention-sub">🎯 Đang nhớ rất sâu</span>
+                                    <div class="analytics-meter-bar" title="Tỷ lệ ghi nhớ mục tiêu SRS">
+                                        <div class="meter-fill meter-retention" id="profile-retention-meter" style="width: 94.2%;"></div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="analytics-item">
+                            <div class="analytics-item" data-metric="stability">
                                 <div class="analytics-icon icon-stability"><i class="ph-bold ph-hourglass-high"></i></div>
                                 <div class="analytics-info">
-                                    <span class="analytics-value" id="profile-avg-stability">14.8 ngày</span>
+                                    <div class="analytics-value-row">
+                                        <span class="analytics-value" id="profile-avg-stability">14.8 ngày</span>
+                                        <span class="analytics-subtext" id="profile-stability-sub">🧠 Trí nhớ dài hạn</span>
+                                    </div>
                                     <span class="analytics-label">Thời Gian Nhớ Tự Nhiên</span>
-                                    <span class="analytics-subtext" id="profile-stability-sub">🧠 Trí nhớ dài hạn</span>
+                                    <div class="analytics-meter-bar" title="Chu kỳ ổn định trí nhớ">
+                                        <div class="meter-fill meter-stability" id="profile-stability-meter" style="width: 49.3%;"></div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="analytics-item">
+                            <div class="analytics-item" data-metric="reviews">
                                 <div class="analytics-icon icon-reviews"><i class="ph-bold ph-arrows-clockwise"></i></div>
                                 <div class="analytics-info">
-                                    <span class="analytics-value" id="profile-total-reviews">0</span>
+                                    <div class="analytics-value-row">
+                                        <span class="analytics-value" id="profile-total-reviews">0</span>
+                                        <span class="analytics-subtext">⚡ Tích lũy kiến thức</span>
+                                    </div>
                                     <span class="analytics-label">Tổng Số Lần Đã Ôn</span>
-                                    <span class="analytics-subtext">⚡ Tích lũy kiến thức</span>
+                                    <div class="analytics-meter-bar" title="Tiến độ tích lũy ôn tập">
+                                        <div class="meter-fill meter-reviews" id="profile-reviews-meter" style="width: 30%;"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -437,31 +437,45 @@ export async function clearReviewLogs() {
 
 export function compressLogs(rawArray) {
     const dict = [];
+    const dictMap = new Map();
     const logs = [];
     for (let i = 0; i < rawArray.length; i++) {
         const log = rawArray[i];
-        let dictIndex = dict.indexOf(log.cardId);
-        if (dictIndex === -1) {
+        if (!log || !log.cardId) continue;
+        let dictIndex = dictMap.get(log.cardId);
+        if (dictIndex === undefined) {
             dictIndex = dict.length;
+            dictMap.set(log.cardId, dictIndex);
             dict.push(log.cardId);
         }
-        logs.push([dictIndex, log.rating, log.t, log.ts || (Date.now() - 1000000 + i), log.isTyping || log.modality === 'typing' ? 1 : 0]);
+        logs.push([
+            dictIndex,
+            log.rating,
+            log.t,
+            log.ts || (Date.now() - 1000000 + i),
+            log.isTyping || log.modality === 'typing' ? 1 : 0
+        ]);
     }
     return { dict, logs };
 }
 
 export function mergeReviewLogs(remoteLogs, localLogs) {
-    if (!remoteLogs || !remoteLogs.logs || remoteLogs.logs.length === 0) return localLogs;
-    if (!localLogs || !localLogs.logs || localLogs.logs.length === 0) return remoteLogs;
+    if (!remoteLogs || !remoteLogs.logs || remoteLogs.logs.length === 0) return localLogs || { dict: [], logs: [] };
+    if (!localLogs || !localLogs.logs || localLogs.logs.length === 0) return remoteLogs || { dict: [], logs: [] };
 
     const extractRaw = (compressed) => {
-        return compressed.logs.map((log, idx) => ({
-            cardId: compressed.dict[log[0]],
-            rating: log[1],
-            t: log[2],
-            ts: log[3] || (Date.now() - 1000000 + idx),
-            isTyping: log[4] === 1
-        }));
+        if (!compressed || !compressed.dict || !Array.isArray(compressed.logs)) return [];
+        return compressed.logs.map((log, idx) => {
+            const cardId = compressed.dict[log[0]];
+            if (!cardId) return null;
+            return {
+                cardId,
+                rating: log[1],
+                t: log[2],
+                ts: log[3] || (Date.now() - 1000000 + idx),
+                isTyping: log[4] === 1
+            };
+        }).filter(Boolean);
     };
 
     const rawRemote = extractRaw(remoteLogs);
@@ -470,13 +484,29 @@ export function mergeReviewLogs(remoteLogs, localLogs) {
     const combined = [...rawRemote, ...rawLocal].sort((a, b) => a.ts - b.ts);
 
     const uniqueLogs = [];
-    const seen = new Set();
+    const lastSeenByCard = new Map(); // cardId -> last log object
+
     for (const log of combined) {
-        const key = `${log.cardId}_${parseFloat(log.t).toFixed(4)}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueLogs.push(log);
+        if (!log || !log.cardId) continue;
+        const lastLog = lastSeenByCard.get(log.cardId);
+
+        // Boundary-free sliding window deduplication (3000ms):
+        // Phát hiện chính xác bản ghi trùng lặp từ sync đa thiết bị mà không bị lỗi biên bucket.
+        const isDuplicate = lastLog && (
+            (lastLog.ts === log.ts) ||
+            (
+                lastLog.rating === log.rating &&
+                Math.abs((lastLog.t || 0) - (log.t || 0)) < 0.0001 &&
+                Math.abs((log.ts || 0) - (lastLog.ts || 0)) <= 3000
+            )
+        );
+
+        if (isDuplicate) {
+            continue;
         }
+
+        lastSeenByCard.set(log.cardId, log);
+        uniqueLogs.push(log);
     }
 
     const finalRawLogs = uniqueLogs.slice(-10000);
