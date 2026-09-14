@@ -654,61 +654,68 @@
         </div>
 
         <!-- MODAL: Gamification & Profile Dashboard -->
-        <div id="profile-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+        <div id="profile-modal" class="modal modal-large hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
             <div class="modal-overlay" tabindex="-1"></div>
-            <div class="modal-content modal-large profile-panel">
+            <div class="modal-content profile-panel">
                 <button id="close-profile-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
                     aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
-                <h2 id="profile-title" class="manage-panel-title"><i class="ph ph-trophy"></i> Hồ sơ & Thống kê</h2>
 
-                <div class="profile-grid">
-                    <!-- Cấp độ & XP -->
-                    <section class="profile-card level-card">
-                        <h3>Cấp độ Học giả</h3>
-                        <div class="level-display">
-                            <div class="level-circle">
-                                <span class="level-number" id="profile-level">1</span>
-                            </div>
-                            <div class="xp-info">
-                                <p>Tổng XP: <strong id="profile-total-xp">0</strong></p>
-                                <div class="xp-bar-container">
-                                    <div class="xp-bar-fill" id="profile-xp-fill" style="width: 0%;"></div>
+                <div class="manage-panel-header profile-panel-header">
+                    <div class="manage-header-main">
+                        <h2 id="profile-title" class="manage-panel-title">
+                            <i class="ph-duotone ph-chart-polar"></i> 
+                            <span class="title-text-desktop">Hồ Sơ & Thống Kê</span>
+                            <span class="title-text-mobile">Hồ Sơ</span>
+                        </h2>
+                        <nav class="manage-nav-tabs profile-nav-tabs" role="tablist" aria-label="Bộ chọn giao diện hồ sơ">
+                            <button id="tab-profile-overview" class="manage-nav-tab profile-nav-tab active" role="tab" aria-selected="true" data-tab="overview">
+                                <i class="ph-bold ph-chart-pie-slice"></i> Tổng Quan & Trí Nhớ
+                            </button>
+                            <button id="tab-profile-badges" class="manage-nav-tab profile-nav-tab" role="tab" aria-selected="false" data-tab="badges">
+                                <i class="ph-bold ph-trophy"></i> Huy Hiệu Thành Tựu
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- PANE 1: TỔNG QUAN & SỨC KHỎE TRÍ NHỚ -->
+                <div id="profile-view-overview" class="profile-tab-pane active">
+                    <!-- Hero Section: Cấp Độ & Chuỗi Ngày Học Liền Mạch -->
+                    <section class="profile-hero-card">
+                        <div class="level-card">
+                            <div class="level-display">
+                                <div class="level-circle">
+                                    <span class="level-number" id="profile-level">1</span>
                                 </div>
-                                <p class="xp-to-next-level">Còn <span id="profile-xp-needed">0</span> XP để lên cấp</p>
+                                <div class="xp-info">
+                                    <div class="xp-title-row">
+                                        <h3 class="rank-name-title"><i class="ph ph-shield"></i> Cấp độ Học giả</h3>
+                                        <span class="xp-badge-total">Tổng XP: <strong id="profile-total-xp">0</strong></span>
+                                    </div>
+                                    <div class="xp-bar-container">
+                                        <div class="xp-bar-fill" id="profile-xp-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <p class="xp-to-next-level">Còn <span id="profile-xp-needed">0</span> XP để lên cấp</p>
+                                </div>
                             </div>
                         </div>
-                    </section>
 
-                    <!-- Streak -->
-                    <section class="profile-card streak-card">
-                        <h3>Chuỗi ngày học</h3>
-                        <div class="streak-display">
-                            <i class="ph-fill ph-fire"></i>
+                        <div class="streak-widget streak-card">
+                            <div class="streak-icon-wrapper">
+                                <i class="ph-fill ph-fire"></i>
+                            </div>
                             <div class="streak-info">
-                                <span class="streak-number" id="profile-streak">0</span>
-                                <span class="streak-text">ngày liên tục</span>
+                                <div class="streak-count-row">
+                                    <span class="streak-number" id="profile-streak">0</span>
+                                    <span class="streak-unit">ngày</span>
+                                </div>
+                                <span class="streak-text">Chuỗi kiên trì</span>
                             </div>
                         </div>
                     </section>
 
-                    <!-- Dự báo (Forecast) -->
-                    <section class="profile-card forecast-card">
-                        <h3>Dự báo Ôn tập (7 ngày tới)</h3>
-                        <div class="forecast-chart-container" id="forecast-chart">
-                            <!-- Cột biểu đồ sẽ được render bằng JS -->
-                        </div>
-                    </section>
-
-                    <!-- Heatmap (Biểu đồ nhiệt) -->
-                    <section class="profile-card heatmap-card">
-                        <h3>Hoạt động Ôn tập</h3>
-                        <div class="heatmap-container" id="activity-heatmap">
-                            <!-- Lưới ô vuông sẽ được render bằng JS -->
-                        </div>
-                    </section>
-
-                    <!-- Chỉ số Trí nhớ FusionSRS (Memory Analytics) -->
-                    <section class="profile-card memory-analytics-card" style="grid-column: 1 / -1;">
+                    <!-- Sức Khỏe Trí Nhớ FusionSRS -->
+                    <section class="profile-card memory-analytics-card">
                         <div class="memory-analytics-header">
                             <div class="memory-analytics-title-group">
                                 <h3><i class="ph-bold ph-brain"></i> Sức Khỏe Trí Nhớ FusionSRS</h3>
@@ -759,10 +766,27 @@
                         </div>
                     </section>
 
+                    <!-- Ma Trận Nhịp Điệu Ôn Tập & Hoạt Động (2 Cột Cân Đối) -->
+                    <div class="profile-rhythm-grid">
+                        <section class="profile-card forecast-card">
+                            <h3><i class="ph-duotone ph-chart-bar"></i> Dự báo Ôn tập (7 ngày tới)</h3>
+                            <div class="forecast-chart-container" id="forecast-chart">
+                                <!-- Render JS -->
+                            </div>
+                        </section>
 
-                    <!-- Thành tựu (Achievements) -->
-                    <section class="profile-card achievements-card" style="grid-column: 1 / -1;">
-                        <h3>Huy hiệu Thành tựu</h3>
+                        <section class="profile-card heatmap-card">
+                            <h3><i class="ph-duotone ph-calendar-check"></i> Hoạt động Ôn tập</h3>
+                            <div class="heatmap-container" id="activity-heatmap">
+                                <!-- Render JS -->
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- PANE 2: PHÒNG TRUYỀN THỐNG HUY HIỆU THÀNH TỰU -->
+                <div id="profile-view-badges" class="profile-tab-pane hidden">
+                    <section class="profile-card achievements-card">
                         <div class="achievements-container" id="achievements-list">
                             <!-- Render JS -->
                         </div>
