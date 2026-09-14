@@ -7,11 +7,11 @@ const USER_SYNC_COLLECTION = "celestial_user_sync";
 // --- Sync Queue: Thu thập card IDs đã thay đổi, flush theo batch ---
 let _syncQueue = new Set();
 let _syncTimer = null;
-const BATCH_WINDOW_MS = 30000; // 30 giây
+const BATCH_WINDOW_MS = 90000; // 90 giây (1.5 phút)
 
 // --- Dirty tracking: Đếm số lần thay đổi chưa sync ---
 let _dirtyCount = 0;
-const DIRTY_THRESHOLD = 10; // Flush ngay nếu có >= 10 thay đổi
+const DIRTY_THRESHOLD = 30; // Flush nếu có >= 30 thay đổi thẻ
 
 export function getDirtyCount() { return _dirtyCount; }
 export function getSyncQueueSize() { return _syncQueue.size; }
@@ -187,7 +187,7 @@ export async function syncUserSettingsToFirebase() {
 }
 
 let _gamificationSyncTimer = null;
-const GAMIFICATION_SYNC_DEBOUNCE_MS = 5000; // 5 giây (giảm từ 10 phút)
+const GAMIFICATION_SYNC_DEBOUNCE_MS = 60000; // 60 giây (1 phút debounce, tránh gửi request liên tục khi đang học)
 
 export function queueGamificationSync() {
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;

@@ -764,7 +764,7 @@ export function setupEventListeners() {
     document.addEventListener('keydown', handleGlobalShortcuts);
 	DOM.manualSyncBtn?.addEventListener('click', () => {
         import('./core/state.js').then(s => s.trackEvent('syncSpamCount'));
-        smartSync({ forceFullPull: true });
+        smartSync({ forceFullPull: false, isManual: true });
     });
 }
 
