@@ -433,6 +433,13 @@ function renderBadges(unlockedBadges) {
         DOM.achievementsList.appendChild(badgeWrapperContainer);
 
         // --- 4. RENDER TRACK BADGES ---
+        const TRACK_META = {
+            xp: { title: 'Tu Luyện', icon: 'ph-fill ph-lightning', color: '#8B5CF6' },
+            streak: { title: 'Bền Bỉ', icon: 'ph-fill ph-fire', color: '#F97316' },
+            mastered: { title: 'Trí Tuệ', icon: 'ph-fill ph-flower-lotus', color: '#10B981' },
+            review: { title: 'Luyện Tập', icon: 'ph-fill ph-arrows-clockwise', color: '#06B6D4' }
+        };
+
         BADGE_TRACKS.forEach(track => {
             const currentValue = metrics[track.type] || 0;
             let level = 0;
@@ -441,17 +448,20 @@ function renderBadges(unlockedBadges) {
             }
             
             const maxLevel = track.milestones.length;
-            const currentMilestone = level < maxLevel ? track.milestones[level] : track.milestones[maxLevel - 1];
-            const currentName = level < maxLevel ? track.names[level] : track.names[maxLevel - 1];
-            const currentIcon = level < maxLevel ? track.icons[level] : track.icons[maxLevel - 1];
+            const isCompleted = level >= maxLevel;
+            const currentMilestone = isCompleted ? track.milestones[maxLevel - 1] : track.milestones[level];
+            const currentName = isCompleted ? track.names[maxLevel - 1] : track.names[level];
+            const currentIcon = isCompleted ? track.icons[maxLevel - 1] : track.icons[level];
             const tier = getTier(level, maxLevel);
-            
-            const prevMilestone = level === 0 ? 0 : track.milestones[level - 1];
-            const rawProgress = level >= maxLevel ? 100 : ((currentValue - prevMilestone) / (currentMilestone - prevMilestone)) * 100;
-            const progress = Math.max(0, Math.min(100, rawProgress));
+            const meta = TRACK_META[track.id] || { title: track.title, icon: 'ph-fill ph-trophy', color: '#6366F1' };
+
+            // Accurate progress relative to current target milestone
+            const progress = isCompleted ? 100 : Math.min(100, Math.max(0, (currentValue / currentMilestone) * 100));
+            const progressPct = Math.round(progress);
+            const remaining = Math.max(0, currentMilestone - currentValue);
             
             const trackEl = document.createElement('div');
-            trackEl.className = `badge-track-item badge-item ${level > 0 ? 'unlocked' : 'locked'}`;
+            trackEl.className = `badge-track-item badge-item ${level > 0 ? 'unlocked' : 'locked'} track-tier-${tier.id}`;
             trackEl.setAttribute('data-category', 'tracks');
             trackEl.setAttribute('data-unlocked', level > 0 ? 'true' : 'false');
             if (level > 0) {
@@ -459,52 +469,92 @@ function renderBadges(unlockedBadges) {
             }
             
             trackEl.innerHTML = `
-                <div class="badge-card-header">
-                    <div class="badge-title-block">
-                        <div class="badge-icon-wrapper">
-                            <div class="badge-icon"><i class="ph ${currentIcon}"></i></div>
-                        </div>
-                        <div class="badge-title-wrapper">
-                            <h4>${currentName}</h4>
-                            <p class="badge-desc-text">${track.descPrefix} ${currentMilestone.toLocaleString()} ${track.descSuffix}</p>
-                        </div>
+                <div class="track-card-top">
+                    <div class="track-cat-pill" style="--track-theme: ${meta.color};">
+                        <i class="ph ${meta.icon}"></i>
+                        <span>${meta.title}</span>
                     </div>
                     <span class="badge-level-pill tier-${tier.id}">${tier.name} • CẤP ${level}/${maxLevel}</span>
                 </div>
-                <div class="badge-card-body">
-                    <div class="badge-progress-bg">
-                        <div class="badge-progress-fill" style="width: ${progress}%"></div>
+
+                <div class="track-card-hero">
+                    <div class="track-icon-box tier-${tier.id}">
+                        <i class="ph ${currentIcon}"></i>
                     </div>
-                    <div class="badge-progress-meta">
-                        <span class="badge-progress-val">${currentValue.toLocaleString()} / ${currentMilestone.toLocaleString()}</span>
-                        <span class="badge-progress-pct">${Math.round(progress)}%</span>
+                    <div class="track-titles-col">
+                        <span class="track-target-caption">${isCompleted ? 'DANH HIỆU CAO NHẤT' : 'MỤC TIÊU KẾ TIẾP'}</span>
+                        <h4 class="track-title-single" title="${currentName}">${currentName}</h4>
+                        <div class="track-req-pill">
+                            <i class="ph ph-crosshair-simple"></i>
+                            <span>${track.descPrefix} <strong>${currentMilestone.toLocaleString()}</strong> ${track.descSuffix}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="track-card-progress">
+                    <div class="track-prog-stats">
+                        <span class="track-prog-val">
+                            <strong class="track-prog-num">${currentValue.toLocaleString()}</strong> / ${currentMilestone.toLocaleString()} <span class="track-prog-unit">${track.descSuffix}</span>
+                        </span>
+                        <span class="track-prog-pct tier-${tier.id}">${progressPct}%</span>
+                    </div>
+                    <div class="track-prog-bar-bg">
+                        <div class="track-prog-bar-fill tier-${tier.id}" style="width: ${progressPct}%"></div>
+                    </div>
+                    <div class="track-prog-footer">
+                        <span class="track-prog-remaining">
+                            ${isCompleted 
+                                ? `<i class="ph-fill ph-check-circle" style="color:#10b981;"></i> Đạt mốc tối đa!` 
+                                : `Còn thiếu: <strong>${remaining.toLocaleString()}</strong> ${track.descSuffix}`
+                            }
+                        </span>
+                        <span class="track-prog-view-more">Xem ${maxLevel} mốc <i class="ph ph-caret-right"></i></span>
                     </div>
                 </div>
             `;
 
-            
             trackEl.addEventListener('click', () => {
                 let detailsHtml = `<div style="text-align: left;">`;
-                detailsHtml += `<h3 style="margin-bottom:15px; color:var(--text-color); font-size: 1.25rem;"><i class="ph ${currentIcon}"></i> Chuỗi Thành Tựu: ${track.names[track.names.length - 1]}</h3>`;
+                detailsHtml += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: ${meta.color}20; border: 1.5px solid ${meta.color}40; display: flex; align-items: center; justify-content: center; color: ${meta.color}; font-size: 1.4rem;">
+                                <i class="ph ${meta.icon}"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0 0 4px 0; color: var(--text-color); font-size: 1.2rem; font-weight: 800;">Tiến Trình: ${meta.title}</h3>
+                                <span style="font-size: 0.85rem; color: var(--text-light);">Đã mở <strong>${level}/${maxLevel}</strong> mốc danh hiệu</span>
+                            </div>
+                        </div>
+                        <span class="badge-level-pill tier-${tier.id}" style="position: static;">${tier.name}</span>
+                    </div>
+                `;
                 detailsHtml += `<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto;">`;
                 
                 track.milestones.forEach((m, idx) => {
                     const isUnlocked = currentValue >= m;
                     const icon = track.icons[idx];
                     const name = track.names[idx];
-                    const color = isUnlocked ? '#FFD700' : 'var(--text-light)';
-                    const opacity = isUnlocked ? '1' : '0.55';
+                    const itemTier = getTier(idx + 1, maxLevel);
+                    const color = isUnlocked ? itemTier.color || '#FFD700' : 'var(--text-light)';
+                    const opacity = isUnlocked ? '1' : '0.6';
                     
                     detailsHtml += `
-                        <li style="display: flex; align-items: center; gap: 15px; padding: 14px; background: rgba(255,255,255,0.04); border: 1px solid ${isUnlocked ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 14px; opacity: ${opacity}; transition: transform 0.2s;">
-                            <div style="width: 44px; height: 44px; border-radius: 12px; background: var(--card-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid ${isUnlocked ? '#FFD700' : 'var(--border-color)'}; box-shadow: ${isUnlocked ? '0 0 12px rgba(255,215,0,0.3)' : 'none'};">
-                                <i class="ph ${icon}" style="font-size: 1.4rem; color: ${color};"></i>
+                        <li style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: ${isUnlocked ? 'var(--card-bg, rgba(255,255,255,0.04))' : 'rgba(255,255,255,0.02)'}; border: 1px solid ${isUnlocked ? itemTier.color + '40' : 'var(--border-color, rgba(255,255,255,0.08))'}; border-radius: 14px; opacity: ${opacity}; transition: transform 0.2s;">
+                            <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--card-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid ${isUnlocked ? itemTier.color : 'var(--border-color)'}; box-shadow: ${isUnlocked ? `0 0 12px ${itemTier.color}35` : 'none'};">
+                                <i class="ph ${icon}" style="font-size: 1.35rem; color: ${color};"></i>
                             </div>
-                            <div style="flex: 1;">
-                                <h4 style="margin: 0 0 4px 0; font-size: 1.05rem; color: var(--text-color); font-weight: 700;">${name}</h4>
-                                <span style="font-size: 0.88rem; color: var(--text-light);">${track.descPrefix} ${m.toLocaleString()} ${track.descSuffix}</span>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                                    <h4 style="margin: 0; font-size: 1rem; color: var(--text-color); font-weight: 700;">${name}</h4>
+                                    <span style="font-size: 0.72rem; padding: 1px 7px; border-radius: 8px; background: ${itemTier.color}20; color: ${itemTier.color}; font-weight: 700;">Cấp ${idx + 1}</span>
+                                </div>
+                                <span style="font-size: 0.82rem; color: var(--text-light);">${track.descPrefix} ${m.toLocaleString()} ${track.descSuffix}</span>
                             </div>
-                            ${isUnlocked ? '<i class="ph-fill ph-check-circle" style="color: #4CAF50; font-size: 1.6rem;"></i>' : '<i class="ph ph-lock" style="color: var(--text-light); font-size: 1.3rem;"></i>'}
+                            ${isUnlocked 
+                                ? '<i class="ph-fill ph-check-circle" style="color: #10B981; font-size: 1.4rem;"></i>' 
+                                : '<i class="ph ph-lock" style="color: var(--text-light); font-size: 1.2rem; opacity: 0.6;"></i>'
+                            }
                         </li>
                     `;
                 });
