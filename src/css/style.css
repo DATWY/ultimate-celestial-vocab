@@ -9228,6 +9228,474 @@ body:not(.dark-mode) .dedup-card-sub {
 }
 
 /* ==========================================================================
+   FSRS-7 COGNITIVE PERSONA & MIND PROFILER STYLES
+   ========================================================================== */
+
+.persona-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.persona-meta-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.persona-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.persona-status-badge.personalized {
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+}
+
+.persona-status-badge.baseline {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #34d399;
+}
+
+.pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #a855f7;
+    box-shadow: 0 0 8px #a855f7;
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Hero Archetype Card */
+.persona-hero-card {
+    position: relative;
+    overflow: hidden;
+    padding: 22px 24px;
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    backdrop-filter: blur(16px);
+}
+
+.persona-hero-bg-glow {
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    filter: blur(75px);
+    opacity: 0.25;
+    pointer-events: none;
+}
+
+.persona-hero-inner {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+.persona-avatar-wrapper {
+    flex-shrink: 0;
+}
+
+.persona-avatar-glow {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    color: #ffffff;
+    box-shadow: 0 12px 28px -6px var(--hero-glow, rgba(168, 85, 247, 0.45));
+}
+
+.persona-hero-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.persona-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.persona-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid;
+}
+
+.persona-en-title {
+    font-size: 0.85rem;
+    color: var(--text-subtle, #94a3b8);
+    font-style: italic;
+}
+
+.persona-hero-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 2px 0 6px 0;
+    color: #f8fafc;
+    line-height: 1.25;
+}
+
+.persona-motto {
+    font-size: 0.95rem;
+    color: #e2e8f0;
+    font-style: italic;
+    margin: 6px 0 10px 0;
+    padding-left: 12px;
+    border-left: 3px solid var(--hero-glow, #a855f7);
+    line-height: 1.45;
+}
+
+.persona-summary {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #cbd5e1;
+    margin: 0;
+}
+
+/* 5 Pillars Card */
+.persona-pillars-card {
+    padding: 20px 22px;
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+}
+
+.persona-section-header {
+    margin-bottom: 16px;
+}
+
+.section-title-group h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f8fafc;
+    margin: 0 0 4px 0;
+}
+
+.section-subtitle {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.persona-pillars-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+}
+
+.pillar-item {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 14px 16px;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.pillar-item:hover {
+    border-color: var(--pillar-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.35);
+}
+
+.pillar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.pillar-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #e2e8f0;
+}
+
+.pillar-score-badge {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--pillar-color);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 7px;
+    border-radius: 6px;
+}
+
+.pillar-meter-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.pillar-meter-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pillar-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.pillar-metric-val {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #f8fafc;
+}
+
+.pillar-delta {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.pillar-delta.positive {
+    color: #34d399;
+}
+
+.pillar-delta.negative {
+    color: #f87171;
+}
+
+.pillar-verdict {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--pillar-color);
+    margin-bottom: 4px;
+}
+
+.pillar-desc {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    line-height: 1.45;
+    margin: 0;
+}
+
+/* Bento 2-Columns */
+.persona-bento-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.persona-stats-card,
+.persona-advice-card {
+    padding: 20px 22px;
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+}
+
+.persona-stats-card h3,
+.persona-advice-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #f8fafc;
+    margin: 0 0 14px 0;
+}
+
+.stats-comparison-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stats-comp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(15, 23, 42, 0.45);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.comp-label strong {
+    display: block;
+    font-size: 0.84rem;
+    color: #f1f5f9;
+}
+
+.comp-label span {
+    display: block;
+    font-size: 0.74rem;
+    color: #94a3b8;
+}
+
+.comp-values {
+    text-align: right;
+}
+
+.val-current {
+    display: block;
+    font-weight: 700;
+    font-size: 0.94rem;
+    color: #c084fc;
+}
+
+.val-base {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.persona-advice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.advice-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    background: rgba(15, 23, 42, 0.45);
+    border-radius: 12px;
+    border-left: 3px solid #38bdf8;
+}
+
+.advice-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.advice-text h4 {
+    margin: 0 0 3px 0;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.advice-text p {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: #94a3b8;
+}
+
+/* Light Theme overrides for Persona */
+body.light-theme .persona-hero-card,
+body.light-theme .persona-pillars-card,
+body.light-theme .persona-stats-card,
+body.light-theme .persona-advice-card {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .persona-hero-title,
+body.light-theme .section-title-group h3,
+body.light-theme .persona-stats-card h3,
+body.light-theme .persona-advice-card h3,
+body.light-theme .pillar-metric-val,
+body.light-theme .comp-label strong,
+body.light-theme .advice-text h4 {
+    color: #0f172a;
+}
+
+body.light-theme .persona-motto {
+    color: #334155;
+}
+
+body.light-theme .persona-summary,
+body.light-theme .pillar-desc,
+body.light-theme .advice-text p {
+    color: #475569;
+}
+
+body.light-theme .pillar-name {
+    color: #1e293b;
+}
+
+body.light-theme .pillar-item {
+    background: rgba(248, 250, 252, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .stats-comp-row,
+body.light-theme .advice-item {
+    background: rgba(241, 245, 249, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .pillar-meter-track {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .persona-hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .persona-avatar-glow {
+        width: 58px;
+        height: 58px;
+        font-size: 1.8rem;
+    }
+
+    .persona-hero-title {
+        font-size: 1.35rem;
+    }
+
+    .persona-pillars-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .persona-bento-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
    ACCESSIBILITY: PREFERS REDUCED MOTION
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
