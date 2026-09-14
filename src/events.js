@@ -705,33 +705,34 @@ export function setupEventListeners() {
 
     // Profile Panel Navigation Tabs
     const tabProfileOverview = document.getElementById('tab-profile-overview');
+    const tabProfilePersona = document.getElementById('tab-profile-persona');
     const tabProfileBadges = document.getElementById('tab-profile-badges');
     const paneProfileOverview = document.getElementById('profile-view-overview');
+    const paneProfilePersona = document.getElementById('profile-view-persona');
     const paneProfileBadges = document.getElementById('profile-view-badges');
 
     const switchProfileTab = (tab) => {
-        if (tab === 'overview') {
-            tabProfileOverview?.classList.add('active');
-            tabProfileOverview?.setAttribute('aria-selected', 'true');
-            tabProfileBadges?.classList.remove('active');
-            tabProfileBadges?.setAttribute('aria-selected', 'false');
-            paneProfileOverview?.classList.remove('hidden');
-            paneProfileOverview?.classList.add('active');
-            paneProfileBadges?.classList.add('hidden');
-            paneProfileBadges?.classList.remove('active');
-        } else {
-            tabProfileBadges?.classList.add('active');
-            tabProfileBadges?.setAttribute('aria-selected', 'true');
-            tabProfileOverview?.classList.remove('active');
-            tabProfileOverview?.setAttribute('aria-selected', 'false');
-            paneProfileBadges?.classList.remove('hidden');
-            paneProfileBadges?.classList.add('active');
-            paneProfileOverview?.classList.add('hidden');
-            paneProfileOverview?.classList.remove('active');
+        const tabs = [
+            { id: 'overview', tabEl: tabProfileOverview, paneEl: paneProfileOverview },
+            { id: 'persona', tabEl: tabProfilePersona, paneEl: paneProfilePersona },
+            { id: 'badges', tabEl: tabProfileBadges, paneEl: paneProfileBadges }
+        ];
+
+        tabs.forEach(t => {
+            const isActive = (t.id === tab);
+            t.tabEl?.classList.toggle('active', isActive);
+            t.tabEl?.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            t.paneEl?.classList.toggle('active', isActive);
+            t.paneEl?.classList.toggle('hidden', !isActive);
+        });
+
+        if (tab === 'persona') {
+            import('./features/gamification.js').then(m => m.renderFsrsPersonaTab());
         }
     };
 
     tabProfileOverview?.addEventListener('click', () => switchProfileTab('overview'));
+    tabProfilePersona?.addEventListener('click', () => switchProfileTab('persona'));
     tabProfileBadges?.addEventListener('click', () => switchProfileTab('badges'));
 
     DOM.closeProfileModalBtn?.addEventListener('click', () => closeModal(DOM.profileModal));

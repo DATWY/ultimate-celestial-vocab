@@ -6,25 +6,41 @@ import { getLocalDateString } from '../core/utils/date.js';
 
 // Removed static import for BADGES to use dynamic import for BADGE_TRACKS and SPECIAL_BADGES
 import { animateNumber, animateForecastChart, animateHeatmap } from '../core/animations.js';
+import { renderFsrsPersonaUI } from './fsrsPersona.js';
 
 export function openProfileModal() {
     trackEvent('profileViews');
     const tabOverview = document.getElementById('tab-profile-overview');
+    const tabPersona = document.getElementById('tab-profile-persona');
     const tabBadges = document.getElementById('tab-profile-badges');
     const paneOverview = document.getElementById('profile-view-overview');
+    const panePersona = document.getElementById('profile-view-persona');
     const paneBadges = document.getElementById('profile-view-badges');
-    if (tabOverview && tabBadges && paneOverview && paneBadges) {
+
+    [tabOverview, tabPersona, tabBadges].forEach(t => {
+        t?.classList.remove('active');
+        t?.setAttribute('aria-selected', 'false');
+    });
+    [paneOverview, panePersona, paneBadges].forEach(p => {
+        p?.classList.add('hidden');
+        p?.classList.remove('active');
+    });
+
+    if (tabOverview && paneOverview) {
         tabOverview.classList.add('active');
         tabOverview.setAttribute('aria-selected', 'true');
-        tabBadges.classList.remove('active');
-        tabBadges.setAttribute('aria-selected', 'false');
         paneOverview.classList.remove('hidden');
         paneOverview.classList.add('active');
-        paneBadges.classList.add('hidden');
-        paneBadges.classList.remove('active');
     }
     renderGamificationUI();
     openModal(DOM.profileModal);
+}
+
+export function renderFsrsPersonaTab() {
+    const panePersona = document.getElementById('profile-view-persona');
+    if (panePersona) {
+        renderFsrsPersonaUI(panePersona);
+    }
 }
 
 export function renderGamificationUI() {
