@@ -9228,23 +9228,23 @@ body:not(.dark-mode) .dedup-card-sub {
 }
 
 /* ==========================================================================
-   FSRS-7 COGNITIVE PERSONA & MIND PROFILER STYLES
+   FSRS-7 WHO I AM & COGNITIVE PROFILE STYLES
    ========================================================================== */
 
-.persona-container {
+.whoiam-container {
     display: flex;
     flex-direction: column;
     gap: 16px;
     width: 100%;
 }
 
-.persona-meta-header {
+.whoiam-meta-header {
     display: flex;
     justify-content: flex-start;
     align-items: center;
 }
 
-.persona-status-badge {
+.whoiam-status-badge {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -9254,24 +9254,24 @@ body:not(.dark-mode) .dedup-card-sub {
     font-weight: 500;
 }
 
-.persona-status-badge.personalized {
-    background: rgba(168, 85, 247, 0.12);
-    border: 1px solid rgba(168, 85, 247, 0.35);
-    color: #c084fc;
-}
-
-.persona-status-badge.baseline {
+.whoiam-status-badge.personalized {
     background: rgba(16, 185, 129, 0.12);
     border: 1px solid rgba(16, 185, 129, 0.35);
     color: #34d399;
+}
+
+.whoiam-status-badge.baseline {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
 }
 
 .pulse-dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background-color: #a855f7;
-    box-shadow: 0 0 8px #a855f7;
+    background-color: #10b981;
+    box-shadow: 0 0 8px #10b981;
     animation: pulse-glow 2s infinite;
 }
 
@@ -9280,8 +9280,8 @@ body:not(.dark-mode) .dedup-card-sub {
     50% { opacity: 0.4; transform: scale(0.85); }
 }
 
-/* Hero Archetype Card */
-.persona-hero-card {
+/* Hero Card: Who I Am */
+.whoiam-hero-card {
     position: relative;
     overflow: hidden;
     padding: 22px 24px;
@@ -9291,108 +9291,150 @@ body:not(.dark-mode) .dedup-card-sub {
     backdrop-filter: blur(16px);
 }
 
-.persona-hero-bg-glow {
+.whoiam-hero-bg-glow {
     position: absolute;
     top: -50px;
     right: -50px;
     width: 240px;
     height: 240px;
     border-radius: 50%;
-    filter: blur(75px);
-    opacity: 0.25;
+    filter: blur(80px);
+    opacity: 0.22;
     pointer-events: none;
 }
 
-.persona-hero-inner {
+.whoiam-hero-inner {
     display: flex;
     gap: 22px;
-    align-items: center;
+    align-items: flex-start;
     position: relative;
     z-index: 2;
 }
 
-.persona-avatar-wrapper {
+.whoiam-avatar-wrapper {
     flex-shrink: 0;
+    margin-top: 4px;
 }
 
-.persona-avatar-glow {
-    width: 72px;
-    height: 72px;
-    border-radius: 20px;
+.whoiam-avatar-glow {
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.2rem;
+    font-size: 2.1rem;
     color: #ffffff;
-    box-shadow: 0 12px 28px -6px var(--hero-glow, rgba(168, 85, 247, 0.45));
+    box-shadow: 0 10px 24px -4px var(--hero-glow, rgba(56, 189, 248, 0.45));
 }
 
-.persona-hero-content {
+.whoiam-hero-content {
     flex: 1;
     min-width: 0;
 }
 
-.persona-tag-row {
+.whoiam-tag-row {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 4px;
 }
 
-.persona-tag {
+.whoiam-tag {
     font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
     padding: 2px 8px;
     border-radius: 6px;
     border: 1px solid;
 }
 
-.persona-en-title {
-    font-size: 0.85rem;
+.whoiam-en-title {
+    font-size: 0.84rem;
     color: var(--text-subtle, #94a3b8);
     font-style: italic;
 }
 
-.persona-hero-title {
-    font-size: 1.6rem;
+.whoiam-hero-title {
+    font-size: 1.55rem;
     font-weight: 700;
-    margin: 2px 0 6px 0;
+    margin: 2px 0 10px 0;
     color: #f8fafc;
     line-height: 1.25;
 }
 
-.persona-motto {
-    font-size: 0.95rem;
-    color: #e2e8f0;
-    font-style: italic;
-    margin: 6px 0 10px 0;
-    padding-left: 12px;
-    border-left: 3px solid var(--hero-glow, #a855f7);
-    line-height: 1.45;
+.whoiam-traits-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
-.persona-summary {
+.whoiam-trait-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.78rem;
+    color: #cbd5e1;
+}
+
+.whoiam-trait-chip.highlight {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+.whoiam-trait-chip .trait-val {
+    color: #f8fafc;
+}
+
+.whoiam-trait-chip.highlight .trait-val {
+    color: #38bdf8;
+}
+
+.whoiam-summary {
     font-size: 0.88rem;
     line-height: 1.6;
     color: #cbd5e1;
-    margin: 0;
+    margin: 0 0 12px 0;
 }
 
-/* 5 Pillars Card */
-.persona-pillars-card {
+.whoiam-takeaway {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 10px;
+    border-left: 3px solid var(--hero-glow, #38bdf8);
+    font-size: 0.82rem;
+    color: #e2e8f0;
+}
+
+.whoiam-takeaway i {
+    color: var(--hero-glow, #38bdf8);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* 5 Pillars Section */
+.whoiam-pillars-card {
     padding: 20px 22px;
     background: rgba(30, 41, 59, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 18px;
 }
 
-.persona-section-header {
+.whoiam-section-header {
     margin-bottom: 16px;
 }
 
-.section-title-group h3 {
+.whoiam-section-header h3 {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -9402,18 +9444,18 @@ body:not(.dark-mode) .dedup-card-sub {
     margin: 0 0 4px 0;
 }
 
-.section-subtitle {
+.whoiam-section-header .section-subtitle {
     font-size: 0.8rem;
     color: #94a3b8;
 }
 
-.persona-pillars-grid {
+.whoiam-pillars-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 14px;
 }
 
-.pillar-item {
+.pillar-box {
     background: rgba(15, 23, 42, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 14px;
@@ -9423,166 +9465,280 @@ body:not(.dark-mode) .dedup-card-sub {
     flex-direction: column;
 }
 
-.pillar-item:hover {
+.pillar-box:hover {
     border-color: var(--pillar-color);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.35);
 }
 
-.pillar-header {
+.pillar-box-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.pillar-titles {
+    flex: 1;
+}
+
+.pillar-titles .pillar-name {
+    margin: 0 0 2px 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.pillar-titles .pillar-sub {
+    font-size: 0.72rem;
+    color: #64748b;
+    display: block;
+}
+
+.pillar-status-chip {
+    font-size: 0.73rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.pillar-status-chip.good {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pillar-status-chip.warn {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.pillar-status-chip.neutral {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* Dual Bar Visual Comparison */
+.dual-bar-wrapper {
+    background: rgba(0, 0, 0, 0.22);
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bar-label-group {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    font-size: 0.76rem;
 }
 
-.pillar-name {
+.bar-entity.user {
     font-weight: 600;
-    font-size: 0.88rem;
     color: #e2e8f0;
 }
 
-.pillar-score-badge {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--pillar-color);
-    background: rgba(255, 255, 255, 0.05);
-    padding: 2px 7px;
-    border-radius: 6px;
+.bar-value.user {
+    color: #38bdf8;
+    font-size: 0.88rem;
 }
 
-.pillar-meter-track {
+.bar-entity.base,
+.bar-value.base {
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+.bar-track {
     height: 6px;
     background: rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     overflow: hidden;
-    margin-bottom: 10px;
 }
 
-.pillar-meter-fill {
+.bar-fill.user {
     height: 100%;
     border-radius: 999px;
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.pillar-metric-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
+.bar-track.base {
+    height: 4px;
 }
 
-.pillar-metric-val {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #f8fafc;
+.bar-fill.base {
+    height: 100%;
+    background: #475569;
+    border-radius: 999px;
 }
 
-.pillar-delta {
-    font-size: 0.75rem;
-    font-weight: 600;
+.pillar-verdict-box {
+    margin-top: auto;
+    padding-top: 4px;
 }
 
-.pillar-delta.positive {
-    color: #34d399;
-}
-
-.pillar-delta.negative {
-    color: #f87171;
-}
-
-.pillar-verdict {
+.verdict-title {
+    display: block;
     font-size: 0.82rem;
     font-weight: 600;
-    color: var(--pillar-color);
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 
-.pillar-desc {
+.verdict-text {
     font-size: 0.78rem;
-    color: #94a3b8;
     line-height: 1.45;
+    color: #94a3b8;
     margin: 0;
 }
 
-/* Bento 2-Columns */
-.persona-bento-grid {
+/* Bento Grid */
+.whoiam-bento-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
 
-.persona-stats-card,
-.persona-advice-card {
+.whoiam-stats-card,
+.whoiam-advice-card {
     padding: 20px 22px;
     background: rgba(30, 41, 59, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 18px;
 }
 
-.persona-stats-card h3,
-.persona-advice-card h3 {
+.card-header-simple {
+    margin-bottom: 14px;
+}
+
+.card-header-simple h3 {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 1.05rem;
     font-weight: 600;
     color: #f8fafc;
-    margin: 0 0 14px 0;
+    margin: 0 0 2px 0;
 }
 
-.stats-comparison-list {
+.card-hint {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+/* Stats Visual List */
+.stats-visual-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.stats-comp-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
+.stats-visual-item {
     background: rgba(15, 23, 42, 0.45);
+    padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.comp-label strong {
-    display: block;
-    font-size: 0.84rem;
-    color: #f1f5f9;
+.stats-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
 }
 
-.comp-label span {
-    display: block;
-    font-size: 0.74rem;
-    color: #94a3b8;
+.stats-name {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #cbd5e1;
 }
 
-.comp-values {
-    text-align: right;
+.stats-numbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.val-current {
-    display: block;
+.stats-user-num {
+    font-size: 0.88rem;
     font-weight: 700;
-    font-size: 0.94rem;
-    color: #c084fc;
+    color: #38bdf8;
 }
 
-.val-base {
-    display: block;
+.stats-base-num {
     font-size: 0.72rem;
     color: #64748b;
 }
 
-.persona-advice-list {
+.stats-delta-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.stats-delta-badge.higher {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.stats-delta-badge.lower {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+.stats-delta-badge.neutral {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+}
+
+.mini-dual-bar {
+    width: 100%;
+}
+
+.mini-bar-track {
+    position: relative;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: visible;
+}
+
+.mini-bar-fill.user {
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    border-radius: 999px;
+}
+
+.mini-bar-marker.base {
+    position: absolute;
+    top: -2px;
+    width: 3px;
+    height: 9px;
+    background: #f1f5f9;
+    border-radius: 1px;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Actionable Advice List */
+.whoiam-advice-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.advice-item {
+.advice-card-item {
     display: flex;
     gap: 12px;
     align-items: flex-start;
@@ -9592,106 +9748,140 @@ body:not(.dark-mode) .dedup-card-sub {
     border-left: 3px solid #38bdf8;
 }
 
-.advice-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: rgba(56, 189, 248, 0.12);
+.advice-num-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.15);
     color: #38bdf8;
+    font-size: 0.78rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
     flex-shrink: 0;
+    margin-top: 1px;
 }
 
-.advice-text h4 {
-    margin: 0 0 3px 0;
+.advice-body {
+    flex: 1;
+}
+
+.advice-header-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+}
+
+.advice-header-line i {
+    color: #38bdf8;
+    font-size: 0.95rem;
+}
+
+.advice-header-line h4 {
+    margin: 0;
     font-size: 0.86rem;
     font-weight: 600;
     color: #f1f5f9;
 }
 
-.advice-text p {
+.advice-body p {
     margin: 0;
     font-size: 0.78rem;
     line-height: 1.45;
     color: #94a3b8;
 }
 
-/* Light Theme overrides for Persona */
-body.light-theme .persona-hero-card,
-body.light-theme .persona-pillars-card,
-body.light-theme .persona-stats-card,
-body.light-theme .persona-advice-card {
+/* Light Theme overrides for Who I Am */
+body.light-theme .whoiam-hero-card,
+body.light-theme .whoiam-pillars-card,
+body.light-theme .whoiam-stats-card,
+body.light-theme .whoiam-advice-card {
     background: rgba(255, 255, 255, 0.85);
     border: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
 }
 
-body.light-theme .persona-hero-title,
-body.light-theme .section-title-group h3,
-body.light-theme .persona-stats-card h3,
-body.light-theme .persona-advice-card h3,
-body.light-theme .pillar-metric-val,
-body.light-theme .comp-label strong,
-body.light-theme .advice-text h4 {
+body.light-theme .whoiam-hero-title,
+body.light-theme .whoiam-section-header h3,
+body.light-theme .card-header-simple h3,
+body.light-theme .pillar-titles .pillar-name,
+body.light-theme .advice-header-line h4,
+body.light-theme .bar-entity.user {
     color: #0f172a;
 }
 
-body.light-theme .persona-motto {
-    color: #334155;
-}
-
-body.light-theme .persona-summary,
-body.light-theme .pillar-desc,
-body.light-theme .advice-text p {
+body.light-theme .whoiam-summary,
+body.light-theme .verdict-text,
+body.light-theme .advice-body p {
     color: #475569;
 }
 
-body.light-theme .pillar-name {
+body.light-theme .whoiam-trait-chip {
+    background: rgba(241, 245, 249, 0.8);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #334155;
+}
+
+body.light-theme .whoiam-takeaway {
+    background: rgba(241, 245, 249, 0.85);
     color: #1e293b;
 }
 
-body.light-theme .pillar-item {
+body.light-theme .pillar-box {
     background: rgba(248, 250, 252, 0.85);
     border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-body.light-theme .stats-comp-row,
-body.light-theme .advice-item {
+body.light-theme .dual-bar-wrapper {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .stats-visual-item,
+body.light-theme .advice-card-item {
     background: rgba(241, 245, 249, 0.8);
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-body.light-theme .pillar-meter-track {
+body.light-theme .stats-name {
+    color: #1e293b;
+}
+
+body.light-theme .bar-track {
     background: rgba(0, 0, 0, 0.08);
 }
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-    .persona-hero-inner {
+    .whoiam-hero-inner {
         flex-direction: column;
         align-items: flex-start;
         gap: 14px;
     }
 
-    .persona-avatar-glow {
-        width: 58px;
-        height: 58px;
+    .whoiam-avatar-glow {
+        width: 56px;
+        height: 56px;
         font-size: 1.8rem;
     }
 
-    .persona-hero-title {
+    .whoiam-hero-title {
         font-size: 1.35rem;
     }
 
-    .persona-pillars-grid {
+    .whoiam-pillars-grid {
         grid-template-columns: 1fr;
     }
 
-    .persona-bento-grid {
+    .whoiam-bento-grid {
         grid-template-columns: 1fr;
+    }
+
+    .stats-info-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
     }
 }
 
