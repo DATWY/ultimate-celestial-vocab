@@ -9,6 +9,20 @@ import { animateNumber, animateForecastChart, animateHeatmap } from '../core/ani
 
 export function openProfileModal() {
     trackEvent('profileViews');
+    const tabOverview = document.getElementById('tab-profile-overview');
+    const tabBadges = document.getElementById('tab-profile-badges');
+    const paneOverview = document.getElementById('profile-view-overview');
+    const paneBadges = document.getElementById('profile-view-badges');
+    if (tabOverview && tabBadges && paneOverview && paneBadges) {
+        tabOverview.classList.add('active');
+        tabOverview.setAttribute('aria-selected', 'true');
+        tabBadges.classList.remove('active');
+        tabBadges.setAttribute('aria-selected', 'false');
+        paneOverview.classList.remove('hidden');
+        paneOverview.classList.add('active');
+        paneBadges.classList.add('hidden');
+        paneBadges.classList.remove('active');
+    }
     renderGamificationUI();
     openModal(DOM.profileModal);
 }

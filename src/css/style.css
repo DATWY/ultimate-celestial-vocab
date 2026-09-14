@@ -3880,76 +3880,147 @@ body.dark-mode .word-card.is-suspended {
     padding-bottom: 2px;
 }
 
-/* ===== CELESTIAL PROFILE & STATISTICS DASHBOARD V4.0 ===== */
+/* ===== CELESTIAL PROFILE & STATISTICS DASHBOARD V5.0 (REMAKE & SLATE AESTHETICS) ===== */
 .profile-panel {
     background: var(--card-bg);
     border: 1.5px solid var(--border-color);
-    border-radius: 28px;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 30px hsla(var(--primary-hue), 50%, 50%, 0.1);
-    padding: 24px 28px;
+    border-radius: 22px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 35px hsla(var(--primary-hue), 50%, 50%, 0.12);
+    padding: 16px 22px 20px !important;
     position: relative;
-    max-width: 900px;
-    width: 92vw;
+    max-width: 960px;
+    width: 94vw;
+    height: auto;
     max-height: 88vh;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
 }
 
-.profile-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
-    margin-top: 18px;
+.profile-panel .modal-close-btn {
+    top: 13px !important;
+    right: 14px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 1rem !important;
 }
 
-.profile-card {
-    background: hsla(0, 0%, 50%, 0.03);
+.profile-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    padding-right: 36px;
+    gap: 12px;
+}
+
+.profile-nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 20px;
-    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 999px;
+    padding: 3px;
+}
+
+.profile-nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+    white-space: nowrap;
+}
+
+.profile-nav-tab:hover {
+    color: var(--text-color);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-nav-tab.active {
+    background: var(--card-bg);
+    color: var(--text-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    font-weight: 700;
+}
+
+body.dark-mode .profile-nav-tab.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+body:not(.dark-mode) .profile-nav-tab.active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.profile-tab-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.profile-tab-pane.hidden {
+    display: none !important;
+}
+
+/* --- Hero Scholar Banner (Level & Streak Unified) --- */
+.profile-hero-card {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 14px;
+    align-items: stretch;
+    width: 100%;
+}
+
+.profile-hero-card .level-card {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1.5px solid var(--border-color);
+    border-radius: 18px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     position: relative;
     overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.profile-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px hsla(var(--shadow-color-calc), 0.12), 0 0 15px hsla(var(--primary-hue), 50%, 50%, 0.08);
-    border-color: hsla(var(--primary-hue), 60%, 60%, 0.3);
-}
-
-.profile-card h3 {
+.profile-hero-card .level-display {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--text-color);
-    margin-bottom: 16px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
-}
-
-/* --- Level & Rank Card --- */
-.level-display {
-    display: flex;
-    align-items: center;
-    gap: 18px;
+    gap: 16px;
 }
 
 .level-circle {
-    width: 64px;
-    height: 64px;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), #a855f7);
+    background: linear-gradient(135deg, #0284c7, #00e5ff);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1.85rem;
+    font-size: 1.7rem;
     font-weight: 800;
-    box-shadow: 0 0 20px hsla(var(--primary-hue), 85%, 60%, 0.5);
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
     position: relative;
     flex-shrink: 0;
 }
@@ -3959,7 +4030,7 @@ body.dark-mode .word-card.is-suspended {
     position: absolute;
     inset: -4px;
     border-radius: 50%;
-    border: 2px dashed hsla(var(--primary-hue), 85%, 70%, 0.5);
+    border: 2px dashed rgba(0, 229, 255, 0.5);
     animation: ringRotate 15s linear infinite;
 }
 
@@ -3967,68 +4038,174 @@ body.dark-mode .word-card.is-suspended {
     100% { transform: rotate(360deg); }
 }
 
+.xp-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.rank-name-title {
+    margin: 0 !important;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+}
+
+.xp-badge-total {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-light);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 3px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+}
+
+.xp-badge-total strong {
+    color: #00e5ff;
+    font-weight: 800;
+}
+
+.xp-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .xp-bar-container {
     width: 100%;
-    height: 12px;
-    background: hsla(0, 0%, 50%, 0.1);
+    height: 10px;
+    background: hsla(0, 0%, 50%, 0.12);
     border-radius: 999px;
-    margin: 10px 0;
+    margin: 8px 0;
     overflow: hidden;
     position: relative;
-    border: 1px solid hsla(0, 0%, 50%, 0.15);
+    border: 1px solid var(--border-color);
 }
 
 .xp-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+    background: linear-gradient(90deg, #0284c7, #00e5ff, #38ef7d);
     border-radius: 999px;
-    box-shadow: 0 0 12px hsla(280, 85%, 60%, 0.7);
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
     transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .xp-to-next-level {
-    font-size: 0.82rem;
-    color: var(--text-color-muted, #71717a);
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin: 0;
+    font-weight: 500;
 }
 
-/* --- Streak Card --- */
-.streak-display {
+/* Streak Widget */
+.profile-hero-card .streak-widget {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1.5px solid var(--border-color);
+    border-radius: 18px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.streak-display i {
-    font-size: 3.2rem;
+.streak-icon-wrapper {
+    font-size: 2.5rem;
     color: #ff5722;
-    filter: drop-shadow(0 0 16px rgba(255, 87, 34, 0.7));
+    filter: drop-shadow(0 0 14px rgba(255, 87, 34, 0.6));
+    display: flex;
+    align-items: center;
+    justify-content: center;
     animation: fireFlamePulse 1.5s ease-in-out infinite alternate;
 }
 
-@keyframes fireFlamePulse {
-    from { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 87, 34, 0.5)); }
-    to { transform: scale(1.12); filter: drop-shadow(0 0 22px rgba(255, 87, 34, 0.9)); }
+.streak-count-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
 }
 
 .streak-number {
-    font-size: 2.8rem;
+    font-size: 2.2rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--text-color), #ff7043);
+    line-height: 1;
+    background: linear-gradient(135deg, #ff9800, #ff5722);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-.streak-text {
-    display: block;
+.streak-unit {
     font-size: 0.85rem;
-    color: var(--text-color-muted, #71717a);
-    font-weight: 500;
+    font-weight: 700;
+    color: #ff9800;
+    text-transform: uppercase;
 }
 
-/* --- Memory Analytics Card (Compact & Lively Micro-Meters) --- */
+.streak-text {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+/* --- Rhythm Matrix (Forecast & Heatmap 2 Columns) --- */
+.profile-rhythm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+}
+
+.profile-card {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1.5px solid var(--border-color);
+    border-radius: 18px;
+    padding: 16px 18px;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.profile-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.profile-card h3 i {
+    font-size: 1.15rem;
+    color: var(--primary-color);
+}
+
+/* --- Memory Analytics Card (Refined Slate Glass) --- */
 .memory-analytics-card {
-    background: linear-gradient(135deg, hsla(239, 84%, 67%, 0.08), hsla(280, 85%, 60%, 0.08));
-    border: 1px solid hsla(239, 84%, 67%, 0.25);
+    background: rgba(30, 41, 59, 0.45) !important;
+    border: 1.5px solid var(--border-color) !important;
+    border-radius: 18px !important;
     padding: 14px 18px !important;
 }
 
@@ -4997,19 +5174,23 @@ body:not(.dark-mode) .profile-panel .modal-close-btn:hover {
 
 /* Profile Title */
 body:not(.dark-mode) #profile-title {
-    color: #3730A3 !important;
+    color: #0F172A !important;
 }
 
 /* Distinct Elevated Profile Cards */
-body:not(.dark-mode) .profile-card {
+body:not(.dark-mode) .profile-card,
+body:not(.dark-mode) .profile-hero-card .level-card,
+body:not(.dark-mode) .profile-hero-card .streak-widget {
     background: #FFFFFF !important;
     border: 1.5px solid #E2E8F0 !important;
     box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
 }
 
-body:not(.dark-mode) .profile-card:hover {
+body:not(.dark-mode) .profile-card:hover,
+body:not(.dark-mode) .profile-hero-card .level-card:hover,
+body:not(.dark-mode) .profile-hero-card .streak-widget:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(99, 102, 241, 0.25) !important;
+    box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(2, 132, 199, 0.2) !important;
     border-color: #CBD5E1 !important;
 }
 
@@ -5018,11 +5199,22 @@ body:not(.dark-mode) .profile-card h3 {
     border-bottom: 1px solid #F1F5F9 !important;
 }
 
+body:not(.dark-mode) .xp-badge-total {
+    background: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+}
+
+body:not(.dark-mode) .xp-badge-total strong {
+    color: #0284C7 !important;
+}
+
 /* --- Streak Card (Warm Sunrise Theme) --- */
-body:not(.dark-mode) .streak-card {
+body:not(.dark-mode) .streak-card,
+body:not(.dark-mode) .profile-hero-card .streak-widget {
     background: linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 100%) !important;
-    border: 1.5px solid rgba(251, 146, 60, 0.4) !important;
-    box-shadow: 0 6px 20px -3px rgba(249, 115, 22, 0.1) !important;
+    border: 1.5px solid rgba(251, 146, 60, 0.35) !important;
+    box-shadow: 0 4px 16px -2px rgba(249, 115, 22, 0.08) !important;
 }
 
 body:not(.dark-mode) .streak-number {
@@ -5172,33 +5364,44 @@ body:not(.dark-mode) .achievements-card {
 }
 
 /* ==========================================================================
-   PROFILE & STATISTICS DASHBOARD DARK MODE ENHANCEMENTS
+   PROFILE & STATISTICS DASHBOARD DARK MODE ENHANCEMENTS (SLATE MIDNIGHT GLASS)
    ========================================================================== */
 body.dark-mode .profile-panel {
-    background: rgba(18, 12, 36, 0.9) !important;
-    border: 1.5px solid rgba(138, 43, 226, 0.35) !important;
-    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6), 0 0 35px rgba(124, 77, 255, 0.15) !important;
+    background: var(--card-bg) !important;
+    border: 1.5px solid var(--border-color) !important;
+    box-shadow: 0 25px 65px -12px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 229, 255, 0.05) !important;
+    color: #f8fafc !important;
 }
 
-body.dark-mode .profile-card {
-    background: rgba(255, 255, 255, 0.035) !important;
-    border: 1px solid rgba(255, 255, 255, 0.09) !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+body.dark-mode #profile-title {
+    color: #f8fafc !important;
 }
 
-body.dark-mode .profile-card:hover {
-    border-color: rgba(124, 77, 255, 0.4) !important;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35), 0 0 15px rgba(124, 77, 255, 0.15) !important;
+body.dark-mode .profile-hero-card .level-card,
+body.dark-mode .profile-hero-card .streak-widget,
+body.dark-mode .profile-rhythm-grid .forecast-card,
+body.dark-mode .profile-rhythm-grid .heatmap-card,
+body.dark-mode .achievements-card {
+    background: rgba(30, 41, 59, 0.45) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.dark-mode .profile-card:hover,
+body.dark-mode .profile-hero-card .level-card:hover,
+body.dark-mode .profile-hero-card .streak-widget:hover {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35) !important;
 }
 
 body.dark-mode .analytics-item {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: rgba(15, 23, 42, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
 }
 
 body.dark-mode .analytics-item:hover {
-    border-color: rgba(124, 77, 255, 0.4) !important;
-    background: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    background: rgba(30, 41, 59, 0.6) !important;
 }
 
 body.dark-mode .analytics-item[data-metric="retention"] {
@@ -5221,23 +5424,65 @@ body.dark-mode .analytics-item[data-metric="reviews"] {
     .profile-panel {
         width: 95vw !important;
         max-width: 95vw !important;
-        padding: 16px 14px !important;
+        padding: 14px 12px !important;
         border-radius: 20px !important;
         max-height: 90vh !important;
         -webkit-overflow-scrolling: touch;
     }
 
-    #profile-title {
-        font-size: 1.25rem !important;
+    /* Profile Header 2-row layout on mobile */
+    .profile-panel-header {
+        display: grid !important;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 8px !important;
+        padding-right: 34px !important;
         margin-bottom: 12px !important;
-        padding-bottom: 8px !important;
     }
 
-    /* 2. Main Profile Grid -> 1 Single Column Stack */
-    .profile-grid {
+    .profile-panel-header .manage-header-main {
+        display: contents !important;
+    }
+
+    .profile-panel-header .manage-panel-title {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+        font-size: 1.15rem !important;
+        margin: 0 !important;
+    }
+
+    .profile-nav-tabs {
+        grid-column: 1 / -1;
+        grid-row: 2 / 3;
+        width: 100% !important;
+        display: flex !important;
+    }
+
+    .profile-nav-tab {
+        flex: 1 1 50% !important;
+        justify-content: center !important;
+        font-size: 0.8rem !important;
+        padding: 6px 6px !important;
+    }
+
+    .profile-hero-card {
         grid-template-columns: 1fr !important;
-        gap: 12px !important;
-        margin-top: 12px !important;
+        gap: 10px !important;
+    }
+
+    .profile-hero-card .level-card {
+        padding: 14px 14px !important;
+    }
+
+    .profile-hero-card .streak-widget {
+        padding: 12px 16px !important;
+        min-width: 0 !important;
+        justify-content: flex-start !important;
+    }
+
+    .profile-rhythm-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
     }
 
     .profile-card {

@@ -702,6 +702,38 @@ export function setupEventListeners() {
 
     tabWords?.addEventListener('click', () => switchManageTab('words'));
     tabIO?.addEventListener('click', () => switchManageTab('io'));
+
+    // Profile Panel Navigation Tabs
+    const tabProfileOverview = document.getElementById('tab-profile-overview');
+    const tabProfileBadges = document.getElementById('tab-profile-badges');
+    const paneProfileOverview = document.getElementById('profile-view-overview');
+    const paneProfileBadges = document.getElementById('profile-view-badges');
+
+    const switchProfileTab = (tab) => {
+        if (tab === 'overview') {
+            tabProfileOverview?.classList.add('active');
+            tabProfileOverview?.setAttribute('aria-selected', 'true');
+            tabProfileBadges?.classList.remove('active');
+            tabProfileBadges?.setAttribute('aria-selected', 'false');
+            paneProfileOverview?.classList.remove('hidden');
+            paneProfileOverview?.classList.add('active');
+            paneProfileBadges?.classList.add('hidden');
+            paneProfileBadges?.classList.remove('active');
+        } else {
+            tabProfileBadges?.classList.add('active');
+            tabProfileBadges?.setAttribute('aria-selected', 'true');
+            tabProfileOverview?.classList.remove('active');
+            tabProfileOverview?.setAttribute('aria-selected', 'false');
+            paneProfileBadges?.classList.remove('hidden');
+            paneProfileBadges?.classList.add('active');
+            paneProfileOverview?.classList.add('hidden');
+            paneProfileOverview?.classList.remove('active');
+        }
+    };
+
+    tabProfileOverview?.addEventListener('click', () => switchProfileTab('overview'));
+    tabProfileBadges?.addEventListener('click', () => switchProfileTab('badges'));
+
     DOM.closeProfileModalBtn?.addEventListener('click', () => closeModal(DOM.profileModal));
     DOM.profileOverlay?.addEventListener('click', () => closeModal(DOM.profileModal));
     DOM.scanDuplicatesBtn?.addEventListener('click', () => {
