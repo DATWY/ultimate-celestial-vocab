@@ -119,7 +119,6 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
     // -------------------------------------------------------------
     const decay2 = p[24];
     const decay2Delta = getDeltaPct(decay2, base[24]);
-    // Decay càng cao = hao mòn càng nhanh = score thấp hơn
     let resistanceScore = Math.min(99, Math.max(20, Math.round(50 - (decay2Delta * 1.2))));
 
     let resistanceStatus = "Suy Giảm Tự Nhiên";
@@ -135,20 +134,19 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
     } else if (decay2Delta >= 10) {
         resistanceStatus = "Nhạy Cảm Với Thời Gian";
         resistanceDesc = `Tốc độ hao mòn đạt ${(decay2 * 100).toFixed(2)}% (chuẩn Lab: ${(base[24] * 100).toFixed(2)}%). Nếu bạn để trễ lịch ôn, từ vựng sẽ bị quên nhanh hơn; việc duy trì streak hàng ngày là yếu tố then chốt.`;
-        resistanceBadge = `+${decay2Delta.toFixed(1)}% Quên nhanh nếu trễ`;
+        resistanceBadge = `+${decay2Delta.toFixed(1)}% Đúng hạn`;
         resistanceBadgeClass = "warn";
     }
 
     // -------------------------------------------------------------
     // 6. XÁC ĐỊNH PHONG CÁCH HỌC TẬP CHỦ ĐẠO (Primary Cognitive Profile)
     // -------------------------------------------------------------
-    // Sắp xếp các chỉ số theo độ lệch vượt trội lớn nhất so với chuẩn
     const candidateTraits = [
         { id: 'compounding', name: 'Tích Lũy Dài Hạn', score: compoundingScore, delta: sincDelta },
         { id: 'resilience', name: 'Phục Hồi Sau Quên', score: resilienceScore, delta: failDelta },
         { id: 'friction', name: 'Độ Khắt Khe & Chuẩn Mực', score: frictionScore, delta: diffDelta },
         { id: 'absorption', name: 'Mã Hóa Ban Đầu', score: absorptionScore, delta: s0GoodDelta },
-        { id: 'resistance', name: 'Độ Bền Vững Trí Nhớ', score: resistanceScore, delta: -decay2Delta }
+        { id: 'resistance', name: 'Độ Bền Vững Ký Ức', score: resistanceScore, delta: -decay2Delta }
     ];
     candidateTraits.sort((a, b) => b.delta - a.delta);
     const topTrait = candidateTraits[0];
@@ -230,6 +228,14 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
         };
     }
 
+    // Highlight data cho card nổi bật
+    const highlightData = {
+        title: topTrait.name,
+        val: topTrait.id === 'compounding' ? `${sinc.toFixed(2)}x` : (topTrait.id === 'resilience' ? `${(failBase * 100).toFixed(1)}%` : `${diffBase.toFixed(2)}/10`),
+        deltaText: topTrait.delta >= 0 ? `+${topTrait.delta.toFixed(1)}% so với Lab` : `${topTrait.delta.toFixed(1)}% so với Lab`,
+        desc: topTrait.id === 'compounding' ? 'Tốc độ giãn cách chu kỳ dài hạn vượt trội' : (topTrait.id === 'resilience' ? 'Khả năng phục hồi liên kết nơ-ron sau quên rất cao' : 'Tiêu chuẩn tự đánh giá nghiêm ngặt, học sâu')
+    };
+
     // -------------------------------------------------------------
     // 7. CHIẾN LƯỢC HỌC TẬP THỰC TẾ (Actionable & Practical Advice)
     // -------------------------------------------------------------
@@ -291,11 +297,13 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
         isPersonalized,
         trainedAt: trainedAtTimestamp,
         archetype,
+        highlightData,
         pillars: [
             {
                 id: 'resilience',
                 name: 'Phục Hồi Sau Quên',
-                subname: 'Post-Lapse Retention (w10)',
+                subname: 'Tham số w10',
+                icon: 'ph-bold ph-arrow-counter-clockwise',
                 score: resilienceScore,
                 userVal: `${(failBase * 100).toFixed(1)}%`,
                 baseVal: `${(base[10] * 100).toFixed(1)}%`,
@@ -308,8 +316,9 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
             },
             {
                 id: 'compounding',
-                name: 'Tốc Độ Giãn Cách Dài Hạn',
-                subname: 'Compounding Factor (w7)',
+                name: 'Giãn Cách Dài Hạn',
+                subname: 'Tham số w7',
+                icon: 'ph-bold ph-trend-up',
                 score: compoundingScore,
                 userVal: `${sinc.toFixed(2)}x`,
                 baseVal: `${base[7].toFixed(2)}x`,
@@ -322,8 +331,9 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
             },
             {
                 id: 'friction',
-                name: 'Độ Khắt Khe Tự Đánh Giá',
-                subname: 'Perceived Difficulty (w4)',
+                name: 'Độ Khắt Khe Đánh Giá',
+                subname: 'Tham số w4',
+                icon: 'ph-bold ph-scales',
                 score: frictionScore,
                 userVal: `${diffBase.toFixed(2)}/10`,
                 baseVal: `${base[4].toFixed(2)}/10`,
@@ -337,7 +347,8 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
             {
                 id: 'absorption',
                 name: 'Thời Gian Nhớ Từ Mới',
-                subname: 'Initial Retention (w2)',
+                subname: 'Tham số w2',
+                icon: 'ph-bold ph-hourglass-high',
                 score: absorptionScore,
                 userVal: `${s0Good.toFixed(2)} ngày`,
                 baseVal: `${base[2].toFixed(2)} ngày`,
@@ -350,8 +361,9 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
             },
             {
                 id: 'resistance',
-                name: 'Kháng Suy Giảm Trí Nhớ',
-                subname: 'Retention Stability (w24)',
+                name: 'Độ Bền Vững Ký Ức',
+                subname: 'Tham số w24',
+                icon: 'ph-bold ph-shield-check',
                 score: resistanceScore,
                 userVal: `${(decay2 * 100).toFixed(2)}%`,
                 baseVal: `${(base[24] * 100).toFixed(2)}%`,
@@ -364,11 +376,11 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
             }
         ],
         comparisonMetrics: {
-            s0Good: { name: 'Thời gian nhớ từ mới lần đầu (S0)', user: `${s0Good.toFixed(2)} ngày`, base: `${base[2].toFixed(2)}d`, delta: s0GoodDelta, barUserPct: Math.min(100, Math.round((s0Good / 6.0) * 100)), barBasePct: Math.round((base[2] / 6.0) * 100) },
-            sinc: { name: 'Hệ số nhân giãn cách ngày ôn (sinc)', user: `${sinc.toFixed(2)}x`, base: `${base[7].toFixed(2)}x`, delta: sincDelta, barUserPct: Math.min(100, Math.round((sinc / 3.5) * 100)), barBasePct: Math.round((base[7] / 3.5) * 100) },
-            failBase: { name: 'Tỷ lệ lưu giữ ký ức sau khi quên (w10)', user: `${(failBase * 100).toFixed(1)}%`, base: `${(base[10] * 100).toFixed(1)}%`, delta: failDelta, barUserPct: Math.round(failBase * 100), barBasePct: Math.round(base[10] * 100) },
-            diffBase: { name: 'Độ khó cảm nhận cơ sở (D0)', user: `${diffBase.toFixed(2)}/10`, base: `${base[4].toFixed(2)}/10`, delta: diffDelta, barUserPct: Math.round((diffBase / 10.0) * 100), barBasePct: Math.round((base[4] / 10.0) * 100) },
-            decay2: { name: 'Tốc độ hao mòn trí nhớ tự nhiên (w24)', user: `${(decay2 * 100).toFixed(2)}%`, base: `${(base[24] * 100).toFixed(2)}%`, delta: decay2Delta, barUserPct: Math.min(100, Math.round((decay2 / 0.15) * 100)), barBasePct: Math.round((base[24] / 0.15) * 100) }
+            s0Good: { icon: 'ph-bold ph-hourglass-high', name: 'Thời gian nhớ từ mới lần đầu (S0)', user: `${s0Good.toFixed(2)} ngày`, base: `${base[2].toFixed(2)}d`, delta: s0GoodDelta, barUserPct: Math.min(100, Math.round((s0Good / 6.0) * 100)), barBasePct: Math.round((base[2] / 6.0) * 100) },
+            sinc: { icon: 'ph-bold ph-trend-up', name: 'Hệ số nhân giãn cách ngày ôn (sinc)', user: `${sinc.toFixed(2)}x`, base: `${base[7].toFixed(2)}x`, delta: sincDelta, barUserPct: Math.min(100, Math.round((sinc / 3.5) * 100)), barBasePct: Math.round((base[7] / 3.5) * 100) },
+            failBase: { icon: 'ph-bold ph-shield-check', name: 'Tỷ lệ lưu giữ ký ức sau khi quên (w10)', user: `${(failBase * 100).toFixed(1)}%`, base: `${(base[10] * 100).toFixed(1)}%`, delta: failDelta, barUserPct: Math.round(failBase * 100), barBasePct: Math.round(base[10] * 100) },
+            diffBase: { icon: 'ph-bold ph-scales', name: 'Độ khó cảm nhận cơ sở (D0)', user: `${diffBase.toFixed(2)}/10`, base: `${base[4].toFixed(2)}/10`, delta: diffDelta, barUserPct: Math.round((diffBase / 10.0) * 100), barBasePct: Math.round((base[4] / 10.0) * 100) },
+            decay2: { icon: 'ph-bold ph-clock-countdown', name: 'Tốc độ hao mòn trí nhớ tự nhiên (w24)', user: `${(decay2 * 100).toFixed(2)}%`, base: `${(base[24] * 100).toFixed(2)}%`, delta: decay2Delta, barUserPct: Math.min(100, Math.round((decay2 / 0.15) * 100)), barBasePct: Math.round((base[24] / 0.15) * 100) }
         },
         recommendations
     };
@@ -414,23 +426,28 @@ export function renderFsrsPersonaUI(container) {
                 ${statusBadgeHtml}
             </div>
 
-            <!-- HERO CARD: WHO I AM -->
+            <!-- HERO CARD: WHO I AM (SPLIT 2-COLUMN LUXURY DASHBOARD) -->
             <section class="profile-card whoiam-hero-card" style="--hero-glow: ${data.archetype.badgeColor}">
                 <div class="whoiam-hero-bg-glow" style="background: ${data.archetype.gradient}"></div>
-                <div class="whoiam-hero-inner">
-                    <div class="whoiam-avatar-wrapper">
-                        <div class="whoiam-avatar-glow" style="background: ${data.archetype.gradient}">
-                            <i class="${data.archetype.icon}"></i>
+                <div class="whoiam-hero-split">
+                    <!-- Cột Trái: Danh tính nhận thức & Core Traits -->
+                    <div class="whoiam-hero-left">
+                        <div class="whoiam-identity-row">
+                            <div class="whoiam-avatar-glow" style="background: ${data.archetype.gradient}">
+                                <i class="${data.archetype.icon}"></i>
+                            </div>
+                            <div class="whoiam-identity-text">
+                                <div class="whoiam-tag-row">
+                                    <span class="whoiam-tag" style="border-color: ${data.archetype.badgeColor}; color: ${data.archetype.badgeColor}">
+                                        PHONG CÁCH NHẬN THỨC NỔI BẬT
+                                    </span>
+                                    <span class="whoiam-en-title">${data.archetype.enTitle}</span>
+                                </div>
+                                <h2 class="whoiam-hero-title">${data.archetype.title}</h2>
+                            </div>
                         </div>
-                    </div>
-                    <div class="whoiam-hero-content">
-                        <div class="whoiam-tag-row">
-                            <span class="whoiam-tag" style="border-color: ${data.archetype.badgeColor}; color: ${data.archetype.badgeColor}">
-                                PHONG CÁCH NHẬN THỨC NỔI BẬT
-                            </span>
-                            <span class="whoiam-en-title">${data.archetype.enTitle}</span>
-                        </div>
-                        <h2 class="whoiam-hero-title">${data.archetype.title}</h2>
+
+                        <p class="whoiam-summary">${data.archetype.summary}</p>
                         
                         <!-- Core Traits Chips -->
                         <div class="whoiam-traits-row">
@@ -441,18 +458,30 @@ export function renderFsrsPersonaUI(container) {
                                 </div>
                             `).join('')}
                         </div>
+                    </div>
 
-                        <p class="whoiam-summary">${data.archetype.summary}</p>
-                        
-                        <div class="whoiam-takeaway">
-                            <i class="ph-fill ph-lightbulb"></i>
-                            <span>${data.archetype.keyTakeaway}</span>
+                    <!-- Cột Phải: Thẻ Nổi Trội Nhất (Key Dominance Showcase) -->
+                    <div class="whoiam-hero-right">
+                        <div class="whoiam-highlight-box">
+                            <div class="highlight-top-label">
+                                <i class="ph-fill ph-sparkle"></i>
+                                <span>CHỈ SỐ NỔI TRỘI NHẤT</span>
+                            </div>
+                            <div class="highlight-metric-group">
+                                <span class="highlight-big-val">${data.highlightData.val}</span>
+                                <span class="highlight-delta-tag">${data.highlightData.deltaText}</span>
+                            </div>
+                            <div class="highlight-trait-name">${data.highlightData.title}</div>
+                            <div class="highlight-takeaway-block">
+                                <i class="ph-bold ph-lightbulb"></i>
+                                <span>${data.archetype.keyTakeaway}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- 5 TRỤ CỘT NHẬN THỨC VỚI THANH SO SÁNH TRỰC QUAN -->
+            <!-- 5 TRỤ CỘT NHẬN THỨC VỚI THANH SO SÁNH TRỰC QUAN (5 CỘT CÂN ĐỐI TRÊN DESKTOP) -->
             <section class="profile-card whoiam-pillars-card">
                 <div class="whoiam-section-header">
                     <div class="section-title-group">
@@ -466,11 +495,14 @@ export function renderFsrsPersonaUI(container) {
                         return `
                             <div class="pillar-box" style="--pillar-color: ${pillar.color}">
                                 <div class="pillar-box-top">
-                                    <div class="pillar-titles">
+                                    <div class="pillar-name-line">
+                                        <i class="${pillar.icon}" style="color: ${pillar.color}"></i>
                                         <h4 class="pillar-name">${pillar.name}</h4>
-                                        <span class="pillar-sub">${pillar.subname}</span>
                                     </div>
-                                    <span class="pillar-status-chip ${pillar.badgeClass}">${pillar.badge}</span>
+                                    <div class="pillar-sub-line">
+                                        <span class="pillar-sub">${pillar.subname}</span>
+                                        <span class="pillar-status-chip ${pillar.badgeClass}">${pillar.badge}</span>
+                                    </div>
                                 </div>
 
                                 <!-- Thanh So Sánh Kép Trực Quan (Dual Comparison) -->
@@ -524,7 +556,10 @@ export function renderFsrsPersonaUI(container) {
                             return `
                                 <div class="stats-visual-item">
                                     <div class="stats-info-row">
-                                        <div class="stats-name">${item.name}</div>
+                                        <div class="stats-name">
+                                            <i class="${item.icon}"></i>
+                                            <span>${item.name}</span>
+                                        </div>
                                         <div class="stats-numbers">
                                             <span class="stats-user-num">${item.user}</span>
                                             <span class="stats-base-num">(Lab: ${item.base})</span>
@@ -553,7 +588,7 @@ export function renderFsrsPersonaUI(container) {
                     <div class="whoiam-advice-list">
                         ${data.recommendations.map((rec, idx) => `
                             <div class="advice-card-item">
-                                <div class="advice-num-badge">${idx + 1}</div>
+                                <div class="advice-num-badge">0${idx + 1}</div>
                                 <div class="advice-body">
                                     <div class="advice-header-line">
                                         <i class="${rec.icon}"></i>
