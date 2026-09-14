@@ -6,7 +6,7 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-s
 import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
 import { updateStats, updatePanelWordList, displayCard, populateTopicFilters } from '../ui/render.js';
-import { showPopup } from '../ui/modal.js';
+import { showPopup, showToast } from '../ui/modal.js';
 import { DOM } from '../ui/elements.js';
 import { startBackgroundAudioPreload } from './sound.js';
 import { getSettingFromDB, saveSettingToDB } from './idb.js';
@@ -290,7 +290,7 @@ export function isSrsEqual(a, b) {
 
 let _lastLocalWriteTimestamp = 0;
 
-export async function smartSync({ forceFullPull = false } = {}) {
+export async function smartSync({ forceFullPull = false, isManual = false } = {}) {
     // --- MUTEX ---
     if (_isSyncing) {
         console.log("🔄 smartSync đã đang chạy. Đánh dấu pending...");
@@ -468,13 +468,21 @@ export async function smartSync({ forceFullPull = false } = {}) {
             setAllTags(newTags);
             
             await saveVocabulary(true); 
-            buildReviewQueue();
+            const state = stateModule.getState();
+            const isStudyingCard = (state.currentCardIndex >= 0);
+
             updateStats();
             populateTopicFilters();
             updatePanelWordList();
-            displayCard(getNextCardToReview());
+
+            // Chỉ reset lại thẻ hiển thị nếu người dùng chưa mở thẻ nào (tránh đổi thẻ người dùng đang suy nghĩ)
+            if (!isStudyingCard) {
+                buildReviewQueue();
+                displayCard(getNextCardToReview());
+            } else {
+                console.log("📖 Đang trong phiên học bài, giữ nguyên thẻ hiện tại để không gây gián đoạn.");
+            }
             console.log("📱 Đã cập nhật dữ liệu từ Cloud về máy.");
-            showPopup("Đã đồng bộ dữ liệu với Cloud!", "success");
             startBackgroundAudioPreload(vocabulary);
         } else if (cardsToPush.length > 0) {
             console.log(`☁️ Push ${cardsToPush.length} thẻ (không có thay đổi từ Cloud).`);
@@ -489,9 +497,14 @@ export async function smartSync({ forceFullPull = false } = {}) {
         await saveSettingToDB('lastSyncTime', Date.now());
 
         setSyncUIState('success');
+        if (isManual) {
+            showToast("Đồng bộ thành công", "Dữ liệu đã được đồng bộ an toàn với Cloud.", "ph-cloud-check");
+        }
     } catch (error) {
         console.error("Lỗi đồng bộ Firebase:", error);
-        showPopup("Lỗi đồng bộ: " + error.message, "error");
+        if (isManual) {
+            showToast("Lỗi đồng bộ", error.message || "Vui lòng kiểm tra kết nối mạng.", "ph-warning-circle");
+        }
         setSyncUIState('error');
     } finally {
         _isSyncing = false;
@@ -565,7 +578,7 @@ async function syncGamification() {
     }
 
     setGamification(mergedGamification);
-    await saveGamification();
+    await saveSettingToDB('gamification', mergedGamification);
     const cleanGamification = JSON.parse(JSON.stringify(mergedGamification));
     const compareA = { ...cleanGamification };
     delete compareA._lastModifiedBy;
@@ -624,7 +637,7 @@ async function syncDailyStats() {
     }
     
     setDailyStats(mergedStats);
-    await saveDailyStats();
+    await saveSettingToDB('dailyStats', mergedStats);
     const cleanStats = JSON.parse(JSON.stringify(mergedStats));
     const compareA = { ...cleanStats };
     delete compareA._lastModifiedBy;
@@ -759,33 +772,42 @@ async function syncReviewLogs() {
 
 function setSyncUIState(state) {
     if (!DOM.manualSyncBtn) return;
+    const icon = DOM.manualSyncBtn.querySelector('i');
     
     switch (state) {
         case 'syncing':
             DOM.manualSyncBtn.classList.add('syncing-active');
-            DOM.manualSyncBtn.innerHTML = '<i class="ph-duotone ph-arrows-clockwise animate-spin"></i>';
+            if (icon) icon.className = 'ph-duotone ph-arrows-clockwise animate-spin';
             DOM.manualSyncBtn.title = 'Đang đồng bộ...';
             break;
         case 'success':
             DOM.manualSyncBtn.classList.remove('syncing-active');
-            DOM.manualSyncBtn.innerHTML = '<i class="ph-duotone ph-cloud-check"></i>';
+            if (icon) icon.className = 'ph-duotone ph-cloud-check';
             DOM.manualSyncBtn.title = 'Đồng bộ thành công';
             setTimeout(() => {
                 if (DOM.manualSyncBtn) {
-                    DOM.manualSyncBtn.innerHTML = '<i class="ph-duotone ph-arrows-clockwise"></i>';
-                    DOM.manualSyncBtn.title = 'Đồng bộ thủ công';
+                    const ic = DOM.manualSyncBtn.querySelector('i');
+                    if (ic) ic.className = 'ph-duotone ph-arrows-clockwise';
+                    DOM.manualSyncBtn.title = 'Đồng bộ Cloud';
                 }
             }, 2500);
             break;
         case 'offline':
             DOM.manualSyncBtn.classList.remove('syncing-active');
-            DOM.manualSyncBtn.innerHTML = '<i class="ph-duotone ph-cloud-slash"></i>';
+            if (icon) icon.className = 'ph-duotone ph-cloud-slash';
             DOM.manualSyncBtn.title = 'Đang ngoại tuyến (Offline)';
             break;
         case 'error':
             DOM.manualSyncBtn.classList.remove('syncing-active');
-            DOM.manualSyncBtn.innerHTML = '<i class="ph-duotone ph-cloud-warning"></i>';
+            if (icon) icon.className = 'ph-duotone ph-cloud-warning';
             DOM.manualSyncBtn.title = 'Đồng bộ thất bại!';
+            setTimeout(() => {
+                if (DOM.manualSyncBtn) {
+                    const ic = DOM.manualSyncBtn.querySelector('i');
+                    if (ic) ic.className = 'ph-duotone ph-arrows-clockwise';
+                    DOM.manualSyncBtn.title = 'Đồng bộ Cloud';
+                }
+            }, 4000);
             break;
     }
 }
@@ -821,42 +843,13 @@ export function setupOnlineOfflineListeners() {
 let _realtimeUnsubscribers = [];
 
 export function setupRealtimeSyncListener() {
-    if (_realtimeUnsubscribers.length > 0) return;
-
-    let debounceTimer = null;
-    const triggerDebouncedSync = (sourceName) => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            console.log(`⚡️ [Real-time Sync] Phát hiện thay đổi từ thiết bị khác (${sourceName}). Đang đồng bộ...`);
-            smartSync();
-        }, 1500);
-    };
-
-    try {
-        // 1. Lắng nghe thay đổi trên sub-documents user settings/gamification/dailyStats
-        const docsToWatch = ['settings', 'gamification', 'dailyStats', 'reviewLogs'];
-        docsToWatch.forEach(docName => {
-            const docRef = doc(db, USER_SYNC_COLLECTION, docName);
-            const unsub = onSnapshot(docRef, (snapshot) => {
-                // Chỉ kích hoạt sync nếu thay đổi tới từ xa (Cloud/thiết bị khác), không phải do local ghi
-                if (!snapshot.metadata.hasPendingWrites && snapshot.exists()) {
-                    const data = snapshot.data();
-                    // Bỏ qua nếu thay đổi được ghi từ chính thiết bị này (anti echo-loop)
-                    if (data && data._lastModifiedBy === getDeviceId()) {
-                        return;
-                    }
-                    // Nếu phản hồi snapshot này xảy ra ngay sau một thao tác ghi từ máy này, bỏ qua
-                    if (Date.now() - _lastLocalWriteTimestamp < 3000) return;
-                    triggerDebouncedSync(docName);
-                }
-            }, (err) => {
-                console.warn(`Lỗi Realtime listener (${docName}):`, err);
-            });
-            _realtimeUnsubscribers.push(unsub);
+    // Đã tắt Real-time onSnapshot listener theo yêu cầu người dùng (không bắt buộc realtime).
+    // Giúp loại bỏ hoàn toàn tình trạng loop sync liên tục và spam khi đang học thẻ.
+    if (_realtimeUnsubscribers.length > 0) {
+        _realtimeUnsubscribers.forEach(unsub => {
+            try { if (typeof unsub === 'function') unsub(); } catch (e) {}
         });
-
-        console.log("⚡️ Real-time multi-device sync listener đã được kích hoạt.");
-    } catch (e) {
-        console.error("Không thể khởi chạy Real-time sync listener:", e);
+        _realtimeUnsubscribers = [];
     }
+    console.log("ℹ️ Real-time Firestore onSnapshot listener đã tắt theo cấu hình (không bắt buộc realtime).");
 }

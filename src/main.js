@@ -110,36 +110,35 @@ async function initializeApp() {
     const { recoverPendingSyncIds, flushSyncQueueBeforeUnload, flushSyncQueue, syncGamificationToFirebase } = await import('./core/sync.js');
     await recoverPendingSyncIds();
 
-    // Setup online/offline detection & Real-time multi-device sync
-    const { setupOnlineOfflineListeners, setupRealtimeSyncListener } = await import('./core/firebase.js');
+    // Setup online/offline detection (Real-time listener đã tắt)
+    const { setupOnlineOfflineListeners } = await import('./core/firebase.js');
     setupOnlineOfflineListeners();
-    setupRealtimeSyncListener();
 
     // Đồng bộ lần đầu sau 2 giây (chờ DOM ổn định)
 	setTimeout(() => {
-        smartSync();
+        smartSync({ isManual: false });
     }, 2000);
 	setTimeout(() => {
         startBackgroundAudioPreload(getState().vocabulary);
     }, 3000);
 
-    // --- VISIBILITYCHANGE: Smart Sync khi chuyển tab ---
+    // --- VISIBILITYCHANGE: Sync nhẹ nhàng khi chuyển tab ---
     // Khi user rời tab: flush pending changes lên Cloud
-    // Khi user quay lại tab: pull dữ liệu mới từ Cloud
+    // Khi user quay lại tab: pull dữ liệu mới từ Cloud (cooldown 5 phút)
     let _lastVisibilitySync = 0;
-    const VISIBILITY_SYNC_COOLDOWN_MS = 15000; // 15s cooldown (giảm từ 30s)
+    const VISIBILITY_SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 phút cooldown (tránh spam khi alt-tab nhanh)
     
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
-            // User rời tab → flush ngay để thiết bị khác nhận được
+            // User rời tab → flush ngầm dữ liệu để thiết bị khác nhận được
             flushSyncQueue();
             syncGamificationToFirebase();
         } else if (document.visibilityState === 'visible') {
             const now = Date.now();
             if (now - _lastVisibilitySync > VISIBILITY_SYNC_COOLDOWN_MS) {
                 _lastVisibilitySync = now;
-                console.log("👀 Tab active trở lại. Đồng bộ dữ liệu...");
-                smartSync();
+                console.log("👀 Tab active trở lại. Đồng bộ dữ liệu nền...");
+                smartSync({ isManual: false });
             }
         }
     });
