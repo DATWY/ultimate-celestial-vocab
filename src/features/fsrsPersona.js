@@ -1,228 +1,290 @@
-// src/features/fsrsPersona.js — FSRS-7 Cognitive Persona & Mind Profiler
+// src/features/fsrsPersona.js — Who I Am: Cognitive Profile & FSRS-7 Parameter Analyzer
 import { getState } from '../core/state.js';
 import { DEFAULT_FSRS7_PARAMS } from '../core/srs/constants.js';
 
 /**
- * Phân tích chuyên sâu 34 tham số của FSRS-7 để vẽ nên Chân Dung Nhận Thức học tập.
- * Thuật toán so sánh từng miền trọng số với bộ chuẩn Lab (DEFAULT_FSRS7_PARAMS)
- * để tính toán ra 5 Trụ Cột Nhận Thức, Danh Hiệu Chủ Đạo và Chiến Lược Học Tập Cá Nhân Hóa.
+ * Phân tích chuyên sâu 34 tham số trọng số của mô hình FSRS-7 Dual-Stability.
+ * Ngôn ngữ khách quan, học thuật, thực tế, dễ hiểu, không sử dụng từ ngữ hoa mĩ hay ví von văn học.
+ * Đánh giá chính xác phản xạ não bộ, độ bền trí nhớ và đưa ra chiến lược học tập thực tế.
  */
 export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
     const p = (Array.isArray(userParams) && userParams.length === 34) ? userParams : DEFAULT_FSRS7_PARAMS;
     const isPersonalized = (Array.isArray(userParams) && userParams.length === 34 && JSON.stringify(userParams) !== JSON.stringify(DEFAULT_FSRS7_PARAMS));
     const base = DEFAULT_FSRS7_PARAMS;
 
-    // Helper: tính tỷ lệ phần trăm sai khác so với chuẩn Lab
+    // Helper: Tính tỷ lệ lệch % so với mức chuẩn Lab
     const getDeltaPct = (val, baseVal) => {
         if (!baseVal) return 0;
         return ((val - baseVal) / baseVal) * 100;
     };
 
-    // 1. TRỤ CỘT 1: KHẢ NĂNG HẤP THỤ BAN ĐẦU (Initial Concept Absorption)
-    // Dựa trên w[0..3]: S0 của Again, Hard, Good, Easy
-    // w[2] (Good S0): chuẩn Lab là 3.9221 ngày
-    const s0Good = p[2];
-    const s0GoodDelta = getDeltaPct(s0Good, base[2]);
-    // w[3] / w[2]: Tỷ lệ phân hóa thẻ dễ
-    const easyRatio = p[3] / (p[2] || 1);
-    const easyRatioBase = base[3] / base[2]; // ~3.0
-    // Điểm chuẩn hóa 0 - 100
-    let absorptionScore = Math.min(99, Math.max(30, Math.round(50 + (s0GoodDelta * 1.2) + ((easyRatio - easyRatioBase) * 8))));
-
-    let absorptionTitle = "Khắc Sâu Tự Nhiên";
-    let absorptionDesc = "Khả năng tiếp thu khái niệm mới ở mức tự nhiên, nhịp nhàng và ổn định.";
-    if (absorptionScore >= 75) {
-        absorptionTitle = "Hấp Thụ Nhanh (Fast Acquisition)";
-        absorptionDesc = "Não bộ liên kết từ mới vào mạng lưới tri thức rất nhạy bén; ấn tượng đầu lưu giữ lâu.";
-    } else if (absorptionScore <= 45) {
-        absorptionTitle = "Học Kỹ & Cẩn Trọng (Deliberate Learner)";
-        absorptionDesc = "Cần chu kỳ lặp lại gần hơn ở giai đoạn đầu để chuyển hóa kiến thức từ ngắn hạn sang dài hạn.";
-    }
-
-    // 2. TRỤ CỘT 2: TÍCH LŨY DÀI HẠN (Long-Term Compounding Power)
-    // Dựa trên w[7] (sinc_base: chuẩn Lab 1.9795) và w[14] (easy_bonus: chuẩn 1.0)
-    const sinc = p[7];
-    const sincDelta = getDeltaPct(sinc, base[7]);
-    const easyBonus = p[14];
-    let compoundingScore = Math.min(99, Math.max(25, Math.round(50 + (sincDelta * 1.5) + ((easyBonus - base[14]) * 20))));
-
-    let compoundingTitle = "Tăng Trưởng Nhịp Nhàng";
-    let compoundingDesc = "Khoảng cách ôn tập giãn ra đều đặn theo cấp số nhân chuẩn khoa học.";
-    if (compoundingScore >= 75) {
-        compoundingTitle = "Tích Lũy Bùng Nổ (Exponential Compounding)";
-        compoundingDesc = "Khi đã thuộc liên tiếp, chu kỳ nhớ giãn ra cực mạnh; kiến thức nhanh chóng ăn sâu vào tiềm thức.";
-    } else if (compoundingScore <= 45) {
-        compoundingTitle = "Củng Cố Liên Tục (Steady Frequency)";
-        compoundingDesc = "Khoảng cách ôn tập giãn vừa phải, thích hợp với người học thích gặp lại từ vựng thường xuyên để yên tâm.";
-    }
-
-    // 3. TRỤ CỘT 3: SỨC BẬT PHỤC HỒI KHI QUÊN (Cognitive Resilience / Amnesia Bounce)
-    // Dựa trên w[10] (fail_base: chuẩn Lab 0.7024) và w[11] (fail_power: chuẩn 0.5999)
+    // -------------------------------------------------------------
+    // 1. KHẢ NĂNG PHỤC HỒI SAU KHI QUÊN (Post-Lapse Retention / Fail Base w[10])
+    // -------------------------------------------------------------
     const failBase = p[10];
     const failDelta = getDeltaPct(failBase, base[10]);
-    let resilienceScore = Math.min(99, Math.max(20, Math.round(50 + (failDelta * 2.0))));
+    let resilienceScore = Math.min(99, Math.max(20, Math.round(50 + (failDelta * 1.8))));
 
-    let resilienceTitle = "Phục Hồi Thích Nghi";
-    let resilienceDesc = "Khi quên, bạn lấy lại phong độ ở mức tiêu chuẩn sau một vài lần nhắc lại.";
-    if (resilienceScore >= 75) {
-        resilienceTitle = "Sức Bật Phượng Hoàng (Resilient Bounce)";
-        resilienceDesc = "Khi bấm 'Quên', dấu vết ký ức ngầm vẫn được bảo tồn đến hơn 80%; bạn hồi sinh trí nhớ cực nhanh.";
-    } else if (resilienceScore <= 45) {
-        resilienceTitle = "Xây Lại Từ Gốc (Clean-Slate Rebuilder)";
-        resilienceDesc = "Mỗi khi quên, não bộ có xu hướng muốn rà soát và xây dựng lại từ nền móng, không để sót lỗ hổng.";
+    let resilienceStatus = "Phục Hồi Chuẩn";
+    let resilienceDesc = "Khi quên một từ, bạn phục hồi lại phong độ trí nhớ ở mức tiêu chuẩn sau một vài lần ôn tập.";
+    let resilienceBadge = "Tương đương";
+    let resilienceBadgeClass = "neutral";
+
+    if (failDelta >= 12) {
+        resilienceStatus = "Phục Hồi Rất Nhanh";
+        resilienceDesc = `Khi bấm 'Quên' (Again), não bạn vẫn lưu giữ được ${(failBase * 100).toFixed(1)}% dấu vết ký ức cũ (chuẩn Lab: ${(base[10] * 100).toFixed(1)}%). Bạn chỉ cần 1 lần ôn lại là khôi phục độ nhớ dài hạn mà không phải học lại từ đầu.`;
+        resilienceBadge = `+${failDelta.toFixed(1)}% Vượt trội`;
+        resilienceBadgeClass = "good";
+    } else if (failDelta <= -12) {
+        resilienceStatus = "Cần Củng Cố Kỹ Khi Quên";
+        resilienceDesc = `Khi quên, mức độ lưu giữ giảm xuống còn ${(failBase * 100).toFixed(1)}%. Não bạn có xu hướng muốn học lại từ gốc, do đó cần ôn lặp lại 2-3 lần trong chu kỳ ngắn để xây dựng lại trí nhớ.`;
+        resilienceBadge = `${failDelta.toFixed(1)}% Thấp hơn`;
+        resilienceBadgeClass = "warn";
     }
 
-    // 4. TRỤ CỘT 4: TIÊU CHUẨN & ĐỘ KHẮT KHE (Perceived Friction & Standards)
-    // Dựa trên w[4] (init_d_base: chuẩn Lab 6.1686) và w[6] (delta_d_scale: chuẩn 3.6807)
+    // -------------------------------------------------------------
+    // 2. TỐC ĐỘ GIÃN CÁCH DÀI HẠN (Compounding Spacing Factor / sinc w[7])
+    // -------------------------------------------------------------
+    const sinc = p[7];
+    const sincDelta = getDeltaPct(sinc, base[7]);
+    let compoundingScore = Math.min(99, Math.max(20, Math.round(50 + (sincDelta * 1.6))));
+
+    let compoundingStatus = "Giãn Cách Chuẩn";
+    let compoundingDesc = "Khoảng cách giữa các lần ôn tập giãn ra đều đặn theo cấp số nhân tiêu chuẩn.";
+    let compoundingBadge = "Tương đương";
+    let compoundingBadgeClass = "neutral";
+
+    if (sincDelta >= 12) {
+        compoundingStatus = "Giãn Cách Cực Nhanh";
+        compoundingDesc = `Khi bạn nhớ đúng liên tiếp, khoảng cách ngày ôn nhân lên ${sinc.toFixed(2)}x (chuẩn Lab: ${base[7].toFixed(2)}x). Kiến thức nhanh chóng chuyển vào bộ nhớ dài hạn, giúp giảm đáng kể số thẻ phải ôn mỗi ngày.`;
+        compoundingBadge = `+${sincDelta.toFixed(1)}% Vượt trội`;
+        compoundingBadgeClass = "good";
+    } else if (sincDelta <= -12) {
+        compoundingStatus = "Giãn Cách Thận Trọng";
+        compoundingDesc = `Hệ số giãn cách ở mức ${sinc.toFixed(2)}x. Thuật toán cho bạn gặp lại từ vựng thường xuyên hơn để đảm bảo không bị rơi rụng kiến thức.`;
+        compoundingBadge = `${sincDelta.toFixed(1)}% Thấp hơn`;
+        compoundingBadgeClass = "warn";
+    }
+
+    // -------------------------------------------------------------
+    // 3. ĐỘ KHẮT KHE KHI TỰ ĐÁNH GIÁ (Initial Difficulty Perception / D0 w[4])
+    // -------------------------------------------------------------
     const diffBase = p[4];
     const diffDelta = getDeltaPct(diffBase, base[4]);
-    const deltaScale = p[6];
-    const deltaScaleDelta = getDeltaPct(deltaScale, base[6]);
-    let frictionScore = Math.min(99, Math.max(20, Math.round(50 + (diffDelta * 1.3) + (deltaScaleDelta * 0.7))));
+    let frictionScore = Math.min(99, Math.max(20, Math.round(50 + (diffDelta * 1.4))));
 
-    let frictionTitle = "Thực Tế & Cân Bằng";
-    let frictionDesc = "Đánh giá khách quan độ phức tạp của bài học, không quá áp lực cũng không chủ quan.";
-    if (frictionScore >= 75) {
-        frictionTitle = "Khắt Khe & Cầu Toàn (High-Bar Perfectionist)";
-        frictionDesc = "Đòi hỏi độ chính xác tuyệt đối; đánh giá từ mới có độ khó cao và phân loại nghiêm khắc.";
-    } else if (frictionScore <= 45) {
-        frictionTitle = "Tự Tin & Phóng Khoáng (Low-Friction Flow)";
-        frictionDesc = "Tâm lý học tập thoải mái, dễ dàng đón nhận từ mới mà không bị rào cản sợ khó khăn.";
+    let frictionStatus = "Đánh Giá Cân Bằng";
+    let frictionDesc = "Bạn đánh giá độ khó của từ vựng ở mức hợp lý, khách quan giữa các mức Dễ, Nhớ, Khó.";
+    let frictionBadge = "Tương đương";
+    let frictionBadgeClass = "neutral";
+
+    if (diffDelta >= 12) {
+        frictionStatus = "Rất Khắt Khe & Cẩn Thận";
+        frictionDesc = `Bạn tự đánh giá độ khó khởi điểm ở mức ${diffBase.toFixed(2)}/10 (chuẩn Lab: ${base[4].toFixed(2)}/10). Bạn có tiêu chuẩn cao, chỉ bấm 'Dễ' khi đã thực sự hiểu sâu, giúp kiến thức một khi đã thuộc thì rất chắc.`;
+        frictionBadge = `+${diffDelta.toFixed(1)}% Khắt khe`;
+        frictionBadgeClass = "good";
+    } else if (diffDelta <= -12) {
+        frictionStatus = "Tự Tin & Phóng Khoáng";
+        frictionDesc = `Độ khó cảm nhận của bạn là ${diffBase.toFixed(2)}/10. Bạn học với tâm lý thoải mái, dễ dàng tiếp nhận từ mới mà không bị áp lực độ khó.`;
+        frictionBadge = `${diffDelta.toFixed(1)}% Thoải mái`;
+        frictionBadgeClass = "neutral";
     }
 
-    // 5. TRỤ CỘT 5: ĐỘ BỀN BỈ KHÁNG QUÊN (Forgetting Resistance & Vault Depth)
-    // Dựa trên nghịch đảo của w[23] (fast decay: chuẩn 0.1567) và w[24] (slow decay: chuẩn 0.0801)
-    const decay1 = p[23];
+    // -------------------------------------------------------------
+    // 4. THỜI GIAN GHI NHỚ TỪ MỚI (Initial Retention Duration / S0 Good w[2])
+    // -------------------------------------------------------------
+    const s0Good = p[2];
+    const s0GoodDelta = getDeltaPct(s0Good, base[2]);
+    let absorptionScore = Math.min(99, Math.max(20, Math.round(50 + (s0GoodDelta * 1.3))));
+
+    let absorptionStatus = "Ghi Nhớ Tiêu Chuẩn";
+    let absorptionDesc = "Thời gian ghi nhớ tự nhiên sau lần học đầu tiên ở mức ổn định theo chuẩn khoa học.";
+    let absorptionBadge = "Tương đương";
+    let absorptionBadgeClass = "neutral";
+
+    if (s0GoodDelta >= 12) {
+        absorptionStatus = "Nhớ Ban Đầu Rất Lâu";
+        absorptionDesc = `Từ mới học lần đầu giữ được ${s0Good.toFixed(1)} ngày (chuẩn Lab: ${base[2].toFixed(1)} ngày). Não bạn mã hóa ấn tượng ban đầu rất nhanh, ít cần lặp lại trong ngày đầu.`;
+        absorptionBadge = `+${s0GoodDelta.toFixed(1)}% Nhanh hơn`;
+        absorptionBadgeClass = "good";
+    } else if (s0GoodDelta <= -8) {
+        absorptionStatus = "Cần Củng Cố Ngày Đầu";
+        absorptionDesc = `Thời gian nhớ từ mới lần đầu là ${s0Good.toFixed(2)} ngày (thấp hơn chuẩn ${Math.abs(s0GoodDelta).toFixed(1)}%). Bạn cần ưu tiên ôn lại thẻ mới trong vòng 24 giờ đầu để khóa kiến thức vào bộ nhớ dài hạn.`;
+        absorptionBadge = `${s0GoodDelta.toFixed(1)}% Cần ôn sớm`;
+        absorptionBadgeClass = "warn";
+    }
+
+    // -------------------------------------------------------------
+    // 5. ĐỘ BỀN VỮNG KÝ ỨC THEO THỜI GIAN (Retention Decay Rate w[23, 24])
+    // -------------------------------------------------------------
     const decay2 = p[24];
-    const decay1Delta = getDeltaPct(decay1, base[23]);
     const decay2Delta = getDeltaPct(decay2, base[24]);
-    // Decay càng thấp thì kháng quên càng cao
-    let resistanceScore = Math.min(99, Math.max(20, Math.round(50 - (decay1Delta * 0.8) - (decay2Delta * 1.2))));
+    // Decay càng cao = hao mòn càng nhanh = score thấp hơn
+    let resistanceScore = Math.min(99, Math.max(20, Math.round(50 - (decay2Delta * 1.2))));
 
-    let resistanceTitle = "Độ Bền Ký Ức Chuẩn";
-    let resistanceDesc = "Tốc độ suy giảm ký ức tuân theo đường cong lãng quên tự nhiên của tâm lý học thực nghiệm.";
-    if (resistanceScore >= 75) {
-        resistanceTitle = "Két Sắt Ký Ức (Vault-Lock Memory)";
-        resistanceDesc = "Tốc độ phân rã trí nhớ chậm hơn mức trung bình; một khi đã vượt qua vòng lọc là nhớ rất bền.";
-    } else if (resistanceScore <= 45) {
-        resistanceTitle = "Nhạy Cảm Với Thời Gian (Dynamic Decay)";
-        resistanceDesc = "Kiến thức hao mòn nhanh hơn nếu không được ôn đúng hẹn; cần duy trì streak đều đặn.";
+    let resistanceStatus = "Suy Giảm Tự Nhiên";
+    let resistanceDesc = "Tốc độ hao mòn trí nhớ theo thời gian diễn ra theo đúng đường cong lãng quên tự nhiên.";
+    let resistanceBadge = "Tương đương";
+    let resistanceBadgeClass = "neutral";
+
+    if (decay2Delta <= -10) {
+        resistanceStatus = "Giữ Ký Ức Rất Bền";
+        resistanceDesc = `Tốc độ hao mòn trí nhớ chậm hơn chuẩn ${Math.abs(decay2Delta).toFixed(1)}%. Ký ức được lưu giữ ổn định lâu dài ngay cả khi khoảng cách ôn tập kéo dài.`;
+        resistanceBadge = `+${Math.abs(decay2Delta).toFixed(1)}% Bền vững`;
+        resistanceBadgeClass = "good";
+    } else if (decay2Delta >= 10) {
+        resistanceStatus = "Nhạy Cảm Với Thời Gian";
+        resistanceDesc = `Tốc độ hao mòn đạt ${(decay2 * 100).toFixed(2)}% (chuẩn Lab: ${(base[24] * 100).toFixed(2)}%). Nếu bạn để trễ lịch ôn, từ vựng sẽ bị quên nhanh hơn; việc duy trì streak hàng ngày là yếu tố then chốt.`;
+        resistanceBadge = `+${decay2Delta.toFixed(1)}% Quên nhanh nếu trễ`;
+        resistanceBadgeClass = "warn";
     }
 
-    // 6. XÁC ĐỊNH DANH HIỆU NHẬN THỨC CHỦ ĐẠO (Primary Archetype)
-    const pillars = [
-        { id: 'resilience', name: 'Sức Bật Phục Hồi', score: resilienceScore },
-        { id: 'compounding', name: 'Tích Lũy Dài Hạn', score: compoundingScore },
-        { id: 'absorption', name: 'Hấp Thụ Ban Đầu', score: absorptionScore },
-        { id: 'friction', name: 'Tiêu Chuẩn & Cầu Toàn', score: frictionScore },
-        { id: 'resistance', name: 'Bền Bỉ Kháng Quên', score: resistanceScore }
+    // -------------------------------------------------------------
+    // 6. XÁC ĐỊNH PHONG CÁCH HỌC TẬP CHỦ ĐẠO (Primary Cognitive Profile)
+    // -------------------------------------------------------------
+    // Sắp xếp các chỉ số theo độ lệch vượt trội lớn nhất so với chuẩn
+    const candidateTraits = [
+        { id: 'compounding', name: 'Tích Lũy Dài Hạn', score: compoundingScore, delta: sincDelta },
+        { id: 'resilience', name: 'Phục Hồi Sau Quên', score: resilienceScore, delta: failDelta },
+        { id: 'friction', name: 'Độ Khắt Khe & Chuẩn Mực', score: frictionScore, delta: diffDelta },
+        { id: 'absorption', name: 'Mã Hóa Ban Đầu', score: absorptionScore, delta: s0GoodDelta },
+        { id: 'resistance', name: 'Độ Bền Vững Trí Nhớ', score: resistanceScore, delta: -decay2Delta }
     ];
-    pillars.sort((a, b) => b.score - a.score);
-    const topPillar = pillars[0];
+    candidateTraits.sort((a, b) => b.delta - a.delta);
+    const topTrait = candidateTraits[0];
 
     let archetype = {
-        title: "Nhà Khám Phá Thích Ứng",
-        enTitle: "The Adaptive Explorer",
-        icon: "ph-duotone ph-compass",
-        gradient: "linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6)",
-        badgeColor: "#06b6d4",
-        motto: "Linh hoạt biến hóa theo từng dạng từ vựng, tự cân bằng nhịp thở nhận thức hoàn hảo.",
-        summary: "Bộ não của bạn có sự hài hòa tuyệt vời giữa các chu kỳ tiếp nhận và duy trì. Bạn không bị đóng khung vào một khuôn mẫu cố định mà có thể điều chỉnh tốc độ học theo độ khó của từng chủ đề."
+        title: "Người Học Thích Ứng Linh Hoạt",
+        enTitle: "Adaptive Balanced Learner",
+        icon: "ph-duotone ph-sliders",
+        badgeColor: "#38bdf8",
+        gradient: "linear-gradient(135deg, #0284c7, #2563eb, #6366f1)",
+        coreTraits: [
+            { label: "Mã hóa ban đầu", val: "Chuẩn khoa học" },
+            { label: "Hệ số giãn cách", val: `${sinc.toFixed(2)}x` },
+            { label: "Phục hồi sau quên", val: `${(failBase * 100).toFixed(1)}%` }
+        ],
+        summary: "Bộ chỉ số của bạn phân bố rất đồng đều, không bị lệch cực đoan. Não bộ của bạn có khả năng thích nghi linh hoạt: từ dễ thì giãn cách nhanh, từ khó thì củng cố nhịp nhàng, tối ưu hóa năng lượng học tập hàng ngày.",
+        keyTakeaway: "Duy trì nhịp học ổn định hiện tại, kết hợp học đều đặn mỗi ngày 10-15 phút để phát huy tối đa khả năng thích ứng tự nhiên."
     };
 
-    if (topPillar.id === 'resilience' && topPillar.score >= 68) {
+    if (topTrait.id === 'compounding' && topTrait.delta >= 15) {
         archetype = {
-            title: "Học Giả Phượng Hoàng",
-            enTitle: "The Resilient Phoenix",
-            icon: "ph-duotone ph-fire",
-            gradient: "linear-gradient(135deg, #f97316, #ef4444, #ec4899)",
-            badgeColor: "#f97316",
-            motto: "Vấp ngã không phải là xóa bỏ, mà là bệ phóng để mạng nơ-ron hồi sinh sắc bén hơn.",
-            summary: "Đặc điểm nổi bật nhất của bạn là sức bật phi thường sau khi quên. Trọng số FSRS-7 chỉ ra rằng khi bạn bấm 'Again', hơn 80% dấu vết ký ức nền vẫn được bảo tồn nguyên vẹn, giúp bạn khôi phục độ bền dài hạn với tốc độ đáng kinh ngạc."
-        };
-    } else if (topPillar.id === 'compounding' && topPillar.score >= 68) {
-        archetype = {
-            title: "Kiến Trúc Sư Ký Ức",
-            enTitle: "The Memory Architect",
-            icon: "ph-duotone ph-buildings",
-            gradient: "linear-gradient(135deg, #3b82f6, #6366f1, #8b5cf6)",
+            title: "Người Học Tích Lũy Dài Hạn",
+            enTitle: "Long-Term Compounding Learner",
+            icon: "ph-duotone ph-chart-line-up",
             badgeColor: "#6366f1",
-            motto: "Xây dựng từng tầng tri thức vững như thành lũy, tích lũy theo cấp số nhân phi mã.",
-            summary: "Bộ số cá nhân hóa của bạn cho thấy hệ số giãn cách dài hạn (sinc_base) vượt trội. Mỗi lần bạn thuộc một từ liên tiếp, khoảng cách ngày ôn sẽ nở rộng theo cấp số nhân mạnh mẽ, giúp bạn học được lượng từ khổng lồ mà không sợ bị quá tải ôn tập."
+            gradient: "linear-gradient(135deg, #4f46e5, #6366f1, #8b5cf6)",
+            coreTraits: [
+                { label: "Hệ số giãn cách (sinc)", val: `${sinc.toFixed(2)}x (+${sincDelta.toFixed(1)}%)`, highlight: true },
+                { label: "Khả năng phục hồi", val: `${(failBase * 100).toFixed(1)}%` },
+                { label: "Độ khắt khe (D0)", val: `${diffBase.toFixed(2)}/10` }
+            ],
+            summary: `Đặc điểm nổi bật nhất của bạn là tốc độ giãn cách chu kỳ ôn tập cấp số nhân đạt ${sinc.toFixed(2)}x (cao hơn chuẩn Lab ${sincDelta.toFixed(1)}%). Khi bạn nhớ đúng một từ liên tiếp, chu kỳ nhớ dài ra rất nhanh, giúp bạn hấp thụ được kho từ vựng lớn mà không bị nghẽn lịch ôn tập.`,
+            keyTakeaway: "Bạn phù hợp nhất với việc mở rộng thêm từ mới đều đặn. Lịch ôn tập dài hạn của bạn sẽ tự động thưa ra mà vẫn giữ nguyên độ thuộc bài."
         };
-    } else if (topPillar.id === 'friction' && topPillar.score >= 68) {
+    } else if (topTrait.id === 'resilience' && topTrait.delta >= 15) {
         archetype = {
-            title: "Học Giả Cầu Toàn",
-            enTitle: "The Precision Perfectionist",
-            icon: "ph-duotone ph-crosshair",
-            gradient: "linear-gradient(135deg, #a855f7, #9333ea, #7e22ce)",
+            title: "Người Học Phục Hồi Nhanh",
+            enTitle: "High-Recovery Learner",
+            icon: "ph-duotone ph-arrow-counter-clockwise",
+            badgeColor: "#f97316",
+            gradient: "linear-gradient(135deg, #ea580c, #f97316, #fb923c)",
+            coreTraits: [
+                { label: "Bảo tồn sau quên", val: `${(failBase * 100).toFixed(1)}% (+${failDelta.toFixed(1)}%)`, highlight: true },
+                { label: "Hệ số giãn cách", val: `${sinc.toFixed(2)}x` },
+                { label: "Độ khắt khe (D0)", val: `${diffBase.toFixed(2)}/10` }
+            ],
+            summary: `Đặc điểm nổi trội nhất của bạn là khả năng phục hồi liên kết nơ-ron rất nhanh sau khi quên. Khi bạn đánh giá 'Quên' (Again), hơn ${(failBase * 100).toFixed(0)}% dấu vết ký ức nền vẫn còn được lưu trữ trong tiềm thức. Bạn chỉ cần 1 lần ôn lại là khôi phục được độ nhớ lâu dài mà không cần học lại từ đầu.`,
+            keyTakeaway: "Đừng ngần ngại bấm 'Quên' khi gặp từ lạ. Não bạn khôi phục dữ liệu rất hiệu quả, việc gặp lại từ sẽ củng cố liên kết sâu hơn."
+        };
+    } else if (topTrait.id === 'friction' && topTrait.delta >= 15) {
+        archetype = {
+            title: "Người Học Tiêu Chuẩn Cao",
+            enTitle: "High-Precision Learner",
+            icon: "ph-duotone ph-check-circle",
             badgeColor: "#a855f7",
-            motto: "Không thỏa hiệp với sự mơ hồ; nắm bắt tinh tường từng sắc thái nghĩa trước khi vượt qua.",
-            summary: "Bạn có ngưỡng đánh giá độ khó ban đầu và độ nhạy cảm ứng rất cao. Bạn không bao giờ bấm 'Easy' một cách vội vã. Nhờ sự khắt khe này, một khi từ vựng đã được bạn công nhận là 'Đã thuộc', chất lượng ghi nhớ của bạn đạt độ chính xác gần như tuyệt đối."
+            gradient: "linear-gradient(135deg, #7e22ce, #9333ea, #c084fc)",
+            coreTraits: [
+                { label: "Độ khó cơ sở (D0)", val: `${diffBase.toFixed(2)}/10 (+${diffDelta.toFixed(1)}%)`, highlight: true },
+                { label: "Hệ số giãn cách", val: `${sinc.toFixed(2)}x` },
+                { label: "Khả năng phục hồi", val: `${(failBase * 100).toFixed(1)}%` }
+            ],
+            summary: `Bạn có tiêu chuẩn tự đánh giá nghiêm túc và khắt khe với bản thân (độ khó khởi điểm ${diffBase.toFixed(2)}/10). Bạn hiếm khi chủ quan bấm 'Dễ' nếu chưa thực sự chắc chắn về ngữ nghĩa. Phong cách này giúp từ vựng một khi đã thuộc thì đạt độ chính xác gần như tuyệt đối.`,
+            keyTakeaway: "Đối với những từ bạn đã phản xạ nhận diện trong vòng 2 giây, hãy mạnh dạn bấm 'Dễ' hoặc 'Nhớ' để tránh lặp lại thừa."
         };
-    } else if (topPillar.id === 'absorption' && topPillar.score >= 68) {
+    } else if (topTrait.id === 'absorption' && topTrait.delta >= 15) {
         archetype = {
-            title: "Bậc Thầy Trực Giác",
-            enTitle: "The Intuitive Synthesizer",
+            title: "Người Học Hấp Thụ Nhanh",
+            enTitle: "Fast-Acquisition Learner",
             icon: "ph-duotone ph-lightning",
-            gradient: "linear-gradient(135deg, #eab308, #f59e0b, #f97316)",
-            badgeColor: "#f59e0b",
-            motto: "Bắt sóng tri thức bằng trực giác sắc bén, chuyển hóa khái niệm mới thành bản năng tức thì.",
-            summary: "Độ bền ngày đầu (Initial Stability) của bạn cao hơn đáng kể so với mức trung bình. Bạn có khả năng liên kết từ vựng mới vào ngữ cảnh thực tế cực kỳ nhanh, giúp giảm bớt số lần phải lặp lại ở giai đoạn đầu."
-        };
-    } else if (topPillar.id === 'resistance' && topPillar.score >= 68) {
-        archetype = {
-            title: "Két Sắt Ký Ức",
-            enTitle: "The Vault-Lock Master",
-            icon: "ph-duotone ph-shield-check",
-            gradient: "linear-gradient(135deg, #10b981, #059669, #047857)",
-            badgeColor: "#10b981",
-            motto: "Ký ức khóa chặt trong tiềm thức sâu thẳm, miễn nhiễm trước sự hao mòn của thời gian.",
-            summary: "Đường cong lãng quên của bạn có hệ số phân rã cực kỳ thấp. Bạn có khả năng duy trì kiến thức trong thời gian dài mà ít bị rơi rụng, tạo nên nền tảng vững như kim cương cho việc học mở rộng."
+            badgeColor: "#eab308",
+            gradient: "linear-gradient(135deg, #ca8a04, #eab308, #fde047)",
+            coreTraits: [
+                { label: "Thời gian nhớ ngày đầu (S0)", val: `${s0Good.toFixed(1)} ngày (+${s0GoodDelta.toFixed(1)}%)`, highlight: true },
+                { label: "Hệ số giãn cách", val: `${sinc.toFixed(2)}x` },
+                { label: "Khả năng phục hồi", val: `${(failBase * 100).toFixed(1)}%` }
+            ],
+            summary: `Não bộ của bạn mã hóa ấn tượng ban đầu rất nhanh với từ mới. Thời gian nhớ tự nhiên lần đầu đạt ${s0Good.toFixed(1)} ngày, giúp bạn lướt qua các từ mới với tốc độ cao mà vẫn nắm bắt được thông tin cốt lõi.`,
+            keyTakeaway: "Tận dụng tốc độ hấp thụ nhanh để nạp lượng từ mới dồi dào, kết hợp đọc câu ví dụ thực tế để làm phong phú ngữ cảnh."
         };
     }
 
-    // 7. CHIẾN LƯỢC HỌC TẬP THỰC CHIẾN (Actionable Tailored Strategies)
+    // -------------------------------------------------------------
+    // 7. CHIẾN LƯỢC HỌC TẬP THỰC TẾ (Actionable & Practical Advice)
+    // -------------------------------------------------------------
     const recommendations = [];
 
-    if (topPillar.id === 'resilience') {
+    // Lời khuyên 1: Dựa trên sức bật sau khi quên
+    if (failBase >= 0.78) {
         recommendations.push({
-            icon: "ph-bold ph-shield-check",
-            title: "Tận Dụng Sức Bật Sau Khi Quên",
-            desc: `Đừng ngần ngại bấm 'Quên' (Again) khi vấp phải từ lạ. Não bạn phục hồi sau khi quên đạt đến ${(failBase * 100).toFixed(1)}% sức bền cũ, nên chỉ cần 1 lần ôn lại là bạn đã lấy lại vị thế đỉnh cao.`
-        });
-    } else if (topPillar.id === 'friction') {
-        recommendations.push({
-            icon: "ph-bold ph-scales",
-            title: "Tự Tin Bấm 'Nhớ' & 'Dễ' Hơn",
-            desc: `Bạn có xu hướng nghiêm khắc quá mức với bản thân (độ khó cơ sở ${diffBase.toFixed(2)}/10). Hãy mạnh dạn chấm 'Nhớ' hoặc 'Dễ' cho những từ đã nắm vững để thuật toán FSRS-7 giãn lịch thông thoáng hơn.`
+            icon: "ph-bold ph-arrow-clockwise",
+            title: "Tận dụng sức bật phục hồi nhanh",
+            desc: `Đừng ngần ngại bấm 'Quên' (Again) khi vấp phải từ lạ. Não bạn giữ lại đến ${(failBase * 100).toFixed(1)}% dấu vết ký ức cũ, nên chỉ cần 1 lần ôn lại là bạn đã lấy lại độ bền trí nhớ mà không tốn công học lại từ đầu.`
         });
     } else {
         recommendations.push({
-            icon: "ph-bold ph-trend-up",
-            title: "Tối Ưu Hóa Nhịp Ôn Dài Hạn",
-            desc: `Hệ số tăng trưởng của bạn đạt ${sinc.toFixed(2)}x. Hãy duy trì mục tiêu Retrievability ở mức 90% để lịch học mở rộng tối đa mà vẫn giữ được độ thuộc bài hoàn hảo.`
+            icon: "ph-bold ph-repeat",
+            title: "Ôn lặp lại kỹ khi quên",
+            desc: `Khi đánh giá 'Quên', hãy dành 5-10 giây đọc kỹ lại ví dụ và phát âm từ vựng 2 lần để kích hoạt lại mạng lưới nơ-ron trước khi chuyển sang thẻ tiếp theo.`
         });
     }
 
-    if (p[23] > base[23]) {
+    // Lời khuyên 2: Dựa trên chu kỳ ngày đầu S0
+    if (s0GoodDelta < 0) {
         recommendations.push({
-            icon: "ph-bold ph-hourglass-high",
-            title: "Tập Trung Trong 24 Giờ Đầu",
-            desc: "Dấu vết ký ức ngắn hạn phân rã nhanh ở ngày đầu tiên. Hãy ưu tiên ôn lại thẻ mới trong vòng 1 ngày để khóa chặt vào bộ đệm dài hạn trước khi phân rã."
+            icon: "ph-bold ph-clock",
+            title: "Nguyên tắc ôn tập trong 24 giờ đầu",
+            desc: `Thời gian nhớ từ mới lần đầu của bạn là ${s0Good.toFixed(1)} ngày (thấp hơn mức trung bình). Hãy luôn ưu tiên học từ mới và ôn lại ngay trong ngày đầu tiên để khóa thông tin vào bộ nhớ dài hạn trước khi bị phân rã.`
         });
     } else {
         recommendations.push({
-            icon: "ph-bold ph-brain",
-            title: "Học Đào Sâu Ngữ Cảnh",
-            desc: `Khả năng lưu giữ tự nhiên của bạn rất tốt (S0 đạt ${s0Good.toFixed(1)} ngày). Hãy dành thêm thời gian đọc kỹ ví dụ ngữ cảnh để khắc sâu nghĩa bóng và phản xạ tự nhiên.`
+            icon: "ph-bold ph-book-open-text",
+            title: "Khai thác ấn tượng ban đầu mạnh mẽ",
+            desc: `Thời gian nhớ từ mới lần đầu đạt ${s0Good.toFixed(1)} ngày. Hãy dành thời gian phân tích từ loại, tiền tố/hậu tố để tận dụng tối đa khả năng tiếp thu nhanh của bạn.`
         });
     }
 
+    // Lời khuyên 3: Dựa trên độ khắt khe D0
+    if (diffBase >= 7.0) {
+        recommendations.push({
+            icon: "ph-bold ph-thumbs-up",
+            title: "Tự tin bấm 'Nhớ' & 'Dễ' hơn",
+            desc: `Bạn có xu hướng tự đánh giá khá khắt khe (${diffBase.toFixed(2)}/10). Với những từ vựng bạn đã nhận diện được ngay trong 2 giây, hãy mạnh dạn bấm 'Nhớ' hoặc 'Dễ' để thuật toán giãn lịch tối ưu, tránh ôn thừa thãi.`
+        });
+    } else {
+        recommendations.push({
+            icon: "ph-bold ph-chart-line-up",
+            title: "Duy trì Retrievability 90%",
+            desc: `Hệ số giãn cách ${sinc.toFixed(2)}x của bạn hoạt động tối ưu nhất ở mức mục tiêu nhớ 90%. Hãy giữ nguyên thông số này để lịch học đạt hiệu suất cao nhất.`
+        });
+    }
+
+    // Lời khuyên 4: Nguyên tắc duy trì chuỗi học
     recommendations.push({
         icon: "ph-bold ph-calendar-check",
-        title: "Duy Trì Nhịp Điệu Đều Đặn",
-        desc: "Thuật toán FSRS-7 phát huy sức mạnh tối đa khi bạn giải quyết hết thẻ đến hạn mỗi ngày. Việc giữ streak liên tục quan trọng hơn học dồn một lần vào cuối tuần."
+        title: "Duy trì 10-15 phút học đều đặn mỗi ngày",
+        desc: `Đặc tính của FSRS-7 là xử lý thẻ đúng hạn. Học đều 10 phút mỗi ngày mang lại hiệu quả ghi nhớ cao hơn 400% so với việc dồn 2 tiếng học một lần vào cuối tuần.`
     });
 
     return {
@@ -232,72 +294,89 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
         pillars: [
             {
                 id: 'resilience',
-                name: 'Sức Bật Phục Hồi',
+                name: 'Phục Hồi Sau Quên',
+                subname: 'Post-Lapse Retention (w10)',
                 score: resilienceScore,
+                userVal: `${(failBase * 100).toFixed(1)}%`,
+                baseVal: `${(base[10] * 100).toFixed(1)}%`,
                 delta: failDelta,
-                metric: `${(failBase * 100).toFixed(1)}%`,
-                metricLabel: 'Bảo tồn sau quên',
-                title: resilienceTitle,
+                status: resilienceStatus,
                 desc: resilienceDesc,
-                color: '#ef4444'
+                badge: resilienceBadge,
+                badgeClass: resilienceBadgeClass,
+                color: '#f97316'
             },
             {
                 id: 'compounding',
-                name: 'Tích Lũy Dài Hạn',
+                name: 'Tốc Độ Giãn Cách Dài Hạn',
+                subname: 'Compounding Factor (w7)',
                 score: compoundingScore,
+                userVal: `${sinc.toFixed(2)}x`,
+                baseVal: `${base[7].toFixed(2)}x`,
                 delta: sincDelta,
-                metric: `${sinc.toFixed(2)}x`,
-                metricLabel: 'Hệ số giãn cách',
-                title: compoundingTitle,
+                status: compoundingStatus,
                 desc: compoundingDesc,
+                badge: compoundingBadge,
+                badgeClass: compoundingBadgeClass,
                 color: '#6366f1'
             },
             {
-                id: 'absorption',
-                name: 'Hấp Thụ Ban Đầu',
-                score: absorptionScore,
-                delta: s0GoodDelta,
-                metric: `${s0Good.toFixed(2)} ngày`,
-                metricLabel: 'Chu kỳ S0 (Good)',
-                title: absorptionTitle,
-                desc: absorptionDesc,
-                color: '#f59e0b'
-            },
-            {
                 id: 'friction',
-                name: 'Độ Khắt Khe & Tiêu Chuẩn',
+                name: 'Độ Khắt Khe Tự Đánh Giá',
+                subname: 'Perceived Difficulty (w4)',
                 score: frictionScore,
+                userVal: `${diffBase.toFixed(2)}/10`,
+                baseVal: `${base[4].toFixed(2)}/10`,
                 delta: diffDelta,
-                metric: `${diffBase.toFixed(2)}/10`,
-                metricLabel: 'Độ khó cơ sở (D0)',
-                title: frictionTitle,
+                status: frictionStatus,
                 desc: frictionDesc,
+                badge: frictionBadge,
+                badgeClass: frictionBadgeClass,
                 color: '#a855f7'
             },
             {
+                id: 'absorption',
+                name: 'Thời Gian Nhớ Từ Mới',
+                subname: 'Initial Retention (w2)',
+                score: absorptionScore,
+                userVal: `${s0Good.toFixed(2)} ngày`,
+                baseVal: `${base[2].toFixed(2)} ngày`,
+                delta: s0GoodDelta,
+                status: absorptionStatus,
+                desc: absorptionDesc,
+                badge: absorptionBadge,
+                badgeClass: absorptionBadgeClass,
+                color: '#eab308'
+            },
+            {
                 id: 'resistance',
-                name: 'Kháng Quên Dài Hạn',
+                name: 'Kháng Suy Giảm Trí Nhớ',
+                subname: 'Retention Stability (w24)',
                 score: resistanceScore,
-                delta: -decay1Delta,
-                metric: `${(decay2 * 100).toFixed(2)}%`,
-                metricLabel: 'Tốc độ suy hao chậm',
-                title: resistanceTitle,
+                userVal: `${(decay2 * 100).toFixed(2)}%`,
+                baseVal: `${(base[24] * 100).toFixed(2)}%`,
+                delta: -decay2Delta,
+                status: resistanceStatus,
                 desc: resistanceDesc,
+                badge: resistanceBadge,
+                badgeClass: resistanceBadgeClass,
                 color: '#10b981'
             }
         ],
         comparisonMetrics: {
-            s0Good: { val: s0Good, base: base[2], delta: s0GoodDelta },
-            sinc: { val: sinc, base: base[7], delta: sincDelta },
-            failBase: { val: failBase, base: base[10], delta: failDelta },
-            diffBase: { val: diffBase, base: base[4], delta: diffDelta }
+            s0Good: { name: 'Thời gian nhớ từ mới lần đầu (S0)', user: `${s0Good.toFixed(2)} ngày`, base: `${base[2].toFixed(2)}d`, delta: s0GoodDelta, barUserPct: Math.min(100, Math.round((s0Good / 6.0) * 100)), barBasePct: Math.round((base[2] / 6.0) * 100) },
+            sinc: { name: 'Hệ số nhân giãn cách ngày ôn (sinc)', user: `${sinc.toFixed(2)}x`, base: `${base[7].toFixed(2)}x`, delta: sincDelta, barUserPct: Math.min(100, Math.round((sinc / 3.5) * 100)), barBasePct: Math.round((base[7] / 3.5) * 100) },
+            failBase: { name: 'Tỷ lệ lưu giữ ký ức sau khi quên (w10)', user: `${(failBase * 100).toFixed(1)}%`, base: `${(base[10] * 100).toFixed(1)}%`, delta: failDelta, barUserPct: Math.round(failBase * 100), barBasePct: Math.round(base[10] * 100) },
+            diffBase: { name: 'Độ khó cảm nhận cơ sở (D0)', user: `${diffBase.toFixed(2)}/10`, base: `${base[4].toFixed(2)}/10`, delta: diffDelta, barUserPct: Math.round((diffBase / 10.0) * 100), barBasePct: Math.round((base[4] / 10.0) * 100) },
+            decay2: { name: 'Tốc độ hao mòn trí nhớ tự nhiên (w24)', user: `${(decay2 * 100).toFixed(2)}%`, base: `${(base[24] * 100).toFixed(2)}%`, delta: decay2Delta, barUserPct: Math.min(100, Math.round((decay2 / 0.15) * 100)), barBasePct: Math.round((base[24] / 0.15) * 100) }
         },
         recommendations
     };
 }
 
 /**
- * Render toàn bộ giao diện Tab "Chân Dung Nhận Thức" vào container DOM.
+ * Render toàn bộ giao diện "Who I Am" vào container DOM.
+ * Giao diện trực quan, khoa học, hiện đại với thanh so sánh kép (Dual-bar comparison).
  */
 export function renderFsrsPersonaUI(container) {
     if (!container) return;
@@ -308,85 +387,119 @@ export function renderFsrsPersonaUI(container) {
 
     const data = analyzeFsrs7Persona(userParams, trainedAt);
 
-    // Format ngày cập nhật
+    // Format badge thời gian huấn luyện
     let statusBadgeHtml = '';
     if (data.isPersonalized) {
         const trainedDateStr = data.trainedAt ? new Date(data.trainedAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Gần đây';
         statusBadgeHtml = `
-            <div class="persona-status-badge personalized">
+            <div class="whoiam-status-badge personalized">
                 <span class="pulse-dot"></span>
-                <i class="ph-fill ph-sparkle"></i>
-                <span>Bộ Số Độc Bản FSRS-7 (Đã cá nhân hóa: <strong>${trainedDateStr}</strong>)</span>
+                <i class="ph-fill ph-check-circle"></i>
+                <span>Bộ Số Cá Nhân Hóa FSRS-7 (Cập nhật: <strong>${trainedDateStr}</strong>)</span>
             </div>
         `;
     } else {
         statusBadgeHtml = `
-            <div class="persona-status-badge baseline">
+            <div class="whoiam-status-badge baseline">
                 <i class="ph-bold ph-flask"></i>
-                <span>Đang Phân Tích Trên Bộ Chuẩn Lab (Chạy tool huấn luyện FSRS-7 cá nhân để mở khóa 100% vân tay não bộ)</span>
+                <span>Đang Phân Tích Dựa Trên Bộ Chuẩn Phòng Thí Nghiệm (Lab Baseline)</span>
             </div>
         `;
     }
 
     const html = `
-        <div class="persona-container">
-            <!-- Header Badge Trạng Thái -->
-            <div class="persona-meta-header">
+        <div class="whoiam-container">
+            <!-- Header Meta Badge -->
+            <div class="whoiam-meta-header">
                 ${statusBadgeHtml}
             </div>
 
-            <!-- HERO CARD: DANH HIỆU NHẬN THỨC CHỦ ĐẠO -->
-            <section class="profile-card persona-hero-card" style="--hero-glow: ${data.archetype.badgeColor}">
-                <div class="persona-hero-bg-glow" style="background: ${data.archetype.gradient}"></div>
-                <div class="persona-hero-inner">
-                    <div class="persona-avatar-wrapper">
-                        <div class="persona-avatar-glow" style="background: ${data.archetype.gradient}">
+            <!-- HERO CARD: WHO I AM -->
+            <section class="profile-card whoiam-hero-card" style="--hero-glow: ${data.archetype.badgeColor}">
+                <div class="whoiam-hero-bg-glow" style="background: ${data.archetype.gradient}"></div>
+                <div class="whoiam-hero-inner">
+                    <div class="whoiam-avatar-wrapper">
+                        <div class="whoiam-avatar-glow" style="background: ${data.archetype.gradient}">
                             <i class="${data.archetype.icon}"></i>
                         </div>
                     </div>
-                    <div class="persona-hero-content">
-                        <div class="persona-tag-row">
-                            <span class="persona-tag" style="border-color: ${data.archetype.badgeColor}; color: ${data.archetype.badgeColor}">
-                                BẢN SẮC TRÍ TUỆ
+                    <div class="whoiam-hero-content">
+                        <div class="whoiam-tag-row">
+                            <span class="whoiam-tag" style="border-color: ${data.archetype.badgeColor}; color: ${data.archetype.badgeColor}">
+                                PHONG CÁCH NHẬN THỨC NỔI BẬT
                             </span>
-                            <span class="persona-en-title">${data.archetype.enTitle}</span>
+                            <span class="whoiam-en-title">${data.archetype.enTitle}</span>
                         </div>
-                        <h2 class="persona-hero-title">${data.archetype.title}</h2>
-                        <blockquote class="persona-motto">“${data.archetype.motto}”</blockquote>
-                        <p class="persona-summary">${data.archetype.summary}</p>
+                        <h2 class="whoiam-hero-title">${data.archetype.title}</h2>
+                        
+                        <!-- Core Traits Chips -->
+                        <div class="whoiam-traits-row">
+                            ${data.archetype.coreTraits.map(t => `
+                                <div class="whoiam-trait-chip ${t.highlight ? 'highlight' : ''}">
+                                    <span class="trait-label">${t.label}:</span>
+                                    <strong class="trait-val">${t.val}</strong>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <p class="whoiam-summary">${data.archetype.summary}</p>
+                        
+                        <div class="whoiam-takeaway">
+                            <i class="ph-fill ph-lightbulb"></i>
+                            <span>${data.archetype.keyTakeaway}</span>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- 5 TRỤ CỘT NHẬN THỨC (COGNITIVE PILLARS) -->
-            <section class="profile-card persona-pillars-card">
-                <div class="persona-section-header">
+            <!-- 5 TRỤ CỘT NHẬN THỨC VỚI THANH SO SÁNH TRỰC QUAN -->
+            <section class="profile-card whoiam-pillars-card">
+                <div class="whoiam-section-header">
                     <div class="section-title-group">
-                        <h3><i class="ph-bold ph-dna"></i> 5 Trụ Cột Nhận Thức Toán Học</h3>
-                        <span class="section-subtitle">Phân tích từ 34 tham số trọng số Dual-Stability FSRS-7</span>
+                        <h3><i class="ph-bold ph-chart-polar"></i> 5 Trụ Cột Nhận Thức Toán Học</h3>
+                        <span class="section-subtitle">So sánh trực quan giữa chỉ số cá nhân hóa của bạn và mức chuẩn trung bình (Lab Baseline)</span>
                     </div>
                 </div>
 
-                <div class="persona-pillars-grid">
+                <div class="whoiam-pillars-grid">
                     ${data.pillars.map(pillar => {
-                        const deltaSign = pillar.delta >= 0 ? '+' : '';
-                        const deltaClass = pillar.delta >= 0 ? 'positive' : 'negative';
                         return `
-                            <div class="pillar-item" style="--pillar-color: ${pillar.color}">
-                                <div class="pillar-header">
-                                    <span class="pillar-name">${pillar.name}</span>
-                                    <span class="pillar-score-badge">${pillar.score}/100</span>
-                                </div>
-                                <div class="pillar-meter-track">
-                                    <div class="pillar-meter-fill" style="width: ${pillar.score}%; background: ${pillar.color}"></div>
-                                </div>
-                                <div class="pillar-details">
-                                    <div class="pillar-metric-row">
-                                        <span class="pillar-metric-val">${pillar.metric}</span>
-                                        <span class="pillar-delta ${deltaClass}">${deltaSign}${pillar.delta.toFixed(1)}% so với Lab</span>
+                            <div class="pillar-box" style="--pillar-color: ${pillar.color}">
+                                <div class="pillar-box-top">
+                                    <div class="pillar-titles">
+                                        <h4 class="pillar-name">${pillar.name}</h4>
+                                        <span class="pillar-sub">${pillar.subname}</span>
                                     </div>
-                                    <div class="pillar-verdict">${pillar.title}</div>
-                                    <p class="pillar-desc">${pillar.desc}</p>
+                                    <span class="pillar-status-chip ${pillar.badgeClass}">${pillar.badge}</span>
+                                </div>
+
+                                <!-- Thanh So Sánh Kép Trực Quan (Dual Comparison) -->
+                                <div class="dual-bar-wrapper">
+                                    <div class="bar-row">
+                                        <div class="bar-label-group">
+                                            <span class="bar-entity user">Bạn</span>
+                                            <strong class="bar-value user">${pillar.userVal}</strong>
+                                        </div>
+                                        <div class="bar-track">
+                                            <div class="bar-fill user" style="width: ${pillar.score}%; background: ${pillar.color}"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bar-row baseline">
+                                        <div class="bar-label-group">
+                                            <span class="bar-entity base">Chuẩn Lab</span>
+                                            <span class="bar-value base">${pillar.baseVal}</span>
+                                        </div>
+                                        <div class="bar-track base">
+                                            <div class="bar-fill base" style="width: 50%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Đánh Giá Khoa Học Chi Tiết -->
+                                <div class="pillar-verdict-box">
+                                    <strong class="verdict-title" style="color: ${pillar.color}">${pillar.status}</strong>
+                                    <p class="verdict-text">${pillar.desc}</p>
                                 </div>
                             </div>
                         `;
@@ -394,67 +507,58 @@ export function renderFsrsPersonaUI(container) {
                 </div>
             </section>
 
-            <!-- BENTO 2 CỘT: SO SÁNH THÔNG SỐ & CHIẾN LƯỢC HỌC TẬP -->
-            <div class="persona-bento-grid">
-                <!-- Cột Trái: Thông số cốt lõi -->
-                <section class="profile-card persona-stats-card">
-                    <h3><i class="ph-duotone ph-chart-polar"></i> Vân Tay Tham Số Trí Nhớ</h3>
-                    <div class="stats-comparison-list">
-                        <div class="stats-comp-row">
-                            <div class="comp-label">
-                                <strong>Chu kỳ ấn tượng đầu (S0 Good)</strong>
-                                <span>Thời gian nhớ tự nhiên lần đầu học</span>
-                            </div>
-                            <div class="comp-values">
-                                <span class="val-current">${data.comparisonMetrics.s0Good.val.toFixed(2)} ngày</span>
-                                <span class="val-base">Lab: ${data.comparisonMetrics.s0Good.base.toFixed(2)}d</span>
-                            </div>
-                        </div>
+            <!-- BENTO GRID: VÂN TAY THAM SỐ TOÁN HỌC & LỜI KHUYÊN THỰC HÀNH -->
+            <div class="whoiam-bento-grid">
+                <!-- Cột Trái: Bảng Tham Số FSRS-7 Trực Quan -->
+                <section class="profile-card whoiam-stats-card">
+                    <div class="card-header-simple">
+                        <h3><i class="ph-bold ph-sliders-horizontal"></i> Vân Tay Tham Số Trí Nhớ (FSRS-7)</h3>
+                        <span class="card-hint">Mức độ tương quan so với chuẩn mô hình</span>
+                    </div>
 
-                        <div class="stats-comp-row">
-                            <div class="comp-label">
-                                <strong>Hệ số giãn cách dài hạn (sinc)</strong>
-                                <span>Tốc độ nhân khoảng cách ôn tập</span>
-                            </div>
-                            <div class="comp-values">
-                                <span class="val-current">${data.comparisonMetrics.sinc.val.toFixed(2)}x</span>
-                                <span class="val-base">Lab: ${data.comparisonMetrics.sinc.base.toFixed(2)}x</span>
-                            </div>
-                        </div>
-
-                        <div class="stats-comp-row">
-                            <div class="comp-label">
-                                <strong>Bảo tồn ký ức sau khi quên</strong>
-                                <span>Phần trăm dấu vết ngầm còn giữ lại</span>
-                            </div>
-                            <div class="comp-values">
-                                <span class="val-current">${(data.comparisonMetrics.failBase.val * 100).toFixed(1)}%</span>
-                                <span class="val-base">Lab: ${(data.comparisonMetrics.failBase.base * 100).toFixed(1)}%</span>
-                            </div>
-                        </div>
-
-                        <div class="stats-comp-row">
-                            <div class="comp-label">
-                                <strong>Độ khó cảm nhận cơ sở (D0)</strong>
-                                <span>Mức độ khắt khe khi gặp từ mới</span>
-                            </div>
-                            <div class="comp-values">
-                                <span class="val-current">${data.comparisonMetrics.diffBase.val.toFixed(2)} / 10</span>
-                                <span class="val-base">Lab: ${data.comparisonMetrics.diffBase.base.toFixed(2)}</span>
-                            </div>
-                        </div>
+                    <div class="stats-visual-list">
+                        ${Object.values(data.comparisonMetrics).map(item => {
+                            const isHigher = item.delta >= 0;
+                            const deltaText = isHigher ? `+${item.delta.toFixed(1)}%` : `${item.delta.toFixed(1)}%`;
+                            const deltaClass = Math.abs(item.delta) < 5 ? 'neutral' : (isHigher ? 'higher' : 'lower');
+                            return `
+                                <div class="stats-visual-item">
+                                    <div class="stats-info-row">
+                                        <div class="stats-name">${item.name}</div>
+                                        <div class="stats-numbers">
+                                            <span class="stats-user-num">${item.user}</span>
+                                            <span class="stats-base-num">(Lab: ${item.base})</span>
+                                            <span class="stats-delta-badge ${deltaClass}">${deltaText}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mini-dual-bar">
+                                        <div class="mini-bar-track">
+                                            <div class="mini-bar-fill user" style="width: ${item.barUserPct}%;"></div>
+                                            <div class="mini-bar-marker base" style="left: ${item.barBasePct}%;" title="Chuẩn Lab: ${item.base}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </section>
 
-                <!-- Cột Phải: Lời khuyên thực chiến -->
-                <section class="profile-card persona-advice-card">
-                    <h3><i class="ph-duotone ph-lightbulb"></i> Chiến Lược Học Tập Tùy Chỉnh</h3>
-                    <div class="persona-advice-list">
-                        ${data.recommendations.map(rec => `
-                            <div class="advice-item">
-                                <div class="advice-icon"><i class="${rec.icon}"></i></div>
-                                <div class="advice-text">
-                                    <h4>${rec.title}</h4>
+                <!-- Cột Phải: Lời Khuyên Thực Chiến Cá Nhân Hóa -->
+                <section class="profile-card whoiam-advice-card">
+                    <div class="card-header-simple">
+                        <h3><i class="ph-bold ph-compass"></i> Chiến Lược Học Tập Thực Tế</h3>
+                        <span class="card-hint">Tối ưu hóa thời gian và năng lượng não bộ</span>
+                    </div>
+
+                    <div class="whoiam-advice-list">
+                        ${data.recommendations.map((rec, idx) => `
+                            <div class="advice-card-item">
+                                <div class="advice-num-badge">${idx + 1}</div>
+                                <div class="advice-body">
+                                    <div class="advice-header-line">
+                                        <i class="${rec.icon}"></i>
+                                        <h4>${rec.title}</h4>
+                                    </div>
                                     <p>${rec.desc}</p>
                                 </div>
                             </div>
