@@ -4778,149 +4778,264 @@ body:not(.dark-mode) .forecast-avg-line {
 /* Track Items Grid Layout (2 Columns for Balanced Look) */
 .achievements-wrapper {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 16px;
 }
 
+/* ==========================================================================
+   Milestone Track Cards (Mốc Tiến Trình) Redesign
+   ========================================================================== */
 .badge-track-item {
     display: flex;
     flex-direction: column;
     padding: 16px 18px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
-    backdrop-filter: blur(12px);
-    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(14px);
+    border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
     cursor: pointer;
-    gap: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    gap: 14px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
 }
 
 .badge-track-item:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255, 255, 255, 0.22);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
 }
 
 .badge-track-item.locked {
-    opacity: 0.55;
-    filter: grayscale(85%);
+    opacity: 0.65;
 }
 
-.badge-track-item.unlocked {
-    border-color: rgba(255, 215, 0, 0.35);
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.06), rgba(255, 143, 0, 0.02));
-}
-
-.badge-card-header {
+/* Card Top Row */
+.track-card-top {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     width: 100%;
     gap: 10px;
 }
 
-.badge-title-block {
-    display: flex;
+.track-cat-pill {
+    display: inline-flex;
     align-items: center;
-    gap: 12px;
-    flex: 1;
-}
-
-.badge-track-item .badge-icon-wrapper {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    flex-shrink: 0;
-    font-size: 1.4rem;
-}
-
-.badge-title-wrapper h4 {
-    font-size: 1.05rem;
-    font-weight: 800;
-    margin: 0 0 2px 0;
-    color: var(--text-color);
-}
-
-.badge-level-pill {
-    font-size: 0.72rem;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #FFF;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 9px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--track-theme, #8B5CF6);
+    background: color-mix(in srgb, var(--track-theme, #8B5CF6) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, transparent);
+    letter-spacing: 0.2px;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
-.badge-level-pill.tier-common { background: rgba(144, 164, 174, 0.2); color: #B0BEC5; }
-.badge-level-pill.tier-uncommon { background: rgba(102, 187, 106, 0.2); color: #81C784; }
-.badge-level-pill.tier-rare { background: rgba(0, 229, 255, 0.2); color: #00E5FF; }
-.badge-level-pill.tier-epic { background: rgba(171, 71, 188, 0.25); color: #E1BEE7; }
-.badge-level-pill.tier-legendary { background: rgba(255, 215, 0, 0.25); color: #FFD700; }
-.badge-level-pill.tier-mythic { background: rgba(239, 83, 80, 0.25); color: #FF8A80; border: 1px solid rgba(239, 83, 80, 0.4); }
-.badge-level-pill.tier-divine { background: linear-gradient(135deg, #7C4DFF, #00E5FF); color: #FFF; }
+.track-cat-pill i {
+    font-size: 0.95rem;
+}
 
-body:not(.dark-mode) .badge-level-pill.tier-mythic { background: rgba(239, 83, 80, 0.15); color: #C62828; border: 1px solid rgba(239, 83, 80, 0.35); }
+/* Badge Level Pills */
+.badge-level-pill {
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #FFF;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-.badge-desc-text {
-    font-size: 0.84rem;
+.badge-level-pill.tier-common { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border-color: rgba(148, 163, 184, 0.3); }
+.badge-level-pill.tier-uncommon { background: rgba(16, 185, 129, 0.18); color: #34D399; border-color: rgba(16, 185, 129, 0.35); }
+.badge-level-pill.tier-rare { background: rgba(6, 182, 212, 0.18); color: #38BDF8; border-color: rgba(6, 182, 212, 0.35); }
+.badge-level-pill.tier-epic { background: rgba(168, 85, 247, 0.2); color: #C084FC; border-color: rgba(168, 85, 247, 0.4); }
+.badge-level-pill.tier-legendary { background: rgba(245, 158, 11, 0.2); color: #FCD34D; border-color: rgba(245, 158, 11, 0.4); }
+.badge-level-pill.tier-mythic { background: rgba(244, 63, 94, 0.2); color: #FDA4AF; border-color: rgba(244, 63, 94, 0.4); }
+.badge-level-pill.tier-divine { background: linear-gradient(135deg, #7C3AED, #EC4899); color: #FFF; border: none; }
+
+/* Card Hero Row */
+.track-card-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+}
+
+.track-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+.badge-track-item:hover .track-icon-box {
+    transform: scale(1.08) rotate(3deg);
+}
+
+.track-icon-box.tier-common { background: linear-gradient(135deg, rgba(148, 163, 184, 0.2), rgba(100, 116, 139, 0.1)); border: 1.5px solid rgba(148, 163, 184, 0.35); color: #CBD5E1; }
+.track-icon-box.tier-uncommon { background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.1)); border: 1.5px solid rgba(52, 211, 153, 0.4); color: #34D399; box-shadow: 0 0 16px rgba(16, 185, 129, 0.2); }
+.track-icon-box.tier-rare { background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(14, 116, 144, 0.1)); border: 1.5px solid rgba(56, 189, 248, 0.4); color: #38BDF8; box-shadow: 0 0 16px rgba(6, 182, 212, 0.2); }
+.track-icon-box.tier-epic { background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(126, 34, 206, 0.1)); border: 1.5px solid rgba(192, 132, 252, 0.45); color: #C084FC; box-shadow: 0 0 18px rgba(168, 85, 247, 0.25); }
+.track-icon-box.tier-legendary { background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.1)); border: 1.5px solid rgba(252, 211, 77, 0.5); color: #FCD34D; box-shadow: 0 0 18px rgba(245, 158, 11, 0.25); }
+.track-icon-box.tier-mythic { background: linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(190, 18, 60, 0.1)); border: 1.5px solid rgba(251, 113, 133, 0.5); color: #FB7185; box-shadow: 0 0 18px rgba(244, 63, 94, 0.25); }
+.track-icon-box.tier-divine { background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(236, 72, 153, 0.2)); border: 1.5px solid rgba(236, 72, 153, 0.5); color: #F472B6; box-shadow: 0 0 20px rgba(236, 72, 153, 0.35); }
+
+.track-titles-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.track-target-caption {
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
     color: var(--text-light);
+    opacity: 0.75;
+}
+
+.track-title-single {
+    font-size: 1.18rem;
+    font-weight: 800;
+    color: var(--text-color);
     margin: 0;
-}
-
-.badge-card-body {
-    width: 100%;
-    margin-top: 2px;
-}
-
-.badge-progress-bg {
-    height: 7px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
+    white-space: nowrap;
     overflow: hidden;
-    margin-bottom: 6px;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.track-req-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.track-req-pill strong {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.track-req-pill i {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+/* Card Progress Block */
+.track-card-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
     width: 100%;
 }
 
-.badge-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), #00E5FF);
-    border-radius: 20px;
-    transition: width 0.6s ease;
-}
-
-.badge-track-item.unlocked .badge-progress-fill {
-    background: linear-gradient(90deg, #FF9800, #FFD700);
-}
-
-.badge-progress-meta {
+.track-prog-stats {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-light);
+    font-size: 0.8rem;
 }
 
-.badge-progress-pct {
-    color: #FFD700;
+.track-prog-val {
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.track-prog-num {
+    color: var(--text-color);
     font-weight: 800;
 }
 
-
-.badge-track-item.unlocked .badge-progress-fill {
-    background: linear-gradient(90deg, #FF9800, #FFD700);
+.track-prog-unit {
+    font-size: 0.74rem;
+    opacity: 0.8;
 }
 
-.badge-progress-text {
+.track-prog-pct {
     font-size: 0.78rem;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-color);
+}
+
+.track-prog-pct.tier-common { color: #94A3B8; background: rgba(148, 163, 184, 0.15); }
+.track-prog-pct.tier-uncommon { color: #10B981; background: rgba(16, 185, 129, 0.15); }
+.track-prog-pct.tier-rare { color: #06B6D4; background: rgba(6, 182, 212, 0.15); }
+.track-prog-pct.tier-epic { color: #A855F7; background: rgba(168, 85, 247, 0.15); }
+.track-prog-pct.tier-legendary { color: #F59E0B; background: rgba(245, 158, 11, 0.15); }
+.track-prog-pct.tier-mythic { color: #F43F5E; background: rgba(244, 63, 94, 0.15); }
+.track-prog-pct.tier-divine { color: #EC4899; background: rgba(236, 72, 153, 0.15); }
+
+.track-prog-bar-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.track-prog-bar-fill {
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: linear-gradient(90deg, var(--primary-color), #00E5FF);
+}
+
+.track-prog-bar-fill.tier-common { background: linear-gradient(90deg, #64748B, #94A3B8); }
+.track-prog-bar-fill.tier-uncommon { background: linear-gradient(90deg, #059669, #34D399); }
+.track-prog-bar-fill.tier-rare { background: linear-gradient(90deg, #0284C7, #38BDF8); }
+.track-prog-bar-fill.tier-epic { background: linear-gradient(90deg, #7E22CE, #C084FC); }
+.track-prog-bar-fill.tier-legendary { background: linear-gradient(90deg, #D97706, #FBBF24); }
+.track-prog-bar-fill.tier-mythic { background: linear-gradient(90deg, #E11D48, #FB7185); }
+.track-prog-bar-fill.tier-divine { background: linear-gradient(90deg, #7C3AED, #EC4899, #06B6D4); }
+
+.track-prog-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.74rem;
     color: var(--text-light);
-    text-align: right;
-    font-weight: 600;
+    margin-top: 2px;
+}
+
+.track-prog-remaining strong {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.track-prog-view-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--primary-color, #6366F1);
+    font-weight: 700;
+    transition: gap 0.2s ease;
+}
+
+.badge-track-item:hover .track-prog-view-more {
+    gap: 6px;
 }
 
 /* Special Badges Section Grid */
@@ -5046,17 +5161,36 @@ body:not(.dark-mode) .badge-tier-tag.tier-mythic { color: #C62828; border: 1px s
 
 /* --- Light Mode High Contrast Overrides --- */
 body:not(.dark-mode) .achievements-summary-banner {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    border-color: rgba(79, 70, 229, 0.4);
-    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.25);
+    background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 50%, #F5F3FF 100%);
+    border: 1px solid #E0E7FF;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08);
 }
 
 body:not(.dark-mode) .summary-title {
-    color: #FFFFFF !important;
+    color: #1E1B4B !important;
 }
 
 body:not(.dark-mode) .summary-subtitle {
-    color: rgba(255, 255, 255, 0.88) !important;
+    color: #64748B !important;
+}
+
+body:not(.dark-mode) .summary-trophy-icon {
+    color: #F59E0B;
+    filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+}
+
+body:not(.dark-mode) .summary-percent-pill {
+    background: linear-gradient(135deg, #6366F1, #8B5CF6);
+    color: #FFFFFF;
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.3);
+}
+
+body:not(.dark-mode) .summary-progress-bg {
+    background: #E2E8F0;
+}
+
+body:not(.dark-mode) .summary-progress-fill {
+    background: linear-gradient(90deg, #6366F1, #8B5CF6, #06B6D4);
 }
 
 body:not(.dark-mode) .achieve-tab-btn {
@@ -5078,49 +5212,53 @@ body:not(.dark-mode) .achieve-tab-btn.active {
     box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
 }
 
+/* Light mode milestone track cards */
 body:not(.dark-mode) .badge-track-item {
     background: #FFFFFF;
-    border-color: #E2E8F0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
 }
 
 body:not(.dark-mode) .badge-track-item:hover {
+    transform: translateY(-4px);
     border-color: #CBD5E1;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.09);
 }
 
 body:not(.dark-mode) .badge-track-item.unlocked {
-    background: linear-gradient(135deg, #FFFDF5, #FFF9E6);
-    border-color: #FCD34D;
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.12);
+    background: #FFFFFF;
+    border-color: #E2E8F0;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
 }
 
-body:not(.dark-mode) .badge-title-wrapper h4 {
+body:not(.dark-mode) .track-title-single {
     color: #0F172A;
 }
 
-body:not(.dark-mode) .badge-desc-text {
-    color: #475569;
+body:not(.dark-mode) .track-prog-num {
+    color: #0F172A;
 }
 
-body:not(.dark-mode) .badge-progress-bg {
+body:not(.dark-mode) .track-prog-bar-bg {
     background: #E2E8F0;
 }
 
-body:not(.dark-mode) .badge-progress-meta {
-    color: #475569;
-}
-
-body:not(.dark-mode) .badge-progress-pct {
-    color: #D97706;
-}
+body:not(.dark-mode) .track-icon-box.tier-common { background: linear-gradient(135deg, #F1F5F9, #E2E8F0); border: 1.5px solid #CBD5E1; color: #475569; }
+body:not(.dark-mode) .track-icon-box.tier-uncommon { background: linear-gradient(135deg, #ECFDF5, #D1FAE5); border: 1.5px solid #A7F3D0; color: #047857; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); }
+body:not(.dark-mode) .track-icon-box.tier-rare { background: linear-gradient(135deg, #ECFEFF, #CFFAFE); border: 1.5px solid #A5F3FC; color: #0E7490; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15); }
+body:not(.dark-mode) .track-icon-box.tier-epic { background: linear-gradient(135deg, #F3E8FF, #E9D5FF); border: 1.5px solid #D8B4FE; color: #7E22CE; box-shadow: 0 4px 12px rgba(147, 51, 234, 0.15); }
+body:not(.dark-mode) .track-icon-box.tier-legendary { background: linear-gradient(135deg, #FEF3C7, #FDE68A); border: 1.5px solid #FCD34D; color: #B45309; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.18); }
+body:not(.dark-mode) .track-icon-box.tier-mythic { background: linear-gradient(135deg, #FFE4E6, #FECDD3); border: 1.5px solid #FDA4AF; color: #BE123C; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15); }
+body:not(.dark-mode) .track-icon-box.tier-divine { background: linear-gradient(135deg, #FDF4FF, #FCE7F3); border: 1.5px solid #FBCFE8; color: #BE185D; box-shadow: 0 4px 12px rgba(236, 72, 153, 0.18); }
 
 /* Light mode tier level pills */
 body:not(.dark-mode) .badge-level-pill.tier-common { background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1; }
+body:not(.dark-mode) .badge-level-pill.tier-uncommon { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
 body:not(.dark-mode) .badge-level-pill.tier-rare { background: #E0F2FE; color: #0369A1; border: 1px solid #7DD3FC; }
-body:not(.dark-mode) .badge-level-pill.tier-epic { background: #F3E8FF; color: #7E22CE; border: 1px solid #C084FC; }
-body:not(.dark-mode) .badge-level-pill.tier-legendary { background: #FEF3C7; color: #B45309; border: 1px solid #FDE047; }
-body:not(.dark-mode) .badge-level-pill.tier-divine { background: linear-gradient(135deg, #4F46E5, #0284C7); color: #FFF; border: none; }
+body:not(.dark-mode) .badge-level-pill.tier-epic { background: #F3E8FF; color: #6B21A8; border: 1px solid #C084FC; }
+body:not(.dark-mode) .badge-level-pill.tier-legendary { background: #FEF3C7; color: #92400E; border: 1px solid #FDE047; }
+body:not(.dark-mode) .badge-level-pill.tier-mythic { background: #FFE4E6; color: #9F1239; border: 1px solid #FDA4AF; }
+body:not(.dark-mode) .badge-level-pill.tier-divine { background: linear-gradient(135deg, #6366F1, #EC4899); color: #FFF; border: none; }
 
 /* Light mode special badges */
 body:not(.dark-mode) .special-badge-item {
