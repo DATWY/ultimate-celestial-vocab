@@ -83,7 +83,7 @@ export function launchVictoryConfetti() {
     render();
 }
 
-export function displayCard(index) {
+export function displayCard(index, preserveFlipState = false) {
     const { vocabulary } = getState();
     const cardData = vocabulary[index];
 
@@ -179,14 +179,15 @@ export function displayCard(index) {
     }
     // -----------------------------
 
-    // Thiết lập trạng thái và giao diện cho thẻ mới
+    // Thiết lập trạng thái và giao diện cho thẻ
     setCurrentCardIndex(index);
-    setIsFlipped(false);
-
-    // Reset animation và class của flashcard
-    if (DOM.flashcard) {
-        anime.set(DOM.flashcard, { rotateY: 0, translateX: 0, translateY: 0, opacity: 1 });
-        DOM.flashcard.classList.remove('is-flipped');
+    if (!preserveFlipState || !getState().isFlipped) {
+        setIsFlipped(false);
+        // Reset animation và class của flashcard
+        if (DOM.flashcard) {
+            anime.set(DOM.flashcard, { rotateY: 0, translateX: 0, translateY: 0, opacity: 1 });
+            DOM.flashcard.classList.remove('is-flipped');
+        }
     }
     
     const isTypingMode = getState().isTypingMode;
@@ -201,6 +202,9 @@ export function displayCard(index) {
 
     // Cập nhật nội dung thẻ (DOM updates)
     DOM.noCardMessage?.classList.add('hidden');
+    DOM.flashcardArea?.classList.remove('hidden');
+    DOM.flashcard?.classList.remove('hidden');
+    DOM.controlsArea?.classList.remove('hidden');
     DOM.cardEnglish.textContent = cardData.english;
     
     // Hard badge & card glow (Chỉ hiện cho từ Cực Khó)

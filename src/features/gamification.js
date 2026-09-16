@@ -467,14 +467,15 @@ function renderBadges(unlockedBadges) {
             if (level > 0) {
                 trackEl.setAttribute('data-tier', tier.id);
             }
+            trackEl.style.setProperty('--track-theme', meta.color);
             
             trackEl.innerHTML = `
                 <div class="track-card-top">
-                    <div class="track-cat-pill" style="--track-theme: ${meta.color};">
+                    <div class="track-cat-pill">
                         <i class="ph ${meta.icon}"></i>
                         <span>${meta.title}</span>
                     </div>
-                    <span class="badge-level-pill tier-${tier.id}">${tier.name} • CẤP ${level}/${maxLevel}</span>
+                    <span class="track-level-badge">Cấp ${level}/${maxLevel}</span>
                 </div>
 
                 <div class="track-card-hero">
@@ -482,11 +483,12 @@ function renderBadges(unlockedBadges) {
                         <i class="ph ${currentIcon}"></i>
                     </div>
                     <div class="track-titles-col">
-                        <span class="track-target-caption">${isCompleted ? 'DANH HIỆU CAO NHẤT' : 'MỤC TIÊU KẾ TIẾP'}</span>
                         <h4 class="track-title-single" title="${currentName}">${currentName}</h4>
-                        <div class="track-req-pill">
-                            <i class="ph ph-crosshair-simple"></i>
-                            <span>${track.descPrefix} <strong>${currentMilestone.toLocaleString()}</strong> ${track.descSuffix}</span>
+                        <div class="track-target-label">
+                            ${isCompleted 
+                                ? '<span class="target-done"><i class="ph-fill ph-check-circle"></i> Đã mở tối đa</span>' 
+                                : `<span>Mục tiêu: <strong>${currentMilestone.toLocaleString()}</strong> ${track.descSuffix}</span>`
+                            }
                         </div>
                     </div>
                 </div>
@@ -496,19 +498,19 @@ function renderBadges(unlockedBadges) {
                         <span class="track-prog-val">
                             <strong class="track-prog-num">${currentValue.toLocaleString()}</strong> / ${currentMilestone.toLocaleString()} <span class="track-prog-unit">${track.descSuffix}</span>
                         </span>
-                        <span class="track-prog-pct tier-${tier.id}">${progressPct}%</span>
+                        <span class="track-prog-pct">${progressPct}%</span>
                     </div>
                     <div class="track-prog-bar-bg">
-                        <div class="track-prog-bar-fill tier-${tier.id}" style="width: ${progressPct}%"></div>
+                        <div class="track-prog-bar-fill" style="width: ${progressPct}%"></div>
                     </div>
                     <div class="track-prog-footer">
                         <span class="track-prog-remaining">
                             ${isCompleted 
-                                ? `<i class="ph-fill ph-check-circle" style="color:#10b981;"></i> Đạt mốc tối đa!` 
+                                ? `<i class="ph-fill ph-trophy" style="color:#f59e0b;"></i> Toàn bộ 25 mốc!` 
                                 : `Còn thiếu: <strong>${remaining.toLocaleString()}</strong> ${track.descSuffix}`
                             }
                         </span>
-                        <span class="track-prog-view-more">Xem ${maxLevel} mốc <i class="ph ph-caret-right"></i></span>
+                        <span class="track-prog-view-more">Xem 25 mốc <i class="ph-bold ph-caret-right"></i></span>
                     </div>
                 </div>
             `;

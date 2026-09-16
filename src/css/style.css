@@ -4783,17 +4783,19 @@ body:not(.dark-mode) .forecast-avg-line {
 }
 
 /* ==========================================================================
-   Milestone Track Cards (Mốc Tiến Trình) Redesign
+   Milestone Track Cards (Mốc Tiến Trình) Streamlined Redesign
    ========================================================================== */
 .badge-track-item {
     display: flex;
     flex-direction: column;
-    padding: 16px 18px;
-    background: rgba(255, 255, 255, 0.03);
+    padding: 18px 20px;
+    background: rgba(30, 41, 59, 0.45);
     backdrop-filter: blur(14px);
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                border-color 0.25s ease, 
+                box-shadow 0.25s ease;
     position: relative;
     cursor: pointer;
     gap: 14px;
@@ -4803,15 +4805,15 @@ body:not(.dark-mode) .forecast-avg-line {
 
 .badge-track-item:hover {
     transform: translateY(-4px);
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+    border-color: color-mix(in srgb, var(--track-theme, #8B5CF6) 40%, transparent);
+    box-shadow: 0 12px 30px -4px color-mix(in srgb, var(--track-theme, #8B5CF6) 22%, transparent);
 }
 
 .badge-track-item.locked {
     opacity: 0.65;
 }
 
-/* Card Top Row */
+/* Card Top Row: Category Pill & Level Badge */
 .track-card-top {
     display: flex;
     justify-content: space-between;
@@ -4823,14 +4825,14 @@ body:not(.dark-mode) .forecast-avg-line {
 .track-cat-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    border-radius: 9px;
-    font-size: 0.74rem;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.76rem;
     font-weight: 700;
     color: var(--track-theme, #8B5CF6);
-    background: color-mix(in srgb, var(--track-theme, #8B5CF6) 14%, transparent);
-    border: 1px solid color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, transparent);
+    background: color-mix(in srgb, var(--track-theme, #8B5CF6) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8B5CF6) 24%, transparent);
     letter-spacing: 0.2px;
     white-space: nowrap;
     flex-shrink: 0;
@@ -4840,30 +4842,20 @@ body:not(.dark-mode) .forecast-avg-line {
     font-size: 0.95rem;
 }
 
-/* Badge Level Pills */
-.badge-level-pill {
-    font-size: 0.7rem;
-    font-weight: 800;
-    padding: 3px 8px;
-    border-radius: 9px;
-    text-transform: uppercase;
+.track-level-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
     letter-spacing: 0.3px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #FFF;
     white-space: nowrap;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.badge-level-pill.tier-common { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border-color: rgba(148, 163, 184, 0.3); }
-.badge-level-pill.tier-uncommon { background: rgba(16, 185, 129, 0.18); color: #34D399; border-color: rgba(16, 185, 129, 0.35); }
-.badge-level-pill.tier-rare { background: rgba(6, 182, 212, 0.18); color: #38BDF8; border-color: rgba(6, 182, 212, 0.35); }
-.badge-level-pill.tier-epic { background: rgba(168, 85, 247, 0.2); color: #C084FC; border-color: rgba(168, 85, 247, 0.4); }
-.badge-level-pill.tier-legendary { background: rgba(245, 158, 11, 0.2); color: #FCD34D; border-color: rgba(245, 158, 11, 0.4); }
-.badge-level-pill.tier-mythic { background: rgba(244, 63, 94, 0.2); color: #FDA4AF; border-color: rgba(244, 63, 94, 0.4); }
-.badge-level-pill.tier-divine { background: linear-gradient(135deg, #7C3AED, #EC4899); color: #FFF; border: none; }
-
-/* Card Hero Row */
+/* Card Hero Centerpiece */
 .track-card-hero {
     display: flex;
     align-items: center;
@@ -4872,28 +4864,24 @@ body:not(.dark-mode) .forecast-avg-line {
 }
 
 .track-icon-box {
-    width: 52px;
-    height: 52px;
+    width: 54px;
+    height: 54px;
     border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.75rem;
     flex-shrink: 0;
-    transition: transform 0.25s ease;
+    background: color-mix(in srgb, var(--track-theme, #8B5CF6) 18%, rgba(15, 23, 42, 0.7));
+    border: 1.5px solid color-mix(in srgb, var(--track-theme, #8B5CF6) 45%, transparent);
+    color: var(--track-theme, #8B5CF6);
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, transparent);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .badge-track-item:hover .track-icon-box {
     transform: scale(1.08) rotate(3deg);
 }
-
-.track-icon-box.tier-common { background: linear-gradient(135deg, rgba(148, 163, 184, 0.2), rgba(100, 116, 139, 0.1)); border: 1.5px solid rgba(148, 163, 184, 0.35); color: #CBD5E1; }
-.track-icon-box.tier-uncommon { background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.1)); border: 1.5px solid rgba(52, 211, 153, 0.4); color: #34D399; box-shadow: 0 0 16px rgba(16, 185, 129, 0.2); }
-.track-icon-box.tier-rare { background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(14, 116, 144, 0.1)); border: 1.5px solid rgba(56, 189, 248, 0.4); color: #38BDF8; box-shadow: 0 0 16px rgba(6, 182, 212, 0.2); }
-.track-icon-box.tier-epic { background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(126, 34, 206, 0.1)); border: 1.5px solid rgba(192, 132, 252, 0.45); color: #C084FC; box-shadow: 0 0 18px rgba(168, 85, 247, 0.25); }
-.track-icon-box.tier-legendary { background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.1)); border: 1.5px solid rgba(252, 211, 77, 0.5); color: #FCD34D; box-shadow: 0 0 18px rgba(245, 158, 11, 0.25); }
-.track-icon-box.tier-mythic { background: linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(190, 18, 60, 0.1)); border: 1.5px solid rgba(251, 113, 133, 0.5); color: #FB7185; box-shadow: 0 0 18px rgba(244, 63, 94, 0.25); }
-.track-icon-box.tier-divine { background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(236, 72, 153, 0.2)); border: 1.5px solid rgba(236, 72, 153, 0.5); color: #F472B6; box-shadow: 0 0 20px rgba(236, 72, 153, 0.35); }
 
 .track-titles-col {
     display: flex;
@@ -4903,17 +4891,8 @@ body:not(.dark-mode) .forecast-avg-line {
     min-width: 0;
 }
 
-.track-target-caption {
-    font-size: 0.66rem;
-    font-weight: 800;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    color: var(--text-light);
-    opacity: 0.75;
-}
-
 .track-title-single {
-    font-size: 1.18rem;
+    font-size: 1.2rem;
     font-weight: 800;
     color: var(--text-color);
     margin: 0;
@@ -4923,37 +4902,40 @@ body:not(.dark-mode) .forecast-avg-line {
     line-height: 1.25;
 }
 
-.track-req-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
+.track-target-label {
     font-size: 0.8rem;
     color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.track-req-pill strong {
+.track-target-label strong {
     color: var(--text-color);
     font-weight: 700;
 }
 
-.track-req-pill i {
-    font-size: 0.85rem;
-    opacity: 0.7;
+.track-target-label .target-done {
+    color: #10b981;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Card Progress Block */
 .track-card-progress {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
     width: 100%;
 }
 
 .track-prog-stats {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    font-size: 0.8rem;
+    align-items: baseline;
+    font-size: 0.82rem;
 }
 
 .track-prog-val {
@@ -4972,50 +4954,35 @@ body:not(.dark-mode) .forecast-avg-line {
 }
 
 .track-prog-pct {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 800;
-    padding: 1px 7px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-color);
+    color: var(--track-theme, #8B5CF6);
+    background: color-mix(in srgb, var(--track-theme, #8B5CF6) 14%, transparent);
+    padding: 2px 8px;
+    border-radius: 6px;
 }
 
-.track-prog-pct.tier-common { color: #94A3B8; background: rgba(148, 163, 184, 0.15); }
-.track-prog-pct.tier-uncommon { color: #10B981; background: rgba(16, 185, 129, 0.15); }
-.track-prog-pct.tier-rare { color: #06B6D4; background: rgba(6, 182, 212, 0.15); }
-.track-prog-pct.tier-epic { color: #A855F7; background: rgba(168, 85, 247, 0.15); }
-.track-prog-pct.tier-legendary { color: #F59E0B; background: rgba(245, 158, 11, 0.15); }
-.track-prog-pct.tier-mythic { color: #F43F5E; background: rgba(244, 63, 94, 0.15); }
-.track-prog-pct.tier-divine { color: #EC4899; background: rgba(236, 72, 153, 0.15); }
-
 .track-prog-bar-bg {
-    height: 8px;
+    height: 9px;
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
+    border-radius: 12px;
     overflow: hidden;
     width: 100%;
 }
 
 .track-prog-bar-fill {
     height: 100%;
-    border-radius: 20px;
+    border-radius: 12px;
     transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    background: linear-gradient(90deg, var(--primary-color), #00E5FF);
+    background: linear-gradient(90deg, var(--track-theme, #8B5CF6), color-mix(in srgb, var(--track-theme, #8B5CF6) 65%, #ffffff));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--track-theme, #8B5CF6) 45%, transparent);
 }
-
-.track-prog-bar-fill.tier-common { background: linear-gradient(90deg, #64748B, #94A3B8); }
-.track-prog-bar-fill.tier-uncommon { background: linear-gradient(90deg, #059669, #34D399); }
-.track-prog-bar-fill.tier-rare { background: linear-gradient(90deg, #0284C7, #38BDF8); }
-.track-prog-bar-fill.tier-epic { background: linear-gradient(90deg, #7E22CE, #C084FC); }
-.track-prog-bar-fill.tier-legendary { background: linear-gradient(90deg, #D97706, #FBBF24); }
-.track-prog-bar-fill.tier-mythic { background: linear-gradient(90deg, #E11D48, #FB7185); }
-.track-prog-bar-fill.tier-divine { background: linear-gradient(90deg, #7C3AED, #EC4899, #06B6D4); }
 
 .track-prog-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.74rem;
+    font-size: 0.76rem;
     color: var(--text-light);
     margin-top: 2px;
 }
@@ -5029,13 +4996,41 @@ body:not(.dark-mode) .forecast-avg-line {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    color: var(--primary-color, #6366F1);
+    color: var(--track-theme, var(--primary-color, #6366F1));
     font-weight: 700;
     transition: gap 0.2s ease;
 }
 
 .badge-track-item:hover .track-prog-view-more {
     gap: 6px;
+}
+
+/* Light Mode Overrides for Milestone Track Cards */
+body:not(.dark-mode) .badge-track-item {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.05);
+}
+
+body:not(.dark-mode) .badge-track-item:hover {
+    background: #ffffff;
+    border-color: color-mix(in srgb, var(--track-theme, #8B5CF6) 45%, transparent);
+    box-shadow: 0 10px 28px -4px color-mix(in srgb, var(--track-theme, #8B5CF6) 20%, transparent);
+}
+
+body:not(.dark-mode) .track-level-badge {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #475569;
+}
+
+body:not(.dark-mode) .track-icon-box {
+    background: color-mix(in srgb, var(--track-theme, #8B5CF6) 12%, #ffffff);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--track-theme, #8B5CF6) 20%, transparent);
+}
+
+body:not(.dark-mode) .track-prog-bar-bg {
+    background: rgba(0, 0, 0, 0.06);
 }
 
 /* Special Badges Section Grid */
@@ -9367,14 +9362,20 @@ body:not(.dark-mode) .dedup-card-sub {
 }
 
 /* ==========================================================================
-   FSRS-7 WHO I AM & COGNITIVE PROFILE STYLES
+   FSRS-7 WHO I AM & COGNITIVE PROFILE STYLES (V2: SIMPLE & VIBRANT)
    ========================================================================== */
 
-.whoiam-container {
+.whoiam-v2-container {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     width: 100%;
+    animation: fadeInWhoIam 0.3s ease;
+}
+
+@keyframes fadeInWhoIam {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .whoiam-meta-header {
@@ -9419,753 +9420,601 @@ body:not(.dark-mode) .dedup-card-sub {
     50% { opacity: 0.4; transform: scale(0.85); }
 }
 
-/* Hero Card: Who I Am */
-.whoiam-hero-card {
+/* --- 1. THẺ CĂN CƯỚC NÃO BỘ (HERO IDENTITY CARD) --- */
+.whoiam-identity-card {
     position: relative;
     overflow: hidden;
-    padding: 22px 24px;
-    background: rgba(30, 41, 59, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    padding: 24px;
+    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
     backdrop-filter: blur(16px);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.35);
 }
 
-.whoiam-hero-bg-glow {
+.identity-card-glow {
     position: absolute;
-    top: -50px;
-    right: -50px;
+    top: -60px;
+    right: -40px;
     width: 320px;
     height: 320px;
     border-radius: 50%;
     filter: blur(90px);
-    opacity: 0.25;
+    opacity: 0.28;
     pointer-events: none;
 }
 
-.whoiam-hero-split {
+.identity-card-inner {
     display: grid;
-    grid-template-columns: 1.35fr 1fr;
-    gap: 22px;
-    align-items: stretch;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    align-items: center;
     position: relative;
     z-index: 2;
 }
 
-.whoiam-hero-left {
+.identity-left-column {
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.whoiam-identity-row {
-    display: flex;
-    gap: 16px;
     align-items: center;
-    margin-bottom: 10px;
+    gap: 20px;
 }
 
-.whoiam-avatar-glow {
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
+.identity-avatar-box {
+    width: 76px;
+    height: 76px;
+    border-radius: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: 2.5rem;
     color: #ffffff;
-    box-shadow: 0 10px 24px -4px var(--hero-glow, rgba(56, 189, 248, 0.45));
+    box-shadow: 0 12px 28px -4px var(--persona-accent, rgba(56, 189, 248, 0.45));
     flex-shrink: 0;
+    transition: transform 0.3s ease;
 }
 
-.whoiam-identity-text {
+.identity-avatar-box:hover {
+    transform: scale(1.05) rotate(3deg);
+}
+
+.identity-title-box {
     flex: 1;
     min-width: 0;
 }
 
-.whoiam-tag-row {
-    display: flex;
+.identity-tag-badge {
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 3px;
-}
-
-.whoiam-tag {
+    gap: 8px;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 6px;
-    border: 1px solid;
+    color: var(--persona-accent, #38bdf8);
+    margin-bottom: 4px;
 }
 
-.whoiam-en-title {
-    font-size: 0.84rem;
-    color: var(--text-subtle, #94a3b8);
+.identity-tag-badge .identity-en {
+    color: #94a3b8;
     font-style: italic;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
-.whoiam-hero-title {
-    font-size: 1.55rem;
-    font-weight: 700;
-    margin: 0;
+.identity-name {
+    font-size: 1.65rem;
+    font-weight: 800;
+    margin: 0 0 6px 0;
     color: #f8fafc;
     line-height: 1.25;
 }
 
-.whoiam-summary {
-    font-size: 0.88rem;
-    line-height: 1.6;
+.identity-slogan {
+    font-size: 0.92rem;
+    line-height: 1.5;
     color: #cbd5e1;
-    margin: 0 0 12px 0;
+    margin: 0;
 }
 
-.whoiam-traits-row {
+.identity-right-column {
     display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.identity-highlight-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #fbbf24;
+}
+
+.identity-traits-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.identity-trait-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.identity-trait-box .trait-lbl {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.identity-trait-box .trait-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+/* --- 2. BẢNG 4 SIÊU NĂNG LỰC TRÍ NÃO --- */
+.whoiam-superpowers-section,
+.whoiam-protips-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.section-title-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.whoiam-trait-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    border-radius: 8px;
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    font-size: 0.78rem;
-    color: #cbd5e1;
-}
-
-.whoiam-trait-chip.highlight {
-    background: rgba(56, 189, 248, 0.12);
-    border-color: rgba(56, 189, 248, 0.35);
-    color: #38bdf8;
-}
-
-.whoiam-trait-chip .trait-val {
-    color: #f8fafc;
-}
-
-.whoiam-trait-chip.highlight .trait-val {
-    color: #38bdf8;
-}
-
-/* Right Showcase Card */
-.whoiam-hero-right {
-    display: flex;
-}
-
-.whoiam-highlight-box {
-    width: 100%;
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 16px 18px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    border-left: 3px solid var(--hero-glow, #38bdf8);
-    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.45);
-}
-
-.highlight-top-label {
+.title-with-icon {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-    color: var(--hero-glow, #38bdf8);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-}
-
-.highlight-metric-group {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 2px;
-}
-
-.highlight-big-val {
-    font-size: 2.2rem;
-    font-weight: 800;
-    color: #f8fafc;
-    line-height: 1;
-}
-
-.highlight-delta-tag {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #34d399;
-    background: rgba(16, 185, 129, 0.15);
-    padding: 2px 8px;
-    border-radius: 6px;
-    border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-.highlight-trait-name {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin-bottom: 10px;
-}
-
-.highlight-takeaway-block {
-    display: flex;
     gap: 8px;
-    align-items: flex-start;
-    font-size: 0.8rem;
+}
+
+.title-with-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color, #a855f7);
+}
+
+.title-with-icon h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+}
+
+.section-title-line .title-sub {
+    font-size: 0.82rem;
     color: #94a3b8;
-    line-height: 1.45;
-    background: rgba(0, 0, 0, 0.28);
-    padding: 9px 12px;
-    border-radius: 8px;
 }
 
-.highlight-takeaway-block i {
-    color: var(--hero-glow, #38bdf8);
-    font-size: 1rem;
-    margin-top: 1px;
-    flex-shrink: 0;
+.superpowers-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
 }
 
-/* 5 Pillars Section */
-.whoiam-pillars-card {
-    padding: 20px 22px;
+.superpower-card {
     background: rgba(30, 41, 59, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    border-radius: 16px;
+    padding: 16px 18px;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
-.whoiam-section-header {
-    margin-bottom: 16px;
+.superpower-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.3);
 }
 
-.whoiam-section-header h3 {
+.sp-card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #f8fafc;
-    margin: 0 0 4px 0;
-}
-
-.whoiam-section-header .section-subtitle {
-    font-size: 0.8rem;
-    color: #94a3b8;
-}
-
-/* 5-Column Balanced Grid on Wide Desktop */
-.whoiam-pillars-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
 }
 
-.pillar-box {
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
-    padding: 14px 14px;
-    transition: all 0.25s ease;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.pillar-box:hover {
-    border-color: var(--pillar-color);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.35);
-}
-
-.pillar-box-top {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin-bottom: 12px;
-}
-
-.pillar-name-line {
+.sp-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 7px;
-}
-
-.pillar-name-line i {
-    font-size: 1.05rem;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #ffffff;
     flex-shrink: 0;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25);
 }
 
-.pillar-name-line .pillar-name {
-    margin: 0;
-    font-size: 0.84rem;
-    font-weight: 600;
-    color: #f1f5f9;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: -0.01em;
-}
-
-.pillar-sub-line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 6px;
-}
-
-.pillar-sub {
-    font-size: 0.69rem;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.sp-title-group {
     flex: 1;
     min-width: 0;
 }
 
-.pillar-status-chip {
-    font-size: 0.66rem;
+.sp-name {
+    font-size: 1rem;
     font-weight: 700;
-    padding: 2px 5px;
-    border-radius: 6px;
-    flex-shrink: 0;
-    white-space: nowrap;
-}
-
-.pillar-status-chip.good {
-    background: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.pillar-status-chip.warn {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.pillar-status-chip.neutral {
-    background: rgba(148, 163, 184, 0.12);
-    color: #94a3b8;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-/* Dual Bar Visual Comparison */
-.dual-bar-wrapper {
-    background: rgba(0, 0, 0, 0.25);
-    padding: 9px 10px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-}
-
-.bar-row {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
-.bar-label-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.74rem;
-}
-
-.bar-entity.user {
-    font-weight: 600;
-    color: #e2e8f0;
-}
-
-.bar-value.user {
-    color: #38bdf8;
-    font-size: 0.86rem;
-    font-weight: 700;
-}
-
-.bar-entity.base,
-.bar-value.base {
-    color: #64748b;
-    font-size: 0.7rem;
-}
-
-.bar-track {
-    height: 6px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.bar-fill.user {
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.bar-track.base {
-    height: 4px;
-}
-
-.bar-fill.base {
-    height: 100%;
-    background: #475569;
-    border-radius: 999px;
-}
-
-.pillar-verdict-box {
-    margin-top: auto;
-    padding-top: 4px;
-}
-
-.verdict-title {
-    display: block;
-    font-size: 0.82rem;
-    font-weight: 600;
-    margin-bottom: 3px;
-}
-
-.verdict-text {
-    font-size: 0.76rem;
-    line-height: 1.45;
-    color: #94a3b8;
-    margin: 0;
-}
-
-/* Bento Grid */
-.whoiam-bento-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.whoiam-stats-card,
-.whoiam-advice-card {
-    padding: 20px 22px;
-    background: rgba(30, 41, 59, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
-}
-
-.card-header-simple {
-    margin-bottom: 14px;
-}
-
-.card-header-simple h3 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 1.05rem;
-    font-weight: 600;
     color: #f8fafc;
     margin: 0 0 2px 0;
 }
 
-.card-hint {
+.sp-sub {
+    font-size: 0.76rem;
+    color: #94a3b8;
+    display: block;
+}
+
+.sp-score-box {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+}
+
+.sp-score-num {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--sp-color, #38bdf8);
+    line-height: 1;
+}
+
+.sp-score-unit {
     font-size: 0.75rem;
     color: #64748b;
+    font-weight: 600;
 }
 
-/* Stats Visual List */
-.stats-visual-list {
+.sp-bar-container {
+    width: 100%;
+}
+
+.sp-bar-track {
+    width: 100%;
+    height: 7px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    overflow: hidden;
+    position: relative;
+}
+
+.sp-bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 10px var(--sp-color, rgba(56, 189, 248, 0.5));
+}
+
+.sp-card-footer {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-}
-
-.stats-visual-item {
-    background: rgba(15, 23, 42, 0.45);
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.stats-info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.stats-name {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: #cbd5e1;
-}
-
-.stats-name i {
-    color: #818cf8;
-    font-size: 0.95rem;
-    flex-shrink: 0;
-}
-
-.stats-numbers {
-    display: flex;
-    align-items: center;
     gap: 6px;
 }
 
-.stats-user-num {
-    font-size: 0.88rem;
+.sp-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--sp-color, #38bdf8);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 3px 8px;
+    border-radius: 6px;
+    align-self: flex-start;
+}
+
+.sp-desc {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+    margin: 0;
+}
+
+/* --- 3. 3 BÍ KÍP ĐỈNH CAO THỰC CHIẾN (PRO-TIPS) --- */
+.protips-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+.protip-card {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 16px;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.protip-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.protip-num-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.protip-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 28px;
+}
+
+.protip-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.protip-header i {
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.protip-header h4 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+    line-height: 1.35;
+}
+
+.protip-card p {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+    margin: 0;
+}
+
+/* --- 4. NGĂN XẾP TRƯỢT: THÔNG SỐ TOÁN HỌC FSRS-7 (COLLAPSIBLE) --- */
+.whoiam-tech-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.btn-toggle-tech {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-radius: 12px;
+    background: rgba(30, 41, 59, 0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    font-size: 0.84rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.btn-toggle-tech:hover,
+.btn-toggle-tech.active {
+    background: rgba(30, 41, 59, 0.55);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #f8fafc;
+}
+
+.btn-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-toggle-left i {
+    font-size: 1.1rem;
+    color: var(--primary-color, #a855f7);
+}
+
+.toggle-caret {
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.fsrs-tech-panel {
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    padding: 12px;
+    animation: slideDownTech 0.3s ease;
+}
+
+@keyframes slideDownTech {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tech-table-container {
+    overflow-x: auto;
+}
+
+.tech-metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+}
+
+.tech-metrics-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: #94a3b8;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tech-metrics-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.tech-user-val {
     font-weight: 700;
     color: #38bdf8;
+    white-space: nowrap;
 }
 
-.stats-base-num {
-    font-size: 0.72rem;
-    color: #64748b;
+.tech-lab-val {
+    color: #94a3b8;
+    white-space: nowrap;
 }
 
-.stats-delta-badge {
-    font-size: 0.7rem;
+.tech-delta-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.74rem;
     font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 4px;
+    white-space: nowrap;
 }
 
-.stats-delta-badge.higher {
+.tech-delta-pill.positive {
     background: rgba(16, 185, 129, 0.15);
     color: #34d399;
 }
 
-.stats-delta-badge.lower {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+.tech-delta-pill.negative {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
 }
 
-.stats-delta-badge.neutral {
-    background: rgba(148, 163, 184, 0.12);
-    color: #94a3b8;
+.tech-delta-pill.neutral {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
 }
 
-.mini-dual-bar {
-    width: 100%;
-}
-
-.mini-bar-track {
-    position: relative;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    overflow: visible;
-}
-
-.mini-bar-fill.user {
-    height: 100%;
-    background: linear-gradient(90deg, #38bdf8, #818cf8);
-    border-radius: 999px;
-}
-
-.mini-bar-marker.base {
-    position: absolute;
-    top: -2px;
-    width: 3px;
-    height: 9px;
-    background: #f1f5f9;
-    border-radius: 1px;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
-}
-
-/* Actionable Advice List */
-.whoiam-advice-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.advice-card-item {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 12px 14px;
-    background: rgba(15, 23, 42, 0.45);
-    border-radius: 12px;
-    border-left: 3px solid #38bdf8;
-}
-
-.advice-num-badge {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-    font-size: 0.76rem;
-    font-weight: 800;
-    font-family: 'JetBrains Mono', monospace;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-
-.advice-body {
-    flex: 1;
-}
-
-.advice-header-line {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 3px;
-}
-
-.advice-header-line i {
-    color: #38bdf8;
-    font-size: 0.95rem;
-}
-
-.advice-header-line h4 {
-    margin: 0;
-    font-size: 0.86rem;
-    font-weight: 600;
-    color: #f1f5f9;
-}
-
-.advice-body p {
-    margin: 0;
+.tech-desc-text {
     font-size: 0.78rem;
-    line-height: 1.45;
     color: #94a3b8;
 }
 
-/* Light Theme overrides for Who I Am */
-body:not(.dark-mode) .whoiam-hero-card,
-body:not(.dark-mode) .whoiam-pillars-card,
-body:not(.dark-mode) .whoiam-stats-card,
-body:not(.dark-mode) .whoiam-advice-card {
+/* ==========================================================================
+   LIGHT MODE OVERRIDES FOR WHO I AM V2
+   ========================================================================== */
+
+body:not(.dark-mode) .whoiam-identity-card {
     background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06);
 }
 
-body:not(.dark-mode) .whoiam-hero-title,
-body:not(.dark-mode) .whoiam-section-header h3,
-body:not(.dark-mode) .card-header-simple h3,
-body:not(.dark-mode) .pillar-name-line .pillar-name,
-body:not(.dark-mode) .pillar-name,
-body:not(.dark-mode) .advice-header-line h4,
-body:not(.dark-mode) .bar-entity.user,
-body:not(.dark-mode) .highlight-big-val,
-body:not(.dark-mode) .highlight-trait-name {
+body:not(.dark-mode) .identity-name,
+body:not(.dark-mode) .title-with-icon h3,
+body:not(.dark-mode) .sp-name,
+body:not(.dark-mode) .protip-header h4 {
     color: #0f172a;
 }
 
-body:not(.dark-mode) .whoiam-summary,
-body:not(.dark-mode) .verdict-text,
-body:not(.dark-mode) .advice-body p,
-body:not(.dark-mode) .highlight-takeaway-block span {
-    color: #475569;
-}
-
-body:not(.dark-mode) .whoiam-highlight-box {
-    background: rgba(248, 250, 252, 0.9);
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.06);
-}
-
-body:not(.dark-mode) .highlight-takeaway-block {
-    background: rgba(0, 0, 0, 0.04);
-}
-
-body:not(.dark-mode) .whoiam-trait-chip {
-    background: rgba(241, 245, 249, 0.8);
-    border-color: rgba(0, 0, 0, 0.08);
+body:not(.dark-mode) .identity-slogan,
+body:not(.dark-mode) .sp-desc,
+body:not(.dark-mode) .protip-card p {
     color: #334155;
 }
 
-body:not(.dark-mode) .whoiam-trait-chip .trait-val {
+body:not(.dark-mode) .identity-right-column {
+    background: rgba(241, 245, 249, 0.8);
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+body:not(.dark-mode) .identity-trait-box {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.05);
+}
+
+body:not(.dark-mode) .identity-trait-box .trait-val {
     color: #0f172a;
 }
 
-body:not(.dark-mode) .whoiam-trait-chip.highlight .trait-val {
-    color: #0284c7;
+body:not(.dark-mode) .superpower-card,
+body:not(.dark-mode) .protip-card {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.04);
 }
 
-body:not(.dark-mode) .pillar-box {
-    background: rgba(248, 250, 252, 0.85);
-    border: 1px solid rgba(0, 0, 0, 0.06);
+body:not(.dark-mode) .superpower-card:hover,
+body:not(.dark-mode) .protip-card:hover {
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.14);
 }
 
-body:not(.dark-mode) .dual-bar-wrapper {
-    background: rgba(0, 0, 0, 0.04);
-}
-
-body:not(.dark-mode) .bar-value.user {
-    color: #0369a1;
-}
-
-body:not(.dark-mode) .bar-value.base,
-body:not(.dark-mode) .bar-entity.base {
-    color: #64748b;
-}
-
-body:not(.dark-mode) .bar-fill.base {
-    background: #94a3b8;
-}
-
-body:not(.dark-mode) .stats-visual-item,
-body:not(.dark-mode) .advice-card-item {
-    background: rgba(241, 245, 249, 0.8);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-body:not(.dark-mode) .stats-name {
-    color: #1e293b;
-}
-
-body:not(.dark-mode) .stats-user-num {
-    color: #0284c7;
-}
-
-body:not(.dark-mode) .stats-base-num {
-    color: #64748b;
-}
-
-body:not(.dark-mode) .bar-track,
-body:not(.dark-mode) .mini-bar-track {
+body:not(.dark-mode) .sp-bar-track {
     background: rgba(0, 0, 0, 0.08);
 }
 
-/* Tablet & Intermediate Responsive (769px - 1099px) */
-@media (min-width: 769px) and (max-width: 1099px) {
-    .whoiam-pillars-grid {
+@media (max-width: 768px) {
+    .whoiam-identity-card {
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+
+    .identity-hero-visual {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+    }
+
+    .identity-archetype-tag,
+    .identity-core-badges {
+        justify-content: center;
+    }
+
+    .identity-right-column {
         grid-template-columns: repeat(3, 1fr);
     }
-}
 
-/* Mobile responsive (<= 768px) */
-@media (max-width: 768px) {
-    .whoiam-hero-split {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .whoiam-avatar-glow {
-        width: 56px;
-        height: 56px;
-        font-size: 1.8rem;
-    }
-
-    .whoiam-hero-title {
-        font-size: 1.35rem;
-    }
-
-    .whoiam-pillars-grid {
+    .superpowers-grid {
         grid-template-columns: 1fr;
     }
 
-    .whoiam-bento-grid {
+    .protips-grid {
         grid-template-columns: 1fr;
     }
 
@@ -10173,6 +10022,12 @@ body:not(.dark-mode) .mini-bar-track {
         flex-direction: column;
         align-items: flex-start;
         gap: 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .identity-right-column {
+        grid-template-columns: 1fr;
     }
 }
 
