@@ -342,8 +342,8 @@ export async function preloadAudio(text) {
 
 // ─── BACKGROUND AUDIO PRELOADER ───────────────────────────────────────────
 let isPreloadingAll = false;
-const PRELOAD_CONCURRENCY = 3;
-const DELAY_BETWEEN_SLOTS_MS = 400;
+const INITIAL_CONCURRENCY = 1000; // Tải song song 4 luồng đồng thời
+const BASE_SLOT_DELAY_MS = 100; // 0.1s (100ms) nghỉ giữa các slot tải audio
 const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 2000;
 const RETRY_JITTER_MS = 500;
@@ -370,10 +370,15 @@ async function fetchWithRetry(text) {
     for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
         try {
             await getAudioDataURL(text);
-            return { ok: true };
+            return { ok: true, isRateLimited: false };
         } catch (err) {
             const msg = (err.message || '').toLowerCase();
-            const isRateLimit = msg.includes('429') || msg.includes('rate') || msg.includes('quota');
+            const isRateLimit = msg.includes('429') ||
+                msg.includes('rate') ||
+                msg.includes('quota') ||
+                msg.includes('limit') ||
+                msg.includes('too many') ||
+                msg.includes('service invoked');
 
             if (isRateLimit) {
                 _rateLimitStats.rejections++;
@@ -382,7 +387,7 @@ async function fetchWithRetry(text) {
             }
 
             if (attempt === RETRY_MAX_ATTEMPTS) {
-                return { ok: false, reason: err.message };
+                return { ok: false, reason: err.message, isRateLimited: isRateLimit };
             }
 
             const waitMs = calcBackoffMs(attempt);
@@ -392,23 +397,97 @@ async function fetchWithRetry(text) {
     }
 }
 
-async function runWithConcurrency(tasks, limit, onProgress) {
+/**
+ * Bộ điều phối tải audio thích ứng động (Dynamic Rate-Limit Throttle).
+ * - Tải song song đa luồng (mặc định 4 luồng) với delay 0.1s.
+ * - Nếu gặp lỗi Rate-limit / Quota: tự động giảm dần số luồng song song (4 -> 3 -> 2 -> 1) và tăng delay slot (lên tới 3000ms).
+ * - Nếu bị rate-limit liên tiếp 5 lần ở mức thấp nhất: tạm dừng đợt tải hiện tại để bảo toàn hạn ngạch IP.
+ * - Khi hoạt động ổn định liên tục: dần dần phục hồi số luồng song song và giảm delay về mức 100ms (0.1s).
+ */
+async function runWithDynamicThrottle(items, fetchFn, onProgress) {
     let index = 0;
     let done = 0;
-    const total = tasks.length;
+    let activeWorkers = 0;
+    let targetConcurrency = INITIAL_CONCURRENCY;
+    let slotDelay = BASE_SLOT_DELAY_MS;
+    let consecutiveRateLimits = 0;
+    let consecutiveSuccesses = 0;
+    let isAborted = false;
+    const total = items.length;
 
-    async function runNext() {
-        while (index < total) {
-            const currentIndex = index++;
-            await tasks[currentIndex]();
-            done++;
-            onProgress(done, total);
-            await new Promise(r => setTimeout(r, DELAY_BETWEEN_SLOTS_MS));
+    return new Promise((resolve) => {
+        function checkCompletion() {
+            if (activeWorkers === 0 && (index >= total || isAborted)) {
+                resolve({ isAborted, done, total });
+            }
         }
-    }
 
-    const workers = Array.from({ length: limit }, () => runNext());
-    await Promise.all(workers);
+        async function scheduleNext() {
+            if (isAborted) {
+                checkCompletion();
+                return;
+            }
+
+            while (activeWorkers < targetConcurrency && index < total && !isAborted) {
+                const currentIndex = index++;
+                const item = items[currentIndex];
+                activeWorkers++;
+
+                (async () => {
+                    try {
+                        const result = await fetchFn(item);
+                        done++;
+
+                        if (result && result.isRateLimited) {
+                            consecutiveRateLimits++;
+                            consecutiveSuccesses = 0;
+
+                            // Giảm dần số luồng song song và tăng delay
+                            const oldConcurrency = targetConcurrency;
+                            targetConcurrency = Math.max(1, targetConcurrency - 1);
+                            slotDelay = Math.min(3000, slotDelay + 500);
+
+                            console.warn(`📉 Audio Throttle: Phát hiện rate-limit! Giảm luồng song song ${oldConcurrency} -> ${targetConcurrency}, tăng delay lên ${slotDelay}ms.`);
+
+                            if (consecutiveRateLimits >= 5) {
+                                console.warn("🛑 Quá 5 lần rate-limit liên tiếp từ API audio proxy. Tạm dừng đợt tải này để tránh bị khóa IP.");
+                                isAborted = true;
+                            }
+
+                            // Tạm nghỉ 2s để API proxy hồi phục
+                            await new Promise(r => setTimeout(r, 2000));
+                        } else if (result && result.ok) {
+                            consecutiveSuccesses++;
+                            consecutiveRateLimits = 0;
+
+                            // Phục hồi dần luồng và slotDelay nếu ổn định kéo dài
+                            if (consecutiveSuccesses >= 10) {
+                                if (slotDelay > BASE_SLOT_DELAY_MS) {
+                                    slotDelay = Math.max(BASE_SLOT_DELAY_MS, slotDelay - 100);
+                                }
+                                if (targetConcurrency < INITIAL_CONCURRENCY) {
+                                    targetConcurrency++;
+                                }
+                            }
+                        }
+
+                        onProgress(done, total, targetConcurrency, slotDelay, result);
+                    } catch (err) {
+                        console.error("Lỗi worker tải audio:", err);
+                    } finally {
+                        activeWorkers--;
+                        await new Promise(r => setTimeout(r, slotDelay));
+                        scheduleNext();
+                        checkCompletion();
+                    }
+                })();
+            }
+
+            checkCompletion();
+        }
+
+        scheduleNext();
+    });
 }
 
 export async function startBackgroundAudioPreload(vocabulary) {
@@ -423,47 +502,67 @@ export async function startBackgroundAudioPreload(vocabulary) {
     try {
         const db = await dbPromise;
 
-        const wordsToDownload = [];
+        // CHỈ LỌC CÁC TỪ ACTIVE (!isDeleted) VÀ DEDUP (TRÁNH LẶP TỪ)
+        const uniqueMissingWords = new Set();
+        const seenWords = new Set();
+
         for (const word of vocabulary) {
-            if (!word.english) continue;
+            // Loại trừ thẻ đã bị xóa (soft-delete) hoặc thiếu từ tiếng Anh
+            if (!word || word.isDeleted || !word.english) continue;
+            const cleanText = word.english.trim();
+            if (!cleanText) continue;
+
+            const lowerKey = cleanText.toLowerCase();
+            if (seenWords.has(lowerKey)) continue;
+            seenWords.add(lowerKey);
+
             try {
-                const cached = await db.get(STORE_NAME, word.english);
-                if (!cached) wordsToDownload.push(word.english);
+                const cached = await db.get(STORE_NAME, cleanText);
+                if (!cached) uniqueMissingWords.add(cleanText);
             } catch (_) {
-                wordsToDownload.push(word.english);
+                uniqueMissingWords.add(cleanText);
             }
         }
 
-        const total = wordsToDownload.length;
-        if (total === 0) {
-            console.log("⚡ Tất cả audio đã sẵn sàng offline.");
+        const wordsToDownload = Array.from(uniqueMissingWords);
+        const batchTotal = wordsToDownload.length;
+
+        if (batchTotal === 0) {
+            console.log(`⚡ Toàn bộ ${seenWords.size} từ vựng active đều đã có audio sẵn sàng offline trong IndexedDB.`);
             return;
         }
 
-        console.log(`🎵 Cần tải ${total} audio. Concurrency=${PRELOAD_CONCURRENCY}, delay=${DELAY_BETWEEN_SLOTS_MS}ms/slot`);
+        console.log(`🎵 Bắt đầu tải song song (${INITIAL_CONCURRENCY} luồng) toàn bộ ${batchTotal} audio còn thiếu (từ tổng ${seenWords.size} từ active). Tốc độ: 0.1s/slot (delay=${BASE_SLOT_DELAY_MS}ms)`);
 
         let successCount = 0;
         let failCount = 0;
 
-        const tasks = wordsToDownload.map(text => async () => {
-            const result = await fetchWithRetry(text);
-            if (result.ok) {
-                successCount++;
-            } else {
-                failCount++;
-                console.warn(`❌ Bỏ qua "${text}": ${result.reason}`);
+        const { isAborted } = await runWithDynamicThrottle(
+            wordsToDownload,
+            async (text) => {
+                const result = await fetchWithRetry(text);
+                if (result.ok) {
+                    successCount++;
+                } else {
+                    failCount++;
+                    console.warn(`❌ Bỏ qua "${text}": ${result.reason}`);
+                }
+                return result;
+            },
+            (done, total, currentConcurrency, currentDelay) => {
+                if (done % 10 === 0 || done === total) {
+                    const percent = Math.round((done / total) * 100);
+                    console.log(`⏳ Tiến độ audio: ${done}/${total} (${percent}%) | ✅ ${successCount} | ❌ ${failCount} | 🚫 rate-limit: ${_rateLimitStats.rejections} (luồng song song: ${currentConcurrency}, delay: ${currentDelay}ms)`);
+                }
             }
-        });
+        );
 
-        await runWithConcurrency(tasks, PRELOAD_CONCURRENCY, (done, total) => {
-            if (done % 10 === 0 || done === total) {
-                console.log(`⏳ Tiến độ audio: ${done}/${total} | ✅ ${successCount} | ❌ ${failCount} | 🚫 rate-limit: ${_rateLimitStats.rejections}`);
-            }
-        });
+        console.log(`✅ Hoàn tất lượt tải: ${successCount} thành công, ${failCount} thất bại, ${_rateLimitStats.rejections} lần bị rate-limit.`);
 
-        console.log(`✅ Hoàn tất: ${successCount} thành công, ${failCount} thất bại, ${_rateLimitStats.rejections} lần bị rate-limit.`);
-        if (successCount > 0) {
-            showPopup(`Đã tải xong ${successCount} audio. Sẵn sàng offline!`, "success");
+        if (isAborted) {
+            showPopup(`Đã tải được ${successCount}/${batchTotal} audio. Tạm dừng do API rate-limit, các từ còn lại (${batchTotal - successCount}) sẽ tiếp tục tải ở lượt sau!`, "warning");
+        } else if (successCount > 0) {
+            showPopup(`Đã tải xong toàn bộ ${successCount} audio vào bộ nhớ offline!`, "success");
         }
     } catch (error) {
         console.error("Lỗi Background Preloader:", error);

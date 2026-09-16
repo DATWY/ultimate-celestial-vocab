@@ -6,6 +6,7 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-s
 import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
 import { updateStats, updatePanelWordList, displayCard, populateTopicFilters } from '../ui/render.js';
+import { renderGamificationUI } from '../features/gamification.js';
 import { showPopup, showToast } from '../ui/modal.js';
 import { DOM } from '../ui/elements.js';
 import { startBackgroundAudioPreload } from './sound.js';
@@ -352,6 +353,7 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         
         querySnapshot.forEach(docSnap => {
             const remote = docSnap.data();
+            if (!remote.id) remote.id = docSnap.id;
             const remoteTime = toMillis(remote.updatedAt);
             
             if (remoteTime > maxPullTime) maxPullTime = remoteTime;
@@ -456,11 +458,12 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         // PHASE 4: Cập nhật UI & Lưu timestamps
         // ============================================================
         if (needsLocalUpdate) {
-            setVocabulary(vocabulary);
+            const latestVocab = stateModule.getState().vocabulary || vocabulary;
+            setVocabulary([...latestVocab]);
             
             // Rebuild allTags từ vocabulary vừa pull
             const newTags = new Set(['all']);
-            vocabulary.forEach(word => {
+            latestVocab.forEach(word => {
                 if (word && word.tags && Array.isArray(word.tags)) {
                     word.tags.forEach(t => newTags.add(t));
                 }
@@ -469,25 +472,50 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             
             await saveVocabulary(true); 
             const state = stateModule.getState();
-            const isStudyingCard = (state.currentCardIndex >= 0);
+            const currentCardIndex = state.currentCardIndex;
+            const isCurrentCardValid = currentCardIndex >= 0 && 
+                currentCardIndex < latestVocab.length && 
+                latestVocab[currentCardIndex] && 
+                !latestVocab[currentCardIndex].isDeleted;
+
+            // Rebuild review queue để nạp tất cả các thẻ mới hoặc thẻ đến hạn từ Cloud
+            buildReviewQueue();
+
+            if (isCurrentCardValid) {
+                // Thẻ hiện tại vẫn tồn tại và hợp lệ:
+                // Re-render ngay lập tức để ghi đè mọi sửa đổi từ Cloud (nghĩa, ví dụ, trạng thái SRS...),
+                // đồng thời giữ nguyên góc lật nếu người dùng đang xem mặt sau.
+                displayCard(currentCardIndex, true);
+
+                // Loại bỏ index của thẻ đang xem ra khỏi review queue vừa tạo để tránh lặp lại chính thẻ này
+                const queueAfterRebuild = stateModule.getState().currentReviewQueue;
+                const filteredQueue = queueAfterRebuild.filter(idx => idx !== currentCardIndex);
+                stateModule.setReviewQueue(filteredQueue);
+                console.log(`📱 Đã cập nhật và ghi đè nội dung thẻ hiện tại (index ${currentCardIndex}) từ Cloud.`);
+            } else {
+                // Nếu thẻ hiện tại đã bị xóa trên Cloud hoặc app đang ở màn hình hết bài:
+                // Nạp ngay thẻ tiếp theo lên màn hình
+                const nextCard = getNextCardToReview();
+                displayCard(nextCard);
+                console.log(`📱 Đã tự động chèn thẻ mới từ Cloud vào màn hình ôn tập (index ${nextCard}).`);
+            }
 
             updateStats();
             populateTopicFilters();
             updatePanelWordList();
+            renderGamificationUI();
 
-            // Chỉ reset lại thẻ hiển thị nếu người dùng chưa mở thẻ nào (tránh đổi thẻ người dùng đang suy nghĩ)
-            if (!isStudyingCard) {
-                buildReviewQueue();
-                displayCard(getNextCardToReview());
-            } else {
-                console.log("📖 Đang trong phiên học bài, giữ nguyên thẻ hiện tại để không gây gián đoạn.");
-            }
-            console.log("📱 Đã cập nhật dữ liệu từ Cloud về máy.");
-            startBackgroundAudioPreload(vocabulary);
-        } else if (cardsToPush.length > 0) {
-            console.log(`☁️ Push ${cardsToPush.length} thẻ (không có thay đổi từ Cloud).`);
+            console.log("📱 Đã đồng bộ và áp dụng dữ liệu từ Cloud về máy thành công.");
+            startBackgroundAudioPreload(latestVocab);
         } else {
-            console.log("✅ Dữ liệu đã đồng bộ hoàn toàn.");
+            // Dù không có thẻ mới/sửa đổi, vẫn cập nhật stats và gamification UI nếu có thay đổi về streak/xp/badges từ Cloud
+            updateStats();
+            renderGamificationUI();
+            if (cardsToPush.length > 0) {
+                console.log(`☁️ Push ${cardsToPush.length} thẻ (không có thay đổi từ Cloud).`);
+            } else {
+                console.log("✅ Dữ liệu đã đồng bộ hoàn toàn.");
+            }
         }
 
         // Lưu lastPullTime = max timestamp từ Cloud
