@@ -5,7 +5,7 @@ import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabular
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
-import { displayCard, flipCard, applyDarkMode, applySoundSetting, populateTopicFilters, updatePanelWordList, checkAndCleanupTags } from './ui/render.js';
+import { displayCard, flipCard, applyDarkMode, applySoundSetting, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { openProfileModal } from './features/gamification.js';
 import { setupIOEventListeners } from './features/io.js';
@@ -441,8 +441,64 @@ export function setupEventListeners() {
     document.getElementById('manage-add-word-btn')?.addEventListener('click', () => { closeModal(DOM.manageModal); openAddEditModal(); });
     DOM.profileBtn?.addEventListener('click', () => { closeMenu(); openProfileModal(); });
     DOM.startQuizBtn?.addEventListener('click', () => { closeMenu(); loadAndShowQuiz(); });
+    // Custom Topic Dropdown
+    const toggleCustomTopicMenu = (forceOpen = null) => {
+        if (!DOM.customTopicMenu) return;
+        const isOpen = forceOpen !== null ? forceOpen : !DOM.customTopicMenu.classList.contains('open');
+        DOM.customTopicMenu.classList.toggle('open', isOpen);
+        DOM.customTopicTrigger?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (isOpen && DOM.customTopicSearch) {
+            DOM.customTopicSearch.value = '';
+            DOM.customTopicOptions?.querySelectorAll('.custom-topic-item').forEach(item => {
+                item.style.display = 'flex';
+            });
+            setTimeout(() => DOM.customTopicSearch?.focus(), 60);
+        }
+    };
+
+    DOM.customTopicTrigger?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCustomTopicMenu();
+    });
+
+    DOM.customTopicSearch?.addEventListener('input', (e) => {
+        const query = e.target.value.trim().toLowerCase();
+        const items = DOM.customTopicOptions?.querySelectorAll('.custom-topic-item');
+        if (!items) return;
+        items.forEach(item => {
+            const name = item.querySelector('.topic-item-name')?.textContent.toLowerCase() || '';
+            const match = !query || name.includes(query);
+            item.style.display = match ? 'flex' : 'none';
+        });
+    });
+
+    DOM.customTopicOptions?.addEventListener('click', (e) => {
+        const item = e.target.closest('.custom-topic-item');
+        if (!item) return;
+        const tag = item.dataset.value;
+        toggleCustomTopicMenu(false);
+        if (DOM.mainTopicFilter) {
+            DOM.mainTopicFilter.value = tag;
+            DOM.mainTopicFilter.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (DOM.customTopicDropdown && !DOM.customTopicDropdown.contains(e.target)) {
+            toggleCustomTopicMenu(false);
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && DOM.customTopicMenu?.classList.contains('open')) {
+            toggleCustomTopicMenu(false);
+            DOM.customTopicTrigger?.focus();
+        }
+    });
+
     DOM.mainTopicFilter?.addEventListener('change', (e) => {
         setCurrentTopicFilter(e.target.value);
+        updateCustomTopicUI(e.target.value);
         import('./core/state.js').then(s => s.trackEvent('topicHopping'));
         buildReviewQueue();
         switchCardWithAnimation();

@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ultimate Celestial Vocab ✨</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="theme-color" content="#8a2be2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,20 +25,44 @@
     <div id="app-container">
         <!-- === HEADER === -->
         <header class="app-header">
-            <h1><i class="ph ph-shooting-star"></i> Ultimate Celestial Vocab</h1>
+            <h1>
+                <img src="/favicon.svg" class="app-logo-mark" alt="Celestial Logo" width="36" height="36">
+                <span>Ultimate Celestial Vocab</span>
+            </h1>
 
             <button id="toggle-taskbar-btn" class="icon-btn" title="Mở menu công cụ" aria-label="Mở menu công cụ">
-                <i class="ph ph-list"></i>
+                <i class="ph-duotone ph-list"></i>
             </button>
 
             <div id="taskbar-menu" class="settings-controls">
                 <!-- Group 1: Topic Filter & Sync -->
                 <div class="header-group group-filter">
-                    <select id="main-topic-filter" title="Chọn chủ đề học" aria-label="Chọn chủ đề học">
-                        <option value="all">📚 Tất cả chủ đề</option>
-                    </select>
+                    <div id="custom-topic-dropdown" class="custom-topic-dropdown">
+                        <button id="custom-topic-trigger" class="custom-topic-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chọn chủ đề học">
+                            <i class="ph-duotone ph-bookmarks topic-trigger-icon"></i>
+                            <span id="custom-topic-label" class="topic-trigger-label">Tất cả chủ đề</span>
+                            <span id="custom-topic-badge" class="topic-trigger-badge">...</span>
+                            <i class="ph-bold ph-caret-down topic-trigger-caret"></i>
+                        </button>
+                        <div id="custom-topic-menu" class="custom-topic-menu" role="listbox" tabindex="-1">
+                            <div class="topic-menu-header">
+                                <span class="topic-menu-title"><i class="ph-duotone ph-tag"></i> Chủ đề học</span>
+                                <span id="custom-topic-total-badge" class="topic-total-badge">0 từ</span>
+                            </div>
+                            <div class="custom-topic-search-wrap">
+                                <i class="ph-bold ph-magnifying-glass search-icon"></i>
+                                <input type="text" id="custom-topic-search" class="custom-topic-search" placeholder="Tìm chủ đề..." autocomplete="off">
+                            </div>
+                            <div id="custom-topic-options" class="custom-topic-options">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <select id="main-topic-filter" class="hidden-topic-select" title="Chọn chủ đề học" aria-label="Chọn chủ đề học">
+                            <option value="all">📚 Tất cả chủ đề</option>
+                        </select>
+                    </div>
                     <button id="manual-sync-btn" class="icon-btn" title="Đồng bộ Cloud" aria-label="Đồng bộ Cloud">
-                        <i class="ph ph-arrows-clockwise"></i>
+                        <i class="ph-duotone ph-arrows-clockwise"></i>
                         <span class="btn-label">Đồng bộ Cloud</span>
                     </button>
                 </div>
@@ -45,12 +72,12 @@
                 <!-- Group 2: Quick Study Actions -->
                 <div class="header-group group-actions">
                     <button id="start-quiz-btn" class="icon-btn-text" title="Làm bài kiểm tra">
-                        <i class="ph ph-timer"></i>
+                        <i class="ph-duotone ph-rocket-launch"></i>
                         <span class="btn-label">Kiểm tra</span>
                     </button>
 
                     <button id="manage-words-btn-open" class="icon-btn-text" title="Quản lý từ vựng">
-                        <i class="ph ph-list-checks"></i>
+                        <i class="ph-duotone ph-books"></i>
                         <span class="btn-label">Quản Lý</span>
                     </button>
                 </div>
@@ -60,19 +87,19 @@
                 <!-- Group 3: Mode & Profile Controls -->
                 <div class="header-group group-utilities">
                     <button id="toggle-typing-mode-btn" class="icon-btn" title="Đổi chế độ: Lật thẻ / Gõ từ" aria-label="Đổi chế độ học">
-                        <i class="ph ph-cards" id="typing-mode-icon"></i>
+                        <i class="ph-duotone ph-cards" id="typing-mode-icon"></i>
                         <span class="btn-label" id="typing-mode-label">Lật thẻ</span>
                     </button>
                     <button id="profile-btn" class="icon-btn" title="Hồ sơ & Thống kê" aria-label="Hồ sơ & Thống kê">
-                        <i class="ph ph-user"></i>
+                        <i class="ph-duotone ph-user-circle"></i>
                         <span class="btn-label">Hồ sơ</span>
                     </button>
                     <button id="toggle-dark-mode-btn" class="icon-btn" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
-                        <i class="ph ph-moon"></i>
+                        <i class="ph-duotone ph-moon-stars"></i>
                         <span class="btn-label">Giao diện Tối/Sáng</span>
                     </button>
                     <button id="toggle-sound-btn" class="icon-btn" title="Bật/Tắt Âm thanh" aria-label="Âm thanh">
-                        <i class="ph ph-speaker-high"></i>
+                        <i class="ph-duotone ph-speaker-high"></i>
                         <span class="btn-label">Bật/Tắt Âm thanh</span>
                     </button>
                 </div>
@@ -95,14 +122,14 @@
                                 <div id="typing-area" class="typing-container">
                                     <div class="typing-input-wrapper">
                                         <input type="text" id="typing-input" placeholder="Gõ từ tiếng Anh..." autocomplete="off" autocorrect="off" spellcheck="false" />
-                                        <button id="typing-submit-btn" class="icon-btn" title="Xác nhận (Enter)"><i class="ph ph-paper-plane-right"></i></button>
+                                        <button id="typing-submit-btn" class="icon-btn" title="Xác nhận (Enter)"><i class="ph-duotone ph-paper-plane-right"></i></button>
                                     </div>
                                     <p id="typing-feedback" class="typing-feedback"></p>
                                 </div>
                             </div>
                             <div class="card-actions-front">
                                 <button id="tts-btn" class="icon-btn tts-waveform-btn" title="Phát âm (P)" aria-label="Phát âm từ">
-                                    <i class="ph ph-speaker-high tts-icon"></i>
+                                    <i class="ph-duotone ph-speaker-high tts-icon"></i>
                                     <span class="tts-divider"></span>
                                     <div class="audio-waveform-bars" id="audio-waveform" title="Đang phát âm...">
                                         <span class="waveform-bar"></span>
@@ -112,7 +139,7 @@
                                     </div>
                                 </button>
                                 <button id="star-btn" class="icon-btn" title="Đánh dấu sao (S)"
-                                    aria-label="Đánh dấu hoặc bỏ đánh dấu sao"><i class="ph ph-star"></i></button>
+                                    aria-label="Đánh dấu hoặc bỏ đánh dấu sao"><i class="ph-duotone ph-star"></i></button>
                             </div>
                         </div>
                         <div class="card-face card-back">
@@ -142,21 +169,41 @@
 
 
             <div id="controls-area" class="hidden">
-                <button id="reveal-btn"><i class="ph ph-arrow-clockwise"></i> Lật thẻ (F)</button>
+                <button id="reveal-btn"><i class="ph-duotone ph-arrows-clockwise"></i> Lật thẻ (F)</button>
                 <div id="srs-feedback-buttons" class="hidden srs-feedback-grid">
-                    <button class="srs-btn srs-btn-again" data-rating="1" title="Quên (1)"><i class="ph ph-brain"></i>
-                        <span>Quên</span></button>
-                    <button class="srs-btn srs-btn-hard" data-rating="2" title="Khó (2)"><i
-                            class="ph ph-smiley-sad"></i> <span>Khó</span></button>
-                    <button class="srs-btn srs-btn-good" data-rating="3" title="Nhớ (3)"><i class="ph ph-smiley"></i>
-                        <span>Nhớ</span></button>
-                    <button class="srs-btn srs-btn-easy" data-rating="4" title="Dễ (4)"><i
-                            class="ph ph-smiley-sticker"></i> <span>Dễ</span></button>
+                    <button class="srs-btn srs-btn-again" data-rating="1" title="Quên (1)">
+                        <div class="srs-btn-label-group">
+                            <i class="ph-duotone ph-brain"></i>
+                            <span class="srs-btn-name">Quên</span>
+                        </div>
+                        <span class="srs-interval-badge">&lt;10p</span>
+                    </button>
+                    <button class="srs-btn srs-btn-hard" data-rating="2" title="Khó (2)">
+                        <div class="srs-btn-label-group">
+                            <i class="ph-duotone ph-fire"></i>
+                            <span class="srs-btn-name">Khó</span>
+                        </div>
+                        <span class="srs-interval-badge">1d</span>
+                    </button>
+                    <button class="srs-btn srs-btn-good" data-rating="3" title="Nhớ (3)">
+                        <div class="srs-btn-label-group">
+                            <i class="ph-duotone ph-sparkle"></i>
+                            <span class="srs-btn-name">Nhớ</span>
+                        </div>
+                        <span class="srs-interval-badge">3d</span>
+                    </button>
+                    <button class="srs-btn srs-btn-easy" data-rating="4" title="Dễ (4)">
+                        <div class="srs-btn-label-group">
+                            <i class="ph-duotone ph-check-circle"></i>
+                            <span class="srs-btn-name">Dễ</span>
+                        </div>
+                        <span class="srs-interval-badge">7d</span>
+                    </button>
                 </div>
 
 
                 <button id="next-card-btn" class="hidden" title="Tiếp theo (Enter/N)">Tiếp theo <i
-                        class="ph ph-arrow-right"></i></button>
+                        class="ph-duotone ph-arrow-right"></i></button>
             </div>
             <div id="no-card-message" class="hidden no-card-container">
                 <div class="celestial-victory-card victory-card-horizontal">
@@ -333,11 +380,11 @@
         <section id="quiz-area" class="quiz-container hidden">
             <div class="quiz-header hidden">
                 <button id="quiz-back-btn" class="back-nav-btn" title="Trở về màn hình chính"><i
-                        class="ph ph-arrow-left"></i></button>
-                <h2><i class="ph ph-timer"></i> Bài Kiểm Tra</h2>
+                        class="ph-duotone ph-arrow-left"></i></button>
+                <h2><i class="ph-duotone ph-timer"></i> Bài Kiểm Tra</h2>
                 <div class="quiz-info"><span id="quiz-timer">TG: 00:00</span><span id="quiz-progress">Câu:
                         1/10</span><span id="quiz-score">Điểm: 0</span></div><button id="end-quiz-btn"
-                    class="danger-btn icon-btn-text"><i class="ph ph-stop-circle"></i> Kết thúc</button>
+                    class="danger-btn icon-btn-text"><i class="ph-duotone ph-stop-circle"></i> Kết thúc</button>
             </div>
             <div class="quiz-question-area hidden">
                 <p class="quiz-prompt">Nghĩa của từ sau là gì?</p>
@@ -346,21 +393,90 @@
                 <p id="quiz-feedback" class="quiz-feedback" aria-live="polite"></p>
             </div>
             <div class="quiz-controls hidden"><button id="skip-quiz-btn" class="text-link-btn"><i
-                        class="ph ph-skip-forward"></i> Bỏ qua (Enter)</button></div>
-            <div id="quiz-results-area" class="hidden">
-                <h3>Kết quả</h3>
-                <p>Đúng: <strong id="results-correct">0</strong></p>
-                <p>Sai/Bỏ qua: <strong id="results-incorrect">0</strong></p>
-                <p>Điểm: <strong id="results-score">0</strong></p><button id="review-incorrect-btn"
-                    class="icon-btn-text hidden"><i class="ph ph-binoculars"></i> Xem lại từ sai</button>
-                <button id="restart-quiz-btn" class="icon-btn-text"><i class="ph ph-arrow-counter-clockwise"></i> Làm
-                    lại</button><button id="return-to-flashcards-btn" class="icon-btn-text"><i class="ph ph-house"></i>
-                    Quay lại</button>
+                        class="ph-duotone ph-skip-forward"></i> Bỏ qua (Enter)</button></div>
+            <div id="quiz-results-area" class="quiz-results-luxury hidden">
+                <div class="results-header">
+                    <div class="results-badge-icon"><i class="ph-fill ph-trophy"></i></div>
+                    <h3 id="quiz-results-headline">Hoàn Thành Bài Kiểm Tra!</h3>
+                    <p id="quiz-results-subline">Tổng kết hiệu suất phiên thử thách trí nhớ</p>
+                </div>
+
+                <!-- Animated SVG Gauge & Score -->
+                <div class="results-visual-container">
+                    <div class="score-radial-wrapper">
+                        <svg class="score-radial-svg" viewBox="0 0 120 120">
+                            <circle class="score-circle-bg" cx="60" cy="60" r="50"></circle>
+                            <circle id="score-circle-progress" class="score-circle-progress" cx="60" cy="60" r="50"></circle>
+                        </svg>
+                        <div class="score-radial-content">
+                            <span id="quiz-percentage-val" class="score-percentage">0%</span>
+                            <span id="results-score" class="score-fraction">0/0</span>
+                        </div>
+                    </div>
+                    <div id="quiz-tier-badge" class="quiz-tier-badge tier-scholar">
+                        <i class="ph-fill ph-sparkle"></i>
+                        <span id="quiz-tier-name">Starlight Scholar</span>
+                    </div>
+                </div>
+
+                <!-- Bento Metrics HUD -->
+                <div class="results-metrics-grid">
+                    <div class="metric-hud-card metric-correct">
+                        <div class="metric-icon"><i class="ph-bold ph-check-circle"></i></div>
+                        <div class="metric-data">
+                            <span class="metric-label">Chính xác</span>
+                            <span class="metric-value"><strong id="results-correct">0</strong> câu</span>
+                        </div>
+                    </div>
+                    <div class="metric-hud-card metric-incorrect">
+                        <div class="metric-icon"><i class="ph-bold ph-x-circle"></i></div>
+                        <div class="metric-data">
+                            <span class="metric-label">Sai / Bỏ qua</span>
+                            <span class="metric-value"><strong id="results-incorrect">0</strong> câu</span>
+                        </div>
+                    </div>
+                    <div class="metric-hud-card metric-speed">
+                        <div class="metric-icon"><i class="ph-bold ph-lightning"></i></div>
+                        <div class="metric-data">
+                            <span class="metric-label">Tốc độ TB</span>
+                            <span class="metric-value" id="results-speed">0.0s / câu</span>
+                        </div>
+                    </div>
+                    <div class="metric-hud-card metric-xp">
+                        <div class="metric-icon"><i class="ph-bold ph-star"></i></div>
+                        <div class="metric-data">
+                            <span class="metric-label">Kinh nghiệm</span>
+                            <span class="metric-value" id="results-xp-earned">+0 XP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Missed Vocabulary Interactive Showcase -->
+                <div id="quiz-missed-section" class="quiz-missed-section hidden">
+                    <div class="missed-section-header">
+                        <h4><i class="ph-bold ph-warning-circle"></i> Từ vựng cần củng cố (<span id="missed-count">0</span>)</h4>
+                        <span class="missed-hint">Bấm loa để nghe phát âm chuẩn</span>
+                    </div>
+                    <div id="quiz-missed-list" class="quiz-missed-list"></div>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="results-actions">
+                    <button id="review-incorrect-btn" class="icon-btn-text primary-btn hidden">
+                        <i class="ph-bold ph-lightning"></i> Ôn tập ngay các từ sai
+                    </button>
+                    <button id="restart-quiz-btn" class="icon-btn-text outline-btn">
+                        <i class="ph-duotone ph-arrow-counter-clockwise"></i> Làm bài khác
+                    </button>
+                    <button id="return-to-flashcards-btn" class="icon-btn-text primary-btn">
+                        <i class="ph-duotone ph-house"></i> Về Flashcards
+                    </button>
+                </div>
             </div>
             <div id="quiz-setup-area" class="quiz-setup-premium">
                 <div class="quiz-setup-header">
                     <button id="quiz-setup-back-btn" class="back-nav-btn" title="Trở về màn hình chính"><i
-                            class="ph ph-arrow-left"></i></button>
+                            class="ph-duotone ph-arrow-left"></i></button>
                     <div class="setup-icon-wrapper"><i class="ph-fill ph-rocket-launch"></i></div>
                     <h3>Thiết lập kiểm tra</h3>
                     <p>Tùy chỉnh phiên ôn tập của bạn để đạt hiệu quả cao nhất</p>
@@ -368,7 +484,7 @@
 
                 <div class="quiz-setup-options">
                     <div class="setup-option-card">
-                        <div class="option-icon"><i class="ph ph-list-numbers"></i></div>
+                        <div class="option-icon"><i class="ph-duotone ph-list-numbers"></i></div>
                         <div class="option-content">
                             <label for="quiz-num-questions">Số lượng câu hỏi</label>
                             <select id="quiz-num-questions">
@@ -380,7 +496,7 @@
                     </div>
 
                     <div class="setup-option-card">
-                        <div class="option-icon"><i class="ph ph-hourglass-high"></i></div>
+                        <div class="option-icon"><i class="ph-duotone ph-hourglass-high"></i></div>
                         <div class="option-content">
                             <label for="quiz-time-limit">Thời gian (phút)</label>
                             <input type="number" id="quiz-time-limit" value="5" min="1" max="60">
@@ -388,7 +504,7 @@
                     </div>
                 </div>
                 <div class="premium-actions">
-                    <button id="cancel-quiz-setup-btn" class="primary-btn outline-btn"><i class="ph ph-x"></i> Hủy
+                    <button id="cancel-quiz-setup-btn" class="primary-btn outline-btn"><i class="ph-duotone ph-x"></i> Hủy
                         bỏ</button>
                     <button id="confirm-start-quiz-btn" class="primary-btn"><i class="ph-fill ph-play"></i> Bắt đầu
                         ngay</button>
@@ -401,7 +517,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content">
                 <button id="close-add-edit-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
                 <form id="add-edit-form">
                     <h3 id="form-title">Thêm từ mới</h3>
                     <input type="hidden" id="edit-word-id">
@@ -417,8 +533,8 @@
                         <input type="text" id="input-tags" placeholder="Ví dụ: Work, Travel, Technology"> </div>
                     <div class="form-group"> <label for="input-example">Câu ví dụ:</label> <textarea id="input-example"
                             rows="3"></textarea> </div>
-                    <button type="submit" id="save-word-btn"><i class="ph ph-floppy-disk"></i> Lưu Từ</button>
-                    <button type="button" id="cancel-edit-btn" class="hidden"><i class="ph ph-prohibit"></i> Hủy
+                    <button type="submit" id="save-word-btn"><i class="ph-duotone ph-floppy-disk"></i> Lưu Từ</button>
+                    <button type="button" id="cancel-edit-btn" class="hidden"><i class="ph-duotone ph-prohibit"></i> Hủy
                         Sửa</button>
                 </form>
             </div>
@@ -429,7 +545,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content manage-panel">
                 <button id="close-manage-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
                 <div class="manage-panel-header">
                     <div class="manage-header-main">
                         <h2 id="manage-title" class="manage-panel-title"><i class="ph-duotone ph-books"></i> <span class="title-text-desktop">Quản Lý Từ Vựng</span><span class="title-text-mobile">Kho Từ Vựng</span></h2>
@@ -447,7 +563,7 @@
                         <button id="scan-duplicates-btn" class="icon-btn dedup-btn" title="Quét & Gộp từ vựng trùng lặp thông minh"
                             aria-label="Quét trùng lặp"><i class="ph-bold ph-scan"></i></button>
                         <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Shift+Z)"
-                            aria-label="Hoàn tác lượt đánh giá trước" disabled><i class="ph ph-arrow-u-up-left"></i></button>
+                            aria-label="Hoàn tác lượt đánh giá trước" disabled><i class="ph-duotone ph-arrow-u-up-left"></i></button>
                     </div>
                 </div>
 
@@ -455,7 +571,7 @@
                 <div id="manage-view-words" class="manage-tab-pane active">
                     <section class="manage-controls">
                         <div class="search-bar-wrapper">
-                            <i class="ph ph-magnifying-glass search-icon"></i>
+                            <i class="ph-duotone ph-magnifying-glass search-icon"></i>
                             <input type="search" id="manage-search-input" placeholder="Tìm từ vựng, phiên âm, ví dụ..."
                                 aria-label="Tìm kiếm từ vựng">
                         </div>
@@ -472,7 +588,7 @@
                             </select>
                             <button id="manage-refresh-list-btn" class="icon-btn filter-refresh-btn"
                                 title="Làm mới danh sách" aria-label="Làm mới danh sách từ vựng"><i
-                                    class="ph ph-arrow-counter-clockwise"></i></button>
+                                    class="ph-duotone ph-arrow-counter-clockwise"></i></button>
                         </div>
                         <button id="manage-add-word-btn" class="primary-btn quick-add-btn" title="Thêm từ vựng mới"><i class="ph-bold ph-plus"></i> <span>Thêm Từ</span></button>
                     </section>
@@ -487,7 +603,7 @@
                     </section>
                     
                     <div class="manage-actions-footer">
-                        <button id="bulk-delete-btn" class="danger-btn icon-btn-text hidden"><i class="ph ph-trash"></i> Xóa mục đã chọn</button>
+                        <button id="bulk-delete-btn" class="danger-btn icon-btn-text hidden"><i class="ph-duotone ph-trash"></i> Xóa mục đã chọn</button>
                     </div>
                 </div>
 
@@ -583,16 +699,16 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content modal-large">
                 <button id="close-import-preview-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
-                <h3 id="import-preview-title"><i class="ph ph-file-magnifying-glass"></i> Xem trước Dữ liệu Nhập</h3>
+                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
+                <h3 id="import-preview-title"><i class="ph-duotone ph-file-magnifying-glass"></i> Xem trước Dữ liệu Nhập</h3>
                 <div id="import-preview-stats">
                     <p>Phân tích file: <strong id="import-filename"></strong></p>
                     <ul>
-                        <li><i class="ph ph-check-circle"></i> Từ mới sẽ được thêm: <strong
+                        <li><i class="ph-duotone ph-check-circle"></i> Từ mới sẽ được thêm: <strong
                                 id="import-stats-new">0</strong></li>
-                        <li><i class="ph ph-skip-forward-circle"></i> Từ trùng lặp sẽ bỏ qua: <strong
+                        <li><i class="ph-duotone ph-skip-forward-circle"></i> Từ trùng lặp sẽ bỏ qua: <strong
                                 id="import-stats-skipped">0</strong></li>
-                        <li><i class="ph ph-warning-circle"></i> Dòng lỗi/không hợp lệ: <strong
+                        <li><i class="ph-duotone ph-warning-circle"></i> Dòng lỗi/không hợp lệ: <strong
                                 id="import-stats-errors">0</strong></li>
                     </ul>
                 </div>
@@ -603,8 +719,8 @@
                     </table>
                 </div>
                 <div class="modal-actions">
-                    <button id="cancel-import-btn" class="icon-btn-text"><i class="ph ph-x-circle"></i> Hủy bỏ</button>
-                    <button id="confirm-import-btn" class="icon-btn-text"><i class="ph ph-arrow-down"></i> Xác nhận
+                    <button id="cancel-import-btn" class="icon-btn-text"><i class="ph-duotone ph-x-circle"></i> Hủy bỏ</button>
+                    <button id="confirm-import-btn" class="icon-btn-text"><i class="ph-duotone ph-arrow-down"></i> Xác nhận
                         Nhập</button>
                 </div>
             </div>
@@ -614,7 +730,7 @@
         <div id="fsrs7-config-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="fsrs7-modal-title">
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content" style="max-width: 620px;">
-                <button id="close-fsrs7-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                <button id="close-fsrs7-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
                 <div class="modal-header-with-icon" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                     <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2)); display: flex; align-items: center; justify-content: center; font-size: 24px; color: #a855f7;">
                         <i class="ph-fill ph-brain"></i>
@@ -643,11 +759,11 @@
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                     <button type="button" id="reset-fsrs7-btn" class="icon-btn-text danger-btn" style="margin-right: auto;" title="Trở về thông số chuẩn ban đầu">
-                        <i class="ph ph-arrow-counter-clockwise"></i> Khôi phục Mặc định
+                        <i class="ph-duotone ph-arrow-counter-clockwise"></i> Khôi phục Mặc định
                     </button>
                     <button type="button" id="cancel-fsrs7-btn" class="icon-btn-text">Hủy</button>
                     <button type="button" id="save-fsrs7-btn" class="primary-btn" style="padding: 8px 18px;">
-                        <i class="ph ph-floppy-disk"></i> Lưu & Áp Dụng
+                        <i class="ph-duotone ph-floppy-disk"></i> Lưu & Áp Dụng
                     </button>
                 </div>
             </div>
@@ -658,7 +774,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content profile-panel">
                 <button id="close-profile-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
 
                 <div class="manage-panel-header profile-panel-header">
                     <div class="manage-header-main">
@@ -692,7 +808,7 @@
                                 </div>
                                 <div class="xp-info">
                                     <div class="xp-title-row">
-                                        <h3 class="rank-name-title"><i class="ph ph-shield"></i> Cấp độ Học giả</h3>
+                                        <h3 class="rank-name-title"><i class="ph-duotone ph-shield-star"></i> Cấp độ Học giả</h3>
                                         <span class="xp-badge-total">Tổng XP: <strong id="profile-total-xp">0</strong></span>
                                     </div>
                                     <div class="xp-bar-container">
@@ -704,15 +820,17 @@
                         </div>
 
                         <div class="streak-widget streak-card">
-                            <div class="streak-icon-wrapper">
-                                <i class="ph-fill ph-fire"></i>
-                            </div>
-                            <div class="streak-info">
-                                <div class="streak-count-row">
-                                    <span class="streak-number" id="profile-streak">0</span>
-                                    <span class="streak-unit">ngày</span>
+                            <div class="streak-main-row">
+                                <div class="streak-icon-wrapper">
+                                    <i class="ph-fill ph-fire"></i>
                                 </div>
-                                <span class="streak-text">Chuỗi kiên trì</span>
+                                <div class="streak-info">
+                                    <div class="streak-count-row">
+                                        <span class="streak-number" id="profile-streak">0</span>
+                                        <span class="streak-unit">ngày</span>
+                                    </div>
+                                    <span class="streak-text">Chuỗi kiên trì</span>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -807,7 +925,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content dedup-panel">
                 <button id="close-dedup-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
                 <div class="dedup-panel-header">
                     <div class="dedup-header-left">
                         <div class="dedup-icon-badge"><i class="ph-fill ph-sparkle"></i></div>
@@ -824,7 +942,7 @@
                 </div>
 
                 <div id="dedup-status-banner" class="dedup-status-banner">
-                    <i class="ph ph-info"></i>
+                    <i class="ph-duotone ph-info"></i>
                     <span id="dedup-summary-text">Đang quét toàn bộ kho từ vựng...</span>
                 </div>
 
@@ -838,7 +956,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content small-modal">
                 <button id="close-popup-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng thông báo"><i class="ph ph-x"></i></button>
+                    aria-label="Đóng thông báo"><i class="ph-duotone ph-x"></i></button>
                 <p id="popup-message" aria-live="polite">Nội dung...</p>
                 <div id="popup-actions" class="modal-actions"> <button id="popup-ok-btn">OK</button> <button
                         id="popup-cancel-btn" class="hidden">Hủy</button> </div>

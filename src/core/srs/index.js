@@ -16,7 +16,7 @@ import { getDifficultyBias, getStabilityMultiplier } from './heuristics.js';
  * @param {number} anchorStrength - Optional mnemonic anchor [0, 1]
  * @returns {{ newState: Object, log: Object|null }}
  */
-export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorStrength = 0, customWeights = null) {
+export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorStrength = 0, customWeights = null, isSimulation = false) {
     const now = Date.now();
     const newState = { ...card };
 
@@ -168,8 +168,54 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         ? `${(nextIntervalDays * 24).toFixed(1)}h` 
         : `${nextIntervalDays.toFixed(1)}d`;
 
-    console.log(`[FSRS-7] "${newState.english}" | R: ${rating} | D: ${newState.difficulty.toFixed(2)} | S_long: ${newState.stability.toFixed(2)} | S_short: ${newState.stabilityShort.toFixed(2)} | Interval: ${intervalStr}`);
+    if (!isSimulation) {
+        console.log(`[FSRS-7] "${newState.english}" | R: ${rating} | D: ${newState.difficulty.toFixed(2)} | S_long: ${newState.stability.toFixed(2)} | S_short: ${newState.stabilityShort.toFixed(2)} | Interval: ${intervalStr}`);
+    }
 
     return { newState, log: rLog };
+}
+
+/**
+ * Formats a predicted interval into an elegant badge label.
+ * e.g., "<10p", "1d", "4d", "1.5th", "2n"
+ * @param {number} days
+ * @returns {string}
+ */
+export function formatIntervalPreview(days) {
+    if (days <= 0) return '<10p';
+    if (days < 1) {
+        const hours = Math.round(days * 24);
+        return hours <= 1 ? '<1h' : `${hours}h`;
+    }
+    if (days < 30) {
+        const rounded = days < 2 ? days.toFixed(1).replace(/\.0$/, '') : Math.round(days);
+        return `${rounded}d`;
+    }
+    if (days < 365) {
+        const months = (days / 30).toFixed(1).replace(/\.0$/, '');
+        return `${months}th`;
+    }
+    const years = (days / 365).toFixed(1).replace(/\.0$/, '');
+    return `${years}n`;
+}
+
+/**
+ * Predicts interval badges for all 4 ratings without mutating state or triggering logs.
+ * @param {Object} card 
+ * @param {string} modality 
+ * @returns {{ 1: string, 2: string, 3: string, 4: string }}
+ */
+export function predictNextIntervals(card, modality = 'en-vi') {
+    if (!card) return { 1: '<10p', 2: '1d', 3: '3d', 4: '7d' };
+    const predictions = { 1: '<10p' };
+    for (let rating = 2; rating <= 4; rating++) {
+        try {
+            const { newState } = calculateNextSrsState(card, rating, modality, 0, null, true);
+            predictions[rating] = formatIntervalPreview(newState.srsInterval);
+        } catch (e) {
+            predictions[rating] = rating === 2 ? '1d' : (rating === 3 ? '3d' : '7d');
+        }
+    }
+    return predictions;
 }
 

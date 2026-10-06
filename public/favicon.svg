@@ -1,9 +1,195 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff00ff" />
-      <stop offset="100%" stop-color="#8a2be2" />
+    <!-- Background Canvas Gradients -->
+    <linearGradient id="fav_canvasBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080318"/>
+      <stop offset="40%" stop-color="#12082d"/>
+      <stop offset="100%" stop-color="#240c4a"/>
     </linearGradient>
+
+    <radialGradient id="fav_nebulaGlow" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#9333ea" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.25"/>
+      <stop offset="90%" stop-color="#080318" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Heavy High-Contrast Astral Gold Foil -->
+    <linearGradient id="fav_goldCardBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#fef08a"/>
+      <stop offset="55%" stop-color="#f59e0b"/>
+      <stop offset="85%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+
+    <!-- Heavy Neon Cyan/Violet Border (Back Card) -->
+    <linearGradient id="fav_backCardBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="45%" stop-color="#818cf8"/>
+      <stop offset="80%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <!-- Front Card Body Gradient (High Contrast Cosmic Navy/Violet) -->
+    <linearGradient id="fav_frontCardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#200e47"/>
+      <stop offset="45%" stop-color="#2e135e"/>
+      <stop offset="100%" stop-color="#14062c"/>
+    </linearGradient>
+
+    <!-- Back Card Body Gradient -->
+    <linearGradient id="fav_backCardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#13082e"/>
+      <stop offset="50%" stop-color="#1b0c40"/>
+      <stop offset="100%" stop-color="#0b031c"/>
+    </linearGradient>
+
+    <!-- Flashcard Target Word Pill Gradient -->
+    <linearGradient id="fav_wordBarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="40%" stop-color="#a855f7"/>
+      <stop offset="80%" stop-color="#f472b6"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+
+    <!-- Orbit Ring Gradient -->
+    <linearGradient id="fav_orbitRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <!-- Star Core Radial -->
+    <radialGradient id="fav_starCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#fef08a"/>
+      <stop offset="70%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </radialGradient>
+
+    <!-- Star Aura Radial -->
+    <radialGradient id="fav_starAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#7e22ce" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Heavy Drop Shadow for Card Stack Depth -->
+    <filter id="fav_heavyShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="-6" dy="18" stdDeviation="16" flood-color="#020008" flood-opacity="0.9"/>
+    </filter>
+
+    <filter id="fav_neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
   </defs>
-  <path d="M216,40H72A16,16,0,0,0,56,56V72H40A16,16,0,0,0,24,88V200a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V184h16a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM184,200H40V88H184V200Zm32-32H200V88a16,16,0,0,0-16-16H72V56H216V168Z" fill="url(#cardGrad)"/>
+
+  
+
+  <!-- 1. Celestial Orbit Ring -->
+  <ellipse cx="256" cy="256" rx="230" ry="86" fill="none" 
+           stroke="url(#fav_orbitRingGrad)" stroke-width="12" 
+           opacity="0.75" transform="rotate(-28 256 256)"/>
+  
+  <!-- Orbit Satellite Gems (Bold, visible at tiny sizes!) -->
+  <circle cx="82" cy="172" r="14" fill="#38bdf8" filter="url(#fav_neonGlow)"/>
+  <circle cx="82" cy="172" r="7" fill="#ffffff"/>
+  <circle cx="430" cy="340" r="14" fill="#f472b6" filter="url(#fav_neonGlow)"/>
+  <circle cx="430" cy="340" r="7" fill="#ffffff"/>
+
+  <!-- 2. Back Flashcard (Tilted -16 deg for 3D Deck Stack) -->
+  <g transform="rotate(-16 230 240)" filter="url(#fav_heavyShadow)">
+    <!-- Back Card Body -->
+    <rect x="95" y="55" width="270" height="370" rx="38" 
+          fill="url(#fav_backCardBg)"/>
+    <!-- Back Card Heavy Neon Cyan/Violet Border (22px bold!) -->
+    <rect x="95" y="55" width="270" height="370" rx="38" 
+          fill="none" stroke="url(#fav_backCardBorder)" stroke-width="22" stroke-linejoin="round"/>
+    
+    <!-- Exposed Top-Left Card Constellation Motif (Bold!) -->
+    <circle cx="140" cy="100" r="12" fill="#38bdf8"/>
+    <circle cx="180" cy="100" r="9" fill="#c084fc"/>
+    <line x1="140" y1="100" x2="180" y2="100" stroke="#38bdf8" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <!-- 3. Hero Front Flashcard (Upright, Dominant, High Contrast) -->
+  <g filter="url(#fav_heavyShadow)">
+    <!-- Front Card Body -->
+    <rect x="135" y="65" width="280" height="382" rx="40" 
+          fill="url(#fav_frontCardBg)"/>
+
+    <!-- Front Card Heavy Bold Astral Gold Foil Border (24px bold!) -->
+    <rect x="135" y="65" width="280" height="382" rx="40" 
+          fill="none" stroke="url(#fav_goldCardBorder)" stroke-width="24" stroke-linejoin="round"/>
+
+    <!-- Top Diagonal Glass Glint Reflection -->
+    <path d="M147,100 C147,80 162,77 180,77 L370,77 C388,77 403,80 403,100 L403,135 L147,290 Z" 
+          fill="#ffffff" opacity="0.12"/>
+
+    <!-- Card Header: 3 Bold SRS Mastery Nodes -->
+    <!-- Dot 1: Cyan (New) -->
+    <circle cx="182" cy="118" r="11" fill="#38bdf8" filter="url(#fav_neonGlow)"/>
+    <circle cx="182" cy="118" r="5" fill="#ffffff"/>
+    <!-- Dot 2: Violet (Review) -->
+    <circle cx="214" cy="118" r="10" fill="#c084fc"/>
+    <!-- Dot 3: Gold (Mastered) -->
+    <circle cx="246" cy="118" r="11" fill="#fde047" filter="url(#fav_neonGlow)"/>
+    <circle cx="246" cy="118" r="5" fill="#ffffff"/>
+    <!-- Mastery Thread -->
+    <line x1="182" y1="118" x2="246" y2="118" stroke="#ffffff" stroke-width="4" opacity="0.6"/>
+
+    <!-- Top Right 4-Point Golden Sparkle Star -->
+    <polygon points="368,104 372,114 382,118 372,122 368,132 364,122 354,118 364,114" fill="#fde047"/>
+
+    <!-- Header Divider Bar -->
+    <line x1="162" y1="144" x2="388" y2="144" stroke="rgba(255,255,255,0.25)" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Card Center: Massive Radiant Polaris Star (150px wide/high) -->
+    <!-- Radiant Star Aura Glow -->
+    <circle cx="275" cy="235" r="76" fill="url(#fav_starAura)"/>
+    
+    <!-- Gyroscope Orbit Loop behind star -->
+    <ellipse cx="275" cy="235" rx="68" ry="24" fill="none" 
+             stroke="url(#fav_backCardBorder)" stroke-width="6" 
+             transform="rotate(-20 275 235)" opacity="0.9"/>
+
+    <!-- 8-Pointed Giant Celestial Polaris Star -->
+    <!-- North Spire -->
+    <polygon points="275,160 284,222 275,235 266,222" fill="url(#fav_goldCardBorder)"/>
+    <!-- South Spire -->
+    <polygon points="275,310 284,248 275,235 266,248" fill="url(#fav_goldCardBorder)"/>
+    <!-- East Spire -->
+    <polygon points="350,235 288,244 275,235 288,226" fill="url(#fav_goldCardBorder)"/>
+    <!-- West Spire -->
+    <polygon points="200,235 262,244 275,235 262,226" fill="url(#fav_goldCardBorder)"/>
+
+    <!-- 4 Diagonal Secondary Spikes (45 deg) -->
+    <polygon points="325,185 286,227 275,235 283,220" fill="#fde047"/>
+    <polygon points="225,285 264,243 275,235 267,250" fill="#fde047"/>
+    <polygon points="325,285 283,250 275,235 286,243" fill="#fde047"/>
+    <polygon points="225,185 267,220 275,235 264,227" fill="#fde047"/>
+
+    <!-- Brilliant Pure White Radiant Core (Visible even at 16px) -->
+    <circle cx="275" cy="235" r="22" fill="url(#fav_goldCardBorder)"/>
+    <circle cx="275" cy="235" r="14" fill="url(#fav_starCore)" filter="url(#fav_neonGlow)"/>
+    <circle cx="275" cy="235" r="7" fill="#ffffff"/>
+
+    <!-- Card Lower Section: Bold Flashcard Vocab Bars -->
+    <!-- Section Divider Bar -->
+    <line x1="185" y1="330" x2="365" y2="330" stroke="rgba(255,255,255,0.28)" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- 1. Primary Target Vocab Word Bar (Bold 34px height) -->
+    <rect x="175" y="348" width="200" height="34" rx="17" 
+          fill="url(#fav_wordBarGrad)" 
+          stroke="rgba(255,255,255,0.8)" stroke-width="3" 
+          filter="url(#fav_neonGlow)"/>
+    <!-- Shiny Top Glint on Word Bar -->
+    <rect x="185" y="352" width="180" height="10" rx="5" 
+          fill="#ffffff" opacity="0.6"/>
+
+    <!-- 2. Secondary Definition / Phonetic Bar (Bold 20px height) -->
+    <rect x="200" y="394" width="150" height="20" rx="10" 
+          fill="#ffffff" opacity="0.75"/>
+  </g>
 </svg>
