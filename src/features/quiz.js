@@ -4,9 +4,10 @@ import { showPopup, showConfirmation } from '../ui/modal.js';
 import { playSound } from '../core/sound.js';
 import { calculateNextSrsState } from '../core/srs/index.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
-import { displayCard } from '../ui/render.js';
+import { displayCard, launchVictoryConfetti } from '../ui/render.js';
 import { saveVocabulary, saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent } from '../core/state.js';
 import { animateNumber } from '../core/animations.js';
+import { escapeHTML } from '../core/utils/sanitize.js';
 
 let quizIntervalId = null;
 let quizTimeLeft = 0;
@@ -19,6 +20,7 @@ let quizIncorrectWordsInfo = [];
 let quizIsReviewing = false;
 let currentReviewIndex = -1;
 let quizRealStartTime = 0;
+let quizSessionXP = 0;
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -82,6 +84,7 @@ function startQuiz() {
     currentQuizQuestionIndex = 0;
     quizScore = 0;
     quizIncorrect = 0;
+    quizSessionXP = 0;
     quizTimeLeft = timeLimitMinutes * 60;
     quizRealStartTime = Date.now();
     DOM.quizSetupArea?.classList.add('hidden');
@@ -138,6 +141,7 @@ function checkQuizAnswer() {
             
             if (isMastered && isNotDue) {
                 addXP(1, "+1 XP (Quá dễ)");
+                quizSessionXP += 1;
             } else {
                 const wordLength = currentWord.english.trim().length;
                 const baseExp = 2 + Math.floor(wordLength / 4);
@@ -149,6 +153,7 @@ function checkQuizAnswer() {
                 if (combo > 1) floatText += ` (Combo x${combo})`;
                 
                 addXP(finalExp, floatText);
+                quizSessionXP += finalExp;
             }
             
             recordQuizAnswer(true);
@@ -224,10 +229,12 @@ function finishQuiz(isSilent = false) {
     quizInProgress = false;
     clearInterval(quizIntervalId);
     
-    if (quizScore > 0 && quizQuestions.length >= 10) {
-        const timeTaken = (Date.now() - quizRealStartTime) / 1000;
-        const avgTime = timeTaken / quizQuestions.length;
-        if (avgTime < 2) {
+    const totalQuestions = quizQuestions.length;
+    const timeTaken = (Date.now() - quizRealStartTime) / 1000;
+    const avgTime = totalQuestions > 0 ? (timeTaken / totalQuestions).toFixed(1) : '0.0';
+
+    if (quizScore > 0 && totalQuestions >= 10) {
+        if (parseFloat(avgTime) < 2) {
             import('../core/state.js').then(s => {
                 const state = s.getState();
                 if (!state.gamification) state.gamification = {};
@@ -268,15 +275,105 @@ function finishQuiz(isSilent = false) {
     DOM.quizQuestionArea?.classList.add('hidden');
     DOM.quizControls?.classList.add('hidden');
     DOM.quizResultsArea?.classList.remove('hidden');
+
+    const scorePct = totalQuestions > 0 ? Math.round((quizScore / totalQuestions) * 100) : 0;
+
+    // 1. Animate Numerical Counters
     if (DOM.resultsCorrect) animateNumber(DOM.resultsCorrect, quizScore);
     if (DOM.resultsIncorrect) animateNumber(DOM.resultsIncorrect, quizIncorrect);
-    if (DOM.resultsScore) DOM.resultsScore.textContent = `${quizScore}/${quizQuestions.length}`;
+    if (DOM.resultsScore) DOM.resultsScore.textContent = `${quizScore}/${totalQuestions}`;
+
+    // 2. Animate Circular Radial Gauge
+    const circleProgress = document.getElementById('score-circle-progress');
+    const pctValEl = document.getElementById('quiz-percentage-val');
+    if (pctValEl) {
+        animateNumber(pctValEl, scorePct);
+        setTimeout(() => { pctValEl.textContent = `${scorePct}%`; }, 600);
+    }
+    if (circleProgress) {
+        const circumference = 314.16; // 2 * PI * 50
+        const strokeOffset = circumference - (scorePct / 100) * circumference;
+        circleProgress.style.strokeDashoffset = strokeOffset;
+        if (scorePct >= 80) {
+            circleProgress.style.stroke = '#10b981';
+        } else if (scorePct >= 50) {
+            circleProgress.style.stroke = '#8b5cf6';
+        } else {
+            circleProgress.style.stroke = '#ef4444';
+        }
+    }
+
+    // 3. Dynamic Celestial Tier Badge
+    const tierBadge = document.getElementById('quiz-tier-badge');
+    if (tierBadge) {
+        tierBadge.className = 'quiz-tier-badge';
+        if (scorePct === 100) {
+            tierBadge.classList.add('tier-grandmaster');
+            tierBadge.innerHTML = '<i class="ph-fill ph-trophy"></i> <span>Celestial Grandmaster</span>';
+        } else if (scorePct >= 80) {
+            tierBadge.classList.add('tier-scholar');
+            tierBadge.innerHTML = '<i class="ph-fill ph-sparkle"></i> <span>Starlight Scholar</span>';
+        } else if (scorePct >= 50) {
+            tierBadge.classList.add('tier-explorer');
+            tierBadge.innerHTML = '<i class="ph-fill ph-compass"></i> <span>Nebula Explorer</span>';
+        } else {
+            tierBadge.classList.add('tier-novice');
+            tierBadge.innerHTML = '<i class="ph-fill ph-rocket-launch"></i> <span>Cosmic Novice</span>';
+        }
+    }
+
+    // 4. Update Speed & XP Earned
+    const speedEl = document.getElementById('results-speed');
+    if (speedEl) speedEl.textContent = `${avgTime}s / câu`;
+
+    const xpEl = document.getElementById('results-xp-earned');
+    if (xpEl) xpEl.textContent = `+${quizSessionXP} XP`;
+
+    // 5. Render Missed Words Interactive Section
+    const missedSection = document.getElementById('quiz-missed-section');
+    const missedList = document.getElementById('quiz-missed-list');
+    const missedCount = document.getElementById('missed-count');
+
     if (quizIncorrectWordsInfo.length > 0) {
         DOM.reviewIncorrectBtn?.classList.remove('hidden');
+        if (missedSection) missedSection.classList.remove('hidden');
+        if (missedCount) missedCount.textContent = quizIncorrectWordsInfo.length;
+
+        if (missedList) {
+            missedList.innerHTML = quizIncorrectWordsInfo.map(w => `
+                <div class="missed-word-card">
+                    <div class="missed-word-info">
+                        <span class="missed-word-eng">${escapeHTML(w.english)} <span class="missed-word-type">${escapeHTML(w.type || '')}</span></span>
+                        <span class="missed-word-vi">${escapeHTML(w.vietnamese || '')}</span>
+                    </div>
+                    <button class="missed-tts-btn" title="Nghe phát âm" data-word="${escapeHTML(w.english)}">
+                        <i class="ph-duotone ph-speaker-high"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            missedList.querySelectorAll('.missed-tts-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const wordToSpeak = btn.dataset.word;
+                    if (wordToSpeak) {
+                        import('../core/sound.js').then(m => m.speakText(wordToSpeak));
+                    }
+                });
+            });
+        }
+        playSound('quizEnd');
     } else {
         DOM.reviewIncorrectBtn?.classList.add('hidden');
+        if (missedSection) missedSection.classList.add('hidden');
+        if (scorePct >= 80) {
+            launchVictoryConfetti();
+            playSound('complete');
+        } else {
+            playSound('quizEnd');
+        }
     }
-    playSound('quizEnd');
+
     DOM.returnToFlashcardsBtn?.focus();
 }
 

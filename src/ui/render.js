@@ -5,6 +5,7 @@ import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLea
 import { openAddEditModal, showConfirmation, showPopup, closeModal } from './modal.js';
 import { animateFlip, animateNumber } from '../core/animations.js';
 import { isFuzzySearchMatch } from '../core/dedup.js';
+import { escapeHTML } from '../core/utils/sanitize.js';
 
 export function launchVictoryConfetti() {
     const canvas = document.getElementById('victory-confetti-canvas');
@@ -107,7 +108,7 @@ export function displayCard(index, preserveFlipState = false) {
             const pendingLearning = getPendingLearningCards(vocabulary, filterLowerCase);
             const cramCards = getSmartCramCards(vocabulary, filterLowerCase);
             const masteredCount = vocabulary.filter(w => !w.isDeleted && w.srsStatus === 'Mastered').length;
-            const streakCount = state.streak || 0;
+            const streakCount = state.gamification?.currentStreak || 0;
 
             // Cập nhật các chip chiến tích
             if (DOM.victoryStreakVal) DOM.victoryStreakVal.textContent = `${streakCount} ngày`;
@@ -323,6 +324,7 @@ function toggleFlashcardControlButtons(showSRSAndNext) {
         if (showSRSAndNext) {
             DOM.srsFeedbackButtons?.classList.remove('hidden');
             DOM.typingArea?.classList.add('hidden');
+            updateSrsButtonIntervalPreviews();
         } else {
             DOM.srsFeedbackButtons?.classList.add('hidden');
             DOM.typingArea?.classList.add('hidden');
@@ -332,6 +334,43 @@ function toggleFlashcardControlButtons(showSRSAndNext) {
         // Hide nextCardBtn to prevent skipping SRS feedback without rating.
         DOM.nextCardBtn?.classList.add('hidden');
     }
+}
+
+/**
+ * Cập nhật thời gian dự kiến ôn tập tiếp theo (FSRS Interval Forecast) trực tiếp trên các nút đánh giá.
+ */
+export function updateSrsButtonIntervalPreviews() {
+    if (!DOM.srsFeedbackButtons) return;
+    const { vocabulary, currentCardIndex } = getState();
+    const cardData = vocabulary[currentCardIndex];
+    if (!cardData) return;
+
+    import('../core/srs/index.js').then(({ predictNextIntervals }) => {
+        const intervals = predictNextIntervals(cardData, 'en-vi');
+        
+        const ratingConfig = [
+            { rating: 1, label: 'Quên', icon: 'ph-duotone ph-brain' },
+            { rating: 2, label: 'Khó', icon: 'ph-duotone ph-fire' },
+            { rating: 3, label: 'Nhớ', icon: 'ph-duotone ph-sparkle' },
+            { rating: 4, label: 'Dễ', icon: 'ph-duotone ph-check-circle' }
+        ];
+
+        ratingConfig.forEach(({ rating, label, icon }) => {
+            const btn = DOM.srsFeedbackButtons.querySelector(`.srs-btn[data-rating="${rating}"]`);
+            if (btn) {
+                const intervalText = intervals[rating] || '';
+                btn.innerHTML = `
+                    <div class="srs-btn-label-group">
+                        <i class="${icon}"></i>
+                        <span class="srs-btn-name">${label}</span>
+                    </div>
+                    <span class="srs-interval-badge">${intervalText}</span>
+                `;
+            }
+        });
+    }).catch(err => {
+        console.warn('Failed to predict FSRS intervals:', err);
+    });
 }
 
 export function updateStats() {
@@ -453,6 +492,70 @@ export function updateStats() {
     }
 }
 
+export function updateCustomTopicUI(selectedTag = null) {
+    const { allTags, vocabulary, currentTopicFilter } = getState();
+    const activeTag = selectedTag || currentTopicFilter || 'all';
+
+    const activeVocab = (vocabulary || []).filter(w => !w.isDeleted);
+    const tagCounts = { 'all': activeVocab.length };
+    activeVocab.forEach(w => {
+        if (Array.isArray(w.tags)) {
+            w.tags.forEach(t => {
+                const norm = t ? t.trim() : '';
+                if (norm) {
+                    tagCounts[norm] = (tagCounts[norm] || 0) + 1;
+                }
+            });
+        }
+    });
+
+    const sortedTags = Array.from(allTags).sort((a, b) => {
+        if (a === 'all') return -1;
+        if (b === 'all') return 1;
+        return a.localeCompare(b);
+    });
+
+    // Update Trigger Label & Badge
+    if (DOM.customTopicLabel) {
+        DOM.customTopicLabel.textContent = activeTag === 'all' ? 'Tất cả chủ đề' : activeTag;
+    }
+    if (DOM.customTopicBadge) {
+        const count = tagCounts[activeTag] || 0;
+        DOM.customTopicBadge.textContent = `${count}`;
+        DOM.customTopicBadge.title = `${count} từ vựng`;
+    }
+    if (DOM.customTopicTotalBadge) {
+        DOM.customTopicTotalBadge.textContent = `${activeVocab.length} từ`;
+    }
+
+    // Populate Custom Options List
+    if (DOM.customTopicOptions) {
+        DOM.customTopicOptions.innerHTML = '';
+        sortedTags.forEach(tag => {
+            const count = tagCounts[tag] || 0;
+            const isSelected = tag === activeTag;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = `custom-topic-item ${isSelected ? 'active' : ''}`;
+            item.dataset.value = tag;
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            
+            const iconHtml = tag === 'all' 
+                ? '<i class="ph-duotone ph-books item-icon"></i>' 
+                : '<i class="ph-duotone ph-tag item-icon"></i>';
+                
+            item.innerHTML = `
+                ${iconHtml}
+                <span class="topic-item-name">${tag === 'all' ? 'Tất cả chủ đề' : escapeHTML(tag)}</span>
+                <span class="topic-item-count">${count}</span>
+                ${isSelected ? '<i class="ph-bold ph-check topic-item-check"></i>' : ''}
+            `;
+            DOM.customTopicOptions.appendChild(item);
+        });
+    }
+}
+
 export function populateTopicFilters(tagsHaveChanged = false) {
     const { allTags } = getState();
     const sortedTags = Array.from(allTags).sort((a, b) => {
@@ -460,22 +563,24 @@ export function populateTopicFilters(tagsHaveChanged = false) {
         if (b === 'all') return 1;
         return a.localeCompare(b);
     });
-    const currentMainFilter = DOM.mainTopicFilter.value;
-    const currentPanelFilter = DOM.panelTopicFilter.value;
-    DOM.mainTopicFilter.innerHTML = '';
-    DOM.panelTopicFilter.innerHTML = '';
+    const currentMainFilter = DOM.mainTopicFilter ? DOM.mainTopicFilter.value : 'all';
+    const currentPanelFilter = DOM.panelTopicFilter ? DOM.panelTopicFilter.value : 'all';
+    if (DOM.mainTopicFilter) DOM.mainTopicFilter.innerHTML = '';
+    if (DOM.panelTopicFilter) DOM.panelTopicFilter.innerHTML = '';
     sortedTags.forEach(tag => {
         const optionMain = document.createElement('option');
         optionMain.value = tag;
         optionMain.textContent = tag === 'all' ? '📚 Tất cả chủ đề' : tag;
-        DOM.mainTopicFilter.appendChild(optionMain);
+        if (DOM.mainTopicFilter) DOM.mainTopicFilter.appendChild(optionMain);
         const optionPanel = document.createElement('option');
         optionPanel.value = tag;
         optionPanel.textContent = tag === 'all' ? 'Tất cả chủ đề' : tag;
-        DOM.panelTopicFilter.appendChild(optionPanel);
+        if (DOM.panelTopicFilter) DOM.panelTopicFilter.appendChild(optionPanel);
     });
-    DOM.mainTopicFilter.value = allTags.has(currentMainFilter) ? currentMainFilter : 'all';
-    DOM.panelTopicFilter.value = allTags.has(currentPanelFilter) ? currentPanelFilter : 'all';
+    if (DOM.mainTopicFilter) DOM.mainTopicFilter.value = allTags.has(currentMainFilter) ? currentMainFilter : 'all';
+    if (DOM.panelTopicFilter) DOM.panelTopicFilter.value = allTags.has(currentPanelFilter) ? currentPanelFilter : 'all';
+
+    updateCustomTopicUI(DOM.mainTopicFilter ? DOM.mainTopicFilter.value : 'all');
 }
 
 export function applyDarkMode(isDark) {
@@ -483,7 +588,7 @@ export function applyDarkMode(isDark) {
     setIsDarkMode(isDark);
     localStorage.setItem('celestialDarkMode', isDark);
     const icon = DOM.toggleDarkModeBtn?.querySelector('i');
-    if (icon) icon.className = isDark ? 'ph ph-sun' : 'ph ph-moon';
+    if (icon) icon.className = isDark ? 'ph-duotone ph-sun' : 'ph-duotone ph-moon-stars';
 
     import('./celestial-canvas.js').then(m => m.updateCanvasTheme(isDark));
 }
@@ -496,10 +601,10 @@ export function applySoundSetting(mode) {
     const label = DOM.toggleSoundBtn?.querySelector('.btn-label');
     
     if (icon) {
-        if (mode === 'all') icon.className = 'ph ph-speaker-high';
-        else if (mode === 'sfx') icon.className = 'ph ph-music-note';
-        else if (mode === 'tts') icon.className = 'ph ph-waveform';
-        else icon.className = 'ph ph-speaker-slash';
+        if (mode === 'all') icon.className = 'ph-duotone ph-speaker-high';
+        else if (mode === 'sfx') icon.className = 'ph-duotone ph-music-note';
+        else if (mode === 'tts') icon.className = 'ph-duotone ph-waveform';
+        else icon.className = 'ph-duotone ph-speaker-slash';
     }
     
     if (label) {
@@ -646,25 +751,32 @@ function createWordCard(word) {
     
     cardEl.style.setProperty('--status-color', statusColor);
 
+    const safeEnglish = escapeHTML(word.english);
+    const safeType = escapeHTML(word.type || '');
+    const safeVietnamese = escapeHTML(word.vietnamese);
+    const safePronunciation = word.pronunciation ? escapeHTML(word.pronunciation) : '';
+    const safeTagsStr = escapeHTML(word.tags?.join(', ') || '');
+    const safeTagsDisplay = safeTagsStr || 'Không có chủ đề';
+
     cardEl.innerHTML = `
         <div class="word-card-status-bar"></div>
         <div class="word-card-inner">
             <div class="word-card-header">
                 <div class="word-card-title-group">
-                    <span class="word-english">${word.english}</span>
-                    <span class="word-type">${word.type || ''}</span>
+                    <span class="word-english">${safeEnglish}</span>
+                    <span class="word-type">${safeType}</span>
                 </div>
                 <div class="word-card-header-right">
                     <span class="word-card-srs-badge">${statusLabel}</span>
-                    <input type="checkbox" class="word-card-checkbox" data-id="${word.id}" aria-label="Chọn từ ${word.english}">
+                    <input type="checkbox" class="word-card-checkbox" data-id="${word.id}" aria-label="Chọn từ ${safeEnglish}">
                 </div>
             </div>
             <div class="word-card-body">
-                <p class="word-vietnamese">${word.vietnamese}</p>
-                ${word.pronunciation ? `<p class="word-pronunciation">${word.pronunciation}</p>` : ''}
+                <p class="word-vietnamese">${safeVietnamese}</p>
+                ${safePronunciation ? `<p class="word-pronunciation">${safePronunciation}</p>` : ''}
             </div>
             <div class="word-card-footer">
-                <span class="word-card-tags" title="${word.tags?.join(', ') || ''}">${word.tags?.join(', ') || 'Không có chủ đề'}</span>
+                <span class="word-card-tags" title="${safeTagsStr}">${safeTagsDisplay}</span>
                 <div class="word-card-actions"></div>
             </div>
         </div>
@@ -676,7 +788,7 @@ function createWordCard(word) {
     const ttsBtn = document.createElement('button');
     ttsBtn.className = 'icon-btn card-action-btn tts-btn-card';
     ttsBtn.title = 'Phát âm (TTS)';
-    ttsBtn.innerHTML = '<i class="ph ph-speaker-high"></i>';
+    ttsBtn.innerHTML = '<i class="ph-duotone ph-speaker-high"></i>';
     ttsBtn.onclick = (e) => {
         e.stopPropagation();
         import('../core/sound.js').then(m => m.speakText(word.english));
@@ -686,7 +798,7 @@ function createWordCard(word) {
     const editBtn = document.createElement('button');
     editBtn.className = 'icon-btn card-action-btn edit-btn-card';
     editBtn.title = 'Sửa từ';
-    editBtn.innerHTML = '<i class="ph ph-pencil-simple"></i>';
+    editBtn.innerHTML = '<i class="ph-duotone ph-pencil-simple"></i>';
     editBtn.onclick = () => {
         closeModal(DOM.manageModal);
         openAddEditModal(true, word);
@@ -696,7 +808,7 @@ function createWordCard(word) {
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'icon-btn card-action-btn danger-btn delete-btn-card';
     deleteBtn.title = 'Xóa từ';
-    deleteBtn.innerHTML = '<i class="ph ph-trash"></i>';
+    deleteBtn.innerHTML = '<i class="ph-duotone ph-trash"></i>';
     deleteBtn.onclick = () => {
         showConfirmation(`Bạn có chắc muốn xóa từ "${word.english}"?`, () => {
             const currentVocab = getState().vocabulary;
@@ -720,7 +832,7 @@ function createWordCard(word) {
         const reactivateBtn = document.createElement('button');
         reactivateBtn.className = 'icon-btn card-action-btn';
         reactivateBtn.title = 'Kích hoạt lại từ này';
-        reactivateBtn.innerHTML = '<i class="ph ph-arrow-clockwise"></i>';
+        reactivateBtn.innerHTML = '<i class="ph-duotone ph-arrow-clockwise"></i>';
         reactivateBtn.onclick = () => {
             word.isSuspended = false;
             word.lapses = 0; // Reset bộ đếm lỗi
@@ -763,8 +875,9 @@ export function checkAndCleanupTags() {
  * Chống vỡ thẻ HTML bằng Single-Pass Regex thay thế 1 lần duy nhất.
  */
 export function highlightKeywordInExample(example, englishWord) {
-    if (!example || example === 'N/A' || !englishWord) return example || 'N/A';
+    if (!example || example === 'N/A' || !englishWord) return escapeHTML(example || 'N/A');
     
+    const safeExample = escapeHTML(example);
     // Tách các từ thay thế nếu có dấu gạch chéo '/' (ví dụ: put off / delay)
     const rawTerms = englishWord.split('/').map(t => t.trim()).filter(Boolean);
     const patterns = [];
@@ -774,7 +887,8 @@ export function highlightKeywordInExample(example, englishWord) {
         const cleanTerm = rawTerm.replace(/\([^)]*\)/g, '').trim().replace(/\s+/g, ' ');
         if (!cleanTerm) continue;
 
-        const escaped = cleanTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const safeClean = escapeHTML(cleanTerm);
+        const escaped = safeClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
         if (escaped.includes(' ')) {
             // Cụm từ (ví dụ: a variety of, set up)
@@ -787,13 +901,13 @@ export function highlightKeywordInExample(example, englishWord) {
         }
     }
     
-    if (patterns.length === 0) return example;
+    if (patterns.length === 0) return safeExample;
 
     try {
         // Gom lại và thay thế trong 1 lần duy nhất để tránh vỡ thẻ HTML lồng nhau
         const combinedRegex = new RegExp('(' + patterns.join('|') + ')', 'gi');
-        return example.replace(combinedRegex, '<mark class="example-highlight">$1</mark>');
+        return safeExample.replace(combinedRegex, '<mark class="example-highlight">$1</mark>');
     } catch (e) {
-        return example;
+        return safeExample;
     }
 }

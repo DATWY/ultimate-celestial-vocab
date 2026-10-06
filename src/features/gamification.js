@@ -194,6 +194,18 @@ export function renderGamificationUI() {
 
     // Render Streak
     if (DOM.profileStreak) animateNumber(DOM.profileStreak, currentStreak);
+    const streakCard = document.querySelector('.streak-widget');
+    if (streakCard) {
+        const streakText = streakCard.querySelector('.streak-text');
+        streakCard.classList.remove('streak-frozen', 'streak-extinguished');
+        if (currentStreak === 0) {
+            streakCard.classList.add('streak-extinguished');
+            if (streakText) streakText.textContent = "Chuỗi đã tắt";
+        } else {
+            if (streakText) streakText.textContent = "Chuỗi kiên trì";
+        }
+        import('./streakRecovery.js').then(m => m.updateStreakControlsUI(streakCard));
+    }
 
     // Render Heatmap
     renderHeatmap(activityHeatmap);
@@ -421,10 +433,10 @@ function renderBadges(unlockedBadges) {
         const filterContainer = document.createElement('div');
         filterContainer.className = 'achievements-filter-tabs';
         filterContainer.innerHTML = `
-            <button class="achieve-tab-btn active" data-filter="all"><i class="ph ph-squares-four"></i> Tất cả</button>
-            <button class="achieve-tab-btn" data-filter="tracks"><i class="ph ph-chart-line-up"></i> Mốc Tiến Trình</button>
-            <button class="achieve-tab-btn" data-filter="specials"><i class="ph ph-sparkle"></i> Bí Mật</button>
-            <button class="achieve-tab-btn" data-filter="unlocked"><i class="ph ph-lock-key-open"></i> Đã Mở (${totalUnlocked})</button>
+            <button class="achieve-tab-btn active" data-filter="all"><i class="ph-duotone ph-squares-four"></i> Tất cả</button>
+            <button class="achieve-tab-btn" data-filter="tracks"><i class="ph-duotone ph-chart-line-up"></i> Mốc Tiến Trình</button>
+            <button class="achieve-tab-btn" data-filter="specials"><i class="ph-duotone ph-sparkle"></i> Bí Mật</button>
+            <button class="achieve-tab-btn" data-filter="unlocked"><i class="ph-duotone ph-lock-key-open"></i> Đã Mở (${totalUnlocked})</button>
         `;
         DOM.achievementsList.appendChild(filterContainer);
 
@@ -555,7 +567,7 @@ function renderBadges(unlockedBadges) {
                             </div>
                             ${isUnlocked 
                                 ? '<i class="ph-fill ph-check-circle" style="color: #10B981; font-size: 1.4rem;"></i>' 
-                                : '<i class="ph ph-lock" style="color: var(--text-light); font-size: 1.2rem; opacity: 0.6;"></i>'
+                                : '<i class="ph-duotone ph-lock" style="color: var(--text-light); font-size: 1.2rem; opacity: 0.6;"></i>'
                             }
                         </li>
                     `;
@@ -598,7 +610,7 @@ function renderBadges(unlockedBadges) {
                 badgeEl.innerHTML = `
                     ${isUnlocked ? `<span class="badge-tier-tag ${tierClass}">${tierName}</span>` : ''}
                     <div class="badge-icon-wrapper">
-                        <div class="badge-icon">${isUnlocked ? `<i class="ph ${badge.icon}"></i>` : `<i class="ph ph-lock-key"></i>`}</div>
+                        <div class="badge-icon">${isUnlocked ? `<i class="ph ${badge.icon}"></i>` : `<i class="ph-duotone ph-lock-key"></i>`}</div>
                     </div>
                     <div class="badge-info">
                         <h4>${isUnlocked ? badge.name : '???'}</h4>

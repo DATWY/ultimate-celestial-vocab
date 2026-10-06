@@ -3,7 +3,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, writeBatch, doc, query, where, getDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode } from './state.js';
+import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode, calculateStreakFromHeatmap } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
 import { updateStats, updatePanelWordList, displayCard, populateTopicFilters } from '../ui/render.js';
 import { renderGamificationUI } from '../features/gamification.js';
@@ -567,6 +567,14 @@ async function syncGamification() {
         const unlockedSet = new Set([...(localGamification.unlockedBadges || []), ...(remoteGamification.unlockedBadges || [])]);
         mergedGamification.unlockedBadges = Array.from(unlockedSet);
         
+        // Merge Streak Freeze & Recovery fields
+        mergedGamification.streakFreezeCount = Math.max(localGamification.streakFreezeCount || 0, remoteGamification.streakFreezeCount || 0);
+        mergedGamification.frozenDates = Array.from(new Set([...(localGamification.frozenDates || []), ...(remoteGamification.frozenDates || [])]));
+        mergedGamification.recoveredDates = Array.from(new Set([...(localGamification.recoveredDates || []), ...(remoteGamification.recoveredDates || [])]));
+        if (remoteGamification.lastStreakFreezeDate && (!localGamification.lastStreakFreezeDate || remoteGamification.lastStreakFreezeDate > localGamification.lastStreakFreezeDate)) {
+            mergedGamification.lastStreakFreezeDate = remoteGamification.lastStreakFreezeDate;
+        }
+        
         // Merge heatmap: max per day
         const localHeatmap = localGamification.activityHeatmap || {};
         const remoteHeatmap = remoteGamification.activityHeatmap || {};
@@ -575,6 +583,11 @@ async function syncGamification() {
             mergedHeatmap[key] = Math.max(localHeatmap[key] || 0, remoteHeatmap[key] || 0);
         }
         mergedGamification.activityHeatmap = mergedHeatmap;
+        
+        // Tự động tính toán lại currentStreak và longestStreak từ mergedHeatmap chuẩn xác
+        const { currentStreak: recalculatedStreak, longestStreak: recalculatedLongest } = calculateStreakFromHeatmap(mergedHeatmap);
+        mergedGamification.currentStreak = Math.max(mergedGamification.currentStreak || 0, recalculatedStreak);
+        mergedGamification.longestStreak = Math.max(mergedGamification.longestStreak || 0, recalculatedLongest);
         
         // Merge lastStudyDate: lấy ngày mới nhất
         if (remoteGamification.lastStudyDate && (!localGamification.lastStudyDate || remoteGamification.lastStudyDate > localGamification.lastStudyDate)) {

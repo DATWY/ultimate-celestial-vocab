@@ -7,6 +7,7 @@ import { playSound } from '../core/sound.js';
 import { animateModalOpen, animateModalClose } from '../core/animations.js';
 import { syncCardToFirebase } from '../core/sync.js';
 import { findDuplicatePairs, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese } from '../core/dedup.js';
+import { escapeHTML } from '../core/utils/sanitize.js';
 
 let confirmCallback = null;
 
@@ -343,10 +344,12 @@ export function renderDedupPairs() {
             categoryBadge = `<span class="dedup-category-badge badge-exact"><i class="ph-bold ph-sparkle"></i> Tương đồng cao</span>`;
         }
 
+        const safeEngA = escapeHTML(item.cardA.english);
+        const safeEngB = escapeHTML(item.cardB.english);
         const isDifferentEnglish = item.cardA.english.toLowerCase().trim() !== item.cardB.english.toLowerCase().trim();
         const displayKey = isDifferentEnglish 
-            ? `${item.cardA.english} <span class="key-arrow">⟷</span> ${item.cardB.english}`
-            : item.cardA.english;
+            ? `${safeEngA} <span class="key-arrow">⟷</span> ${safeEngB}`
+            : safeEngA;
 
         pairEl.innerHTML = `
             <div class="dedup-pair-header">
@@ -360,32 +363,32 @@ export function renderDedupPairs() {
             <div class="dedup-pair-grid">
                 <div class="dedup-card-sub card-primary">
                     <div class="card-sub-header">
-                        <span class="card-sub-tag">${item.cardA.type || 'N/A'}</span>
-                        <span class="status-badge status-${(item.cardA.srsStatus || 'New').toLowerCase()}">${item.cardA.srsStatus || 'New'} (${(item.cardA.stability || 1).toFixed(1)}d)</span>
+                        <span class="card-sub-tag">${escapeHTML(item.cardA.type || 'N/A')}</span>
+                        <span class="status-badge status-${(item.cardA.srsStatus || 'New').toLowerCase()}">${escapeHTML(item.cardA.srsStatus || 'New')} (${(item.cardA.stability || 1).toFixed(1)}d)</span>
                     </div>
                     <div class="card-sub-body">
-                        <p class="meaning">${item.cardA.vietnamese || 'N/A'}</p>
-                        <p class="example">${item.cardA.example || 'Chưa có ví dụ'}</p>
+                        <p class="meaning">${escapeHTML(item.cardA.vietnamese || 'N/A')}</p>
+                        <p class="example">${escapeHTML(item.cardA.example || 'Chưa có ví dụ')}</p>
                     </div>
                 </div>
                 <div class="dedup-pair-divider">
-                    <i class="ph ph-arrows-left-right"></i>
+                    <i class="ph-duotone ph-arrows-left-right"></i>
                 </div>
                 <div class="dedup-card-sub card-secondary">
                     <div class="card-sub-header">
-                        <span class="card-sub-tag">${item.cardB.type || 'N/A'}</span>
-                        <span class="status-badge status-${(item.cardB.srsStatus || 'New').toLowerCase()}">${item.cardB.srsStatus || 'New'} (${(item.cardB.stability || 1).toFixed(1)}d)</span>
+                        <span class="card-sub-tag">${escapeHTML(item.cardB.type || 'N/A')}</span>
+                        <span class="status-badge status-${(item.cardB.srsStatus || 'New').toLowerCase()}">${escapeHTML(item.cardB.srsStatus || 'New')} (${(item.cardB.stability || 1).toFixed(1)}d)</span>
                     </div>
                     <div class="card-sub-body">
-                        <p class="meaning">${item.cardB.vietnamese || 'N/A'}</p>
-                        <p class="example">${item.cardB.example || 'Chưa có ví dụ'}</p>
+                        <p class="meaning">${escapeHTML(item.cardB.vietnamese || 'N/A')}</p>
+                        <p class="example">${escapeHTML(item.cardB.example || 'Chưa có ví dụ')}</p>
                     </div>
                 </div>
             </div>
             ${item.suggestedVietnamese ? `
             <div class="dedup-preview-bar">
                 <span class="preview-label"><i class="ph-bold ph-sparkle"></i> Nghĩa sau khi gộp & làm sạch:</span>
-                <span class="preview-meaning">${item.suggestedVietnamese}</span>
+                <span class="preview-meaning">${escapeHTML(item.suggestedVietnamese)}</span>
             </div>` : ''}
             <div class="dedup-pair-actions">
                 <button class="primary-btn merge-single-btn" data-key="${item.key}"><i class="ph-bold ph-arrows-merge"></i> Gộp 2 thẻ này</button>
