@@ -4,7 +4,7 @@ import './css/transition.css';
 import { loadVocabulary, getState, addXP, setXP, saveGamification } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
 import { initializeSound, startBackgroundAudioPreload } from './core/sound.js';
-import { displayCard, populateTopicFilters, applyDarkMode, applySoundSetting } from './ui/render.js';
+import { displayCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting } from './ui/render.js';
 import { setupEventListeners } from './events.js';
 import { smartSync } from './core/firebase.js';
 
@@ -99,6 +99,7 @@ async function initializeApp() {
 
     await loadVocabulary();
     populateTopicFilters();
+    updateCustomTypingUI();
     buildReviewQueue();
     setupEventListeners();
 

@@ -24,6 +24,16 @@ let _isFlipped = false;
 let _isDarkMode = false;
 let _soundMode = 'all'; // 'all', 'sfx', 'tts', 'off'
 let _isTypingMode = false;
+let _typingFilter = 'off'; // 'off', 'leech', 'all', 'hard', 'learning', 'starred', 'long'
+
+// Khôi phục bộ lọc gõ phím thông minh từ localStorage
+if (typeof localStorage !== 'undefined') {
+    const savedFilter = localStorage.getItem('celestial_typing_filter');
+    if (savedFilter && ['off', 'leech', 'all', 'hard', 'learning', 'starred', 'long'].includes(savedFilter)) {
+        _typingFilter = savedFilter;
+        _isTypingMode = savedFilter !== 'off';
+    }
+}
 let _currentTopicFilter = 'all';
 let _isPreviewMode = false;
 let _isTransitioning = false;
@@ -119,6 +129,7 @@ export const getState = () => ({
     isDarkMode: _isDarkMode,
     soundMode: _soundMode,
     isTypingMode: _isTypingMode,
+    typingFilter: _typingFilter,
     currentTopicFilter: _currentTopicFilter,
     dailyStats: _dailyStats,
     gamification: _gamification,
@@ -184,7 +195,86 @@ export function pushCardToVocabulary(card) {
 }
 export function setIsFlipped(flipped) { _isFlipped = flipped; }
 export function setIsDarkMode(isDark) { _isDarkMode = isDark; }
-export function setIsTypingMode(isTyping) { _isTypingMode = isTyping; }
+export function setIsTypingMode(isTyping) { 
+    _isTypingMode = isTyping; 
+    if (!isTyping) {
+        _typingFilter = 'off';
+    } else if (_typingFilter === 'off') {
+        _typingFilter = 'leech'; // Mặc định chuyển sang bộ lọc Leech thông minh
+    }
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('celestial_typing_filter', _typingFilter);
+    }
+}
+
+export function setTypingFilter(filter) {
+    _typingFilter = filter;
+    _isTypingMode = filter !== 'off';
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('celestial_typing_filter', filter);
+    }
+}
+
+export function isCardLeech(card) {
+    if (!card) return false;
+    return (card.lapses !== undefined && card.lapses >= 2) ||
+           (card.difficulty !== undefined && card.difficulty >= 7.5) ||
+           (card.isSuspended === true) ||
+           (card.srsStatus === 'Learning' && (card.reps || 0) >= 3) ||
+           (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.1);
+}
+
+export function shouldCardUseTyping(card) {
+    if (!_isTypingMode || _typingFilter === 'off' || !card) return false;
+    
+    switch (_typingFilter) {
+        case 'all':
+            return true;
+        case 'leech':
+            return isCardLeech(card);
+        case 'hard':
+            return (card.difficulty !== undefined && card.difficulty >= 6.5) ||
+                   (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.3) ||
+                   isCardLeech(card);
+        case 'learning':
+            return card.srsStatus === 'New' || card.srsStatus === 'Learning';
+        case 'starred':
+            return !!card.isStarred;
+        case 'long':
+            return (card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8;
+        default:
+            return true;
+    }
+}
+
+export function getTypingFilterStats() {
+    const stats = {
+        total: 0,
+        leech: 0,
+        all: 0,
+        hard: 0,
+        learning: 0,
+        starred: 0,
+        long: 0
+    };
+    
+    for (let i = 0; i < _vocabulary.length; i++) {
+        const card = _vocabulary[i];
+        if (!card || card.isDeleted) continue;
+        stats.total++;
+        stats.all++;
+        if (isCardLeech(card)) stats.leech++;
+        if ((card.difficulty !== undefined && card.difficulty >= 6.5) ||
+            (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.3) ||
+            isCardLeech(card)) {
+            stats.hard++;
+        }
+        if (card.srsStatus === 'New' || card.srsStatus === 'Learning') stats.learning++;
+        if (card.isStarred) stats.starred++;
+        if ((card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8) stats.long++;
+    }
+    return stats;
+}
 export function setCurrentTopicFilter(topic) { _currentTopicFilter = topic; }
 export function setSoundMode(mode) { _soundMode = mode; }
 export function setGamification(data) { _gamification = data; }

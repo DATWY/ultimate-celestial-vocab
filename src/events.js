@@ -1,11 +1,11 @@
 // src/events.js
 
 import { DOM } from './ui/elements.js';
-import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, popLastReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue } from './core/state.js';
+import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, popLastReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
-import { displayCard, flipCard, applyDarkMode, applySoundSetting, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI } from './ui/render.js';
+import { displayCard, flipCard, applyDarkMode, applySoundSetting, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { openProfileModal } from './features/gamification.js';
 import { setupIOEventListeners } from './features/io.js';
@@ -111,7 +111,7 @@ function processSrsFeedback(rating, autoAdvance = true) {
     const comboBefore = getState().gamification?.consecutiveCorrect || 0;
     const isNewCard = currentCard.srsStatus === 'New' && (!currentCard.learningStep || currentCard.learningStep === 0);
     
-    const modality = getState().isTypingMode ? 'typing' : 'en-vi';
+    const modality = shouldCardUseTyping(currentCard) ? 'typing' : 'en-vi';
     const { newState: updatedCard, log } = calculateNextSrsState(currentCard, rating, modality, 0, getState().userFsrs7Params);
     if (log) {
         import('./core/state.js').then(s => s.addReviewLog(log));
@@ -332,33 +332,111 @@ export function setupEventListeners() {
         });
     }
 
-    DOM.toggleTypingModeBtn?.addEventListener('click', () => {
+    // --- Custom Typing Mode & Intelligent Filter Events ---
+    function toggleTypingMenu(forceState = null) {
+        if (!DOM.customTypingMenu || !DOM.customTypingTrigger) return;
+        const isOpen = forceState !== null ? forceState : !DOM.customTypingMenu.classList.contains('open');
+        DOM.customTypingMenu.classList.toggle('open', isOpen);
+        DOM.customTypingTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (isOpen) {
+            updateCustomTypingUI();
+            // Đóng menu chủ đề nếu đang mở để tránh chồng chéo
+            DOM.customTopicMenu?.classList.remove('open');
+            DOM.customTopicTrigger?.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    DOM.customTypingTrigger?.addEventListener('click', (e) => {
+        e.stopPropagation();
         closeMenu();
-        const currentMode = getState().isTypingMode;
-        const nextMode = !currentMode;
+        toggleTypingMenu();
+    });
+
+    // Đóng menu gõ khi click ra ngoài
+    document.addEventListener('click', (e) => {
+        if (DOM.customTypingDropdown && !DOM.customTypingDropdown.contains(e.target)) {
+            toggleTypingMenu(false);
+        }
+    });
+
+    // Đóng khi ấn phím Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && DOM.customTypingMenu?.classList.contains('open')) {
+            toggleTypingMenu(false);
+        }
+    });
+
+    // Xử lý chọn chế độ lọc trong Menu
+    DOM.customTypingOptions?.addEventListener('click', (e) => {
+        const option = e.target.closest('.custom-typing-option');
+        if (!option) return;
+        const selectedFilter = option.dataset.value;
+        const prevFilter = getState().typingFilter;
         
         // Track immediate exit if leaving typing mode without doing a card
-        if (!nextMode && getState().isFlipped && stashedCardIndex === -1) {
+        if (selectedFilter === 'off' && prevFilter !== 'off' && getState().isFlipped && stashedCardIndex === -1) {
             trackEvent('typingImmediateExit');
         }
-        
-        setIsTypingMode(nextMode);
-        DOM.typingModeLabel.textContent = nextMode ? 'Gõ từ' : 'Lật thẻ';
-        DOM.typingModeIcon.className = `ph ${nextMode ? 'ph-keyboard' : 'ph-cards'}`;
-        
-        // Reset typing state khi chuyển mode để tránh bug giữa chừng
+
+        setTypingFilter(selectedFilter);
+        updateCustomTypingUI();
+        toggleTypingMenu(false);
+        playSound('pop');
+
+        // Reset typing retry state
         stashedCardIndex = -1;
         stashedCardState = null;
         typingRetryCount = 0;
         isTypoRetry = false;
-        
-        // Skip current card if switching TO typing mode to prevent spoiling
-        if (nextMode) {
-            switchCardWithAnimation();
-        } else {
-            const index = getState().currentCardIndex;
-            if (index >= 0) displayCard(index);
+
+        // Cập nhật lại thẻ hiện tại theo bộ lọc mới
+        const currentIndex = getState().currentCardIndex;
+        if (currentIndex >= 0) {
+            displayCard(currentIndex);
         }
+    });
+
+    // Nút tạo phiên luyện gõ tập trung theo bộ lọc
+    DOM.startDedicatedTypingBtn?.addEventListener('click', () => {
+        toggleTypingMenu(false);
+        const { vocabulary, typingFilter } = getState();
+        const activeFilter = typingFilter === 'off' ? 'leech' : typingFilter;
+
+        let candidates = [];
+        for (let i = 0; i < vocabulary.length; i++) {
+            const card = vocabulary[i];
+            if (!card || card.isDeleted || card.isSuspended) continue;
+
+            let matches = false;
+            if (activeFilter === 'leech') matches = isCardLeech(card);
+            else if (activeFilter === 'hard') matches = (card.difficulty !== undefined && card.difficulty >= 6.5) || isCardLeech(card);
+            else if (activeFilter === 'learning') matches = card.srsStatus === 'New' || card.srsStatus === 'Learning';
+            else if (activeFilter === 'starred') matches = !!card.isStarred;
+            else if (activeFilter === 'long') matches = (card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8;
+            else matches = true;
+
+            if (matches) candidates.push(i);
+        }
+
+        if (candidates.length === 0) {
+            showPopup("Không tìm thấy từ vựng", "Hiện không có từ vựng nào trong kho phù hợp với bộ lọc này để tạo phiên học riêng.");
+            return;
+        }
+
+        // Xáo trộn ngẫu nhiên và lấy tối đa 15 từ
+        candidates.sort(() => Math.random() - 0.5);
+        const sessionCards = candidates.slice(0, 15);
+
+        // Kích hoạt chế độ gõ với bộ lọc này và nạp hàng đợi
+        setTypingFilter(activeFilter);
+        setReviewQueue(sessionCards);
+        updateCustomTypingUI();
+        playSound('celebrate');
+        showToast(`⚡ Đã nạp ${sessionCards.length} từ vựng vào phiên luyện gõ tập trung!`);
+
+        // Tải ngay thẻ đầu tiên
+        const nextIdx = getNextCardToReview();
+        if (nextIdx >= 0) displayCard(nextIdx);
     });
 
     let isTransitioning = false;
