@@ -1062,6 +1062,505 @@ body:not(.dark-mode) .custom-topic-item.active {
     flex-shrink: 0;
 }
 
+/* ==================================================== */
+/* LUXURY CUSTOM TYPING DROPDOWN & INTELLIGENT FILTERS */
+/* ==================================================== */
+.custom-typing-dropdown {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.custom-typing-trigger {
+    height: 34px !important;
+    padding: 0 11px 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 550;
+    cursor: pointer;
+    background: rgba(30, 41, 59, 0.7);
+    color: #f1f5f9;
+    border: 1px solid rgba(168, 85, 247, 0.28);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+    user-select: none;
+}
+
+body:not(.dark-mode) .custom-typing-trigger {
+    background: rgba(255, 255, 255, 0.88);
+    color: #334155;
+    border-color: rgba(203, 213, 225, 0.9);
+    box-shadow: 0 3px 12px rgba(148, 163, 184, 0.15);
+}
+
+.custom-typing-trigger:hover {
+    background: rgba(45, 30, 80, 0.85);
+    border-color: rgba(168, 85, 247, 0.55);
+    box-shadow: 0 4px 18px rgba(139, 92, 246, 0.28), 0 0 10px rgba(168, 85, 247, 0.2);
+    transform: translateY(-1px);
+    color: #ffffff;
+}
+
+body:not(.dark-mode) .custom-typing-trigger:hover {
+    background: #ffffff;
+    color: #6d28d9;
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 4px 18px rgba(124, 58, 237, 0.18);
+}
+
+.custom-typing-trigger.is-typing-active {
+    background: linear-gradient(135deg, rgba(88, 28, 135, 0.65), rgba(30, 41, 59, 0.8));
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.25), 0 3px 12px rgba(0, 0, 0, 0.25);
+}
+
+body:not(.dark-mode) .custom-typing-trigger.is-typing-active {
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.95), rgba(255, 255, 255, 0.95));
+    border-color: rgba(217, 119, 6, 0.5);
+    color: #b45309;
+}
+
+.custom-typing-trigger[aria-expanded="true"] {
+    border-color: #a855f7;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.custom-typing-trigger .typing-trigger-icon {
+    font-size: 1.05rem;
+    color: #c084fc;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.custom-typing-trigger.is-typing-active .typing-trigger-icon {
+    color: #fbbf24;
+}
+
+body:not(.dark-mode) .custom-typing-trigger .typing-trigger-icon {
+    color: #7c3aed;
+}
+body:not(.dark-mode) .custom-typing-trigger.is-typing-active .typing-trigger-icon {
+    color: #d97706;
+}
+
+.custom-typing-trigger .typing-trigger-label {
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+}
+
+.custom-typing-trigger .typing-trigger-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #ec4899);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.custom-typing-trigger .typing-trigger-caret {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+
+.custom-typing-trigger[aria-expanded="true"] .typing-trigger-caret {
+    transform: rotate(180deg);
+    color: #c084fc;
+}
+
+/* Menu Popover */
+.custom-typing-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 360px;
+    max-width: 90vw;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    border-radius: 16px;
+    box-shadow: 
+        0 16px 48px rgba(0, 0, 0, 0.6),
+        0 0 24px rgba(168, 85, 247, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1200;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.97);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+body:not(.dark-mode) .custom-typing-menu {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(168, 85, 247, 0.25);
+    box-shadow: 
+        0 16px 48px rgba(15, 23, 42, 0.18),
+        0 4px 16px rgba(124, 58, 237, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.custom-typing-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.typing-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px;
+}
+
+.typing-menu-title {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #c084fc;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+body:not(.dark-mode) .typing-menu-title {
+    color: #7c3aed;
+}
+
+.typing-menu-active-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.typing-menu-desc {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    line-height: 1.35;
+    padding: 0 4px;
+}
+
+body:not(.dark-mode) .typing-menu-desc {
+    color: #64748b;
+}
+
+/* Options Container */
+.custom-typing-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.custom-typing-options::-webkit-scrollbar {
+    width: 5px;
+}
+
+.custom-typing-options::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.3);
+    border-radius: 4px;
+}
+
+/* Option Item */
+.custom-typing-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 11px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s ease;
+    color: #f1f5f9;
+}
+
+body:not(.dark-mode) .custom-typing-option {
+    background: rgba(248, 250, 252, 0.85);
+    border-color: rgba(226, 232, 240, 0.8);
+    color: #334155;
+}
+
+.custom-typing-option:hover {
+    background: rgba(168, 85, 247, 0.12);
+    border-color: rgba(168, 85, 247, 0.35);
+    transform: translateY(-1px);
+}
+
+body:not(.dark-mode) .custom-typing-option:hover {
+    background: rgba(243, 232, 255, 0.7);
+    border-color: rgba(168, 85, 247, 0.3);
+}
+
+.custom-typing-option.recommended {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(168, 85, 247, 0.06));
+}
+
+body:not(.dark-mode) .custom-typing-option.recommended {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.6), rgba(243, 232, 255, 0.5));
+}
+
+.custom-typing-option.active {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(59, 130, 246, 0.18));
+    border-color: #a855f7;
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+}
+
+body:not(.dark-mode) .custom-typing-option.active {
+    background: linear-gradient(135deg, rgba(237, 233, 254, 0.95), rgba(224, 231, 255, 0.85));
+    border-color: #7c3aed;
+    color: #6d28d9;
+}
+
+.typing-option-icon-wrap {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #c084fc;
+}
+
+.typing-option-icon-wrap.leech {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.typing-option-icon-wrap.all {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+}
+
+.typing-option-icon-wrap.hard {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+.typing-option-icon-wrap.learning {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
+.typing-option-icon-wrap.starred {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+}
+
+.typing-option-icon-wrap.long {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.typing-option-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.typing-option-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}
+
+.typing-option-title {
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.typing-rec-tag {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f59e0b, #ec4899);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.typing-option-desc {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    line-height: 1.3;
+    margin: 0;
+}
+
+body:not(.dark-mode) .typing-option-desc {
+    color: #64748b;
+}
+
+.typing-option-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.typing-option-count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 1px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+body:not(.dark-mode) .typing-option-count {
+    color: #64748b;
+    background: rgba(226, 232, 240, 0.8);
+}
+
+.typing-option-check {
+    color: #fde047;
+    font-size: 0.85rem;
+    filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.7));
+}
+
+/* Dedicated Session Button in Menu Footer */
+.typing-menu-footer {
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body:not(.dark-mode) .typing-menu-footer {
+    border-top-color: rgba(226, 232, 240, 0.8);
+}
+
+.typing-dedicated-btn {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(245, 158, 11, 0.25));
+    color: #ffffff;
+    font-size: 0.76rem;
+    font-weight: 650;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 14px rgba(168, 85, 247, 0.2);
+}
+
+body:not(.dark-mode) .typing-dedicated-btn {
+    background: linear-gradient(135deg, #7c3aed, #ea580c);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+}
+
+.typing-dedicated-btn:hover {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.45), rgba(245, 158, 11, 0.45));
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
+    transform: translateY(-1px);
+}
+
+/* Adaptive Badge on Flashcard when typing is active */
+#typing-hint-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.typing-adaptive-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 11px;
+    border-radius: 999px;
+    margin: 0 auto 10px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    width: fit-content;
+}
+
+.typing-hint-meaning {
+    display: block;
+    width: 100%;
+}
+
+.typing-adaptive-badge.leech {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.typing-adaptive-badge.hard {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+}
+
+.typing-adaptive-badge.learning {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.typing-adaptive-badge.starred {
+    background: rgba(234, 179, 8, 0.18);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+.typing-adaptive-badge.long {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.typing-adaptive-badge.normal {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
 /* Modal Panel Topic Filter styling */
 select#panel-topic-filter {
     padding: 0 26px 0 10px !important;

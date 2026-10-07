@@ -1,5 +1,5 @@
 import { DOM } from './elements.js';
-import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning } from '../core/state.js';
+import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter } from '../core/state.js';
 import { playSound, preloadAudio } from '../core/sound.js';
 import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards } from '../core/queue.js';
 import { openAddEditModal, showConfirmation, showPopup, closeModal } from './modal.js';
@@ -191,13 +191,15 @@ export function displayCard(index, preserveFlipState = false) {
         }
     }
     
-    const isTypingMode = getState().isTypingMode;
+    const isTypingCard = shouldCardUseTyping(cardData);
+    const { typingFilter } = getState();
 
     // Chỉ nhận diện từ CỰC KHÓ (Extremely Hard / Leech):
     // 1. Độ khó FusionSRS cực cao (Difficulty >= 8.5)
     // 2. HOẶC đã từng bị quên từ 3 lần trở lên (lapses >= 3)
     // 3. HOẶC thẻ từng bị tạm ngưng (isSuspended)
-    const isHardWord = (cardData.difficulty !== undefined && cardData.difficulty >= 8.5) || 
+    const isHardWord = isCardLeech(cardData) ||
+                       (cardData.difficulty !== undefined && cardData.difficulty >= 8.5) || 
                        (cardData.lapses !== undefined && cardData.lapses >= 3) || 
                        !!cardData.isSuspended;
 
@@ -208,9 +210,9 @@ export function displayCard(index, preserveFlipState = false) {
     DOM.controlsArea?.classList.remove('hidden');
     DOM.cardEnglish.textContent = cardData.english;
     
-    // Hard badge & card glow (Chỉ hiện cho từ Cực Khó)
+    // Hard badge & card glow (Chỉ hiện cho từ Cực Khó khi không ở giao diện gõ)
     DOM.flashcard?.classList.toggle('is-hard-card', isHardWord);
-    DOM.cardHardBadge?.classList.toggle('hidden', !isHardWord || isTypingMode);
+    DOM.cardHardBadge?.classList.toggle('hidden', !isHardWord || isTypingCard);
 
     const starIcon = DOM.starBtn?.querySelector('i');
     if (starIcon) starIcon.className = cardData.isStarred ? 'ph-fill ph-star' : 'ph ph-star';
@@ -238,18 +240,32 @@ export function displayCard(index, preserveFlipState = false) {
     }
 
     // Thêm class cho flashcard để CSS xử lý khoảng cách
-    DOM.flashcard.classList.toggle('typing-mode-active', isTypingMode);
+    DOM.flashcard.classList.toggle('typing-mode-active', isTypingCard);
 
     // Masking & UI for Typing Mode (Ẩn hoàn toàn từ Tiếng Anh để tránh spoil đáp án)
     if (DOM.cardEnglish) {
         DOM.cardEnglish.classList.remove('revealed');
-        DOM.cardEnglish.classList.toggle('text-masked', isTypingMode);
-        DOM.cardEnglish.classList.toggle('hidden', isTypingMode);
+        DOM.cardEnglish.classList.toggle('text-masked', isTypingCard);
+        DOM.cardEnglish.classList.toggle('hidden', isTypingCard);
     }
     if (DOM.typingFrontUi) {
-        DOM.typingFrontUi.classList.toggle('hidden', !isTypingMode);
-        if (isTypingMode && DOM.typingHintText) {
-            DOM.typingHintText.textContent = cardData.vietnamese || 'N/A';
+        DOM.typingFrontUi.classList.toggle('hidden', !isTypingCard);
+        if (isTypingCard && DOM.typingHintText) {
+            let badgeHtml = '';
+            if (isCardLeech(cardData)) {
+                badgeHtml = '<span class="typing-adaptive-badge leech"><i class="ph-bold ph-fire"></i> Từ Leech (Active Recall)</span>';
+            } else if (typingFilter === 'hard') {
+                badgeHtml = '<span class="typing-adaptive-badge hard"><i class="ph-bold ph-warning-circle"></i> Từ Thử thách</span>';
+            } else if (typingFilter === 'learning') {
+                badgeHtml = '<span class="typing-adaptive-badge learning"><i class="ph-bold ph-sparkle"></i> Từ Mới</span>';
+            } else if (typingFilter === 'starred') {
+                badgeHtml = '<span class="typing-adaptive-badge starred"><i class="ph-bold ph-star"></i> Thẻ Gắn Sao</span>';
+            } else if (typingFilter === 'long') {
+                badgeHtml = '<span class="typing-adaptive-badge long"><i class="ph-bold ph-text-align-justify"></i> Từ Dài (≥8 ký tự)</span>';
+            } else {
+                badgeHtml = '<span class="typing-adaptive-badge normal"><i class="ph-bold ph-keyboard"></i> Luyện gõ</span>';
+            }
+            DOM.typingHintText.innerHTML = `${badgeHtml}<span class="typing-hint-meaning">${escapeHTML(cardData.vietnamese || 'N/A')}</span>`;
         }
     }
 
@@ -276,7 +292,8 @@ export async function flipCard() {
         toggleFlashcardControlButtons(newFlippedState);
         if (newFlippedState) {
             playSound('flip');
-            if (getState().isTypingMode) {
+            const currentCard = getState().vocabulary[getState().currentCardIndex];
+            if (shouldCardUseTyping(currentCard)) {
                 import('../features/typing.js').then(m => m.startTypingTimer());
             } else {
                 DOM.srsFeedbackButtons?.querySelector('.srs-btn[data-rating="3"]')?.focus({ preventScroll: true });
@@ -288,9 +305,11 @@ export async function flipCard() {
 }
 
 function toggleFlashcardControlButtons(showSRSAndNext) {
-    const isTypingMode = getState().isTypingMode;
+    const { vocabulary, currentCardIndex } = getState();
+    const currentCard = vocabulary[currentCardIndex];
+    const isTypingCard = shouldCardUseTyping(currentCard);
     
-    if (isTypingMode) {
+    if (isTypingCard) {
         DOM.revealBtn?.classList.add('hidden');
         DOM.srsFeedbackButtons?.classList.add('hidden');
         DOM.typingArea?.classList.remove('hidden');
@@ -553,6 +572,160 @@ export function updateCustomTopicUI(selectedTag = null) {
             `;
             DOM.customTopicOptions.appendChild(item);
         });
+    }
+}
+
+export function updateCustomTypingUI() {
+    const { isTypingMode, typingFilter } = getState();
+    const stats = getTypingFilterStats();
+    const currentFilter = isTypingMode ? (typingFilter || 'leech') : 'off';
+
+    const filterConfigs = [
+        {
+            id: 'off',
+            icon: 'ph-cards',
+            label: 'Lật thẻ',
+            badgeText: '',
+            title: 'Chế độ Lật thẻ phản xạ',
+            desc: 'Không bắt gõ. Lật thẻ, nghe phát âm nhại theo. Tối ưu năng lượng & tốc độ.',
+            count: stats.total,
+            tag: '80% Thời gian',
+            isRec: false
+        },
+        {
+            id: 'leech',
+            icon: 'ph-fire',
+            label: 'Gõ: Leech',
+            badgeText: 'Ưu tiên',
+            title: 'Gõ thích ứng: Chỉ từ Leech / Hay quên',
+            desc: 'Tự động bắt gõ cho các từ hay quên (Lapses ≥ 2 hoặc cực khó), từ đã thuộc sẽ lật thẻ.',
+            count: stats.leech,
+            tag: 'Khuyên dùng (80/20)',
+            isRec: true
+        },
+        {
+            id: 'all',
+            icon: 'ph-keyboard',
+            label: 'Gõ: Tất cả',
+            badgeText: '100%',
+            title: 'Gõ tất cả thẻ (Toàn diện)',
+            desc: 'Bắt buộc gõ 100% mọi thẻ trong hàng đợi để rèn chính tả và trí nhớ cơ bắp.',
+            count: stats.all,
+            tag: 'Toàn diện',
+            isRec: false
+        },
+        {
+            id: 'hard',
+            icon: 'ph-warning-circle',
+            label: 'Gõ: Từ khó',
+            badgeText: '6.5+',
+            title: 'Gõ từ Thử thách (Độ khó cao)',
+            desc: 'Chỉ bắt gõ các thẻ có độ khó FSRS cao (Difficulty ≥ 6.5) hoặc từng gặp trở ngại.',
+            count: stats.hard,
+            tag: 'Thử thách',
+            isRec: false
+        },
+        {
+            id: 'learning',
+            icon: 'ph-sparkle',
+            label: 'Gõ: Từ mới',
+            badgeText: 'New',
+            title: 'Gõ từ Mới & Đang học',
+            desc: 'Rèn phản xạ gõ ngay từ giai đoạn đầu để khắc sâu hình thái từ vựng.',
+            count: stats.learning,
+            tag: 'Giai đoạn đầu',
+            isRec: false
+        },
+        {
+            id: 'starred',
+            icon: 'ph-star',
+            label: 'Gõ: Có sao',
+            badgeText: '⭐',
+            title: 'Gõ thẻ Đánh dấu sao',
+            desc: 'Chỉ bắt gõ các thẻ bạn đã chủ động gắn dấu sao ưu tiên học tập.',
+            count: stats.starred,
+            tag: 'Ưu tiên',
+            isRec: false
+        },
+        {
+            id: 'long',
+            icon: 'ph-text-align-justify',
+            label: 'Gõ: Từ dài',
+            badgeText: '≥8 ký tự',
+            title: 'Gõ từ Dài dễ sai chính tả (≥ 8 ký tự)',
+            desc: 'Tập trung gõ các từ dài nhiều âm tiết dễ nhầm lẫn như accommodate, compensation...',
+            count: stats.long,
+            tag: 'Chính tả',
+            isRec: false
+        }
+    ];
+
+    const activeConfig = filterConfigs.find(c => c.id === currentFilter) || filterConfigs[0];
+
+    // Cập nhật nút Trigger
+    if (DOM.typingModeLabel) {
+        DOM.typingModeLabel.textContent = activeConfig.label;
+    }
+    if (DOM.typingModeIcon) {
+        DOM.typingModeIcon.className = `ph-duotone ${activeConfig.icon} typing-trigger-icon`;
+    }
+    if (DOM.typingFilterBadge) {
+        if (activeConfig.badgeText) {
+            DOM.typingFilterBadge.textContent = activeConfig.badgeText;
+            DOM.typingFilterBadge.classList.remove('hidden');
+        } else {
+            DOM.typingFilterBadge.classList.add('hidden');
+        }
+    }
+    if (DOM.customTypingTrigger) {
+        DOM.customTypingTrigger.classList.toggle('is-typing-active', currentFilter !== 'off');
+    }
+
+    // Render danh sách tùy chọn trong Menu
+    if (DOM.customTypingOptions) {
+        DOM.customTypingOptions.innerHTML = '';
+        filterConfigs.forEach(cfg => {
+            const isSelected = cfg.id === currentFilter;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = `custom-typing-option ${isSelected ? 'active' : ''} ${cfg.isRec ? 'recommended' : ''}`;
+            item.dataset.value = cfg.id;
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+            item.innerHTML = `
+                <div class="typing-option-icon-wrap ${cfg.id}">
+                    <i class="ph-duotone ${cfg.icon}"></i>
+                </div>
+                <div class="typing-option-info">
+                    <div class="typing-option-header">
+                        <span class="typing-option-title">${escapeHTML(cfg.title)}</span>
+                        ${cfg.isRec ? '<span class="typing-rec-tag"><i class="ph-bold ph-seal-check"></i> Khuyên dùng</span>' : ''}
+                    </div>
+                    <p class="typing-option-desc">${escapeHTML(cfg.desc)}</p>
+                </div>
+                <div class="typing-option-meta">
+                    <span class="typing-option-count">${cfg.count} thẻ</span>
+                    ${isSelected ? '<i class="ph-bold ph-check typing-option-check"></i>' : ''}
+                </div>
+            `;
+            DOM.customTypingOptions.appendChild(item);
+        });
+    }
+
+    // Cập nhật nút Dedicated Session
+    if (DOM.startDedicatedTypingBtn) {
+        if (currentFilter === 'off') {
+            DOM.startDedicatedTypingBtn.innerHTML = `
+                <i class="ph-bold ph-fire"></i>
+                <span>Tạo phiên luyện gõ Leech cấp tốc (15 thẻ)</span>
+            `;
+        } else {
+            DOM.startDedicatedTypingBtn.innerHTML = `
+                <i class="ph-bold ph-lightning"></i>
+                <span>Luyện gõ tập trung: ${escapeHTML(activeConfig.label)} (15 thẻ)</span>
+            `;
+        }
     }
 }
 

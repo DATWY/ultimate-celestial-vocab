@@ -86,10 +86,33 @@
 
                 <!-- Group 3: Mode & Profile Controls -->
                 <div class="header-group group-utilities">
-                    <button id="toggle-typing-mode-btn" class="icon-btn" title="Đổi chế độ: Lật thẻ / Gõ từ" aria-label="Đổi chế độ học">
-                        <i class="ph-duotone ph-cards" id="typing-mode-icon"></i>
-                        <span class="btn-label" id="typing-mode-label">Lật thẻ</span>
-                    </button>
+                    <div id="custom-typing-dropdown" class="custom-typing-dropdown">
+                        <button id="custom-typing-trigger" class="custom-typing-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chế độ học: Lật thẻ & Lọc từ gõ phím" aria-label="Chế độ học và lọc từ gõ phím">
+                            <i class="ph-duotone ph-cards typing-trigger-icon" id="typing-mode-icon"></i>
+                            <span id="typing-mode-label" class="typing-trigger-label">Lật thẻ</span>
+                            <span id="typing-filter-badge" class="typing-trigger-badge hidden">Leech</span>
+                            <i class="ph-bold ph-caret-down typing-trigger-caret"></i>
+                        </button>
+                        <div id="custom-typing-menu" class="custom-typing-menu" role="listbox" tabindex="-1">
+                            <div class="typing-menu-header">
+                                <span class="typing-menu-title"><i class="ph-duotone ph-keyboard"></i> Chế độ Gõ & Lọc Từ</span>
+                                <span id="typing-menu-active-badge" class="typing-menu-active-badge">Active Recall</span>
+                            </div>
+                            <div class="typing-menu-desc">
+                                Chọn chế độ ôn tập phù hợp với mục tiêu & năng lượng:
+                            </div>
+                            <div id="custom-typing-options" class="custom-typing-options">
+                                <!-- Populated dynamically with live counts -->
+                            </div>
+                            <div class="typing-menu-footer">
+                                <button type="button" id="start-dedicated-typing-btn" class="typing-dedicated-btn" title="Nạp 15 thẻ thuộc bộ lọc này vào hàng đợi để luyện gõ tập trung">
+                                    <i class="ph-bold ph-lightning"></i>
+                                    <span>Tạo phiên luyện gõ tập trung (15 thẻ)</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="toggle-typing-mode-btn" class="hidden-typing-btn" style="display:none !important;" aria-hidden="true"></button>
+                    </div>
                     <button id="profile-btn" class="icon-btn" title="Hồ sơ & Thống kê" aria-label="Hồ sơ & Thống kê">
                         <i class="ph-duotone ph-user-circle"></i>
                         <span class="btn-label">Hồ sơ</span>
