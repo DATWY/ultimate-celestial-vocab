@@ -1,11 +1,11 @@
 export const BADGE_TIERS = {
-    COMMON: { id: 'common', name: 'Thường', color: '#B0BEC5' }, // Gray
-    UNCOMMON: { id: 'uncommon', name: 'Lục', color: '#81C784' }, // Green
-    RARE: { id: 'rare', name: 'Lam', color: '#64B5F6' }, // Blue
-    EPIC: { id: 'epic', name: 'Sử Thi', color: '#BA68C8' }, // Purple
-    LEGENDARY: { id: 'legendary', name: 'Huyền Thoại', color: '#FFD54F' }, // Gold
-    MYTHIC: { id: 'mythic', name: 'Thần Thoại', color: '#E57373' }, // Red
-    DIVINE: { id: 'divine', name: 'Tối Thượng', color: '#F06292' } // Multi/Pink
+    COMMON: { id: 'common', name: 'Thường', color: '#B0BEC5', lightColor: '#475569' }, // Gray
+    UNCOMMON: { id: 'uncommon', name: 'Lục', color: '#81C784', lightColor: '#059669' }, // Green
+    RARE: { id: 'rare', name: 'Lam', color: '#64B5F6', lightColor: '#0284C7' }, // Blue
+    EPIC: { id: 'epic', name: 'Sử Thi', color: '#BA68C8', lightColor: '#7E22CE' }, // Purple
+    LEGENDARY: { id: 'legendary', name: 'Huyền Thoại', color: '#FFD54F', lightColor: '#B45309' }, // Gold
+    MYTHIC: { id: 'mythic', name: 'Thần Thoại', color: '#E57373', lightColor: '#DC2626' }, // Red
+    DIVINE: { id: 'divine', name: 'Tối Thượng', color: '#F06292', lightColor: '#DB2777' } // Multi/Pink
 };
 
 export function getTier(index, total) {
@@ -38,7 +38,7 @@ export const BADGE_TRACKS = [
         descSuffix: 'ngày',
         milestones: [2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 365, 400, 500, 600, 730, 900, 1000],
         names: ["Đốm Lửa", "Mồi Lửa", "Hỏa Chủng", "Hỏa Cầu", "Hỏa Hậu", "Hỏa Sư", "Hỏa Tướng", "Hỏa Vương", "Hỏa Đế", "Hỏa Thần", "Bão Lửa", "Dung Nham", "Địa Ngục", "Thái Dương", "Thiên Thạch", "Sao Chổi", "Ngân Hà", "Tinh Vân", "Hố Đen", "Siêu Tân", "Bất Diệt", "Vĩnh Hằng", "Thời Không", "Khởi Nguyên", "Tận Cùng"],
-        icons: ["ph-fill ph-sparkle", "ph-fill ph-flame", "ph-fill ph-fire-simple", "ph-fill ph-fire", "ph-fill ph-campfire", "ph-fill ph-sword", "ph-fill ph-shield-chevron", "ph-fill ph-crown", "ph-fill ph-castle-turret", "ph-fill ph-lightning", "ph-fill ph-tornado", "ph-fill ph-drop-half-bottom", "ph-fill ph-skull", "ph-fill ph-sun-horizon", "ph-fill ph-meteor", "ph-fill ph-shooting-star", "ph-fill ph-galaxy", "ph-fill ph-cloud-fog", "ph-fill ph-black-hole", "ph-fill ph-superset-of", "ph-fill ph-infinity", "ph-fill ph-hourglass", "ph-fill ph-clock-clockwise", "ph-fill ph-magic-wand", "ph-fill ph-prohibit"]
+        icons: ["ph-fill ph-sparkle", "ph-fill ph-flame", "ph-fill ph-fire-simple", "ph-fill ph-fire", "ph-fill ph-campfire", "ph-fill ph-sword", "ph-fill ph-shield-chevron", "ph-fill ph-crown", "ph-fill ph-castle-turret", "ph-fill ph-lightning", "ph-fill ph-tornado", "ph-fill ph-drop-half-bottom", "ph-fill ph-skull", "ph-fill ph-sun-horizon", "ph-fill ph-meteor", "ph-fill ph-shooting-star", "ph-fill ph-spiral", "ph-fill ph-cloud-fog", "ph-fill ph-aperture", "ph-fill ph-superset-of", "ph-fill ph-infinity", "ph-fill ph-hourglass", "ph-fill ph-clock-clockwise", "ph-fill ph-magic-wand", "ph-fill ph-prohibit"]
     },
     {
         id: 'mastered',
@@ -128,7 +128,7 @@ export const SPECIAL_BADGES = [
     { id: `special_blind_typer`, type: 'special', target: 1, name: "Nhắm Mắt Bấm Phím", desc: "Gõ sai chính tả 5 lần liên tiếp trên cùng 1 từ.", icon: "ph-fill ph-eye-closed", tier: BADGE_TIERS.COMMON },
     { id: `special_fast_fingers`, type: 'special', target: 1, name: "Múa Phím", desc: "Trả lời đúng trong Typing Mode chưa tới 1.5 giây sau khi hiện thẻ.", icon: "ph-fill ph-wind", tier: BADGE_TIERS.RARE },
     { id: `special_shadow_hands`, type: 'special', target: 1, name: "Vô Ảnh Thủ", desc: "Gõ đúng liên tiếp 20 từ mà không cần dùng đến Hint (gợi ý).", icon: "ph-fill ph-magic-wand", tier: BADGE_TIERS.LEGENDARY },
-    { id: `special_typewriter`, type: 'special', target: 1, name: "Cỗ Máy Đánh Chữ", desc: "Trả lời đúng tổng cộng 1,000 từ bằng chế độ Gõ từ.", icon: "ph-fill ph-typewriter", tier: BADGE_TIERS.MYTHIC },
+    { id: `special_typewriter`, type: 'special', target: 1, name: "Cỗ Máy Đánh Chữ", desc: "Trả lời đúng tổng cộng 1,000 từ bằng chế độ Gõ từ.", icon: "ph-fill ph-textbox", tier: BADGE_TIERS.MYTHIC },
     { id: `special_typo_king`, type: 'special', target: 1, name: "Lỗi Đánh Máy", desc: "Bị bắt lỗi gõ sai chữ cái cuối cùng của một từ dài.", icon: "ph-fill ph-pencil-slash", tier: BADGE_TIERS.UNCOMMON },
     { id: `special_impossible_typo`, type: 'special', target: 1, name: "Bất Khả Thi", desc: "Gõ sai một từ siêu ngắn (dưới 3 ký tự).", icon: "ph-fill ph-prohibit", tier: BADGE_TIERS.COMMON },
     { id: `special_extreme_patience`, type: 'special', target: 1, name: "Kiên Nhẫn Tột Độ", desc: "Xóa toàn bộ câu đã gõ và gõ lại từ đầu thay vì chỉ sửa chữ sai.", icon: "ph-fill ph-backspace", tier: BADGE_TIERS.RARE },

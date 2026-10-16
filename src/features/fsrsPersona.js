@@ -386,13 +386,13 @@ export function renderFsrsPersonaUI(container) {
 
                 <div class="protips-grid">
                     ${data.proTips.map(tip => `
-                        <div class="protip-card">
-                            <div class="protip-num-badge" style="color: ${tip.color}; border-color: ${tip.color};">
+                        <div class="protip-card" style="--tip-color: ${tip.color};">
+                            <div class="protip-num-badge">
                                 ${tip.num}
                             </div>
                             <div class="protip-content">
                                 <div class="protip-header">
-                                    <i class="${tip.icon}" style="color: ${tip.color};"></i>
+                                    <i class="${tip.icon}"></i>
                                     <h4>${tip.title}</h4>
                                 </div>
                                 <p>${tip.desc}</p>

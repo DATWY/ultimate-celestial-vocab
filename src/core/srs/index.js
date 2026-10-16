@@ -77,13 +77,15 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         const r1 = shortComponentRecall(actualDaysElapsed, newState.stabilityShort, w);
 
         // Update Long-term Stability (start = 7)
-        const upd_s_long = nextStability(newState.stability, newState.difficulty, retrievability, rating, 7, w);
+        let upd_s_long = nextStability(newState.stability, newState.difficulty, retrievability, rating, 7, w);
         
         // Update Short-term Stability (start = 15)
         let upd_s_short = nextStability(newState.stabilityShort, newState.difficulty, r1, rating, 15, w);
 
         // Update Difficulty with Surprise-Weighted Lapse
-        const upd_d = nextDifficulty(newState.difficulty, rating, retrievability, newState.anchor, w);
+        let upd_d = nextDifficulty(newState.difficulty, rating, retrievability, newState.anchor, w);
+
+        const isRelearningPass = card.srsStatus === 'Learning' && actualDaysElapsed < 0.05; // < 1.2 giờ
 
         if (rating === 1) { // Lapse (Again)
             // Post-lapse short-term cap: s_short is capped at 0.8 * post-lapse long-term S (bounded by S_MIN)
@@ -94,19 +96,41 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             }
             // Lapse forgiveness: keep 50% reps rather than resetting to 0
             newState.reps = Math.max(1, Math.ceil((newState.reps || 0) / 2));
+        } else if (isRelearningPass) {
+            // Tốt nghiệp từ hàng đợi Re-learning nội nhật (< 1.2 giờ):
+            // 1. Giữ nguyên S_long sau phạt (khử hiện tượng r_1 kéo R(t) xuống gây tăng ảo sau 3 phút)
+            upd_s_long = card.stability || upd_s_long;
+            // 2. Phục hồi S_short về ngưỡng an toàn 0.8 * S_long để bước sang lịch ngày hôm sau
+            upd_s_short = Math.min(upd_s_long, Math.max(S_MIN, 0.8 * upd_s_long));
+            // 3. Giữ nguyên độ khó D đã phạt ở lượt Lapse trước đó
+            upd_d = card.difficulty || upd_d;
         } else {
             newState.reps = (newState.reps || 0) + 1;
         }
 
         newState.stability = upd_s_long;
-        newState.stabilityShort = upd_s_short;
+        newState.stabilityShort = Math.min(newState.stability, upd_s_short);
         newState.difficulty = upd_d;
     }
 
-    // 5. Typing Modality Bonus (Desirable Difficulty: +25% Stability)
-    if (modality === 'typing' && rating > 1) {
-        newState.stability = Math.min(S_MAX, newState.stability * 1.25);
-        newState.stabilityShort = Math.min(S_MAX, newState.stabilityShort * 1.25);
+    // 5. Typing Modality Bonus (Desirable Difficulty áp dụng lên gia số tăng trưởng thực tế)
+    // Ràng buộc: Chỉ áp dụng khi thẻ đã qua ít nhất 1 chu kỳ thực sự và không phải Re-learning nội nhật
+    if (modality === 'typing' && rating > 1 && (card.reps || 0) > 0 && actualDaysElapsed >= 0.05) {
+        const oldLong = card.stability || S_MIN;
+        const oldShort = card.stabilityShort || S_MIN;
+
+        if (newState.stability > oldLong) {
+            const deltaLong = newState.stability - oldLong;
+            newState.stability = Math.min(S_MAX, oldLong + deltaLong * 1.25);
+        }
+        if (newState.stabilityShort > oldShort) {
+            const deltaShort = newState.stabilityShort - oldShort;
+            // Đảm bảo bất biến: S_short không bao giờ vượt quá S_long
+            newState.stabilityShort = Math.min(
+                newState.stability,
+                oldShort + deltaShort * 1.25
+            );
+        }
     }
 
     // 6. Anchor Modality Adjustment

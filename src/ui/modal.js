@@ -183,21 +183,117 @@ export function cancelEdit() {
     closeModal(DOM.addEditModal);
 }
 
-export function openManageModal() {
-    if (!DOM.manageModal) return;
-    DOM.panelTopicFilter.value = getState().currentTopicFilter;
-    DOM.manageSearchInput.value = '';
-    
-    // Đảm bảo mở tab Danh sách từ vựng mặc định
-    const tabWords = document.getElementById('tab-vocab-list');
-    if (tabWords && !tabWords.classList.contains('active')) {
-        tabWords.click();
+export function switchHubTab(targetTab = 'overview') {
+    const tabAliases = {
+        words: 'words',
+        vocab: 'words',
+        list: 'words',
+        word: 'words',
+        io: 'io',
+        data: 'io',
+        backup: 'io',
+        overview: 'overview',
+        profile: 'overview',
+        stats: 'overview',
+        persona: 'overview',
+        fsrs: 'overview',
+        whoiam: 'overview',
+        badges: 'badges',
+        achievements: 'badges'
+    };
+    const activeTabId = tabAliases[targetTab] || 'overview';
+
+    const tabs = [
+        { id: 'overview', tabEl: document.getElementById('tab-profile-overview'), paneEl: document.getElementById('profile-view-overview') },
+        { id: 'words', tabEl: document.getElementById('tab-vocab-list'), paneEl: document.getElementById('manage-view-words') },
+        { id: 'io', tabEl: document.getElementById('tab-data-io'), paneEl: document.getElementById('manage-view-io') },
+        { id: 'badges', tabEl: document.getElementById('tab-profile-badges'), paneEl: document.getElementById('profile-view-badges') },
+    ];
+
+    tabs.forEach(t => {
+        const isActive = (t.id === activeTabId);
+        if (t.tabEl) {
+            t.tabEl.classList.toggle('active', isActive);
+            t.tabEl.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            t.tabEl.setAttribute('tabindex', isActive ? '0' : '-1');
+        }
+        if (t.paneEl) {
+            t.paneEl.classList.toggle('active', isActive);
+            t.paneEl.classList.toggle('hidden', !isActive);
+        }
+    });
+
+    const activeTabObj = tabs.find(t => t.id === activeTabId);
+    const navTabsContainer = document.querySelector('.manage-nav-tabs');
+    if (navTabsContainer && activeTabObj?.tabEl) {
+        if (activeTabId === 'overview') {
+            navTabsContainer.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+            const tabEl = activeTabObj.tabEl;
+            const containerRect = navTabsContainer.getBoundingClientRect();
+            const tabRect = tabEl.getBoundingClientRect();
+            const targetLeft = navTabsContainer.scrollLeft + (tabRect.left - containerRect.left) - (containerRect.width - tabRect.width) / 2;
+            navTabsContainer.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+        }
     }
+
+    const headerActions = document.querySelector('.manage-header-actions');
+    if (headerActions) {
+        const isWordsTab = (activeTabId === 'words');
+        headerActions.classList.toggle('hidden', !isWordsTab);
+        headerActions.style.display = isWordsTab ? 'flex' : 'none';
+    }
+
+    const managePanel = document.querySelector('.manage-panel');
+    if (managePanel) {
+        managePanel.classList.toggle('tab-overview', activeTabId === 'overview');
+        managePanel.classList.toggle('tab-tall', activeTabId !== 'overview');
+    }
+
+    if (activeTabId === 'words') {
+        updatePanelWordList(false);
+        import('../events.js').then(m => m.updateUndoButtonState?.());
+    } else if (activeTabId === 'overview') {
+        import('../features/gamification.js').then(m => m.renderGamificationUI?.());
+    } else if (activeTabId === 'badges') {
+        import('../features/gamification.js').then(m => (m.renderBadgesTab || m.renderGamificationUI)?.());
+    }
+}
+
+export function openManageModal(targetTab = 'overview') {
+    if (!DOM.manageModal) return;
+    if (DOM.panelTopicFilter) DOM.panelTopicFilter.value = getState().currentTopicFilter;
+    if (DOM.manageSearchInput) DOM.manageSearchInput.value = '';
     
-    updatePanelWordList();
-    import('../events.js').then(m => m.updateUndoButtonState());
     openModal(DOM.manageModal);
-    DOM.manageSearchInput?.focus();
+    switchHubTab(targetTab);
+
+    const navTabsContainer = document.querySelector('.manage-nav-tabs');
+    requestAnimationFrame(() => {
+        if (!navTabsContainer) return;
+        const tabAliases = { overview: 'overview', stats: 'overview', words: 'words', vocab: 'words', list: 'words', word: 'words' };
+        const resolvedTab = tabAliases[targetTab] || targetTab;
+        if (resolvedTab === 'overview') {
+            navTabsContainer.scrollLeft = 0;
+        } else {
+            const activeTab = navTabsContainer.querySelector('.manage-nav-tab.active');
+            if (activeTab) {
+                const cRect = navTabsContainer.getBoundingClientRect();
+                const tRect = activeTab.getBoundingClientRect();
+                const targetLeft = navTabsContainer.scrollLeft + (tRect.left - cRect.left) - (cRect.width - tRect.width) / 2;
+                navTabsContainer.scrollLeft = Math.max(0, targetLeft);
+            }
+        }
+    });
+    
+    const tabAliases = { words: 'words', vocab: 'words', list: 'words', word: 'words' };
+    if (tabAliases[targetTab] === 'words') {
+        setTimeout(() => DOM.manageSearchInput?.focus(), 80);
+    }
+}
+
+export function openCelestialHub(targetTab = 'overview') {
+    openManageModal(targetTab);
 }
 
 function saveAndRefreshUI(tagsHaveChanged = false) {
@@ -211,7 +307,7 @@ function saveAndRefreshUI(tagsHaveChanged = false) {
 }
 
 // --- Toast Notification System ---
-export function showToast(title, message, iconClass = 'ph-trophy') {
+export function showToast(title, message = '', iconClass = 'ph-trophy') {
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -219,15 +315,19 @@ export function showToast(title, message, iconClass = 'ph-trophy') {
         document.body.appendChild(container);
     }
 
+    const resolvedIconClass = /\bph(-fill|-bold|-duotone|-thin|-light)?\b/.test(iconClass)
+        ? iconClass
+        : `ph ${iconClass}`;
+
     const toast = document.createElement('div');
     toast.className = 'toast-item';
     toast.innerHTML = `
         <div class="toast-icon">
-            <i class="ph ${iconClass}"></i>
+            <i class="${resolvedIconClass}"></i>
         </div>
         <div class="toast-content">
             <div class="toast-title">${title}</div>
-            <div class="toast-message">${message}</div>
+            ${message ? `<div class="toast-message">${message}</div>` : ''}
         </div>
     `;
 

@@ -53,9 +53,13 @@ function startQuiz() {
     const { vocabulary, currentTopicFilter } = getState();
     const numQuestionsOption = DOM.quizNumQuestions?.value;
     const timeLimitMinutes = parseInt(DOM.quizTimeLimit?.value, 10) || 5;
-    const potentialQuizVocab = vocabulary.filter(w =>
-        !w.isDeleted && !w.isSuspended && (currentTopicFilter === 'all' || w.tags?.map(t => t.trim().toLowerCase()).includes(currentTopicFilter.toLowerCase()))
-    );
+    const filterLower = (currentTopicFilter || 'all').toLowerCase();
+    const potentialQuizVocab = vocabulary.filter(w => {
+        if (!w || w.isDeleted || w.isSuspended) return false;
+        if (filterLower === 'all') return true;
+        const tagsArr = Array.isArray(w.tags) ? w.tags : (typeof w.tags === 'string' ? w.tags.split(',') : []);
+        return tagsArr.some(t => t && String(t).trim().toLowerCase() === filterLower);
+    });
     const now = Date.now();
     let dueWords = potentialQuizVocab.filter(w => w.srsDueDate && w.srsDueDate <= now);
     let learningWords = potentialQuizVocab.filter(w => w.srsStatus === 'Learning' && !dueWords.includes(w));

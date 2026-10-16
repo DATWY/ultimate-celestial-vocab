@@ -21,7 +21,7 @@ export const DEFAULT_FSRS7_PARAMS = [
 
     // w[7..14]: Stability (Long-term) parameter block (start = 7)
     // 7: sinc_base, 8: s_power, 9: r_scale, 10: fail_base, 11: fail_power, 12: fail_r_scale, 13: hard_penalty, 14: easy_bonus
-    1.9795, 0.0, 1.3826, 0.7024, 0.5999, 0.8146, 0.6398, 1.0,
+    1.9795, 0.0, 1.3826, 0.7024, 0.5999, 0.8146, 0.6398, 1.15,
 
     // w[15..22]: Stability (Short-term) parameter block (start = 15)
     // 15: sinc_base, 16: s_power, 17: r_scale, 18: fail_base, 19: fail_power, 20: fail_r_scale, 21: hard_penalty, 22: easy_bonus

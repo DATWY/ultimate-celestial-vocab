@@ -91,7 +91,9 @@ async function initializeApp() {
     initializeSound();
     initCelestialCanvas();
 
-    const initialDarkMode = localStorage.getItem('celestialDarkMode') === 'true';
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeParam = urlParams.get('theme');
+    const initialDarkMode = themeParam ? (themeParam === 'dark') : (localStorage.getItem('celestialDarkMode') === 'true');
     applyDarkMode(initialDarkMode);
 
     const initialSoundMode = localStorage.getItem('celestialSoundMode') || 'all';
@@ -148,6 +150,13 @@ async function initializeApp() {
     window.addEventListener('beforeunload', () => {
         flushSyncQueueBeforeUnload();
     });
+    // Auto-open manage tab if specified in URL query (for direct routing and verification)
+    const initialTab = urlParams.get('tab');
+    if (initialTab) {
+        import('./ui/modal.js').then(({ openManageModal }) => {
+            openManageModal(initialTab);
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);

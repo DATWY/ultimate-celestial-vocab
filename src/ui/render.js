@@ -219,7 +219,10 @@ export function displayCard(index, preserveFlipState = false) {
     DOM.starBtn?.classList.toggle('starred', !!cardData.isStarred); // Sử dụng !! để đảm bảo giá trị là boolean
     DOM.cardVietnamese.textContent = cardData.vietnamese || 'N/A';
     DOM.cardType.textContent = cardData.type || 'N/A';
-    DOM.cardPronunciation.textContent = cardData.pronunciation || 'N/A';
+    // Ẩn dòng "Phiên âm" khi không có dữ liệu (thay vì hiển thị 'N/A')
+    const hasPronunciation = !!cardData.pronunciation && cardData.pronunciation !== 'N/A';
+    DOM.cardPronunciation.textContent = hasPronunciation ? cardData.pronunciation : '';
+    DOM.cardPronunciation.closest('.detail-row')?.classList.toggle('hidden', !hasPronunciation);
 
     // Highlight từ vựng trong câu ví dụ & kích hoạt hiệu ứng Deep Focus
     const hasExample = !!cardData.example && cardData.example !== 'N/A';
@@ -231,7 +234,10 @@ export function displayCard(index, preserveFlipState = false) {
     DOM.cardExampleRow?.classList.toggle('is-hard-focus', isHardWord && hasExample);
     DOM.exampleFocusTag?.classList.toggle('hidden', !isHardWord || !hasExample);
 
-    DOM.cardTags.textContent = cardData.tags?.join(', ') || '-';
+    const rawTags = Array.isArray(cardData.tags) 
+        ? cardData.tags 
+        : (typeof cardData.tags === 'string' ? cardData.tags.split(',') : []);
+    DOM.cardTags.textContent = rawTags.map(t => (t ? String(t).trim().replace(/_/g, ' ') : '')).filter(Boolean).join(', ') || '-';
     const srsStatus = cardData.srsStatus || 'New';
     if (DOM.cardSrsStatus) {
         DOM.cardSrsStatus.textContent = srsStatus;
@@ -392,14 +398,20 @@ export function updateSrsButtonIntervalPreviews() {
     });
 }
 
+function wordMatchesTopic(word, filterLowerCase) {
+    if (!word || !filterLowerCase || filterLowerCase === 'all') return true;
+    const rawTags = Array.isArray(word.tags) ? word.tags : (typeof word.tags === 'string' ? word.tags.split(',') : []);
+    return rawTags.some(t => t && String(t).trim().toLowerCase() === filterLowerCase);
+}
+
 export function updateStats() {
     if (!DOM.statsArea) return;
     const { vocabulary, currentTopicFilter } = getState();
     const activeVocabulary = vocabulary.filter(w => !w.isDeleted);
     const totalCount = activeVocabulary.length;
-    const filterLowerCase = currentTopicFilter.toLowerCase();
+    const filterLowerCase = (currentTopicFilter || 'all').toLowerCase();
     const filteredVocab = activeVocabulary.filter(w => 
-        !w.isSuspended && (filterLowerCase === 'all' || w.tags?.map(t => t.toLowerCase()).includes(filterLowerCase))
+        !w.isSuspended && wordMatchesTopic(w, filterLowerCase)
     );
     const filteredCount = filteredVocab.length;
     const now = Date.now();
@@ -418,7 +430,7 @@ export function updateStats() {
     // Bổ sung thẻ hiện tại nếu là thẻ Mastered đang ôn tập
     if (currentCardIndex >= 0 && currentCardIndex < vocabulary.length) {
         const cw = vocabulary[currentCardIndex];
-        if (cw && !cw.isDeleted && !cw.isSuspended && (filterLowerCase === 'all' || cw.tags?.map(t => t.toLowerCase()).includes(filterLowerCase))) {
+        if (cw && !cw.isDeleted && !cw.isSuspended && wordMatchesTopic(cw, filterLowerCase)) {
             if (cw.srsStatus === 'Mastered') {
                 activeDueSet.add(cw.id || currentCardIndex);
             }
@@ -429,7 +441,7 @@ export function updateStats() {
         currentReviewQueue.forEach(idx => {
             if (idx >= 0 && idx < vocabulary.length) {
                 const qw = vocabulary[idx];
-                if (qw && !qw.isDeleted && !qw.isSuspended && (filterLowerCase === 'all' || qw.tags?.map(t => t.toLowerCase()).includes(filterLowerCase))) {
+                if (qw && !qw.isDeleted && !qw.isSuspended && wordMatchesTopic(qw, filterLowerCase)) {
                     if (qw.srsStatus === 'Mastered') {
                         activeDueSet.add(qw.id || idx);
                     }
@@ -518,14 +530,15 @@ export function updateCustomTopicUI(selectedTag = null) {
     const activeVocab = (vocabulary || []).filter(w => !w.isDeleted);
     const tagCounts = { 'all': activeVocab.length };
     activeVocab.forEach(w => {
-        if (Array.isArray(w.tags)) {
-            w.tags.forEach(t => {
-                const norm = t ? t.trim() : '';
-                if (norm) {
-                    tagCounts[norm] = (tagCounts[norm] || 0) + 1;
-                }
-            });
-        }
+        const rawTags = Array.isArray(w.tags) 
+            ? w.tags 
+            : (typeof w.tags === 'string' ? w.tags.split(',') : []);
+        rawTags.forEach(t => {
+            const norm = t ? String(t).trim() : '';
+            if (norm) {
+                tagCounts[norm] = (tagCounts[norm] || 0) + 1;
+            }
+        });
     });
 
     const sortedTags = Array.from(allTags).sort((a, b) => {
@@ -536,7 +549,7 @@ export function updateCustomTopicUI(selectedTag = null) {
 
     // Update Trigger Label & Badge
     if (DOM.customTopicLabel) {
-        DOM.customTopicLabel.textContent = activeTag === 'all' ? 'Tất cả chủ đề' : activeTag;
+        DOM.customTopicLabel.textContent = activeTag === 'all' ? 'Tất cả chủ đề' : activeTag.replace(/_/g, ' ');
     }
     if (DOM.customTopicBadge) {
         const count = tagCounts[activeTag] || 0;
@@ -564,9 +577,11 @@ export function updateCustomTopicUI(selectedTag = null) {
                 ? '<i class="ph-duotone ph-books item-icon"></i>' 
                 : '<i class="ph-duotone ph-tag item-icon"></i>';
                 
+            const displayTagName = tag === 'all' ? 'Tất cả chủ đề' : escapeHTML(tag.replace(/_/g, ' '));
+                
             item.innerHTML = `
                 ${iconHtml}
-                <span class="topic-item-name">${tag === 'all' ? 'Tất cả chủ đề' : escapeHTML(tag)}</span>
+                <span class="topic-item-name">${displayTagName}</span>
                 <span class="topic-item-count">${count}</span>
                 ${isSelected ? '<i class="ph-bold ph-check topic-item-check"></i>' : ''}
             `;
@@ -670,11 +685,11 @@ export function updateCustomTypingUI() {
         DOM.typingModeIcon.className = `ph-duotone ${activeConfig.icon} typing-trigger-icon`;
     }
     if (DOM.typingFilterBadge) {
-        if (activeConfig.badgeText) {
+        if (activeConfig?.badgeText) {
             DOM.typingFilterBadge.textContent = activeConfig.badgeText;
-            DOM.typingFilterBadge.classList.remove('hidden');
+            DOM.typingFilterBadge?.classList?.remove('hidden');
         } else {
-            DOM.typingFilterBadge.classList.add('hidden');
+            DOM.typingFilterBadge?.classList?.add('hidden');
         }
     }
     if (DOM.customTypingTrigger) {
@@ -743,11 +758,11 @@ export function populateTopicFilters(tagsHaveChanged = false) {
     sortedTags.forEach(tag => {
         const optionMain = document.createElement('option');
         optionMain.value = tag;
-        optionMain.textContent = tag === 'all' ? '📚 Tất cả chủ đề' : tag;
+        optionMain.textContent = tag === 'all' ? '📚 Tất cả chủ đề' : tag.replace(/_/g, ' ');
         if (DOM.mainTopicFilter) DOM.mainTopicFilter.appendChild(optionMain);
         const optionPanel = document.createElement('option');
         optionPanel.value = tag;
-        optionPanel.textContent = tag === 'all' ? 'Tất cả chủ đề' : tag;
+        optionPanel.textContent = tag === 'all' ? 'Tất cả chủ đề' : tag.replace(/_/g, ' ');
         if (DOM.panelTopicFilter) DOM.panelTopicFilter.appendChild(optionPanel);
     });
     if (DOM.mainTopicFilter) DOM.mainTopicFilter.value = allTags.has(currentMainFilter) ? currentMainFilter : 'all';
@@ -841,7 +856,7 @@ export function updatePanelWordList(resetScroll = true) {
 
     filteredWordsCache = vocabulary.filter(word => {
         if (word.isDeleted) return false;
-        const topicMatch = selectedTopic === 'all' || word.tags?.map(t => t.toLowerCase()).includes(selectedTopic);
+        const topicMatch = wordMatchesTopic(word, selectedTopic);
         const statusMatch = selectedStatus === 'all' || word.srsStatus === selectedStatus || (selectedStatus === 'Suspended' && word.isSuspended);
         const searchMatch = !searchTerm || isFuzzySearchMatch(searchTerm, word.english, word.vietnamese);
         return topicMatch && statusMatch && searchMatch;
@@ -928,7 +943,10 @@ function createWordCard(word) {
     const safeType = escapeHTML(word.type || '');
     const safeVietnamese = escapeHTML(word.vietnamese);
     const safePronunciation = word.pronunciation ? escapeHTML(word.pronunciation) : '';
-    const safeTagsStr = escapeHTML(word.tags?.join(', ') || '');
+    const rawWordTags = Array.isArray(word.tags) 
+        ? word.tags 
+        : (typeof word.tags === 'string' ? word.tags.split(',') : []);
+    const safeTagsStr = escapeHTML(rawWordTags.map(t => (t ? String(t).trim().replace(/_/g, ' ') : '')).filter(Boolean).join(', '));
     const safeTagsDisplay = safeTagsStr || 'Không có chủ đề';
 
     cardEl.innerHTML = `

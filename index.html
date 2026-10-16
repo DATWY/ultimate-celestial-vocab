@@ -25,10 +25,19 @@
     <div id="app-container">
         <!-- === HEADER === -->
         <header class="app-header">
-            <h1>
-                <img src="/favicon.svg" class="app-logo-mark" alt="Celestial Logo" width="36" height="36">
-                <span>Ultimate Celestial Vocab</span>
-            </h1>
+            <div class="brand-container">
+                <div class="brand-title-wrap">
+                    <span class="brand-logo-pod" title="Ultimate Celestial Vocab">
+                        <img src="/favicon.svg" class="app-logo-mark" alt="Celestial Logo" width="34" height="34">
+                        <span class="celestial-orb-ring" aria-hidden="true"></span>
+                    </span>
+                    <div class="brand-text-block">
+                        <div class="brand-title-row">
+                            <h1 class="brand-title">Ultimate Celestial Vocab</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <button id="toggle-taskbar-btn" class="icon-btn" title="Mở menu công cụ" aria-label="Mở menu công cụ">
                 <i class="ph-duotone ph-list"></i>
@@ -69,28 +78,30 @@
 
                 <span class="header-divider"></span>
 
-                <!-- Group 2: Quick Study Actions -->
+                <!-- Group 2: Quick Study & Central Hub Actions -->
                 <div class="header-group group-actions">
                     <button id="start-quiz-btn" class="icon-btn-text" title="Làm bài kiểm tra">
                         <i class="ph-duotone ph-rocket-launch"></i>
                         <span class="btn-label">Kiểm tra</span>
                     </button>
 
-                    <button id="manage-words-btn-open" class="icon-btn-text" title="Quản lý từ vựng">
-                        <i class="ph-duotone ph-books"></i>
-                        <span class="btn-label">Quản Lý</span>
+                    <button id="celestial-hub-btn" class="icon-btn-text" title="Trung tâm điều khiển & Quản lý" aria-label="Trung tâm điều khiển">
+                        <i class="ph-duotone ph-squares-four"></i>
+                        <span class="btn-label">Trung Tâm</span>
                     </button>
+                    <!-- Aliases for backwards compatibility -->
+                    <button id="manage-words-btn-open" class="hidden" style="display:none !important;" aria-hidden="true"></button>
+                    <button id="profile-btn" class="hidden" style="display:none !important;" aria-hidden="true"></button>
                 </div>
 
                 <span class="header-divider"></span>
 
-                <!-- Group 3: Mode & Profile Controls -->
+                <!-- Group 3: Mode & Quick Settings -->
                 <div class="header-group group-utilities">
                     <div id="custom-typing-dropdown" class="custom-typing-dropdown">
                         <button id="custom-typing-trigger" class="custom-typing-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chế độ học: Lật thẻ & Lọc từ gõ phím" aria-label="Chế độ học và lọc từ gõ phím">
                             <i class="ph-duotone ph-cards typing-trigger-icon" id="typing-mode-icon"></i>
                             <span id="typing-mode-label" class="typing-trigger-label">Lật thẻ</span>
-                            <span id="typing-filter-badge" class="typing-trigger-badge hidden">Leech</span>
                             <i class="ph-bold ph-caret-down typing-trigger-caret"></i>
                         </button>
                         <div id="custom-typing-menu" class="custom-typing-menu" role="listbox" tabindex="-1">
@@ -113,10 +124,6 @@
                         </div>
                         <button id="toggle-typing-mode-btn" class="hidden-typing-btn" style="display:none !important;" aria-hidden="true"></button>
                     </div>
-                    <button id="profile-btn" class="icon-btn" title="Hồ sơ & Thống kê" aria-label="Hồ sơ & Thống kê">
-                        <i class="ph-duotone ph-user-circle"></i>
-                        <span class="btn-label">Hồ sơ</span>
-                    </button>
                     <button id="toggle-dark-mode-btn" class="icon-btn" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
                         <i class="ph-duotone ph-moon-stars"></i>
                         <span class="btn-label">Giao diện Tối/Sáng</span>
@@ -527,7 +534,7 @@
                     </div>
                 </div>
                 <div class="premium-actions">
-                    <button id="cancel-quiz-setup-btn" class="primary-btn outline-btn"><i class="ph-duotone ph-x"></i> Hủy
+                    <button id="cancel-quiz-setup-btn" class="primary-btn outline-btn"><i class="ph-bold ph-x"></i> Hủy
                         bỏ</button>
                     <button id="confirm-start-quiz-btn" class="primary-btn"><i class="ph-fill ph-play"></i> Bắt đầu
                         ngay</button>
@@ -540,7 +547,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content">
                 <button id="close-add-edit-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-bold ph-x"></i></button>
                 <form id="add-edit-form">
                     <h3 id="form-title">Thêm từ mới</h3>
                     <input type="hidden" id="edit-word-id">
@@ -567,31 +574,175 @@
             aria-labelledby="manage-title">
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content manage-panel">
-                <button id="close-manage-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
                 <div class="manage-panel-header">
-                    <div class="manage-header-main">
-                        <h2 id="manage-title" class="manage-panel-title"><i class="ph-duotone ph-books"></i> <span class="title-text-desktop">Quản Lý Từ Vựng</span><span class="title-text-mobile">Kho Từ Vựng</span></h2>
-                        <nav class="manage-nav-tabs" role="tablist" aria-label="Bộ chọn giao diện quản lý">
-                            <button id="tab-vocab-list" class="manage-nav-tab active" role="tab" aria-selected="true" data-tab="words">
-                                <i class="ph-bold ph-cards"></i> Từ Vựng
-                            </button>
-                            <button id="tab-data-io" class="manage-nav-tab" role="tab" aria-selected="false" data-tab="io">
-                                <i class="ph-bold ph-database"></i> Dữ Liệu & Sao Lưu
-                            </button>
-                        </nav>
+                    <!-- Row 1: Top Bar (Title on Left, Actions & Close Button on Right) -->
+                    <div class="manage-header-top">
+                        <div class="manage-header-title-wrap">
+                            <div class="manage-header-icon-pill">
+                                <i class="ph-duotone ph-squares-four"></i>
+                            </div>
+                            <div class="manage-title-group">
+                                <h2 id="manage-title" class="manage-panel-title">
+                                    <span class="title-text-desktop">Trung Tâm Điều Khiển</span>
+                                    <span class="title-text-mobile">Trung Tâm</span>
+                                </h2>
+                                <span class="manage-subtitle-badge">Celestial Hub</span>
+                            </div>
+                        </div>
+                        <div class="manage-header-right">
+                            <div class="manage-header-actions hidden" style="display: none;">
+                                <span id="manage-total-count" class="manage-count-badge"><i class="ph-bold ph-cards"></i> 0 từ</span>
+                                <button id="scan-duplicates-btn" class="icon-btn dedup-btn" title="Quét &amp; Gộp từ vựng trùng lặp thông minh"
+                                    aria-label="Quét trùng lặp"><i class="ph-bold ph-scan"></i></button>
+                                <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Shift+Z)"
+                                    aria-label="Hoàn tác lượt đánh giá trước" disabled><i class="ph-duotone ph-arrow-u-up-left"></i></button>
+                            </div>
+                            <button id="close-manage-modal-btn" class="modal-close-btn manage-close-btn" title="Đóng (Esc)"
+                                aria-label="Đóng hộp thoại"><i class="ph-bold ph-x"></i></button>
+                        </div>
                     </div>
-                    <div class="manage-header-actions">
-                        <span id="manage-total-count" class="manage-count-badge"><i class="ph-bold ph-cards"></i> 0 từ</span>
-                        <button id="scan-duplicates-btn" class="icon-btn dedup-btn" title="Quét & Gộp từ vựng trùng lặp thông minh"
-                            aria-label="Quét trùng lặp"><i class="ph-bold ph-scan"></i></button>
-                        <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Shift+Z)"
-                            aria-label="Hoàn tác lượt đánh giá trước" disabled><i class="ph-duotone ph-arrow-u-up-left"></i></button>
+
+                    <!-- Row 2: Full-Width Modern Segmented Tabs Bar -->
+                    <nav class="manage-nav-tabs" role="tablist" aria-label="Bộ chọn giao diện trung tâm điều khiển">
+                        <button id="tab-profile-overview" class="manage-nav-tab active" role="tab" aria-selected="true" tabindex="0" data-tab="overview">
+                            <i class="ph-bold ph-chart-pie-slice"></i> <span>Tổng Quan &amp; Trí Nhớ</span>
+                        </button>
+                        <button id="tab-vocab-list" class="manage-nav-tab" role="tab" aria-selected="false" tabindex="-1" data-tab="words">
+                            <i class="ph-bold ph-cards"></i> <span>Từ Vựng</span>
+                        </button>
+                        <button id="tab-data-io" class="manage-nav-tab" role="tab" aria-selected="false" tabindex="-1" data-tab="io">
+                            <i class="ph-bold ph-database"></i> <span>Dữ Liệu &amp; Sao Lưu</span>
+                        </button>
+                        <button id="tab-profile-badges" class="manage-nav-tab" role="tab" aria-selected="false" tabindex="-1" data-tab="badges">
+                            <i class="ph-bold ph-trophy"></i> <span>Huy Hiệu</span>
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- TAB 1: Tổng Quan & Sức Khỏe Trí Nhớ (Bento Grid HUD) -->
+                <div id="profile-view-overview" class="manage-tab-pane profile-tab-pane active">
+                    <!-- Hero Section: Cấp Độ & Chuỗi Ngày Học Liền Mạch -->
+                    <section class="profile-hero-card profile-hero-bento">
+                        <div class="level-card hero-scholar-card">
+                            <div class="level-display">
+                                <div class="level-circle">
+                                    <span class="level-number" id="profile-level">1</span>
+                                </div>
+                                <div class="xp-info">
+                                    <div class="xp-title-row">
+                                        <h3 class="rank-name-title"><i class="ph-duotone ph-shield-star"></i> Cấp độ Học giả</h3>
+                                        <span class="xp-badge-total"><i class="ph-fill ph-lightning"></i> Tổng XP: <strong id="profile-total-xp">0</strong></span>
+                                    </div>
+                                    <div class="xp-bar-container">
+                                        <div class="xp-bar-fill" id="profile-xp-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="xp-footer-row">
+                                        <p class="xp-to-next-level"><i class="ph-bold ph-arrow-fat-lines-up"></i> Còn <strong id="profile-xp-needed">0</strong> XP để lên cấp</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="streak-widget streak-card streak-bento-card">
+                            <div class="streak-main-row">
+                                <div class="streak-icon-wrapper">
+                                    <i class="ph-fill ph-fire"></i>
+                                </div>
+                                <div class="streak-info">
+                                    <div class="streak-count-row">
+                                        <span class="streak-number" id="profile-streak">0</span>
+                                        <span class="streak-unit">ngày</span>
+                                    </div>
+                                    <span class="streak-text">Chuỗi kiên trì</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Sức Khỏe Trí Nhớ FusionSRS -->
+                    <section class="profile-card memory-analytics-card fusionsrs-bento-section">
+                        <div class="memory-analytics-header">
+                            <div class="memory-analytics-title-group">
+                                <h3><i class="ph-bold ph-brain"></i> Sức Khỏe Trí Nhớ FusionSRS</h3>
+                                <button id="btn-memory-info-help" class="analytics-help-btn" title="Giải thích các chỉ số"><i class="ph-bold ph-question"></i></button>
+                            </div>
+                            <span class="analytics-badge" id="profile-memory-status"><i class="ph-fill ph-sparkle"></i> Phong độ: Xuất sắc</span>
+                        </div>
+                        <div class="memory-analytics-grid">
+                            <div class="analytics-item fusionsrs-metric-card" data-metric="retention">
+                                <div class="analytics-card-header">
+                                    <div class="analytics-icon icon-retention"><i class="ph-bold ph-chart-line-up"></i></div>
+                                    <span class="analytics-label" title="Mức Độ Thuộc Bài">Mức Độ Thuộc Bài</span>
+                                </div>
+                                <div class="analytics-info">
+                                    <div class="analytics-value-row">
+                                        <span class="analytics-value" id="profile-retention-rate">94.2%</span>
+                                        <span class="analytics-subtext" id="profile-retention-sub">🎯 Đang nhớ rất sâu</span>
+                                    </div>
+                                    <div class="analytics-meter-bar" title="Tỷ lệ ghi nhớ mục tiêu SRS">
+                                        <div class="meter-fill meter-retention" id="profile-retention-meter" style="width: 94.2%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="analytics-item fusionsrs-metric-card" data-metric="stability">
+                                <div class="analytics-card-header">
+                                    <div class="analytics-icon icon-stability"><i class="ph-bold ph-hourglass-high"></i></div>
+                                    <span class="analytics-label" title="Thời Gian Nhớ Tự Nhiên">Thời Gian Nhớ Tự Nhiên</span>
+                                </div>
+                                <div class="analytics-info">
+                                    <div class="analytics-value-row">
+                                        <span class="analytics-value" id="profile-avg-stability">14.8 ngày</span>
+                                        <span class="analytics-subtext" id="profile-stability-sub">🧠 Trí nhớ dài hạn</span>
+                                    </div>
+                                    <div class="analytics-meter-bar" title="Chu kỳ ổn định trí nhớ">
+                                        <div class="meter-fill meter-stability" id="profile-stability-meter" style="width: 49.3%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="analytics-item fusionsrs-metric-card" data-metric="reviews">
+                                <div class="analytics-card-header">
+                                    <div class="analytics-icon icon-reviews"><i class="ph-bold ph-arrows-clockwise"></i></div>
+                                    <span class="analytics-label" title="Tổng Số Lần Đã Ôn">Tổng Số Lần Đã Ôn</span>
+                                </div>
+                                <div class="analytics-info">
+                                    <div class="analytics-value-row">
+                                        <span class="analytics-value" id="profile-total-reviews">0</span>
+                                        <span class="analytics-subtext">⚡ Tích lũy kiến thức</span>
+                                    </div>
+                                    <div class="analytics-meter-bar" title="Tiến độ tích lũy ôn tập">
+                                        <div class="meter-fill meter-reviews" id="profile-reviews-meter" style="width: 30%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Ma Trận Nhịp Điệu Ôn Tập & Hoạt Động (2 Cột Cân Đối) -->
+                    <div class="profile-rhythm-grid bento-charts-row">
+                        <section class="profile-card forecast-card chart-bento-card">
+                            <div class="card-header-flex">
+                                <h3><i class="ph-duotone ph-chart-bar"></i> Dự báo Ôn tập (7 ngày tới)</h3>
+                                <span class="bento-badge bento-badge-emerald"><i class="ph-fill ph-lightning"></i> FSRS-7</span>
+                            </div>
+                            <div class="forecast-chart-container" id="forecast-chart">
+                                <!-- Render JS -->
+                            </div>
+                        </section>
+
+                        <section class="profile-card heatmap-card heatmap-bento-card">
+                            <div class="card-header-flex">
+                                <h3><i class="ph-duotone ph-calendar-check"></i> Hoạt động Ôn tập</h3>
+                                <span class="bento-badge bento-badge-cyan"><i class="ph-bold ph-calendar"></i> 84 Ngày Qua</span>
+                            </div>
+                            <div class="heatmap-container" id="activity-heatmap">
+                                <!-- Render JS -->
+                            </div>
+                        </section>
                     </div>
                 </div>
 
-                <!-- TAB 1: Danh Sách Từ Vựng (Dedicated View) -->
-                <div id="manage-view-words" class="manage-tab-pane active">
+                <!-- TAB 2: Danh Sách Từ Vựng (Dedicated View) -->
+                <div id="manage-view-words" class="manage-tab-pane hidden">
                     <section class="manage-controls">
                         <div class="search-bar-wrapper">
                             <i class="ph-duotone ph-magnifying-glass search-icon"></i>
@@ -630,7 +781,7 @@
                     </div>
                 </div>
 
-                <!-- TAB 2: Nhập & Xuất Dữ Liệu (Clean, Single-Layer Grid) -->
+                <!-- TAB 3: Nhập & Xuất Dữ Liệu (Clean, Single-Layer Grid) -->
                 <div id="manage-view-io" class="manage-tab-pane hidden">
                     <section id="manage-io-section" class="manage-io-clean-grid">
                         <!-- Card 1: Nhập Dữ Liệu -->
@@ -657,14 +808,14 @@
                                     <div class="dropzone-icon-box"><i class="ph-duotone ph-upload-simple"></i></div>
                                     <span class="dropzone-title">Kéo thả file .tsv hoặc .txt vào đây</span>
                                     <span class="dropzone-sub">hoặc <span class="browse-link">duyệt từ máy tính</span></span>
-                                    <span class="dropzone-badge"><i class="ph-fill ph-lightning"></i> Tự động lọc trùng & Smart Merge FSRS-7</span>
+                                    <span class="dropzone-badge"><i class="ph-fill ph-lightning"></i> Tự động lọc trùng &amp; Smart Merge FSRS-7</span>
                                 </label>
                                 <input type="file" id="import-file" accept=".txt,.tsv" class="file-input" style="display: none !important;">
                             </div>
 
                             <div id="import-text-panel" class="import-panel hidden">
                                 <textarea id="import-text-area" class="io-textarea-clean" placeholder="Dán nội dung TSV tại đây (English [tab] Vietnamese [tab] Type...)"></textarea>
-                                <button id="import-text-btn" class="primary-btn io-submit-btn"><i class="ph-bold ph-sparkle"></i> Phân Tích & Nạp Dữ Liệu</button>
+                                <button id="import-text-btn" class="primary-btn io-submit-btn"><i class="ph-bold ph-sparkle"></i> Phân Tích &amp; Nạp Dữ Liệu</button>
                             </div>
                         </div>
 
@@ -673,7 +824,7 @@
                             <div class="io-card-header">
                                 <div class="io-card-icon export-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></div>
                                 <div class="io-card-titles">
-                                    <h4 class="io-card-title">Xuất Dữ Liệu & Sao Lưu</h4>
+                                    <h4 class="io-card-title">Xuất Dữ Liệu &amp; Sao Lưu</h4>
                                     <p class="io-card-desc">Tạo bản sao lưu toàn bộ kho từ vựng ra file TSV chuẩn để chỉnh sửa hoặc lưu trữ an toàn.</p>
                                 </div>
                             </div>
@@ -692,7 +843,7 @@
                             <div class="io-card-header">
                                 <div class="io-card-icon fsrs-icon"><i class="ph-duotone ph-brain"></i></div>
                                 <div class="io-card-titles">
-                                    <h4 class="io-card-title">Trí Nhớ FSRS & Quản Trị</h4>
+                                    <h4 class="io-card-title">Trí Nhớ FSRS &amp; Quản Trị</h4>
                                     <p class="io-card-desc">Cấu hình 34 tham số thuật toán trí nhớ FSRS-7 cá nhân hóa hoặc dọn dẹp cơ sở dữ liệu.</p>
                                 </div>
                             </div>
@@ -713,6 +864,15 @@
                         </div>
                     </section>
                 </div>
+
+                <!-- TAB 4: Phòng Truyền Thống Huy Hiệu Thành Tựu -->
+                <div id="profile-view-badges" class="manage-tab-pane profile-tab-pane hidden">
+                    <section class="profile-card achievements-card">
+                        <div class="achievements-container" id="achievements-list">
+                            <!-- Render JS -->
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
 
@@ -722,7 +882,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content modal-large">
                 <button id="close-import-preview-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-bold ph-x"></i></button>
                 <h3 id="import-preview-title"><i class="ph-duotone ph-file-magnifying-glass"></i> Xem trước Dữ liệu Nhập</h3>
                 <div id="import-preview-stats">
                     <p>Phân tích file: <strong id="import-filename"></strong></p>
@@ -753,7 +913,7 @@
         <div id="fsrs7-config-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="fsrs7-modal-title">
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content" style="max-width: 620px;">
-                <button id="close-fsrs7-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
+                <button id="close-fsrs7-modal-btn" class="modal-close-btn" title="Đóng (Esc)" aria-label="Đóng hộp thoại"><i class="ph-bold ph-x"></i></button>
                 <div class="modal-header-with-icon" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                     <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2)); display: flex; align-items: center; justify-content: center; font-size: 24px; color: #a855f7;">
                         <i class="ph-fill ph-brain"></i>
@@ -764,7 +924,7 @@
                     </div>
                 </div>
 
-                <div id="fsrs7-status-card" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <div id="fsrs7-status-card" class="fsrs7-status-card">
                     <div>
                         <span style="font-size: 0.8rem; color: var(--text-light, #888); display: block;">Trạng thái hiện tại:</span>
                         <strong id="fsrs7-current-status" style="font-size: 0.95rem; color: #10b981;">Bộ thông số Mặc định (34 params)</strong>
@@ -792,163 +952,14 @@
             </div>
         </div>
 
-        <!-- MODAL: Gamification & Profile Dashboard -->
-        <div id="profile-modal" class="modal modal-large hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
-            <div class="modal-overlay" tabindex="-1"></div>
-            <div class="modal-content profile-panel">
-                <button id="close-profile-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
-
-                <div class="manage-panel-header profile-panel-header">
-                    <div class="manage-header-main">
-                        <h2 id="profile-title" class="manage-panel-title">
-                            <i class="ph-duotone ph-chart-polar"></i> 
-                            <span class="title-text-desktop">Hồ Sơ & Thống Kê</span>
-                            <span class="title-text-mobile">Hồ Sơ</span>
-                        </h2>
-                        <nav class="manage-nav-tabs profile-nav-tabs" role="tablist" aria-label="Bộ chọn giao diện hồ sơ">
-                            <button id="tab-profile-overview" class="manage-nav-tab profile-nav-tab active" role="tab" aria-selected="true" data-tab="overview">
-                                <i class="ph-bold ph-chart-pie-slice"></i> Tổng Quan & Trí Nhớ
-                            </button>
-                            <button id="tab-profile-persona" class="manage-nav-tab profile-nav-tab" role="tab" aria-selected="false" data-tab="persona">
-                                <i class="ph-bold ph-user-focus"></i> Who I Am
-                            </button>
-                            <button id="tab-profile-badges" class="manage-nav-tab profile-nav-tab" role="tab" aria-selected="false" data-tab="badges">
-                                <i class="ph-bold ph-trophy"></i> Huy Hiệu Thành Tựu
-                            </button>
-                        </nav>
-                    </div>
-                </div>
-
-                <!-- PANE 1: TỔNG QUAN & SỨC KHỎE TRÍ NHỚ -->
-                <div id="profile-view-overview" class="profile-tab-pane active">
-                    <!-- Hero Section: Cấp Độ & Chuỗi Ngày Học Liền Mạch -->
-                    <section class="profile-hero-card">
-                        <div class="level-card">
-                            <div class="level-display">
-                                <div class="level-circle">
-                                    <span class="level-number" id="profile-level">1</span>
-                                </div>
-                                <div class="xp-info">
-                                    <div class="xp-title-row">
-                                        <h3 class="rank-name-title"><i class="ph-duotone ph-shield-star"></i> Cấp độ Học giả</h3>
-                                        <span class="xp-badge-total">Tổng XP: <strong id="profile-total-xp">0</strong></span>
-                                    </div>
-                                    <div class="xp-bar-container">
-                                        <div class="xp-bar-fill" id="profile-xp-fill" style="width: 0%;"></div>
-                                    </div>
-                                    <p class="xp-to-next-level">Còn <span id="profile-xp-needed">0</span> XP để lên cấp</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="streak-widget streak-card">
-                            <div class="streak-main-row">
-                                <div class="streak-icon-wrapper">
-                                    <i class="ph-fill ph-fire"></i>
-                                </div>
-                                <div class="streak-info">
-                                    <div class="streak-count-row">
-                                        <span class="streak-number" id="profile-streak">0</span>
-                                        <span class="streak-unit">ngày</span>
-                                    </div>
-                                    <span class="streak-text">Chuỗi kiên trì</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Sức Khỏe Trí Nhớ FusionSRS -->
-                    <section class="profile-card memory-analytics-card">
-                        <div class="memory-analytics-header">
-                            <div class="memory-analytics-title-group">
-                                <h3><i class="ph-bold ph-brain"></i> Sức Khỏe Trí Nhớ FusionSRS</h3>
-                                <button id="btn-memory-info-help" class="analytics-help-btn" title="Giải thích các chỉ số"><i class="ph-bold ph-question"></i></button>
-                            </div>
-                            <span class="analytics-badge" id="profile-memory-status"><i class="ph-fill ph-sparkle"></i> Phong độ: Xuất sắc</span>
-                        </div>
-                        <div class="memory-analytics-grid">
-                            <div class="analytics-item" data-metric="retention">
-                                <div class="analytics-icon icon-retention"><i class="ph-bold ph-chart-line-up"></i></div>
-                                <div class="analytics-info">
-                                    <div class="analytics-value-row">
-                                        <span class="analytics-value" id="profile-retention-rate">94.2%</span>
-                                        <span class="analytics-subtext" id="profile-retention-sub">🎯 Đang nhớ rất sâu</span>
-                                    </div>
-                                    <span class="analytics-label">Mức Độ Thuộc Bài</span>
-                                    <div class="analytics-meter-bar" title="Tỷ lệ ghi nhớ mục tiêu SRS">
-                                        <div class="meter-fill meter-retention" id="profile-retention-meter" style="width: 94.2%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="analytics-item" data-metric="stability">
-                                <div class="analytics-icon icon-stability"><i class="ph-bold ph-hourglass-high"></i></div>
-                                <div class="analytics-info">
-                                    <div class="analytics-value-row">
-                                        <span class="analytics-value" id="profile-avg-stability">14.8 ngày</span>
-                                        <span class="analytics-subtext" id="profile-stability-sub">🧠 Trí nhớ dài hạn</span>
-                                    </div>
-                                    <span class="analytics-label">Thời Gian Nhớ Tự Nhiên</span>
-                                    <div class="analytics-meter-bar" title="Chu kỳ ổn định trí nhớ">
-                                        <div class="meter-fill meter-stability" id="profile-stability-meter" style="width: 49.3%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="analytics-item" data-metric="reviews">
-                                <div class="analytics-icon icon-reviews"><i class="ph-bold ph-arrows-clockwise"></i></div>
-                                <div class="analytics-info">
-                                    <div class="analytics-value-row">
-                                        <span class="analytics-value" id="profile-total-reviews">0</span>
-                                        <span class="analytics-subtext">⚡ Tích lũy kiến thức</span>
-                                    </div>
-                                    <span class="analytics-label">Tổng Số Lần Đã Ôn</span>
-                                    <div class="analytics-meter-bar" title="Tiến độ tích lũy ôn tập">
-                                        <div class="meter-fill meter-reviews" id="profile-reviews-meter" style="width: 30%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Ma Trận Nhịp Điệu Ôn Tập & Hoạt Động (2 Cột Cân Đối) -->
-                    <div class="profile-rhythm-grid">
-                        <section class="profile-card forecast-card">
-                            <h3><i class="ph-duotone ph-chart-bar"></i> Dự báo Ôn tập (7 ngày tới)</h3>
-                            <div class="forecast-chart-container" id="forecast-chart">
-                                <!-- Render JS -->
-                            </div>
-                        </section>
-
-                        <section class="profile-card heatmap-card">
-                            <h3><i class="ph-duotone ph-calendar-check"></i> Hoạt động Ôn tập</h3>
-                            <div class="heatmap-container" id="activity-heatmap">
-                                <!-- Render JS -->
-                            </div>
-                        </section>
-                    </div>
-                </div>
-
-                <!-- PANE 2: PHÒNG TRUYỀN THỐNG HUY HIỆU THÀNH TỰU -->
-                <div id="profile-view-badges" class="profile-tab-pane hidden">
-                    <section class="profile-card achievements-card">
-                        <div class="achievements-container" id="achievements-list">
-                            <!-- Render JS -->
-                        </div>
-                    </section>
-                </div>
-
-                <!-- PANE 3: CHÂN DUNG TRÍ TUỆ & PHÂN TÍCH FSRS-7 -->
-                <div id="profile-view-persona" class="profile-tab-pane hidden">
-                    <!-- Rendered dynamically by renderFsrsPersonaUI() -->
-                </div>
-            </div>
-        </div>
+        <!-- Backward compatibility stub for profile-modal -->
+        <div id="profile-modal" class="hidden" style="display:none !important;" aria-hidden="true"></div>
 
         <div id="dedup-modal" class="modal modal-large hidden" role="dialog" aria-modal="true" aria-labelledby="dedup-modal-title">
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content dedup-panel">
                 <button id="close-dedup-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng hộp thoại"><i class="ph-duotone ph-x"></i></button>
+                    aria-label="Đóng hộp thoại"><i class="ph-bold ph-x"></i></button>
                 <div class="dedup-panel-header">
                     <div class="dedup-header-left">
                         <div class="dedup-icon-badge"><i class="ph-fill ph-sparkle"></i></div>
@@ -979,7 +990,7 @@
             <div class="modal-overlay" tabindex="-1"></div>
             <div class="modal-content small-modal">
                 <button id="close-popup-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
-                    aria-label="Đóng thông báo"><i class="ph-duotone ph-x"></i></button>
+                    aria-label="Đóng thông báo"><i class="ph-bold ph-x"></i></button>
                 <p id="popup-message" aria-live="polite">Nội dung...</p>
                 <div id="popup-actions" class="modal-actions"> <button id="popup-ok-btn">OK</button> <button
                         id="popup-cancel-btn" class="hidden">Hủy</button> </div>

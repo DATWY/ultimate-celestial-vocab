@@ -44,13 +44,18 @@ export function computeDailyNewLimit(dailyStats) {
 
 const CRAM_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 giờ cooldown sau review cuối
 
+function cardMatchesTopic(word, filterLowerCase) {
+    if (!word || !filterLowerCase || filterLowerCase === 'all') return true;
+    const tagsArr = Array.isArray(word.tags) ? word.tags : (typeof word.tags === 'string' ? word.tags.split(',') : []);
+    return tagsArr.some(t => t && String(t).trim().toLowerCase() === filterLowerCase);
+}
+
 export function getPendingLearningCards(vocabulary, filterLowerCase = 'all') {
     const pending = [];
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
         if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Learning') continue;
-        const topicMatch = filterLowerCase === 'all' ||
-            (word.tags && word.tags.map(t => t.trim().toLowerCase()).includes(filterLowerCase));
+        const topicMatch = cardMatchesTopic(word, filterLowerCase);
         if (topicMatch) {
             pending.push({ index: i, dueDate: word.srsDueDate || 0 });
         }
@@ -68,8 +73,7 @@ export function getSmartCramCards(vocabulary, filterLowerCase) {
         const word = vocabulary[i];
         if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Mastered') continue;
 
-        const topicMatch = filterLowerCase === 'all' ||
-            (word.tags && word.tags.map(t => t.trim().toLowerCase()).includes(filterLowerCase));
+        const topicMatch = cardMatchesTopic(word, filterLowerCase);
             
         if (!topicMatch) continue;
 
@@ -125,8 +129,7 @@ export function buildReviewQueue() {
         const word = vocabulary[i];
         if (!word || word.isDeleted || word.isSuspended) continue;
         
-        const topicMatch = filterLowerCase === 'all' ||
-            (word.tags && word.tags.map(t => t.trim().toLowerCase()).includes(filterLowerCase));
+        const topicMatch = cardMatchesTopic(word, filterLowerCase);
             
         if (topicMatch) {
             // V3.2: Thẻ Mastered (đã thuộc) được tính là ĐẾN HẠN nếu hạn rơi vào bất kỳ lúc nào trong ngày hôm nay.

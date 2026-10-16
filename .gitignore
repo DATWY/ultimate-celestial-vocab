@@ -36,3 +36,7 @@ fsrs7_params_latest.*
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
+
+# Scratch & test scripts
+scratch/
+.verify_screens/

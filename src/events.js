@@ -3,10 +3,10 @@
 import { DOM } from './ui/elements.js';
 import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, popLastReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
-import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus } from './features/typing.js';
+import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI } from './ui/render.js';
-import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openDedupModal, executeMergeAll } from './ui/modal.js';
+import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { openProfileModal } from './features/gamification.js';
 import { setupIOEventListeners } from './features/io.js';
 import { playSound, speakText, preloadAudio  } from './core/sound.js';
@@ -239,7 +239,7 @@ export function setupEventListeners() {
         // Đổi icon 3 gạch thành dấu X khi mở
         const icon = DOM.toggleTaskbarBtn.querySelector('i');
         if (DOM.taskbarMenu?.classList.contains('show')) {
-            icon.className = 'ph-duotone ph-x';
+            icon.className = 'ph-bold ph-x';
         } else {
             icon.className = 'ph-duotone ph-list';
         }
@@ -348,7 +348,6 @@ export function setupEventListeners() {
 
     DOM.customTypingTrigger?.addEventListener('click', (e) => {
         e.stopPropagation();
-        closeMenu();
         toggleTypingMenu();
     });
 
@@ -444,6 +443,7 @@ export function setupEventListeners() {
         if (isTransitioning) return;
         isTransitioning = true;
         closeMenu(); 
+        DOM.toggleDarkModeBtn?.blur();
 
         const currentIsDark = getState().isDarkMode;
         const targetModeIsDark = !currentIsDark;
@@ -513,11 +513,17 @@ export function setupEventListeners() {
         else if (soundMode === 'tts') nextMode = 'off';
         else nextMode = 'all';
         applySoundSetting(nextMode); 
+        DOM.toggleSoundBtn?.blur();
     });
     DOM.addWordBtnOpen?.addEventListener('click', () => { closeMenu(); openAddEditModal(); });
-    DOM.manageWordsBtnOpen?.addEventListener('click', () => { closeMenu(); openManageModal(); });
+    DOM.celestialHubBtn?.addEventListener('click', () => { closeMenu(); openManageModal('overview'); });
+    if (DOM.manageWordsBtnOpen && DOM.manageWordsBtnOpen !== DOM.celestialHubBtn) {
+        DOM.manageWordsBtnOpen.addEventListener('click', () => { closeMenu(); openManageModal('words'); });
+    }
     document.getElementById('manage-add-word-btn')?.addEventListener('click', () => { closeModal(DOM.manageModal); openAddEditModal(); });
-    DOM.profileBtn?.addEventListener('click', () => { closeMenu(); openProfileModal(); });
+    if (DOM.profileBtn && DOM.profileBtn !== DOM.celestialHubBtn) {
+        DOM.profileBtn.addEventListener('click', () => { closeMenu(); openProfileModal('overview'); });
+    }
     DOM.startQuizBtn?.addEventListener('click', () => { closeMenu(); loadAndShowQuiz(); });
     // Custom Topic Dropdown
     const toggleCustomTopicMenu = (forceOpen = null) => {
@@ -541,11 +547,13 @@ export function setupEventListeners() {
 
     DOM.customTopicSearch?.addEventListener('input', (e) => {
         const query = e.target.value.trim().toLowerCase();
+        const cleanQuery = query.replace(/_/g, ' ');
         const items = DOM.customTopicOptions?.querySelectorAll('.custom-topic-item');
         if (!items) return;
         items.forEach(item => {
             const name = item.querySelector('.topic-item-name')?.textContent.toLowerCase() || '';
-            const match = !query || name.includes(query);
+            const rawVal = (item.dataset.value || '').toLowerCase();
+            const match = !query || name.includes(query) || name.includes(cleanQuery) || rawVal.includes(query);
             item.style.display = match ? 'flex' : 'none';
         });
     });
@@ -780,6 +788,9 @@ export function setupEventListeners() {
     DOM.typingInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') handleTypingSubmit();
     });
+    DOM.typingInput?.addEventListener('input', (e) => {
+        recordFirstKeystroke(e);
+    });
 
     DOM.nextCardBtn?.addEventListener('click', () => { 
         if (getState().isFlipped) {
@@ -805,72 +816,45 @@ export function setupEventListeners() {
         }
     });
 
-    // Manage Panel Navigation Tabs
-    const tabWords = document.getElementById('tab-vocab-list');
-    const tabIO = document.getElementById('tab-data-io');
-    const paneWords = document.getElementById('manage-view-words');
-    const paneIO = document.getElementById('manage-view-io');
+    // Central Hub Panel Navigation Tabs (4 tabs unified)
+    document.getElementById('tab-vocab-list')?.addEventListener('click', () => switchHubTab('words'));
+    document.getElementById('tab-data-io')?.addEventListener('click', () => switchHubTab('io'));
+    document.getElementById('tab-profile-overview')?.addEventListener('click', () => switchHubTab('overview'));
+    document.getElementById('tab-profile-badges')?.addEventListener('click', () => switchHubTab('badges'));
 
-    const switchManageTab = (tab) => {
-        if (tab === 'words') {
-            tabWords?.classList.add('active');
-            tabWords?.setAttribute('aria-selected', 'true');
-            tabIO?.classList.remove('active');
-            tabIO?.setAttribute('aria-selected', 'false');
-            paneWords?.classList.remove('hidden');
-            paneWords?.classList.add('active');
-            paneIO?.classList.add('hidden');
-            paneIO?.classList.remove('active');
-            updatePanelWordList(false);
-        } else {
-            tabIO?.classList.add('active');
-            tabIO?.setAttribute('aria-selected', 'true');
-            tabWords?.classList.remove('active');
-            tabWords?.setAttribute('aria-selected', 'false');
-            paneIO?.classList.remove('hidden');
-            paneIO?.classList.add('active');
-            paneWords?.classList.add('hidden');
-            paneWords?.classList.remove('active');
+    // Keyboard Arrow Navigation for Manage Nav Tabs (W3C ARIA tablist pattern)
+    document.querySelector('.manage-nav-tabs')?.addEventListener('keydown', (e) => {
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+        const tabsList = Array.from(document.querySelectorAll('.manage-nav-tabs .manage-nav-tab'));
+        const currentIdx = tabsList.findIndex(tab => tab === document.activeElement);
+        if (currentIdx === -1) return;
+
+        let targetIdx = -1;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            targetIdx = (currentIdx + 1) % tabsList.length;
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            targetIdx = (currentIdx - 1 + tabsList.length) % tabsList.length;
+        } else if (e.key === 'Home') {
+            targetIdx = 0;
+        } else if (e.key === 'End') {
+            targetIdx = tabsList.length - 1;
         }
-    };
 
-    tabWords?.addEventListener('click', () => switchManageTab('words'));
-    tabIO?.addEventListener('click', () => switchManageTab('io'));
-
-    // Profile Panel Navigation Tabs
-    const tabProfileOverview = document.getElementById('tab-profile-overview');
-    const tabProfilePersona = document.getElementById('tab-profile-persona');
-    const tabProfileBadges = document.getElementById('tab-profile-badges');
-    const paneProfileOverview = document.getElementById('profile-view-overview');
-    const paneProfilePersona = document.getElementById('profile-view-persona');
-    const paneProfileBadges = document.getElementById('profile-view-badges');
-
-    const switchProfileTab = (tab) => {
-        const tabs = [
-            { id: 'overview', tabEl: tabProfileOverview, paneEl: paneProfileOverview },
-            { id: 'persona', tabEl: tabProfilePersona, paneEl: paneProfilePersona },
-            { id: 'badges', tabEl: tabProfileBadges, paneEl: paneProfileBadges }
-        ];
-
-        tabs.forEach(t => {
-            const isActive = (t.id === tab);
-            t.tabEl?.classList.toggle('active', isActive);
-            t.tabEl?.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            t.paneEl?.classList.toggle('active', isActive);
-            t.paneEl?.classList.toggle('hidden', !isActive);
-        });
-
-        if (tab === 'persona') {
-            import('./features/gamification.js').then(m => m.renderFsrsPersonaTab());
+        if (targetIdx !== -1) {
+            e.preventDefault();
+            const targetTab = tabsList[targetIdx];
+            const tabId = targetTab.getAttribute('data-tab');
+            targetTab.focus();
+            switchHubTab(tabId);
         }
-    };
+    });
 
-    tabProfileOverview?.addEventListener('click', () => switchProfileTab('overview'));
-    tabProfilePersona?.addEventListener('click', () => switchProfileTab('persona'));
-    tabProfileBadges?.addEventListener('click', () => switchProfileTab('badges'));
-
-    DOM.closeProfileModalBtn?.addEventListener('click', () => closeModal(DOM.profileModal));
-    DOM.profileOverlay?.addEventListener('click', () => closeModal(DOM.profileModal));
+    if (DOM.closeProfileModalBtn && DOM.closeProfileModalBtn !== DOM.closeManageModalBtn) {
+        DOM.closeProfileModalBtn.addEventListener('click', () => closeModal(DOM.profileModal || DOM.manageModal));
+    }
+    if (DOM.profileOverlay && DOM.profileOverlay !== DOM.manageOverlay) {
+        DOM.profileOverlay.addEventListener('click', () => closeModal(DOM.profileModal || DOM.manageModal));
+    }
     DOM.scanDuplicatesBtn?.addEventListener('click', () => {
         closeModal(DOM.manageModal);
         openDedupModal();

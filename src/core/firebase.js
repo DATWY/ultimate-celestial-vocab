@@ -449,14 +449,19 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         // ============================================================
         // PHASE 3: Đồng bộ Gamification & Stats & Settings & Logs
         // ============================================================
-        await syncGamification();
-        await syncDailyStats();
+        const gamificationChanged = await syncGamification();
+        const statsChanged = await syncDailyStats();
         await syncUserSettings();
         await syncReviewLogs();
 
         // ============================================================
         // PHASE 4: Cập nhật UI & Lưu timestamps
         // ============================================================
+        const isManageModalOpen = DOM.manageModal && !DOM.manageModal.classList.contains('hidden');
+        const isOverviewTabActive = isManageModalOpen && document.getElementById('profile-view-overview')?.classList.contains('active');
+        const isWordsTabActive = isManageModalOpen && document.getElementById('manage-view-words')?.classList.contains('active');
+        const isBadgesTabActive = isManageModalOpen && document.getElementById('profile-view-badges')?.classList.contains('active');
+
         if (needsLocalUpdate) {
             const latestVocab = stateModule.getState().vocabulary || vocabulary;
             setVocabulary([...latestVocab]);
@@ -502,15 +507,27 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
 
             updateStats();
             populateTopicFilters();
-            updatePanelWordList();
-            renderGamificationUI();
+            if (isWordsTabActive) {
+                updatePanelWordList();
+            }
+            if (isOverviewTabActive) {
+                renderGamificationUI({ isBackgroundUpdate: true });
+            }
 
             console.log("📱 Đã đồng bộ và áp dụng dữ liệu từ Cloud về máy thành công.");
             startBackgroundAudioPreload(latestVocab);
         } else {
-            // Dù không có thẻ mới/sửa đổi, vẫn cập nhật stats và gamification UI nếu có thay đổi về streak/xp/badges từ Cloud
-            updateStats();
-            renderGamificationUI();
+            // Không có thẻ nào thay đổi từ Cloud:
+            // Chỉ cập nhật UI nếu có sự thay đổi thực sự về gamification/stats và màn hình tương ứng đang mở
+            if (gamificationChanged || statsChanged) {
+                updateStats();
+                if (isOverviewTabActive) {
+                    renderGamificationUI({ isBackgroundUpdate: true });
+                }
+                if (isBadgesTabActive) {
+                    import('../features/gamification.js').then(m => m.renderBadgesTab?.());
+                }
+            }
             if (cardsToPush.length > 0) {
                 console.log(`☁️ Push ${cardsToPush.length} thẻ (không có thay đổi từ Cloud).`);
             } else {
@@ -615,11 +632,17 @@ async function syncGamification() {
     const { isPreviewMode } = await import('./state.js');
     if (isPreviewMode()) {
         console.log("⚠️ Đang ở chế độ Preview, bỏ qua đồng bộ Gamification xuống local UI.");
-        return;
+        return false;
     }
 
-    setGamification(mergedGamification);
-    await saveSettingToDB('gamification', mergedGamification);
+    const localBeforeJson = JSON.stringify(localGamification);
+    const mergedJson = JSON.stringify(mergedGamification);
+    const hasLocalChanged = localBeforeJson !== mergedJson;
+
+    if (hasLocalChanged) {
+        setGamification(mergedGamification);
+        await saveSettingToDB('gamification', mergedGamification);
+    }
     const cleanGamification = JSON.parse(JSON.stringify(mergedGamification));
     const compareA = { ...cleanGamification };
     delete compareA._lastModifiedBy;
@@ -631,6 +654,8 @@ async function syncGamification() {
         await setDoc(gamificationRef, cleanGamification);
         _lastLocalWriteTimestamp = Date.now();
     }
+
+    return hasLocalChanged;
 }
 
 async function syncDailyStats() {
@@ -677,8 +702,14 @@ async function syncDailyStats() {
         mergedStats.currentLimit = mergedStats.currentLimit || remoteStats.currentLimit;
     }
     
-    setDailyStats(mergedStats);
-    await saveSettingToDB('dailyStats', mergedStats);
+    const localStatsBeforeJson = JSON.stringify(localStats);
+    const mergedStatsJson = JSON.stringify(mergedStats);
+    const hasStatsChanged = localStatsBeforeJson !== mergedStatsJson;
+
+    if (hasStatsChanged) {
+        setDailyStats(mergedStats);
+        await saveSettingToDB('dailyStats', mergedStats);
+    }
     const cleanStats = JSON.parse(JSON.stringify(mergedStats));
     const compareA = { ...cleanStats };
     delete compareA._lastModifiedBy;
@@ -690,6 +721,8 @@ async function syncDailyStats() {
         await setDoc(statsRef, cleanStats);
         _lastLocalWriteTimestamp = Date.now();
     }
+
+    return hasStatsChanged;
 }
 
 async function syncUserSettings() {
