@@ -8,11 +8,14 @@ import { animateModalOpen, animateModalClose } from '../core/animations.js';
 import { syncCardToFirebase } from '../core/sync.js';
 import { findDuplicatePairs, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
+import { suspendCelestialCanvas, resumeCelestialCanvas } from './celestial-canvas.js';
 
 let confirmCallback = null;
 
 export function openModal(modalElement) {
     if (!modalElement) return;
+    document.body.classList.add('modal-active');
+    suspendCelestialCanvas();
     modalElement.classList.remove('hidden');
     animateModalOpen(modalElement);
     setTimeout(() => {
@@ -23,8 +26,17 @@ export function openModal(modalElement) {
 
 export async function closeModal(modalElement) {
     if (!modalElement || modalElement.classList.contains('hidden')) return;
-    await animateModalClose(modalElement);
-    modalElement.classList.add('hidden');
+    try {
+        await animateModalClose(modalElement);
+    } catch (e) {
+        console.warn('Error during animateModalClose:', e);
+    } finally {
+        modalElement.classList.add('hidden');
+        if (document.querySelectorAll('.modal:not(.hidden)').length === 0) {
+            document.body.classList.remove('modal-active');
+            resumeCelestialCanvas();
+        }
+    }
 }
 
 export function showPopup(message, type = 'info', isHTML = false) {

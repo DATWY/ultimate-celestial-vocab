@@ -9,7 +9,8 @@ let animFrameId = null;
 let lastFrameTime = 0;
 let lastActivityTime = performance.now();
 let isTabVisible = true;
-const IDLE_TIMEOUT_MS = 2500; // 2.5 seconds without mouse/key activity -> idle 30 FPS mode
+let isSuspended = false;
+const IDLE_TIMEOUT_MS = 3000; // 3.0 seconds without mouse/key activity -> graceful drain then pause RAF loop
 
 // Pre-rendered Sprite Cache for Ultra High FPS
 let starSpritesDark = [];
@@ -129,8 +130,9 @@ class ShootingStar {
         this.timer = Math.random() * 300 + 150;
     }
 
-    update(w, h, dtFactor) {
+    update(w, h, dtFactor, isIdle = false) {
         if (!this.active) {
+            if (isIdle) return; // Do not spawn new shooting stars while idle
             this.timer -= dtFactor;
             if (this.timer <= 0) {
                 this.active = true;
@@ -175,8 +177,36 @@ class ShootingStar {
     }
 }
 
-function recordActivity() {
+function wakeAndRecordActivity() {
     lastActivityTime = performance.now();
+    if (isSuspended || !isTabVisible || document.hidden) return;
+    if (document.body.classList.contains('modal-active')) return;
+    if (animFrameId) return; // Already running: bypass DOM query & rAF queue
+    if (document.querySelectorAll('.modal:not(.hidden)').length > 0) return;
+
+    lastFrameTime = performance.now();
+    animFrameId = requestAnimationFrame(animate);
+}
+
+export function suspendCelestialCanvas() {
+    isSuspended = true;
+    if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+    }
+}
+
+export function resumeCelestialCanvas() {
+    if (document.hidden || !isTabVisible) return;
+    if (document.body.classList.contains('modal-active')) return;
+    if (document.querySelectorAll('.modal:not(.hidden)').length > 0) return;
+
+    isSuspended = false;
+    lastActivityTime = performance.now();
+    lastFrameTime = performance.now();
+    if (!animFrameId) {
+        animFrameId = requestAnimationFrame(animate);
+    }
 }
 
 export function initCelestialCanvas() {
@@ -187,12 +217,15 @@ export function initCelestialCanvas() {
     initSpriteCache();
     resizeCanvas();
 
-    window.addEventListener('resize', resizeCanvas, { passive: true });
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+        wakeAndRecordActivity();
+    }, { passive: true });
     
     window.addEventListener('mousemove', (e) => {
         mouse.targetX = e.clientX;
         mouse.targetY = e.clientY;
-        recordActivity();
+        wakeAndRecordActivity();
     }, { passive: true });
 
     window.addEventListener('mouseleave', () => {
@@ -202,24 +235,35 @@ export function initCelestialCanvas() {
         mouse.y = null;
     }, { passive: true });
 
-    window.addEventListener('touchstart', recordActivity, { passive: true });
-    window.addEventListener('scroll', recordActivity, { passive: true });
-    window.addEventListener('keydown', recordActivity, { passive: true });
+    window.addEventListener('pointerdown', wakeAndRecordActivity, { passive: true });
+    window.addEventListener('touchstart', wakeAndRecordActivity, { passive: true });
+    window.addEventListener('scroll', wakeAndRecordActivity, { passive: true });
+    window.addEventListener('keydown', wakeAndRecordActivity, { passive: true });
 
-    // Stop background canvas when tab is not visible
+    // Window blur & focus handlers: suspend on blur, resume on focus if no modal active
+    window.addEventListener('blur', () => {
+        document.body.classList.add('window-blurred');
+        suspendCelestialCanvas();
+    });
+
+    window.addEventListener('focus', () => {
+        document.body.classList.remove('window-blurred');
+        if (!document.body.classList.contains('modal-active') && document.querySelectorAll('.modal:not(.hidden)').length === 0) {
+            resumeCelestialCanvas();
+        }
+    });
+
+    // Tab visibility handling
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             isTabVisible = false;
-            if (animFrameId) {
-                cancelAnimationFrame(animFrameId);
-                animFrameId = null;
-            }
+            document.body.classList.add('window-blurred');
+            suspendCelestialCanvas();
         } else {
             isTabVisible = true;
-            lastActivityTime = performance.now();
-            lastFrameTime = performance.now();
-            if (!animFrameId) {
-                animFrameId = requestAnimationFrame(animate);
+            document.body.classList.remove('window-blurred');
+            if (!document.body.classList.contains('modal-active') && document.querySelectorAll('.modal:not(.hidden)').length === 0) {
+                resumeCelestialCanvas();
             }
         }
     });
@@ -254,23 +298,37 @@ function createElements() {
 
 export function updateCanvasTheme(darkMode) {
     isDark = darkMode;
+    wakeAndRecordActivity();
 }
 
 function animate(timestamp) {
-    if (!ctx || !canvas || !isTabVisible) return;
+    if (!ctx || !canvas || !isTabVisible || isSuspended) {
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        return;
+    }
+
+    const timeSinceActivity = timestamp - lastActivityTime;
+    const isIdle = timeSinceActivity > IDLE_TIMEOUT_MS;
+    const hasActiveShootingStars = shootingStars.some(ss => ss.active);
+
+    // Graceful Drain: If idle and in-flight shooting stars finished their path, pause RAF loop
+    if (isIdle && !hasActiveShootingStars) {
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        return; // Fully idle: 0 FPS, 0% GPU
+    }
 
     animFrameId = requestAnimationFrame(animate);
 
-    // Decoupled Frame Rate Architecture:
-    // UI (card flips, clicks, scrolling) runs at 120 FPS natively in CSS & compositor.
-    // Background starfield runs at 60 FPS during mouse interaction and 30 FPS when idle/reading.
-    const timeSinceActivity = timestamp - lastActivityTime;
-    const isIdle = timeSinceActivity > IDLE_TIMEOUT_MS;
-    const targetInterval = isIdle ? 33.33 : 16.66; // 30 FPS idle, ~60 FPS active
-
+    const targetInterval = isIdle ? 33.33 : 16.66; // 30 FPS while draining, ~60 FPS active
     const elapsed = timestamp - lastFrameTime;
     if (elapsed < targetInterval) {
-        return; // Skip drawing to keep GPU cold and preserve battery
+        return;
     }
 
     lastFrameTime = timestamp - (elapsed % targetInterval);
@@ -297,7 +355,7 @@ function animate(timestamp) {
     ctx.globalAlpha = 1;
 
     shootingStars.forEach(ss => {
-        ss.update(canvas.width, canvas.height, dtFactor);
+        ss.update(canvas.width, canvas.height, dtFactor, isIdle);
         ss.draw(ctx, isDark);
     });
 }
