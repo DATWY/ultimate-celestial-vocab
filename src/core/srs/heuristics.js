@@ -60,28 +60,35 @@ export function getDifficultyBias(card) {
     const english = card.english.trim();
     if (english.length === 0) return 0; // Chuỗi rỗng hoặc chỉ có khoảng trắng
 
+    const words = english.split(/[\s-]+/).filter(Boolean);
+    const wordCount = words.length;
     const type = (card.type || '').toLowerCase();
     let bias = 0;
 
-    // ─── TEST 1: Word Length (Độ dài từ) ───
-    // Từ ngắn (<= 4 ký tự) thường quen thuộc và dễ nhớ
-    // Từ dài (>= 10 ký tự) chứa nhiều hình vị, khó ghi nhớ
-    if (english.length <= 4) {
+    // ─── TEST 1: Word Length (Độ dài từ thành phần dài nhất) ───
+    // CHỈ áp dụng bias -= 1.0 cho TỪ ĐƠN (wordCount === 1) ngắn <= 4 ký tự!
+    // Tránh việc Phrasal Verbs như "put up with" bị nhận nhầm là từ ngắn dễ nhớ.
+    const maxWordLen = Math.max(...words.map(w => w.length));
+    if (wordCount === 1 && maxWordLen <= 4) {
         bias -= 1.0;
-    } else if (english.length >= 10) {
-        bias += 1.0;
+    } else if (maxWordLen >= 10) {
+        bias += 1.0; // Có từ thành phần dài >= 10 ký tự làm tăng độ khó hình vị
     }
 
-    // ─── TEST 2: Multi-word / Phrasal Detection (Phát hiện cụm từ) ───
-    // Cụm từ, thành ngữ, phrasal verb khó hơn vì nghĩa không suy ra từ từng từ đơn
-    // Bao gồm cả từ nối gạch ngang (hyphenated) như "state-of-the-art"
-    const wordCount = english.split(/[\s-]+/).filter(Boolean).length;
-    if (wordCount >= 2) {
-        bias += 1.5;
+    // ─── TEST 2 & TEST 4: Phân tầng cấu trúc loại trừ lẫn nhau ───
+    // Tránh cộng dồn trùng lặp khiến mọi cụm từ ghép bị kịch trần +3.0
+    if (type.includes('idiom') || type.includes('thành ngữ')) {
+        bias += 2.5; // Thành ngữ ngữ nghĩa trừu tượng, khó nhất
+    } else if (type.includes('phrasal')) {
+        bias += 2.0; // Cụm động từ có giới từ cố định
+    } else if (wordCount >= 2) {
+        // Cụm từ ghép thông thường: nếu là danh từ thì dễ hình dung hơn
+        bias += (type.includes('noun') || type.includes('danh từ')) ? 0.5 : 1.0;
+    } else if ((type === 'noun' || type === 'danh từ' || type.startsWith('noun ')) && !type.includes('pronoun')) {
+        bias -= 0.5; // Danh từ đơn cụ thể
     }
 
     // ─── TEST 3: Syllable Complexity (Độ phức tạp phát âm) ───
-    // Từ có >= 4 âm tiết khó phát âm và khó ghi nhớ
     // Chỉ áp dụng cho từ đơn (không phải cụm từ)
     if (wordCount === 1) {
         const syllables = estimateSyllables(english);
@@ -90,17 +97,8 @@ export function getDifficultyBias(card) {
         }
     }
 
-    // ─── TEST 4: Word Type Analysis (Phân tích loại từ) ───
-    // Idiom và Phrasal Verb là 2 loại khó nhớ nhất trong tiếng Anh
-    // Danh từ (Noun) thường dễ hình dung nhờ hình ảnh cụ thể
-    if (type.includes('idiom') || type.includes('phrasal')) {
-        bias += 1.0;
-    } else if ((type === 'noun' || type === 'danh từ' || type.startsWith('noun ')) && !type.includes('pronoun')) {
-        bias -= 0.5;
-    }
     // ─── TEST 5: Frequency Check (Kiểm tra tần suất từ vựng) ───
     // Từ nằm trong top ~500 từ phổ biến nhất → Người học gần như chắc chắn đã biết
-    // Chỉ áp dụng cho từ đơn (đã có Test 2 cho cụm từ)
     if (wordCount === 1 && isCommonWord(english)) {
         bias -= 1.5;
     }

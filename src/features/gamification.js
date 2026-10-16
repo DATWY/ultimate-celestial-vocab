@@ -1,39 +1,16 @@
 // src/features/gamification.js
 import { DOM } from '../ui/elements.js';
 import { getState, unlockBadge, trackEvent } from '../core/state.js';
-import { openModal, showPopup } from '../ui/modal.js';
+import { openModal, showPopup, openManageModal, switchHubTab } from '../ui/modal.js';
 import { getLocalDateString } from '../core/utils/date.js';
 
 // Removed static import for BADGES to use dynamic import for BADGE_TRACKS and SPECIAL_BADGES
 import { animateNumber, animateForecastChart, animateHeatmap } from '../core/animations.js';
 import { renderFsrsPersonaUI } from './fsrsPersona.js';
 
-export function openProfileModal() {
+export function openProfileModal(targetTab = 'overview') {
     trackEvent('profileViews');
-    const tabOverview = document.getElementById('tab-profile-overview');
-    const tabPersona = document.getElementById('tab-profile-persona');
-    const tabBadges = document.getElementById('tab-profile-badges');
-    const paneOverview = document.getElementById('profile-view-overview');
-    const panePersona = document.getElementById('profile-view-persona');
-    const paneBadges = document.getElementById('profile-view-badges');
-
-    [tabOverview, tabPersona, tabBadges].forEach(t => {
-        t?.classList.remove('active');
-        t?.setAttribute('aria-selected', 'false');
-    });
-    [paneOverview, panePersona, paneBadges].forEach(p => {
-        p?.classList.add('hidden');
-        p?.classList.remove('active');
-    });
-
-    if (tabOverview && paneOverview) {
-        tabOverview.classList.add('active');
-        tabOverview.setAttribute('aria-selected', 'true');
-        paneOverview.classList.remove('hidden');
-        paneOverview.classList.add('active');
-    }
-    renderGamificationUI();
-    openModal(DOM.profileModal);
+    openManageModal(targetTab);
 }
 
 export function renderFsrsPersonaTab() {
@@ -43,7 +20,23 @@ export function renderFsrsPersonaTab() {
     }
 }
 
-export function renderGamificationUI() {
+export function renderBadgesTab() {
+    const state = getState();
+    const gamification = state.gamification || {};
+    renderBadges(gamification.unlockedBadges || []);
+}
+
+let _lastRenderGamificationTime = 0;
+
+export function renderGamificationUI(options = {}) {
+    const isBackgroundUpdate = options?.isBackgroundUpdate || false;
+    const now = performance.now();
+    // Chống double-render liên tiếp (< 250ms) nếu không ép buộc
+    if (!options?.force && now - _lastRenderGamificationTime < 250) {
+        return;
+    }
+    _lastRenderGamificationTime = now;
+
     const state = getState();
     const gamification = state.gamification || {};
     const { userXP = 0, currentLevel = 1, currentStreak = 0, activityHeatmap = {}, unlockedBadges = [] } = gamification;
@@ -54,7 +47,7 @@ export function renderGamificationUI() {
     // Áp dụng Style Rank cho Profile Card & Render SVG Emblem
     const levelCard = document.querySelector('.level-card');
     if (levelCard) {
-        levelCard.className = `profile-card level-card rank-${rankInfo.id}`;
+        levelCard.className = `profile-card level-card hero-scholar-card rank-${rankInfo.id}`;
         
         const levelDisplay = levelCard.querySelector('.level-display');
         if (levelDisplay) {
@@ -68,14 +61,16 @@ export function renderGamificationUI() {
         }
     }
 
+    const numDuration = isBackgroundUpdate ? 400 : 2500;
+
     // Render Level & Rank & XP
-    if (DOM.profileLevel) animateNumber(DOM.profileLevel, currentLevel);
+    if (DOM.profileLevel) animateNumber(DOM.profileLevel, currentLevel, numDuration);
     const rankTitleElement = document.querySelector('.level-card h3');
     if (rankTitleElement) {
         rankTitleElement.innerHTML = `<i class="ph ${rankInfo.icon}"></i> ${rankInfo.name}`;
     }
     
-    if (DOM.profileTotalXP) animateNumber(DOM.profileTotalXP, userXP, 2500, true);
+    if (DOM.profileTotalXP) animateNumber(DOM.profileTotalXP, userXP, numDuration, true);
     
     // XP Calculation
     const xpForCurrentLevel = Math.pow(currentLevel - 1, 2) * 100;
@@ -87,7 +82,7 @@ export function renderGamificationUI() {
     progressPercent = Math.max(0, Math.min(100, progressPercent)); // Clamping
 
     if (DOM.profileXpFill) DOM.profileXpFill.style.width = `${progressPercent}%`;
-    if (DOM.profileXpNeeded) animateNumber(DOM.profileXpNeeded, xpForNextLevel - userXP, 2500, true);
+    if (DOM.profileXpNeeded) animateNumber(DOM.profileXpNeeded, xpForNextLevel - userXP, numDuration, true);
 
     // Render Memory Analytics
     const totalReviews = gamification.totalReviews || 0;
@@ -119,7 +114,7 @@ export function renderGamificationUI() {
 
     if (elRetention) elRetention.textContent = `${retentionRate}%`;
     if (elStability) elStability.textContent = `${avgStability} ngày`;
-    if (elTotalRev) animateNumber(elTotalRev, totalReviews, 2000, true);
+    if (elTotalRev) animateNumber(elTotalRev, totalReviews, numDuration, true);
 
     // Micro-meter visual telemetry bars
     const elRetentionMeter = document.getElementById('profile-retention-meter');
@@ -151,11 +146,11 @@ export function renderGamificationUI() {
 
     if (elMemoryStatus) {
         if (retentionRateNum >= 88) {
-            elMemoryStatus.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #4CAF50;"></i> Phong độ: Xuất sắc`;
+            elMemoryStatus.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #16a34a;"></i> Phong độ: Xuất sắc`;
         } else if (retentionRateNum >= 75) {
-            elMemoryStatus.innerHTML = `<i class="ph-fill ph-sparkle" style="color: #FFC107;"></i> Phong độ: Ổn định`;
+            elMemoryStatus.innerHTML = `<i class="ph-fill ph-sparkle" style="color: #d97706;"></i> Phong độ: Ổn định`;
         } else {
-            elMemoryStatus.innerHTML = `<i class="ph-fill ph-warning-circle" style="color: #FF5722;"></i> Cần củng cố ngay`;
+            elMemoryStatus.innerHTML = `<i class="ph-fill ph-warning-circle" style="color: #dc2626;"></i> Cần củng cố ngay`;
         }
     }
 
@@ -173,16 +168,16 @@ export function renderGamificationUI() {
                         Thuật toán đo lường thông minh giúp bạn hiểu rõ tình trạng ghi nhớ từ vựng của bộ não:
                     </p>
                     <ul style="list-style: none; padding: 0; margin: 0 0 16px 0; display: flex; flex-direction: column; gap: 12px;">
-                        <li style="padding: 12px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                            <strong style="color: #00E5FF; font-size: 0.98rem;">🎯 Mức Độ Thuộc Bài (%):</strong>
+                        <li style="padding: 12px; background: var(--button-bg, rgba(255,255,255,0.04)); border-radius: 12px; border: 1px solid var(--border-color, rgba(255,255,255,0.08));">
+                            <strong style="color: #0ea5e9; font-size: 0.98rem;">🎯 Mức Độ Thuộc Bài (%):</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-light); font-size: 0.88rem; line-height: 1.4;">Xác suất bạn sẽ nhớ ngay 1 từ nếu được kiểm tra bất ngờ. Khoảng lý tưởng nhất là 85% - 95%.</p>
                         </li>
-                        <li style="padding: 12px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                            <strong style="color: #FFD700; font-size: 0.98rem;">🧠 Thời Gian Nhớ Tự Nhiên (Ngày):</strong>
+                        <li style="padding: 12px; background: var(--button-bg, rgba(255,255,255,0.04)); border-radius: 12px; border: 1px solid var(--border-color, rgba(255,255,255,0.08));">
+                            <strong style="color: #f59e0b; font-size: 0.98rem;">🧠 Thời Gian Nhớ Tự Nhiên (Ngày):</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-light); font-size: 0.88rem; line-height: 1.4;">Số ngày trung bình một từ nằm yên trong đầu bạn mà không bị quên. Càng nhiều ngày nghĩa là từ đó đã đi sâu vào <em>Trí nhớ dài hạn</em>.</p>
                         </li>
-                        <li style="padding: 12px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                            <strong style="color: #AB47BC; font-size: 0.98rem;">⚡ Tích Lũy Luyện Tập:</strong>
+                        <li style="padding: 12px; background: var(--button-bg, rgba(255,255,255,0.04)); border-radius: 12px; border: 1px solid var(--border-color, rgba(255,255,255,0.08));">
+                            <strong style="color: #a855f7; font-size: 0.98rem;">⚡ Tích Lũy Luyện Tập:</strong>
                             <p style="margin: 4px 0 0 0; color: var(--text-light); font-size: 0.88rem; line-height: 1.4;">Tổng số lần bạn đã lật thẻ hoặc làm Quiz. Hệ thống dựa vào đây để phân bổ lịch ôn tối ưu cho riêng bạn.</p>
                         </li>
                     </ul>
@@ -193,7 +188,7 @@ export function renderGamificationUI() {
     }
 
     // Render Streak
-    if (DOM.profileStreak) animateNumber(DOM.profileStreak, currentStreak);
+    if (DOM.profileStreak) animateNumber(DOM.profileStreak, currentStreak, numDuration);
     const streakCard = document.querySelector('.streak-widget');
     if (streakCard) {
         const streakText = streakCard.querySelector('.streak-text');
@@ -208,13 +203,16 @@ export function renderGamificationUI() {
     }
 
     // Render Heatmap
-    renderHeatmap(activityHeatmap);
+    renderHeatmap(activityHeatmap, isBackgroundUpdate);
 
     // Render Forecast
-    renderForecast(state.vocabulary);
+    renderForecast(state.vocabulary, isBackgroundUpdate);
 
-    // Render Badges
-    renderBadges(unlockedBadges);
+    // Render Badges chỉ khi pane badges đang mở
+    const isBadgesPaneActive = document.getElementById('profile-view-badges')?.classList.contains('active');
+    if (isBadgesPaneActive) {
+        renderBadges(unlockedBadges);
+    }
 }
 
 
@@ -484,7 +482,7 @@ function renderBadges(unlockedBadges) {
             trackEl.innerHTML = `
                 <div class="track-card-top">
                     <div class="track-cat-pill">
-                        <i class="ph ${meta.icon}"></i>
+                        <i class="${meta.icon}"></i>
                         <span>${meta.title}</span>
                     </div>
                     <span class="track-level-badge">Cấp ${level}/${maxLevel}</span>
@@ -492,7 +490,7 @@ function renderBadges(unlockedBadges) {
 
                 <div class="track-card-hero">
                     <div class="track-icon-box tier-${tier.id}">
-                        <i class="ph ${currentIcon}"></i>
+                        <i class="${currentIcon}"></i>
                     </div>
                     <div class="track-titles-col">
                         <h4 class="track-title-single" title="${currentName}">${currentName}</h4>
@@ -528,12 +526,13 @@ function renderBadges(unlockedBadges) {
             `;
 
             trackEl.addEventListener('click', () => {
+                const isDark = document.body.classList.contains('dark-mode');
                 let detailsHtml = `<div style="text-align: left;">`;
                 detailsHtml += `
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div style="width: 44px; height: 44px; border-radius: 12px; background: ${meta.color}20; border: 1.5px solid ${meta.color}40; display: flex; align-items: center; justify-content: center; color: ${meta.color}; font-size: 1.4rem;">
-                                <i class="ph ${meta.icon}"></i>
+                                <i class="${meta.icon}"></i>
                             </div>
                             <div>
                                 <h3 style="margin: 0 0 4px 0; color: var(--text-color); font-size: 1.2rem; font-weight: 800;">Tiến Trình: ${meta.title}</h3>
@@ -550,18 +549,19 @@ function renderBadges(unlockedBadges) {
                     const icon = track.icons[idx];
                     const name = track.names[idx];
                     const itemTier = getTier(idx + 1, maxLevel);
-                    const color = isUnlocked ? itemTier.color || '#FFD700' : 'var(--text-light)';
-                    const opacity = isUnlocked ? '1' : '0.6';
+                    const tierColor = isDark ? (itemTier.color || '#f59e0b') : (itemTier.lightColor || itemTier.color || '#d97706');
+                    const color = isUnlocked ? tierColor : 'var(--text-light)';
+                    const opacity = isUnlocked ? '1' : '0.65';
                     
                     detailsHtml += `
-                        <li style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: ${isUnlocked ? 'var(--card-bg, rgba(255,255,255,0.04))' : 'rgba(255,255,255,0.02)'}; border: 1px solid ${isUnlocked ? itemTier.color + '40' : 'var(--border-color, rgba(255,255,255,0.08))'}; border-radius: 14px; opacity: ${opacity}; transition: transform 0.2s;">
-                            <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--card-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid ${isUnlocked ? itemTier.color : 'var(--border-color)'}; box-shadow: ${isUnlocked ? `0 0 12px ${itemTier.color}35` : 'none'};">
-                                <i class="ph ${icon}" style="font-size: 1.35rem; color: ${color};"></i>
+                        <li style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: ${isUnlocked ? 'var(--card-bg, rgba(255,255,255,0.04))' : 'var(--button-bg, rgba(255,255,255,0.02))'}; border: 1px solid ${isUnlocked ? tierColor + '40' : 'var(--border-color, rgba(255,255,255,0.08))'}; border-radius: 14px; opacity: ${opacity}; transition: transform 0.2s;">
+                            <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--card-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid ${isUnlocked ? tierColor : 'var(--border-color)'}; box-shadow: ${isUnlocked ? `0 0 12px ${tierColor}30` : 'none'};">
+                                <i class="${icon}" style="font-size: 1.35rem; color: ${color};"></i>
                             </div>
                             <div style="flex: 1; min-width: 0;">
                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
                                     <h4 style="margin: 0; font-size: 1rem; color: var(--text-color); font-weight: 700;">${name}</h4>
-                                    <span style="font-size: 0.72rem; padding: 1px 7px; border-radius: 8px; background: ${itemTier.color}20; color: ${itemTier.color}; font-weight: 700;">Cấp ${idx + 1}</span>
+                                    <span style="font-size: 0.72rem; padding: 1px 7px; border-radius: 8px; background: ${tierColor}18; color: ${tierColor}; font-weight: 700;">Cấp ${idx + 1}</span>
                                 </div>
                                 <span style="font-size: 0.82rem; color: var(--text-light);">${track.descPrefix} ${m.toLocaleString()} ${track.descSuffix}</span>
                             </div>
@@ -610,7 +610,7 @@ function renderBadges(unlockedBadges) {
                 badgeEl.innerHTML = `
                     ${isUnlocked ? `<span class="badge-tier-tag ${tierClass}">${tierName}</span>` : ''}
                     <div class="badge-icon-wrapper">
-                        <div class="badge-icon">${isUnlocked ? `<i class="ph ${badge.icon}"></i>` : `<i class="ph-duotone ph-lock-key"></i>`}</div>
+                        <div class="badge-icon">${isUnlocked ? `<i class="${badge.icon}"></i>` : `<i class="ph-duotone ph-lock-key"></i>`}</div>
                     </div>
                     <div class="badge-info">
                         <h4>${isUnlocked ? badge.name : '???'}</h4>
@@ -619,20 +619,24 @@ function renderBadges(unlockedBadges) {
                 `;
 
                 badgeEl.addEventListener('click', () => {
+                    const isDark = document.body.classList.contains('dark-mode');
+                    const tierColor = badge.tier
+                        ? (isDark ? badge.tier.color : (badge.tier.lightColor || badge.tier.color))
+                        : (isDark ? '#f59e0b' : '#d97706');
                     let detailsHtml = `<div style="text-align: center; padding: 10px 5px;">`;
-                    const color = isUnlocked ? (badge.tier ? badge.tier.color : '#FFD700') : 'var(--text-light)';
-                    const opacity = isUnlocked ? '1' : '0.6';
+                    const color = isUnlocked ? tierColor : 'var(--text-light)';
+                    const opacity = isUnlocked ? '1' : '0.65';
                     
                     detailsHtml += `
-                        <div style="position: relative; width: 90px; height: 90px; border-radius: 20px; background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px auto; border: 2px solid ${color}; opacity: ${opacity}; box-shadow: ${isUnlocked ? `0 0 25px ${color}66` : 'none'};">
-                            <i class="ph ${badge.icon}" style="font-size: 3rem; color: ${color}; filter: drop-shadow(0 2px 8px ${color});"></i>
+                        <div style="position: relative; width: 90px; height: 90px; border-radius: 20px; background: var(--button-bg, rgba(255,255,255,0.05)); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px auto; border: 2px solid ${color}; opacity: ${opacity}; box-shadow: ${isUnlocked ? `0 0 25px ${color}44` : 'none'};">
+                            <i class="${badge.icon}" style="font-size: 3rem; color: ${color}; filter: drop-shadow(0 2px 8px ${color}66);"></i>
                         </div>
                         <h3 style="margin-bottom:8px; color:var(--text-color); font-size: 1.35rem; font-weight: 800;">${badge.name}</h3>
                         ${isUnlocked && badge.tier ? `<span class="badge-tier-tag ${tierClass}" style="position:static; display:inline-block; margin-bottom:12px;">${badge.tier.name}</span>` : ''}
                         <p style="color: var(--text-light); line-height: 1.6; margin-bottom: 20px; font-size: 0.98rem; max-width: 360px; margin-left: auto; margin-right: auto;">${isUnlocked ? badge.desc : '<i>Danh hiệu bí ẩn! Hãy tiếp tục khám phá và học tập trên ứng dụng để mở khóa danh hiệu này.</i>'}</p>
-                        <div style="padding: 10px 22px; background: rgba(255,255,255,0.05); border-radius: 12px; display: inline-block; border: 1px solid rgba(255,255,255,0.1);">
+                        <div style="padding: 10px 22px; background: var(--button-bg, rgba(255,255,255,0.05)); border-radius: 12px; display: inline-block; border: 1px solid var(--border-color, rgba(255,255,255,0.1));">
                             <strong style="color: var(--text-color); font-weight: 600;">Trạng thái: </strong> 
-                            <span style="color: ${isUnlocked ? '#4CAF50' : '#FF9800'}; font-weight: 700;">${isUnlocked ? '✨ Đã giải mã thành công' : '🔒 Chưa mở khóa'}</span>
+                            <span style="color: ${isUnlocked ? '#10b981' : '#d97706'}; font-weight: 700;">${isUnlocked ? '✨ Đã giải mã thành công' : '🔒 Chưa mở khóa'}</span>
                         </div>
                     </div>`;
                     showPopup(detailsHtml, 'info', true);
@@ -681,33 +685,67 @@ function renderBadges(unlockedBadges) {
 }
 
 
-function renderHeatmap(activityHeatmap) {
+function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
     if (!DOM.activityHeatmap) return;
     DOM.activityHeatmap.innerHTML = ''; // Clear old
 
     const today = new Date();
-    // Show 84 days (12 weeks x 7 days)
-    const DAYS_TO_SHOW = 84;
+    today.setHours(0, 0, 0, 0);
+    const todayStr = getLocalDateString(today);
+
+    // Chuẩn ISO tuần: Thứ 2 = 0, ..., Chủ Nhật = 6
+    const todayDayOfWeek = (today.getDay() + 6) % 7;
     
+    // Ngày Thứ 2 của tuần hiện tại
+    const currentWeekMonday = new Date(today);
+    currentWeekMonday.setDate(today.getDate() - todayDayOfWeek);
+    currentWeekMonday.setHours(0, 0, 0, 0);
+
+    // Bắt đầu từ Thứ 2 của 11 tuần trước (Tổng cộng 12 tuần = 84 ngày chuẩn lịch)
+    const startMonday = new Date(currentWeekMonday);
+    startMonday.setDate(currentWeekMonday.getDate() - 11 * 7);
+
+    const WEEKS_COUNT = 12;
+    const DAYS_PER_WEEK = 7;
+    const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+    const dayShortLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
     const entries = [];
-    
-    // We want the grid to fill column by column from left to right.
-    // CSS Grid grid-auto-flow: column will fill top-to-bottom first, then left-to-right.
-    // So the first cell should be 83 days ago.
-    for (let i = DAYS_TO_SHOW - 1; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dateStr = getLocalDateString(d);
-        const count = activityHeatmap[dateStr] || 0;
-        entries.push({ dateStr, count, index: i });
+    let totalReviews = 0;
+
+    // Grid 12 cột (tuần) x 7 hàng (ngày trong tuần), fill theo cột (grid-auto-flow: column)
+    for (let w = 0; w < WEEKS_COUNT; w++) {
+        for (let d = 0; d < DAYS_PER_WEEK; d++) {
+            const cellDate = new Date(startMonday);
+            cellDate.setDate(startMonday.getDate() + w * 7 + d);
+            const dateStr = getLocalDateString(cellDate);
+            const count = (activityHeatmap && activityHeatmap[dateStr]) || 0;
+            const isFuture = cellDate.getTime() > today.getTime();
+            const isToday = dateStr === todayStr;
+
+            if (!isFuture) {
+                totalReviews += count;
+            }
+
+            entries.push({
+                dateStr,
+                count,
+                weekIndex: w,
+                dayIndex: d,
+                isFuture,
+                isToday,
+                dayName: dayNames[d]
+            });
+        }
     }
-    
-    // Find Top 3
-    const sorted = [...entries].filter(e => e.count > 0).sort((a, b) => b.count - a.count);
+
+    // Top 3 ngày học nhiều nhất trong 84 ngày
+    const pastEntries = entries.filter(e => !e.isFuture && e.count > 0);
+    const sorted = [...pastEntries].sort((a, b) => b.count - a.count);
     let top1 = -1, top2 = -1, top3 = -1;
     if (sorted.length > 0) top1 = sorted[0].count;
     if (sorted.length > 1 && sorted[1].count < top1) top2 = sorted[1].count;
-    else if (sorted.length > 1) { /* handle tie, we just take distinct top values */
+    else if (sorted.length > 1) {
         const distinct = [...new Set(sorted.map(x => x.count))];
         if (distinct.length > 1) top2 = distinct[1];
         if (distinct.length > 2) top3 = distinct[2];
@@ -717,32 +755,118 @@ function renderHeatmap(activityHeatmap) {
         if (distinct.length > 2) top3 = distinct[2];
     }
 
-    entries.forEach(entry => {
-        const cell = document.createElement('div');
-        cell.className = 'heatmap-cell';
-        cell.title = `${entry.dateStr}: ${entry.count} lần học`;
-        
-        // Basic levels
-        if (entry.count > 0 && entry.count < 10) cell.classList.add('level-1');
-        else if (entry.count >= 10 && entry.count < 30) cell.classList.add('level-2');
-        else if (entry.count >= 30 && entry.count < 60) cell.classList.add('level-3');
-        else if (entry.count >= 60) cell.classList.add('level-4');
-        
-        // Apply Ranks if applicable
-        if (entry.count > 0) {
-            if (entry.count === top1) cell.classList.add('rank-1');
-            else if (entry.count === top2) cell.classList.add('rank-2');
-            else if (entry.count === top3) cell.classList.add('rank-3');
+    // Container cho 3 khối Tháng đặt trên HÀNG NGANG (Tháng là hàng ngang)
+    // Mỗi khối tháng chứa 7 CỘT Thứ (T2, T3, T4, T5, T6, T7, CN)
+    const BLOCKS_COUNT = 3;
+    const WEEKS_PER_BLOCK = 4;
+
+    const monthsContainer = document.createElement('div');
+    monthsContainer.className = 'heatmap-months-blocks';
+
+    for (let b = 0; b < BLOCKS_COUNT; b++) {
+        const block = document.createElement('div');
+        block.className = 'heatmap-month-block';
+
+        // Xác định tháng đại diện cho khối 4 tuần này (lấy tháng của tuần thứ 2)
+        const midWeekIndex = b * WEEKS_PER_BLOCK + 1;
+        const midDate = new Date(startMonday);
+        midDate.setDate(startMonday.getDate() + midWeekIndex * 7 + 3);
+        const monthNum = midDate.getMonth() + 1;
+
+        // 1. Tiêu đề Tháng (Hàng ngang trên đầu mỗi khối)
+        const monthHeader = document.createElement('div');
+        monthHeader.className = 'heatmap-month-block-title';
+        monthHeader.textContent = `Tháng ${monthNum}`;
+        monthHeader.title = `Tháng ${monthNum} (${WEEKS_PER_BLOCK} tuần)`;
+        block.appendChild(monthHeader);
+
+        // 2. Hàng 7 Cột Thứ (T2, T3, T4, T5, T6, T7, CN)
+        const weekdaysRow = document.createElement('div');
+        weekdaysRow.className = 'heatmap-month-weekdays';
+        dayShortLabels.forEach((lbl, idx) => {
+            const span = document.createElement('span');
+            span.className = 'heatmap-month-weekday-label';
+            span.textContent = lbl;
+            span.title = dayNames[idx];
+            weekdaysRow.appendChild(span);
+        });
+        block.appendChild(weekdaysRow);
+
+        // 3. Lưới ô (Grid 7 cột x 4 hàng = 28 ngày)
+        const grid = document.createElement('div');
+        grid.className = 'heatmap-month-grid';
+
+        for (let rw = 0; rw < WEEKS_PER_BLOCK; rw++) {
+            const w = b * WEEKS_PER_BLOCK + rw;
+            for (let d = 0; d < DAYS_PER_WEEK; d++) {
+                const entry = entries[w * DAYS_PER_WEEK + d];
+                const cell = document.createElement('div');
+                cell.className = 'heatmap-cell';
+
+                if (entry.isFuture) {
+                    cell.classList.add('future-cell');
+                    cell.title = `${entry.dateStr} (${entry.dayName}): Chưa tới`;
+                } else {
+                    cell.title = `${entry.dateStr} (${entry.dayName}): ${entry.count} lần học`;
+                    if (entry.isToday) cell.classList.add('today-cell');
+
+                    // Basic levels
+                    if (entry.count === 0) cell.classList.add('level-0');
+                    else if (entry.count < 10) cell.classList.add('level-1');
+                    else if (entry.count < 30) cell.classList.add('level-2');
+                    else if (entry.count < 60) cell.classList.add('level-3');
+                    else cell.classList.add('level-4');
+
+                    // Apply Ranks if applicable
+                    if (entry.count > 0) {
+                        if (entry.count === top1) cell.classList.add('rank-1');
+                        else if (entry.count === top2) cell.classList.add('rank-2');
+                        else if (entry.count === top3) cell.classList.add('rank-3');
+                    }
+                }
+                grid.appendChild(cell);
+            }
         }
-        
-        DOM.activityHeatmap.appendChild(cell);
-    });
-    
-    // Gọi animation
-    animateHeatmap(DOM.activityHeatmap);
+        block.appendChild(grid);
+        monthsContainer.appendChild(block);
+    }
+
+    // 4. Footer with Legend (Ít ░░▒▒▓▓██ Nhiều) & Summary Stats
+    const footer = document.createElement('div');
+    footer.className = 'heatmap-footer';
+
+    const summary = document.createElement('div');
+    summary.className = 'heatmap-stats-summary';
+    summary.innerHTML = `<span class="heatmap-summary-text">84 ngày qua: <strong>${totalReviews}</strong> lượt ôn</span>`;
+
+    const legend = document.createElement('div');
+    legend.className = 'heatmap-legend';
+    legend.innerHTML = `
+        <span class="heatmap-legend-label">Ít</span>
+        <div class="heatmap-legend-scale">
+            <span class="heatmap-legend-cell level-0" title="0 lượt"></span>
+            <span class="heatmap-legend-cell level-1" title="1 - 9 lượt"></span>
+            <span class="heatmap-legend-cell level-2" title="10 - 29 lượt"></span>
+            <span class="heatmap-legend-cell level-3" title="30 - 59 lượt"></span>
+            <span class="heatmap-legend-cell level-4" title="60+ lượt"></span>
+        </div>
+        <span class="heatmap-legend-label">Nhiều</span>
+    `;
+
+    footer.appendChild(summary);
+    footer.appendChild(legend);
+
+    // Assemble everything into DOM.activityHeatmap
+    DOM.activityHeatmap.appendChild(monthsContainer);
+    DOM.activityHeatmap.appendChild(footer);
+
+    // Animate grid cells
+    if (!isBackgroundUpdate) {
+        animateHeatmap(DOM.activityHeatmap);
+    }
 }
 
-function renderForecast(vocabulary) {
+function renderForecast(vocabulary, isBackgroundUpdate = false) {
     if (!DOM.forecastChart) return;
     DOM.forecastChart.innerHTML = '';
 
@@ -843,7 +967,9 @@ function renderForecast(vocabulary) {
     });
 
     // Gọi animation
-    animateForecastChart(DOM.forecastChart);
+    if (!isBackgroundUpdate) {
+        animateForecastChart(DOM.forecastChart);
+    }
 }
 
 // Logic kiểm tra Huy hiệu tự động

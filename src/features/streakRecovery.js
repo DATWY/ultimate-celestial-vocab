@@ -428,7 +428,7 @@ function createPenanceModalDOM() {
     modal.innerHTML = `
         <div class="modal-overlay"></div>
         <div class="modal-content penance-modal-content">
-            <button class="modal-close-btn" title="Đóng">&times;</button>
+            <button class="modal-close-btn" title="Đóng" aria-label="Đóng"><i class="ph-bold ph-x"></i></button>
             <div class="penance-modal-body"></div>
         </div>
     `;
