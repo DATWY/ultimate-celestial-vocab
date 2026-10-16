@@ -2,7 +2,7 @@
 // Quản lý tính năng Khiên Băng Bảo Vệ (Streak Freeze) & Nghi Lễ Chuộc Tội (Streak Recovery)
 
 import { getState, buyStreakFreeze, getStreakRecoveryStatus, completeStreakRecovery } from '../core/state.js';
-import { showPopup } from '../ui/modal.js';
+import { showPopup, openModal, closeModal } from '../ui/modal.js';
 import { playSound } from '../core/sound.js';
 
 let penanceQuizState = null;
@@ -153,7 +153,7 @@ export function openPenanceModal(status) {
         </div>
     `;
 
-    modal.classList.remove('hidden');
+    openModal(modal);
 
     // Gán nút đóng / hủy
     modal.querySelector('.btn-penance-cancel')?.addEventListener('click', () => {
@@ -172,7 +172,7 @@ export function openPenanceModal(status) {
 function closePenanceModal() {
     const modal = document.getElementById('penance-trial-modal');
     if (modal) {
-        modal.classList.add('hidden');
+        closeModal(modal);
     }
 }
 

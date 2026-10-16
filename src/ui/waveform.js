@@ -14,7 +14,7 @@ export function triggerAudioWaveformAnimation() {
 
         waveAnim = window.anime({
             targets: '.waveform-bar',
-            height: () => window.anime.random(4, 18) + 'px',
+            scaleY: () => window.anime.random(0.2, 1.0),
             duration: 170,
             direction: 'alternate',
             loop: 8,
@@ -22,7 +22,7 @@ export function triggerAudioWaveformAnimation() {
             complete: () => {
                 window.anime({
                     targets: '.waveform-bar',
-                    height: '4px',
+                    scaleY: 0.22,
                     duration: 220,
                     easing: 'easeOutSine',
                     complete: () => {
