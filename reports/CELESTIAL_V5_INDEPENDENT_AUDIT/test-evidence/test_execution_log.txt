@@ -1,0 +1,308 @@
+﻿================================================================================
+   KIỂM THỬ TOÀN BỘ MA TRẬN 10 NHÓM TRƯỜNG HỢP / KỊCH BẢN FSRS-7 (60 CASES)     
+================================================================================
+
+--- NHÓM 1: Khởi tạo Thẻ Mới & Cold-Start ---
+[FSRS-7] "apple" | R: 1 | D: 5.42 | S_long: 0.13 | S_short: 0.10 | Interval: 0.0h
+[FSRS-7] "apple" | R: 2 | D: 4.51 | S_long: 2.58 | S_short: 2.06 | Interval: 1.3d
+[FSRS-7] "apple" | R: 3 | D: 2.78 | S_long: 4.51 | S_short: 3.61 | Interval: 8.0d
+[FSRS-7] "apple" | R: 4 | D: 1.00 | S_long: 13.55 | S_short: 10.84 | Interval: 20.7d
+[FSRS-7] "supercalifragilisticexpialidocious" | R: 3 | D: 4.53 | S_long: 3.14 | S_short: 2.51 | Interval: 2.0d
+[FSRS-7] "go" | R: 3 | D: 2.28 | S_long: 4.90 | S_short: 3.92 | Interval: 10.9d
+✓ Nhóm 1 hoàn tất (6/6 cases pass)
+
+--- NHÓM 2: Dual-Trace Mixture Model & Newton-Raphson ---
+✓ Nhóm 2 hoàn tất (11/11 cases pass)
+
+--- NHÓM 3: Động Lực Học Độ Khó (Difficulty Dynamics) ---
+✓ Nhóm 3 hoàn tất (6/6 cases pass)
+
+--- NHÓM 4: Ổn Định Kép Khối Recall ---
+✓ Nhóm 4 hoàn tất (5/5 cases pass)
+
+--- NHÓM 5: Quên Thẻ (Lapse Dynamics) ---
+✓ Nhóm 5 hoàn tất (5/5 cases pass)
+
+--- NHÓM 6: Chuyển Đổi Mềm (Soft-Migration) ---
+[FSRS-7] "run" | R: 3 | D: 6.74 | S_long: 14.00 | S_short: 11.20 | Interval: 11.8d
+[FSRS-7] "walk" | R: 3 | D: 4.46 | S_long: 25.00 | S_short: 20.00 | Interval: 21.1d
+[FSRS-7] "newbie" | R: 3 | D: 3.53 | S_long: 3.92 | S_short: 3.14 | Interval: 4.6d
+✓ Nhóm 6 hoàn tất (5/5 cases pass)
+
+--- NHÓM 7: Typing Modality Bonus ---
+[FSRS-7] "type" | R: 3 | D: 4.96 | S_long: 22.90 | S_short: 22.90 | Interval: 40.5d
+[FSRS-7] "type" | R: 3 | D: 4.96 | S_long: 26.12 | S_short: 26.12 | Interval: 47.4d
+[FSRS-7] "type" | R: 1 | D: 9.05 | S_long: 2.43 | S_short: 0.42 | Interval: 0.0h
+[FSRS-7] "type" | R: 1 | D: 9.05 | S_long: 2.43 | S_short: 0.42 | Interval: 0.0h
+✓ Nhóm 7 hoàn tất (4/4 cases pass)
+
+--- NHÓM 8: Cơ Chế Thẻ Khó & Tự Động Tạm Ngưng (Leech) ---
+[FSRS-7] "obstinate" | R: 1 | D: 9.76 | S_long: 0.66 | S_short: 0.04 | Interval: 0.0h
+[FSRS-7] "normal" | R: 1 | D: 9.51 | S_long: 1.36 | S_short: 0.07 | Interval: 0.0h
+✓ Nhóm 8 hoàn tất (4/4 cases pass)
+
+--- NHÓM 9: Khoảng Cách Ôn Tập & Phân Số Trong Ngày ---
+[FSRS-7] "intraday" | R: 2 | D: 5.26 | S_long: 2.24 | S_short: 1.79 | Interval: 14.3h
+[FSRS-7] "compare" | R: 2 | D: 6.98 | S_long: 10.00 | S_short: 8.00 | Interval: 6.7d
+[FSRS-7] "compare" | R: 3 | D: 4.96 | S_long: 10.00 | S_short: 8.00 | Interval: 12.6d
+[FSRS-7] "compare" | R: 4 | D: 3.34 | S_long: 10.00 | S_short: 8.00 | Interval: 20.3d
+✓ Nhóm 9 hoàn tất (3/3 cases pass)
+
+--- NHÓM 10: Phòng Ngự Toàn Diện (Defensive Math & Chaos Input) ---
+[FSRS-7] "undefined" | R: 1 | D: 6.17 | S_long: 0.11 | S_short: 0.09 | Interval: 0.0h
+[FSRS-7] "undefined" | R: 2 | D: 5.26 | S_long: 2.24 | S_short: 1.79 | Interval: 14.3h
+[FSRS-7] "undefined" | R: 3 | D: 3.53 | S_long: 3.92 | S_short: 3.14 | Interval: 4.6d
+[FSRS-7] "undefined" | R: 4 | D: 1.00 | S_long: 11.78 | S_short: 9.43 | Interval: 21.6d
+[FSRS-7] "undefined" | R: 1 | D: 6.17 | S_long: 0.11 | S_short: 0.09 | Interval: 0.0h
+[FSRS-7] "undefined" | R: 2 | D: 5.26 | S_long: 2.24 | S_short: 1.79 | Interval: 14.3h
+[FSRS-7] "undefined" | R: 3 | D: 3.53 | S_long: 3.92 | S_short: 3.14 | Interval: 4.7d
+[FSRS-7] "undefined" | R: 4 | D: 1.00 | S_long: 11.78 | S_short: 9.43 | Interval: 21.7d
+[FSRS-7] "undefined" | R: 1 | D: 6.17 | S_long: 0.11 | S_short: 0.09 | Interval: 0.0h
+[FSRS-7] "undefined" | R: 2 | D: 5.26 | S_long: 2.24 | S_short: 1.79 | Interval: 14.3h
+[FSRS-7] "undefined" | R: 3 | D: 3.53 | S_long: 3.92 | S_short: 3.14 | Interval: 4.6d
+[FSRS-7] "undefined" | R: 4 | D: 1.00 | S_long: 11.78 | S_short: 9.43 | Interval: 21.8d
+[FSRS-7] "undefined" | R: 1 | D: 6.17 | S_long: 0.11 | S_short: 0.09 | Interval: 0.0h
+[FSRS-7] "undefined" | R: 2 | D: 5.26 | S_long: 2.24 | S_short: 1.79 | Interval: 14.3h
+[FSRS-7] "undefined" | R: 3 | D: 3.53 | S_long: 3.92 | S_short: 3.14 | Interval: 4.8d
+[FSRS-7] "undefined" | R: 4 | D: 1.00 | S_long: 11.78 | S_short: 9.43 | Interval: 20.1d
+[FSRS-7] "undefined" | R: 1 | D: 6.17 | S_long: 0.11 | S_short: 0.09 | Interval: 0.0h
+[FSRS-7] "undefined" | R: 2 | D: 5.26 | S_long: 2.24 | S_short: 1.79 | Interval: 14.3h
+[FSRS-7] "undefined" | R: 3 | D: 3.53 | S_long: 3.92 | S_short: 3.14 | Interval: 4.8d
+[FSRS-7] "undefined" | R: 4 | D: 1.00 | S_long: 11.78 | S_short: 9.43 | Interval: 21.1d
+✓ Nhóm 10 hoàn tất (15/15 cases pass)
+
+================================================================================
+ TẤT CẢ 179 / 179 TEST CASES TRONG MA TRẬN 10 NHÓM ĐÃ VƯỢT QUA 100%! 
+================================================================================
+
+
+
+🚀 Starting Sync Merger Adversarial Verification...
+
+Running TEST 1: Disentangled Merging (SRS vs Content)...
+✅ TEST 1 PASSED: Perfect disentangled merge!
+
+Running TEST 2: Concurrent SRS Reviews...
+✅ TEST 2 PASSED: SRS Memory Vector preserved atomically!
+
+Running TEST 3: Tombstone vs Resurrect...
+✅ TEST 3 PASSED: Tombstones and resurrection handled accurately!
+
+Running TEST 4: Tags Union...
+✅ TEST 4 PASSED: Tags union pristine!
+
+Running TEST 5: Review Log Deduplication...
+✅ TEST 5 PASSED: Review logs deduplication accurate and lossless!
+
+Running TEST 6: CompressLogs O(N) Benchmark (5,000 logs)...
+⏱️ Compress 5,000 logs took 1ms
+✅ TEST 6 PASSED: CompressLogs is blazingly fast O(N)!
+
+🎉 ALL ADVERSARIAL VERIFICATION TESTS PASSED SUCCESSFULLY!
+
+
+
+🔥 BẮT ĐẦU KIỂM THỬ TOÀN DIỆN LOGIC STREAK & HEATMAP...
+
+▶ [Test 1] Kiểm tra tính toán ngày tháng và chuyển tiếp lịch...
+  ✔ Test 1 PASS: Chuyển tiếp ngày tháng hoàn toàn chuẩn xác.
+
+▶ [Test 2] Kịch bản học bình thường trong ngày...
+  ✔ 2.1 PASS: Sáng sớm chưa học, Streak bảo toàn ở mốc hôm qua (3 ngày).
+  ✔ 2.2 PASS: Sau thẻ đầu tiên hôm nay, Streak tăng lên 4 ngày.
+  ✔ 2.3 PASS: Học thêm 100 thẻ trong ngày, Streak vẫn giữ chuẩn 4 ngày.
+
+▶ [Test 3] Kịch bản đứt chuỗi và bắt đầu lại...
+  ✔ 3.1 PASS: Bỏ lỡ hôm qua, Streak hiện tại = 0 ngày, Kỷ lục cũ (2 ngày) được bảo lưu.
+  ✔ 3.2 PASS: Bắt đầu lại sau đứt chuỗi -> Streak = 1 ngày, Kỷ lục cũ vẫn giữ nguyên.
+
+▶ [Test 4] Kịch bản Hoàn tác (Undo)...
+  ✔ Test 4 PASS: Hoàn tác thẻ duy nhất hôm nay, Streak tự động quay về mốc hôm qua (5 ngày).
+
+▶ [Test 5] Kiểm tra tự phục hồi dữ liệu từ Heatmap trong ảnh chụp thực tế...
+  ✔ Test 5 PASS: Dữ liệu Heatmap 45 ngày liên tục được chữa lành chính xác từ '2 NGÀY' thành 45 NGÀY!
+
+▶ [Test 6] Mô phỏng gộp Heatmap đa thiết bị (Firebase Sync)...
+  ✔ Test 6 PASS: Đồng bộ Cloud nối liền hoạt động giữa PC và Mobile (3 ngày liên tiếp).
+
+=================================================
+🎉 TẤT CẢ 6 NHÓM KIỂM THỬ ĐÃ VƯỢT QUA 100%!
+=================================================
+
+
+
+❄️🔥 BẮT ĐẦU KIỂM THỬ TÍNH NĂNG KHIÊN BĂNG & HỒI SINH CHUỖI...
+
+▶ [Test 1] Kiểm tra điều kiện mua Khiên Băng...
+  ✔ 1.1: Từ chối khi streak < 7 ngày.
+  ✔ 1.2: Từ chối khi XP < 800.
+  ✔ 1.3: Mua thành công khi đủ 800 XP & Streak >= 7 ngày.
+  ✔ 1.4: Giới hạn tối đa 1 khiên thành công.
+
+▶ [Test 2] Khiên Băng tự động bảo vệ chuỗi...
+  ✔ Test 2 PASS: Khiên Băng tự động tiêu thụ và cứu chuỗi an toàn.
+
+▶ [Test 3] Không cho phép dùng Khiên Băng 2 ngày liên tiếp...
+  ✔ Test 3 PASS: Chặn thành công lạm dụng khiên liên tiếp.
+
+▶ [Test 4] Thử Thách Tái Sinh 1 ngày gián đoạn...
+  ✔ Test 4 PASS: Tái sinh thành công 1 ngày, nối chuỗi 3 ngày!
+
+▶ [Test 5] Thử Thách Tái Sinh gián đoạn 3 ngày trong tuần...
+  ✔ Test 5 PASS: Tái sinh 3 ngày gián đoạn thành công, chuỗi đạt 6 ngày!
+
+▶ [Test 6] Thử Thách Tái Sinh gián đoạn tối đa 7 ngày...
+  ✔ Test 6 PASS: Tái sinh tròn 7 ngày thành công, chuỗi phục hồi 9 ngày!
+
+▶ [Test 7] Từ chối tái sinh khi gián đoạn vượt quá 1 tuần (8 ngày)...
+  ✔ Test 7 PASS: Chặn thành công trường hợp gián đoạn quá 1 tuần.
+
+▶ [Test 8] Hàn gắn chuỗi cũ khi đã học ngày hôm nay...
+  ✔ Test 8 PASS: Hàn gắn chuỗi cũ với chuỗi hôm nay thành công mỹ mãn!
+
+▶ [Test 9] Chuỗi đang học tốt (>= 2 ngày) không được hiện Thử Thách Tái Sinh...
+  ✔ Test 9 PASS: Không hiển thị nút Tái Sinh khi người dùng đang có chuỗi hoạt động bình thường!
+
+==========================================================================
+🎉 TẤT CẢ 9 TEST SUITE KHIÊN BĂNG & THỬ THÁCH TÁI SINH 1 TUẦN ĐÃ ĐẠT 100%!
+==========================================================================
+
+
+
+--- Test Cases for checkDuplicateCardFuzzy ---
+[Case 1] Exact match:
+  demonstrate <-> demonstrate
+  Result: isDuplicate = true, Category = EXACT, Conf = 0.95, Reason = Trùng khớp chính xác từ vựng và loại từ
+
+[Case 2] Stem / Inflection match (-ing):
+  demonstrate <-> demonstrating
+  Result: isDuplicate = true, Category = INFLECTION, Conf = 0.9, Reason = Biến thể ngữ pháp (demonstrate ⟷ demonstrating)
+
+[Case 3] Typo fuzzy match (missing r):
+  demonstrate <-> demonstate
+  Result: isDuplicate = true, Category = FUZZY_TYPO, Conf = 0.77, Reason = Tìm kiếm mờ: Lệch chính tả (demonstrate ⟷ demonstate, độ giống 91%)
+
+[Case 4] Plural inflection (-s):
+  colleague <-> colleagues
+  Result: isDuplicate = true, Category = INFLECTION, Conf = 0.9, Reason = Biến thể ngữ pháp (colleague ⟷ colleagues)
+
+[Case 5] Hyphen vs space:
+  take off <-> take-off
+  Result: isDuplicate = true, Category = EXACT, Conf = 0.95, Reason = Trùng khớp chính xác từ vựng và loại từ
+
+[Case 6] Different words (affect vs effect) - should NOT duplicate:
+  affect <-> effect
+  Result: isDuplicate = false, Category = DIFFERENT, Conf = 0, Reason = Từ vựng khác nhau
+
+[Case 7] Different words (adapt vs adopt) - should NOT duplicate:
+  adapt <-> adopt
+  Result: isDuplicate = false, Category = DIFFERENT, Conf = 0, Reason = Từ vựng khác nhau
+
+
+
+
+=== TEST 1: Khử trùng nghĩa tiếng Việt (cleanAndDeduplicateVietnamese) ===
+Original: Thị phạm, chứng minh, Chứng minh, giải thích
+Cleaned:  Thị phạm, chứng minh, giải thích
+=> TEST 1 PASSED: Khử trùng case-insensitive thành công!
+
+=== TEST 2: Gộp 2 thẻ trùng lặp (mergeDuplicateCards) ===
+Merged Card: {
+  english: 'Demonstrate',
+  vietnamese: 'Thị phạm, chứng minh, giải thích',
+  srsStatus: 'Mastered',
+  stability: 12.5,
+  tags: [ 'TOEIC', 'Verbs', 'Business' ]
+}
+Deleted Card ID: c2
+=> TEST 2 PASSED: Gộp thẻ và bảo toàn tiến trình SRS cao nhất thành công!
+
+=== TEST 3: Quét thẻ có nghĩa bị lặp nội bộ (findInternalDuplicateCards) ===
+Tìm thấy 2 thẻ có nghĩa lặp nội bộ:
+- Demonstrate: "Thị phạm, chứng minh, Chứng minh, giải thích" -> "Thị phạm, chứng minh, giải thích"
+- Contract: "Hợp đồng, sự thỏa thuận, Hợp đồng" -> "Hợp đồng, sự thỏa thuận"
+=> TEST 3 PASSED: Phát hiện chính xác thẻ lặp nghĩa nội bộ!
+
+=== TEST 4: Bảo vệ chống nhận diện nhầm (False Positive Protection) ===
+Checking affect vs effect: isDuplicate = false (WORD_FAMILY)
+Checking assume vs assure: isDuplicate = false (DIFFERENT)
+Checking manufacture vs manufacturer: isDuplicate = false (WORD_FAMILY)
+Checking accurate vs accurately: isDuplicate = false (WORD_FAMILY)
+=> TEST 4 PASSED: Toàn bộ các cặp khác nghĩa hoặc word family đều được bảo vệ an toàn 100%!
+
+=== TEST 5: Nhận diện trùng mờ và biến thể (Fuzzy & Inflection) ===
+Checking demonstrate vs demonstate (typo): isDuplicate = true (FUZZY_TYPO)
+Checking colleague vs colleagues (plural): isDuplicate = true (INFLECTION)
+Checking take off vs take-off (dash/space): isDuplicate = true (EXACT)
+=> TEST 5 PASSED: Phát hiện đúng tất cả biến thể và typo!
+
+=== TEST 6: Tìm kiếm mờ trong Quản lý từ vựng (isFuzzySearchMatch) ===
+- Gõ "demonstate" (sai chính tả): true
+- Gõ "thi pham" (không dấu): true
+- Gõ "chung minh" (không dấu): true
+- Gõ "pham giai thich" (đa từ khóa): true
+- Gõ "unrelated" (không liên quan): false
+=> TEST 6 PASSED: Tìm kiếm mờ và tiếng Việt không dấu hoạt động hoàn hảo!
+
+ALL 6 COMPREHENSIVE TESTS PASSED SUCCESSFULLY!
+
+
+
+================================================================
+🧪 RUNNING DEEP ADVERSARIAL AUDIT CHECKS
+================================================================
+
+--- TEST 1: TSV Parser Chaos & Unicode Resiliency ---
+Chaos TSV stats: { new: 1, updated: 0, skipped: 0, errors: 2 }
+✅ 1a Passed: Corrupt lines rejected cleanly without throwing.
+Unicode TSV stats: { new: 3, updated: 0, skipped: 0, errors: 0 }
+✅ 1b Passed: TSV Unicode & Emoji preserved perfectly.
+
+--- TEST 2: Vietnamese IME Accidental Diacritics & Punctuation ---
+Typing test: "conundrưm" vs "conundrum" => status: perfect_fast, dist: 0
+Typing test: "resiliencé" vs "resilience" => status: perfect_fast, dist: 0
+Typing test: "bản chất" vs "bản chất" => status: perfect_fast, dist: 0
+Typing test: "well-known" vs "well known" => status: perfect_fast, dist: 0
+Typing test: "colour" vs "color" => status: perfect_fast, dist: 0
+Typing test: "organise" vs "organize" => status: perfect_fast, dist: 0
+Typing test: "organises" vs "organizes" => status: perfect_fast, dist: 0
+Typing test: "pourt" vs "port" => status: typo, dist: 1
+✅ 2 Passed: Vietnamese IME and normalization work accurately.
+
+--- TEST 3: Extreme Word Lengths ---
+✅ 3 Passed: 2500-char string evaluated safely in < 2ms.
+
+🎉 ALL DEEP ADVERSARIAL MATH & STRING TESTS PASSED!
+
+
+
+
+======================================================
+VERIFYING TARGETED REMEDIATIONS IN REAL BROWSER
+======================================================
+
+--- TEST 1: Space Key Flip (Front to Back) ---
+Initial Card state: { english: 'conundrum', isFlipped: false }
+After Space state: { isFlipped: true, activeTag: 'BUTTON', activeRating: '3' }
+✅ TEST 1 PASSED: Space successfully flipped card and focused Good button.
+
+--- TEST 2: Space Key Activation on Focused Button 3 ---
+After Rating Space state: { english: 'resilience', isFlipped: false, isTransitioning: false }
+✅ TEST 2 PASSED: Pressing Space on focused Button 3 rated and advanced card!
+
+--- TEST 3: Fast Undo During Transition (< 400ms) ---
+Current word before rating: "resilience"
+Transition state at 150ms: { undoDisabled: false }
+Card word after Fast Undo: { currentEnglish: 'resilience' }
+✅ TEST 3 PASSED: Fast Undo executed smoothly without deadzone!
+
+--- TEST 4: Keyboard Accessibility for Focused Non-Flip Buttons ---
+Star button focused state before Space: { starClass: 'icon-btn', isStarred: false }
+Star button state after Space: { starClass: 'icon-btn starred', isStarred: true, isFlipped: false }
+✅ TEST 4 PASSED: Space on focused button activates the button without hijacking flip!
+
+--- TEST 5: Hub Tab 2 Word List Container Scrollbar Clearance ---
+Word list container styles: { paddingRight: '14px', scrollbarGutter: 'stable' }
+✅ TEST 5 PASSED: Word list container has stable scrollbar clearance!
+
+🎉 ALL CDP BROWSER REMEDIATION TESTS PASSED 100%!

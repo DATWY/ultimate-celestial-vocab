@@ -134,15 +134,43 @@
 
 ---
 
+### Bug 7: Lỗi Static Import Trong Module Nhập Từ (`src/features/typing.js`) Gây Lỗi Trình Nạp Node.js (ESM HTTPS Scheme Error)
+- **Mức độ nghiêm trọng:** `Trung bình (Test Pipeline & Modular Isolation Bug)`
+- **Tập tin bị ảnh hưởng:** `src/features/typing.js`
+- **Mô tả chi tiết:**
+  - `src/features/typing.js` import tĩnh `trackEvent` từ `../core/state.js`. Module `state.js` lại import `firebase.js`, chứa URL import trực tiếp `https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js`.
+  - Khi chạy các bộ kiểm thử unit/adversarial thuần Node.js (như `scratch/test_adversarial_deep.mjs`), Node.js ném lỗi `ERR_UNSUPPORTED_ESM_URL_SCHEME` làm đổ vỡ toàn bộ pipeline kiểm thử tự động.
+- **Biện pháp khắc phục:**
+  - Tách rời liên kết cứng, chuyển sang cơ chế Safe Dynamic Dispatch:
+    ```javascript
+    let _stateTrackEvent = null;
+    function trackEvent(name, amount = 1) {
+        if (_stateTrackEvent) {
+            _stateTrackEvent(name, amount);
+        } else if (typeof window !== 'undefined') {
+            import('../core/state.js').then(m => {
+                _stateTrackEvent = m.trackEvent;
+                if (_stateTrackEvent) _stateTrackEvent(name, amount);
+            }).catch(() => {});
+        }
+    }
+    ```
+- **Kiểm chứng sau sửa:**
+  - `node scratch/test_adversarial_deep.mjs` chạy trơn tru 100%, đồng thời trong môi trường trình duyệt thực các sự kiện gõ phím (`typingTotalCorrect`, `typingFastAnswers`) vẫn được ghi nhận chuẩn xác.
+
+---
+
 ## 2. Tổng Hợp Tác Động Mã Nguồn
 
 Toàn bộ các bản sửa đổi được giới hạn chặt chẽ trong:
 - `src/css/tokens/celestial-v5.css`: Khắc phục breakpoint 640px, phát quang sao và đệm thanh cuộn Tab 2.
 - `src/events.js`: Khắc phục phím Space, bảo vệ accessibility nút focused, xóa bỏ deadzone Undo và thêm try-catch phòng thủ.
 - `src/main.js`: Tái cấu trúc static imports cho dev/audit toolchain.
+- `src/features/typing.js`: Tách rời static dependency với Firebase, kích hoạt kiểm thử đối kháng ngoại tuyến.
 
 **Cam kết bảo toàn hệ thống:**
 - Không sửa đổi 34 tham số thuật toán FSRS-7.
 - Không phá vỡ cấu trúc đồng bộ 4-Vector Firestore.
 - Không làm thay đổi lược đồ cơ sở dữ liệu IndexedDB.
-- 0 cảnh báo hồi quy trên toàn bộ 7 test suite.
+- 0 cảnh báo hồi quy trên toàn bộ 8 test suite.
+

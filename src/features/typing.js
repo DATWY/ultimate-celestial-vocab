@@ -6,7 +6,17 @@ let totalPauseTime = 0;
 let pauseStartTime = 0;
 let isPaused = false;
 
-import { trackEvent } from '../core/state.js';
+let _stateTrackEvent = null;
+function trackEvent(name, amount = 1) {
+    if (_stateTrackEvent) {
+        _stateTrackEvent(name, amount);
+    } else if (typeof window !== 'undefined') {
+        import('../core/state.js').then(m => {
+            _stateTrackEvent = m.trackEvent;
+            if (_stateTrackEvent) _stateTrackEvent(name, amount);
+        }).catch(() => {});
+    }
+}
 
 export function startTypingTimer() {
     typingStartTime = Date.now();

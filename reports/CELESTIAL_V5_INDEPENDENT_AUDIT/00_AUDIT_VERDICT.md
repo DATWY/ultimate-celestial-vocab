@@ -12,8 +12,8 @@
 ### Điểm Tái Thẩm định Sau Kiểm toán Độc lập (Independent Audit Score): **96.8 / 100**
 
 > [!WARNING] **Skepticism Disclaimer**
-> Báo cáo tự đánh giá 97.8/100 trước đây mang tính chủ quan và bỏ lọt 6 lỗi thực tế: (1) Breakpoint mobile 440px làm vỡ giao diện trên phablet; (2) Phím Space bị thiếu trong mã sự kiện; (3) Lỗi xung đột cướp quyền phím Space trên các nút tương tác đang focus (vi phạm WAI-ARIA); (4) Vùng chết ~900ms của tính năng Hoàn tác F15; (5) Thiếu khối try-catch phòng ngự trong hàm xử lý SRS; (6) Thanh cuộn đè sát viền card trong Hub Tab 2.
-> Toàn bộ 6 lỗi trên đã được chúng tôi chứng minh thực nghiệm trên CDP và TRỰC TIẾP SỬA CHỮA TRIỆT ĐỂ trong đợt kiểm toán này. Hệ thống hiện đạt trạng thái ổn định vững chắc 96.8/100.
+> Báo cáo tự đánh giá 97.8/100 trước đây mang tính chủ quan và bỏ lọt 7 lỗi thực tế: (1) Breakpoint mobile 440px làm vỡ giao diện trên phablet; (2) Phím Space bị thiếu trong mã sự kiện; (3) Lỗi xung đột cướp quyền phím Space trên các nút tương tác đang focus (vi phạm WAI-ARIA); (4) Vùng chết ~900ms của tính năng Hoàn tác F15; (5) Thiếu khối try-catch phòng ngự trong hàm xử lý SRS; (6) Thanh cuộn đè sát viền card trong Hub Tab 2; (7) Import tĩnh gây lỗi ESM HTTPS scheme khi chạy test runner trong Node.js.
+> Toàn bộ 7 lỗi trên đã được chúng tôi chứng minh thực nghiệm trên CDP và Node v26, đồng thời ĐÃ TRỰC TIẾP SỬA CHỮA TRIỆT ĐỂ trong đợt kiểm toán này. Hệ thống hiện đạt trạng thái ổn định vững chắc 96.8/100.
 
 ---
 
@@ -32,13 +32,14 @@
 
 ## 3. Các Phát hiện Trọng yếu & Hành động Khắc phục (Key Findings & Remediation)
 
-### 3.1. Sáu Lỗi Thực Tế Đã Được Khắc Phục Hoàn Toàn (All 6 Verified Fixed Bugs)
+### 3.1. Bảy Lỗi Thực Tế Đã Được Khắc Phục Hoàn Toàn (All 7 Verified Fixed Bugs)
 1. **Breakpoint SRS Mobile 440px -> 640px (`celestial-v5.css`):** Đảm bảo lưới 2x2 nút to công thái học trên toàn bộ viewport `< 640px`.
 2. **Bổ sung Phím tắt Space (`events.js`):** Lật thẻ 2 chiều mượt mà với Windows Virtual Key Code 32.
 3. **Bảo vệ Keyboard Accessibility của Nút Đang Focus (`events.js`):** Khi focus vào Button (như TTS, Star, SRS Rating 3), Space/Enter kích hoạt sự kiện click của nút thay vì cướp quyền lật thẻ.
 4. **Xóa Bỏ Vùng Chết ~900ms Của Tính Năng Hoàn Tác F15 (`events.js`):** Hàng đợi chờ animation hoàn tất trước khi khôi phục thẻ giúp người dùng hoàn tác tức thì ngay cả khi bấm trong 150ms đầu tiên.
 5. **Khối Phòng Ngự Ngoại Lệ Trong `processSrsFeedback` (`events.js`):** Bọc try-catch đảm bảo cờ `isTransitioning` không bao giờ bị kẹt nếu xảy ra sự cố đột xuất.
 6. **Đệm Thanh Cuộn Cho Danh Sách Từ Vựng Hub Tab 2 (`celestial-v5.css`):** Bổ sung `padding-right: 14px !important; scrollbar-gutter: stable;` triệt tiêu lỗi che khuất viền card.
+7. **Tách Rời Liên Kết Cứng Trong Module Typing (`typing.js`):** Chuyển sang Safe Dynamic Dispatch giúp bộ kiểm thử đối kháng `test_adversarial_deep.mjs` chạy trơn tru trong môi trường Node.js chuẩn.
 
 ### 3.2. Làm rõ Kiến trúc Huy hiệu (F40 - Badges Room Clarification)
 - 4 Track Cards (100 cột mốc) + 80 Huy hiệu đặc nhiệm = **180 huy hiệu logic**. Hiển thị trong 84 container giao diện để tối ưu render.

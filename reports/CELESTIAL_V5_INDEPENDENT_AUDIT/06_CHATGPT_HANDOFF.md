@@ -20,7 +20,8 @@ Ultimate Celestial Vocab là ứng dụng web học từ vựng tiếng Anh cá 
 ## 2. Tóm Tắt Kết Quả Kiểm Toán Độc Lập (Executive Summary)
 
 - **Điểm số Tự Đánh Giá Ban Đầu:** 97.8 / 100 *(Được đánh giá là quá lạc quan do chỉ chạy kịch bản lý tưởng)*.
-- **Điểm số Tái Thẩm Định Sau Khắc Phục:** **96.8 / 100** *(Phản ánh chính xác hiện trạng sau khi phát hiện và trực tiếp sửa 6 lỗi giao diện, phím tắt và khả năng phục hồi)*.
+- **Điểm số Tự Đánh Giá Ban Đầu:** 97.8 / 100 *(Được đánh giá là quá lạc quan do chỉ chạy kịch bản lý tưởng)*.
+- **Điểm số Tái Thẩm Định Sau Khắc Phục:** **96.8 / 100** *(Phản ánh chính xác hiện trạng sau khi phát hiện và trực tiếp sửa 7 lỗi giao diện, phím tắt, khả năng phục hồi và tính cô lập module)*.
 - **Tổng số tính năng đã kiểm chứng trực tiếp:** 48 / 48 (F01–F48).
 - **Bộ chứng cứ kèm theo:**
   - 19 ảnh chụp màn hình độ phân giải cao tại `reports/CELESTIAL_V5_INDEPENDENT_AUDIT/screenshots/`.
@@ -29,9 +30,9 @@ Ultimate Celestial Vocab là ứng dụng web học từ vựng tiếng Anh cá 
 
 ---
 
-## 3. Sáu Lỗ Hổng Thực Tế Đã Được Khắc Phục Hoàn Toàn (What Was Fixed)
+## 3. Bảy Lỗ Hổng Thực Tế Đã Được Khắc Phục Hoàn Toàn (What Was Fixed)
 
-Người thẩm định (Reviewer) cần chú ý 6 thay đổi mã nguồn đã được thực hiện và kiểm chứng:
+Người thẩm định (Reviewer) cần chú ý 7 thay đổi mã nguồn đã được thực hiện và kiểm chứng:
 
 1. **Breakpoint Mobile 440px -> 640px (`src/css/tokens/celestial-v5.css`):**
    - *Trước khi sửa:* Các màn hình có chiều rộng từ 441px đến 639px bị ép 4 nút SRS thành 1 hàng ngang, mỗi nút chỉ rộng ~75px, làm cụt chữ và khó bấm.
@@ -50,6 +51,9 @@ Người thẩm định (Reviewer) cần chú ý 6 thay đổi mã nguồn đã 
    - *Sau khi sửa:* Bọc khối `try...catch` đảm bảo cờ chuyển cảnh luôn được trả về `false` an toàn.
 6. **Đệm Thanh Cuộn Cho Danh Sách Từ Vựng Hub Tab 2 (`src/css/tokens/celestial-v5.css`):**
    - *Sau khi sửa:* Bổ sung `padding-right: 14px !important; scrollbar-gutter: stable;` giúp thẻ từ vựng không bị thanh cuộn Windows đè sát viền.
+7. **Tách Rời Liên Kết Cứng Trong Module Typing (`src/features/typing.js`):**
+   - *Trước khi sửa:* Import tĩnh `trackEvent` từ `state.js` kéo theo Firebase Firestore HTTPS scheme làm đổ vỡ runner Node.js (`ERR_UNSUPPORTED_ESM_URL_SCHEME`).
+   - *Sau khi sửa:* Chuyển sang Safe Dynamic Dispatch, giúp chạy unit test đối kháng ngoại tuyến trên Node v26 thành công 100%.
 
 ---
 
@@ -57,7 +61,7 @@ Người thẩm định (Reviewer) cần chú ý 6 thay đổi mã nguồn đã 
 
 Một reviewer bên ngoài có thể kiểm chứng lại toàn bộ các phát hiện trên chỉ với các câu lệnh sau:
 
-### Bước 1: Chạy Bộ 7 Test Suite Hồi Quy Logic & Toán Học
+### Bước 1: Chạy Bộ 8 Test Suite Hồi Quy Logic & Toán Học
 ```bash
 node scratch/test_fsrs7_scenarios.js
 node scratch/test_sync_merger.mjs
@@ -66,6 +70,7 @@ node scratch/test_streak_comprehensive.js
 node scratch/test_full_fuzzy_engine.js
 node scratch/test_streak_freeze_recovery.js
 node scratch/test_final_verification.js
+node scratch/test_adversarial_deep.mjs
 ```
 *Kỳ vọng: 100% test cases vượt qua không có lỗi.*
 
