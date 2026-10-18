@@ -8993,24 +8993,69 @@ body.dark-mode .fusionsrs-metric-card[data-metric="reviews"] {
         padding: 6px 6px !important;
     }
 
-    .profile-hero-card {
+    .profile-hero-card,
+    .profile-hero-bento {
         grid-template-columns: 1fr !important;
         gap: 10px !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
     }
 
-    .profile-hero-card .level-card {
-        padding: 14px 14px !important;
+    .profile-hero-card .level-card,
+    .hero-scholar-card {
+        padding: 12px 14px !important;
+        flex: 0 0 auto !important;
     }
 
-    .profile-hero-card .streak-widget {
-        padding: 12px 16px !important;
+    .profile-hero-card .streak-widget,
+    .streak-card,
+    .streak-bento-card {
+        padding: 10px 14px !important;
         min-width: 0 !important;
-        justify-content: flex-start !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        text-align: left !important;
+        gap: 10px !important;
+        flex: 0 0 auto !important;
     }
 
-    .profile-rhythm-grid {
+    .streak-main-row {
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        width: auto !important;
+    }
+
+    .streak-icon-wrapper {
+        font-size: 1.8rem !important;
+    }
+
+    .streak-number {
+        font-size: 1.6rem !important;
+    }
+
+    .streak-unit {
+        font-size: 0.75rem !important;
+    }
+
+    .streak-text {
+        font-size: 0.72rem !important;
+    }
+
+    .streak-recovery-controls {
+        width: auto !important;
+        margin-top: 0 !important;
+    }
+
+    .profile-rhythm-grid,
+    .bento-charts-row {
+        display: flex !important;
+        flex-direction: column !important;
         grid-template-columns: 1fr !important;
-        gap: 10px !important;
+        gap: 12px !important;
+        flex: 0 0 auto !important;
+        min-height: auto !important;
+        width: 100% !important;
     }
 
     .profile-card {
@@ -9018,73 +9063,157 @@ body.dark-mode .fusionsrs-metric-card[data-metric="reviews"] {
         border-radius: 16px !important;
     }
 
-    .profile-card h3 {
-        font-size: 0.98rem !important;
-        margin-bottom: 10px !important;
-        padding-bottom: 8px !important;
+    .chart-bento-card,
+    .heatmap-bento-card {
+        height: auto !important;
+        min-height: 200px !important;
+        overflow: visible !important;
+        flex: 0 0 auto !important;
+        box-sizing: border-box !important;
+        padding: 14px 12px !important;
+    }
+
+    .profile-card h3,
+    .card-header-flex h3,
+    .card-title-row h3 {
+        font-size: 0.88rem !important;
+        margin-bottom: 6px !important;
+        padding-bottom: 6px !important;
+        white-space: nowrap !important;
+    }
+
+    .card-header-flex,
+    .card-title-row {
+        gap: 6px !important;
+        margin-bottom: 6px !important;
+        padding-bottom: 6px !important;
+        align-items: center !important;
+    }
+
+    .bento-badge {
+        font-size: 0.68rem !important;
+        padding: 2px 8px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
     }
 
     /* 3. Level Card & Emblem on Mobile */
     .level-display {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 10px !important;
-        align-items: center;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        align-items: center !important;
+    }
+
+    .rank-emblem-container {
+        width: 46px !important;
+        height: 46px !important;
+        flex-shrink: 0 !important;
     }
 
     .level-circle {
-        width: 48px !important;
-        height: 48px !important;
-        font-size: 1.4rem !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1.15rem !important;
+        flex-shrink: 0 !important;
     }
 
     .xp-info {
-        flex: 1;
-        min-width: 140px;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .rank-name-title {
+        font-size: 0.95rem !important;
+        margin: 0 !important;
+    }
+
+    .xp-badge-total {
+        font-size: 0.72rem !important;
+        padding: 2px 8px !important;
     }
 
     .xp-bar-container {
-        height: 10px !important;
-        margin: 6px 0 !important;
+        height: 7px !important;
+        margin: 4px 0 !important;
+    }
+
+    .xp-to-next-level {
+        font-size: 0.72rem !important;
+        white-space: nowrap !important;
     }
 
     /* 4. Memory Analytics Card Grid on Mobile */
+    .fusionsrs-bento-section {
+        padding: 12px 10px !important;
+        flex: 0 0 auto !important;
+        border-radius: 16px !important;
+    }
+
     .memory-analytics-header {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: 8px !important;
-        margin-bottom: 12px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 6px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .memory-analytics-title-group {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+    }
+
+    .memory-analytics-title-group h3 {
+        font-size: 0.88rem !important;
+        margin: 0 !important;
+    }
+
+    .analytics-badge {
+        font-size: 0.68rem !important;
+        padding: 2px 8px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
     }
 
     .memory-analytics-grid {
         grid-template-columns: 1fr !important;
-        gap: 8px !important;
+        gap: 6px !important;
     }
 
-    .analytics-item {
-        padding: 10px 12px !important;
+    .analytics-item,
+    .analytics-item.fusionsrs-metric-card {
+        padding: 8px 10px !important;
         border-radius: 12px !important;
-        gap: 10px !important;
+        gap: 6px !important;
     }
 
     .analytics-icon {
-        width: 36px !important;
-        height: 36px !important;
-        font-size: 1.1rem !important;
-        border-radius: 10px !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1rem !important;
+        border-radius: 8px !important;
     }
 
     .analytics-value {
-        font-size: 1.35rem !important;
+        font-size: 1.22rem !important;
         font-weight: 800 !important;
     }
 
     .analytics-label {
-        font-size: 0.76rem !important;
+        font-size: 0.72rem !important;
     }
 
     .analytics-subtext {
-        font-size: 0.72rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    .analytics-meter-bar {
+        height: 4px !important;
+        margin-top: 4px !important;
     }
 
     .streak-recovery-btn {
@@ -9096,26 +9225,31 @@ body.dark-mode .fusionsrs-metric-card[data-metric="reviews"] {
 
     /* 5. Forecast & Heatmap on Mobile */
     .forecast-chart-container {
-        height: 120px !important;
-        padding-top: 10px !important;
-        gap: 4px !important;
+        height: 140px !important;
+        min-height: 140px !important;
+        padding-top: 12px !important;
+        gap: 6px !important;
+        box-sizing: border-box !important;
     }
 
     .forecast-bar {
-        max-width: 20px !important;
+        max-width: 26px !important;
     }
 
     .forecast-count {
-        font-size: 0.72rem !important;
+        font-size: 0.76rem !important;
     }
 
     .forecast-day {
-        font-size: 0.7rem !important;
+        font-size: 0.72rem !important;
     }
 
     .heatmap-container {
-        gap: 4px !important;
+        gap: 8px !important;
         width: 100% !important;
+        height: auto !important;
+        min-height: 140px !important;
+        overflow: visible !important;
     }
 
     .heatmap-grid {
@@ -9128,13 +9262,14 @@ body.dark-mode .fusionsrs-metric-card[data-metric="reviews"] {
         display: flex !important;
         overflow-x: auto !important;
         scroll-snap-type: x mandatory !important;
-        gap: 10px !important;
-        padding-bottom: 2px !important;
+        gap: 12px !important;
+        padding-bottom: 6px !important;
         -webkit-overflow-scrolling: touch !important;
     }
 
     .heatmap-month-block {
-        flex: 0 0 145px !important;
+        flex: 0 0 210px !important;
+        min-width: 210px !important;
         scroll-snap-align: start !important;
     }
 
@@ -9142,7 +9277,13 @@ body.dark-mode .fusionsrs-metric-card[data-metric="reviews"] {
         width: 100% !important;
         height: auto !important;
         aspect-ratio: 1.15 / 1 !important;
-        border-radius: 2px !important;
+        border-radius: 3px !important;
+    }
+
+    .heatmap-footer {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        justify-content: space-between !important;
     }
 
     /* 6. Achievements Banner & Tabs on Mobile */
