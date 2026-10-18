@@ -447,11 +447,15 @@ body:not(.dark-mode) .onboarding-pill {
     }
 }
 
-/* 4. Add/Edit Word Modal Viewport Safety (Guarantees Save Button is on-screen) */
+/* 4. Add/Edit Word Modal Viewport Safety (Guarantees Save Button is on-screen & scrollable) */
 #add-edit-modal .modal-content {
     max-width: 580px !important;
     padding: 24px 30px !important;
     max-height: 90vh !important;
+    max-height: 90dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
 }
 
 #add-edit-form {
@@ -490,9 +494,157 @@ body:not(.dark-mode) .onboarding-pill {
     align-items: center !important;
 }
 
+@media (max-width: 480px) {
+    #add-edit-modal .modal-content {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        padding: 14px 12px 18px 12px !important;
+        border-radius: 18px !important;
+        max-height: 92dvh !important;
+    }
+
+    #add-edit-form {
+        gap: 8px !important;
+    }
+
+    #add-edit-form .form-group {
+        gap: 2px !important;
+    }
+
+    #add-edit-form .form-group label {
+        font-size: 0.78rem !important;
+    }
+
+    #add-edit-form input,
+    #add-edit-form textarea {
+        padding: 7px 10px !important;
+        font-size: 0.84rem !important;
+        border-radius: 8px !important;
+    }
+
+    #add-edit-form textarea {
+        min-height: 42px !important;
+    }
+
+    #add-edit-form button[type="submit"] {
+        margin-top: 6px !important;
+        padding: 9px 18px !important;
+        font-size: 0.9rem !important;
+    }
+}
+
 /* 5. Word List Container Scrollbar Clearance (Hub Tab 2) */
 .word-list-cards-container {
     padding-right: 14px !important;
     scrollbar-gutter: stable;
 }
+
+/* 6. Mobile Toast Notification Screen Safety (Zero Document Overflow on <= 360px) */
+@media (max-width: 480px) {
+    #toast-container {
+        top: 10px !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+        align-items: center !important;
+    }
+
+    .toast-item {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 10px 14px !important;
+        box-sizing: border-box !important;
+        border-radius: 12px !important;
+    }
+
+    .toast-icon {
+        font-size: 1.6rem !important;
+    }
+
+    .toast-title {
+        font-size: 0.92rem !important;
+        margin-bottom: 2px !important;
+    }
+
+    .toast-message {
+        font-size: 0.8rem !important;
+        line-height: 1.35 !important;
+    }
+}
+
+/* 7. Mobile Touch Target Compliance (Apple HIG >= 44px) */
+@media (max-width: 768px) {
+    .icon-btn,
+    .card-action-btn,
+    .modal-close-btn,
+    .manage-nav-tab,
+    .analytics-help-btn,
+    .star-btn-card,
+    .tts-btn-card,
+    .edit-btn-card,
+    .delete-btn-card {
+        position: relative;
+    }
+
+    .icon-btn::before,
+    .card-action-btn::before,
+    .modal-close-btn::before,
+    .analytics-help-btn::before,
+    .star-btn-card::before,
+    .tts-btn-card::before,
+    .edit-btn-card::before,
+    .delete-btn-card::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-width: 44px;
+        min-height: 44px;
+        width: 100%;
+        height: 100%;
+        pointer-events: auto;
+    }
+}
+
+/* 8. Deduplication Modal & Quiz Setup Mobile Overflow Defense */
+@media (max-width: 480px) {
+    #dedup-modal .modal-content,
+    .dedup-panel {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        padding: 14px 10px !important;
+        border-radius: 18px !important;
+        max-height: 92dvh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .dedup-pair-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+
+    .dedup-card-sub {
+        padding: 10px 12px !important;
+    }
+
+    #quiz-modal .modal-content {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        padding: 16px 14px !important;
+        border-radius: 18px !important;
+        max-height: 92dvh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .achievements-wrapper {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+}
+
 
