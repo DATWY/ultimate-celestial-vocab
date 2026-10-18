@@ -146,6 +146,15 @@ export function damerauLevenshtein(a, b) {
     return m[al][bl];
 }
 
+export function stripVietnameseDiacritics(str) {
+    if (!str) return "";
+    return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đ]/g, 'd')
+        .replace(/[Đ]/g, 'D');
+}
+
 export function evaluateTyping(inputStr, targetStr) {
     const input = inputStr.trim();
     const target = targetStr.trim();
@@ -155,8 +164,13 @@ export function evaluateTyping(inputStr, targetStr) {
         return { rating: 0, distance: -1, message: "Hãy gõ tiếp...", status: "too_short" };
     }
 
-    const normInput = superNormalize(input);
+    let normInput = superNormalize(input);
     const normTarget = superNormalize(target);
+
+    // If target is pure ASCII (standard English), strip accidental Vietnamese IME diacritics
+    if (/^[\x00-\x7F\s]+$/.test(normTarget)) {
+        normInput = stripVietnameseDiacritics(normInput);
+    }
 
     const d = damerauLevenshtein(normInput, normTarget);
     const responseTime = getResponseTime();

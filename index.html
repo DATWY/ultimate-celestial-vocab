@@ -151,7 +151,7 @@
                                 </div>
                                 <div id="typing-area" class="typing-container">
                                     <div class="typing-input-wrapper">
-                                        <input type="text" id="typing-input" placeholder="Gõ từ tiếng Anh..." autocomplete="off" autocorrect="off" spellcheck="false" />
+                                        <input type="text" id="typing-input" placeholder="Gõ từ tiếng Anh..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" />
                                         <button id="typing-submit-btn" class="icon-btn" title="Xác nhận (Enter)"><i class="ph-duotone ph-paper-plane-right"></i></button>
                                     </div>
                                     <p id="typing-feedback" class="typing-feedback"></p>
@@ -236,7 +236,44 @@
                         class="ph-duotone ph-arrow-right"></i></button>
             </div>
             <div id="no-card-message" class="hidden no-card-container">
-                <div class="celestial-victory-card victory-card-horizontal">
+                <!-- === ONBOARDING EMPTY STATE (Shown only when library is 100% empty) === -->
+                <div id="empty-onboarding-container" class="celestial-onboarding-container hidden">
+                    <div class="onboarding-ambient-glow"></div>
+                    <div class="onboarding-hero-icon">
+                        <i class="ph-duotone ph-compass"></i>
+                    </div>
+                    <h2 class="onboarding-title">Đài Quan Sát Tri Thức Sẵn Sàng</h2>
+                    <p class="onboarding-subtitle">Kho từ vựng của bạn chưa có dữ liệu. Bắt đầu ngay hôm nay để kích hoạt động cơ trí nhớ FSRS-7 và hành trình thăng hạng Học giả.</p>
+                    
+                    <div class="onboarding-actions-grid">
+                        <button id="btn-empty-add-word" class="onboarding-cta-card cta-primary" type="button">
+                            <i class="ph-bold ph-plus-circle onboarding-cta-icon"></i>
+                            <span class="onboarding-cta-title">Thêm Từ Đầu Tiên</span>
+                            <span class="onboarding-cta-desc">Tự soạn nghĩa, phiên âm và ví dụ</span>
+                        </button>
+                        <button id="btn-empty-import" class="onboarding-cta-card" type="button">
+                            <i class="ph-bold ph-file-arrow-up onboarding-cta-icon"></i>
+                            <span class="onboarding-cta-title">Nhập Danh Sách (TSV)</span>
+                            <span class="onboarding-cta-desc">Kéo thả file hoặc dán văn bản</span>
+                        </button>
+                        <button id="btn-empty-sample" class="onboarding-cta-card" type="button">
+                            <i class="ph-bold ph-sparkle onboarding-cta-icon"></i>
+                            <span class="onboarding-cta-title">10 Từ Mẫu Thiên Hà</span>
+                            <span class="onboarding-cta-desc">Trải nghiệm ngay không gian học</span>
+                        </button>
+                    </div>
+
+                    <div class="onboarding-guide-row">
+                        <span class="onboarding-pill"><i class="ph-fill ph-sparkle"></i> 1. Từ Mới</span>
+                        <span class="onboarding-pill"><i class="ph-fill ph-lightning"></i> 2. Ôn Ngắn Hạn</span>
+                        <span class="onboarding-pill"><i class="ph-fill ph-check-circle"></i> 3. Đã Thuộc</span>
+                        <span class="onboarding-pill"><i class="ph-fill ph-brain"></i> 4. Trí Nhớ Vĩnh Cửu</span>
+                    </div>
+                </div>
+
+                <!-- === GRAND CELESTIAL VICTORY STAGE (Shown when review session is finished) === -->
+                <div id="victory-stage-container" class="victory-stage-wrapper">
+                    <div class="celestial-victory-card victory-card-horizontal">
                     <!-- Hào quang nền phía sau card (Nebula Aura Glow) -->
                     <div class="victory-nebula-glow"></div>
                     <div class="victory-ambient-ring"></div>
@@ -336,6 +373,7 @@
                     </div>
                 </div>
             </div>
+        </div>
 
 
             <div id="stats-area" class="celestial-stats-dock">

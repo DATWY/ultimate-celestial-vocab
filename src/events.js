@@ -103,8 +103,12 @@ export async function undoLastReview() {
 
 function processSrsFeedback(rating, autoAdvance = true) {
     if (getState().isTransitioning) return;
+    setIsTransitioning(true);
     const { vocabulary, currentCardIndex } = getState();
-    if (currentCardIndex < 0 || !vocabulary[currentCardIndex]) return;
+    if (currentCardIndex < 0 || !vocabulary[currentCardIndex]) {
+        setIsTransitioning(false);
+        return;
+    }
 
     const currentCard = vocabulary[currentCardIndex];
     const previousCard = JSON.parse(JSON.stringify(currentCard));
@@ -200,6 +204,8 @@ function processSrsFeedback(rating, autoAdvance = true) {
 	document.activeElement?.blur();
     if (autoAdvance) {
         switchCardWithAnimation();
+    } else {
+        setIsTransitioning(false);
     }
 }
 
@@ -331,6 +337,29 @@ export function setupEventListeners() {
             }
         });
     }
+
+    // --- Onboarding Empty State Actions ---
+    const btnEmptyAdd = document.getElementById('btn-empty-add-word');
+    const btnEmptyImport = document.getElementById('btn-empty-import');
+    const btnEmptySample = document.getElementById('btn-empty-sample');
+
+    btnEmptyAdd?.addEventListener('click', () => {
+        openAddEditModal(false);
+    });
+
+    btnEmptyImport?.addEventListener('click', () => {
+        openManageModal('io');
+    });
+
+    btnEmptySample?.addEventListener('click', async () => {
+        const { seedIsolatedDemoVocabulary } = await import('./core/state.js');
+        await seedIsolatedDemoVocabulary();
+        populateTopicFilters(true);
+        buildReviewQueue();
+        const nextIdx = getNextCardToReview();
+        displayCard(nextIdx);
+        showToast('Đã Nạp Từ Mẫu', '10 từ vựng thiên hà mẫu đã sẵn sàng trong kho học!', 'ph-sparkle');
+    });
 
     // --- Custom Typing Mode & Intelligent Filter Events ---
     function toggleTypingMenu(forceState = null) {
@@ -659,9 +688,14 @@ export function setupEventListeners() {
         }).join('');
     };
 
+    let _isSubmittingTyping = false;
     const handleTypingSubmit = () => {
+        if (_isSubmittingTyping || getState().isTransitioning) return;
         const { vocabulary, currentCardIndex } = getState();
         if (currentCardIndex < 0 || !vocabulary[currentCardIndex]) return;
+
+        _isSubmittingTyping = true;
+        setTimeout(() => { _isSubmittingTyping = false; }, 350);
 
         const currentCard = vocabulary[currentCardIndex];
         const targetStr = currentCard.english; 
@@ -786,6 +820,7 @@ export function setupEventListeners() {
 
     DOM.typingSubmitBtn?.addEventListener('click', handleTypingSubmit);
     DOM.typingInput?.addEventListener('keydown', (e) => {
+        if (e.isComposing || e.keyCode === 229) return;
         if (e.key === 'Enter') handleTypingSubmit();
     });
     DOM.typingInput?.addEventListener('input', (e) => {

@@ -304,6 +304,11 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
     console.log(`🔄 [Smart Sync v3] Bắt đầu đồng bộ 2 chiều (forceFullPull=${forceFullPull})...`);
     
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') {
+        if (sessionStorage.getItem('ISOLATED_TEST_MODE') === 'true') {
+            console.log("🧪 Đang ở chế độ Isolated Test Mode. Bỏ qua đồng bộ Cloud không hiển thị popup.");
+            _isSyncing = false;
+            return;
+        }
         showPopup("⛔️ Tài khoản đang dùng Cheat. Chặn đồng bộ!", "warning");
         _isSyncing = false;
         return;

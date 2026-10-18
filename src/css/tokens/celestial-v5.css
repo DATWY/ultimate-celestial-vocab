@@ -1,0 +1,488 @@
+/* ==========================================================================
+   CELESTIAL DESIGN SYSTEM V5 — DESIGN TOKENS & ELEVATIONS
+   Architecture: Obsidian Observatory (Dark) × Celestial Porcelain (Light)
+   ========================================================================== */
+
+:root {
+    /* --- 1. PRIMITIVE COLOR TOKENS --- */
+    --v5-obsidian-950: #06080f;
+    --v5-obsidian-900: #0b0d19;
+    --v5-obsidian-850: #0f1222;
+    --v5-obsidian-800: #14182c;
+    --v5-obsidian-700: #1c223c;
+    --v5-obsidian-600: #283054;
+    
+    --v5-porcelain-50: #ffffff;
+    --v5-porcelain-100: #f8fafc;
+    --v5-porcelain-200: #f1f5f9;
+    --v5-porcelain-300: #e2e8f0;
+    --v5-porcelain-400: #cbd5e1;
+    --v5-porcelain-500: #94a3b8;
+    --v5-porcelain-600: #64748b;
+    --v5-porcelain-700: #475569;
+    --v5-porcelain-800: #334155;
+    --v5-porcelain-900: #0f172a;
+
+    /* Cosmic Accents */
+    --v5-nebula-purple: #8a2be2;
+    --v5-aurora-violet: #a855f7;
+    --v5-starlight-cyan: #38bdf8;
+    --v5-deep-cyan: #0284c7;
+    --v5-emerald-green: #10b981;
+    --v5-amber-gold: #f59e0b;
+    --v5-coral-red: #ef4444;
+    --v5-rose-pink: #f43f5e;
+
+    /* --- 2. SEMANTIC LEARNING & SRS TOKENS --- */
+    --v5-srs-again: #ef4444;
+    --v5-srs-again-glow: rgba(239, 68, 68, 0.28);
+    --v5-srs-hard: #f59e0b;
+    --v5-srs-hard-glow: rgba(245, 158, 11, 0.28);
+    --v5-srs-good: #38bdf8;
+    --v5-srs-good-glow: rgba(56, 189, 248, 0.28);
+    --v5-srs-easy: #10b981;
+    --v5-srs-easy-glow: rgba(16, 185, 129, 0.28);
+
+    /* --- 3. GLASS & ELEVATION TOKENS (DARK MODE DEFAULT) --- */
+    --v5-glass-bg: rgba(18, 22, 38, 0.72);
+    --v5-glass-bg-subtle: rgba(22, 27, 46, 0.55);
+    --v5-glass-bg-active: rgba(30, 37, 62, 0.85);
+    --v5-glass-border: rgba(168, 85, 247, 0.22);
+    --v5-glass-border-subtle: rgba(255, 255, 255, 0.08);
+    --v5-glass-border-hover: rgba(168, 85, 247, 0.45);
+    --v5-glass-blur: 16px;
+    --v5-glass-glow: 0 0 24px rgba(138, 43, 226, 0.16);
+
+    /* --- 4. SHADOW & DEPTH ELEVATION --- */
+    --v5-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.12);
+    --v5-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.22);
+    --v5-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.32);
+    --v5-shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.45);
+    --v5-shadow-nebula: 0 12px 36px rgba(138, 43, 226, 0.25);
+
+    /* --- 5. MOTION & EASING TOKENS --- */
+    --v5-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --v5-ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --v5-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --v5-duration-instant: 150ms;
+    --v5-duration-fast: 220ms;
+    --v5-duration-normal: 350ms;
+    --v5-duration-deliberate: 500ms;
+
+    /* --- 6. SHAPE & RADIUS --- */
+    --v5-radius-sm: 8px;
+    --v5-radius-md: 14px;
+    --v5-radius-lg: 20px;
+    --v5-radius-xl: 28px;
+    --v5-radius-pill: 9999px;
+}
+
+/* --- LIGHT MODE REFINED PORCELAIN OVERRIDES --- */
+body:not(.dark-mode) {
+    --v5-glass-bg: rgba(255, 255, 255, 0.78);
+    --v5-glass-bg-subtle: rgba(248, 250, 252, 0.65);
+    --v5-glass-bg-active: rgba(255, 255, 255, 0.95);
+    --v5-glass-border: rgba(99, 102, 241, 0.18);
+    --v5-glass-border-subtle: rgba(226, 232, 240, 0.85);
+    --v5-glass-border-hover: rgba(99, 102, 241, 0.38);
+    --v5-glass-glow: 0 4px 20px rgba(99, 102, 241, 0.10);
+    --v5-shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.05);
+    --v5-shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08);
+    --v5-shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12);
+    --v5-shadow-xl: 0 20px 40px rgba(15, 23, 42, 0.15);
+    --v5-shadow-nebula: 0 10px 30px rgba(138, 43, 226, 0.12);
+}
+
+/* ==========================================================================
+   V5 SKELETON SHIMMER SCREEN SYSTEM
+   ========================================================================== */
+
+@keyframes v5ShimmerAnimation {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.v5-shimmer {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.10) 50%,
+        rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: v5ShimmerAnimation 1.6s infinite ease-in-out;
+}
+
+body:not(.dark-mode) .v5-shimmer {
+    background: linear-gradient(
+        90deg,
+        rgba(15, 23, 42, 0.04) 25%,
+        rgba(99, 102, 241, 0.09) 50%,
+        rgba(15, 23, 42, 0.04) 75%
+    );
+    background-size: 200% 100%;
+    animation: v5ShimmerAnimation 1.6s infinite ease-in-out;
+}
+
+.v5-skeleton-card {
+    background: var(--v5-glass-bg);
+    border: 1px solid var(--v5-glass-border-subtle);
+    border-radius: var(--v5-radius-md);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--v5-shadow-sm);
+    backdrop-filter: blur(12px);
+}
+
+.v5-skeleton-line {
+    height: 14px;
+    border-radius: var(--v5-radius-sm);
+}
+
+.v5-skeleton-title {
+    width: 45%;
+    height: 20px;
+}
+
+.v5-skeleton-text {
+    width: 80%;
+    height: 14px;
+}
+
+.v5-skeleton-meta {
+    width: 30%;
+    height: 12px;
+}
+
+/* ==========================================================================
+   V5 FIRST-RUN ONBOARDING EMPTY STATE
+   ========================================================================== */
+
+.celestial-onboarding-container {
+    width: 100%;
+    max-width: 680px;
+    margin: 20px auto;
+    padding: 36px 32px;
+    border-radius: var(--v5-radius-xl);
+    background: var(--v5-glass-bg);
+    border: 1px solid var(--v5-glass-border);
+    backdrop-filter: blur(var(--v5-glass-blur));
+    box-shadow: var(--v5-shadow-xl), var(--v5-shadow-nebula);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: v5FadeUp 0.6s var(--v5-ease-out-expo) forwards;
+}
+
+@keyframes v5FadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.onboarding-ambient-glow {
+    position: absolute;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, rgba(56, 189, 248, 0.12) 60%, transparent 80%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.onboarding-hero-icon {
+    position: relative;
+    z-index: 1;
+    width: 76px;
+    height: 76px;
+    margin: 0 auto 20px;
+    border-radius: var(--v5-radius-lg);
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.25), rgba(56, 189, 248, 0.20));
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 38px;
+    color: var(--v5-starlight-cyan);
+    box-shadow: 0 8px 24px rgba(138, 43, 226, 0.25);
+    animation: v5PulseHero 3s infinite ease-in-out;
+}
+
+@keyframes v5PulseHero {
+    0%, 100% {
+        transform: translateY(0);
+        box-shadow: 0 8px 24px rgba(138, 43, 226, 0.25);
+    }
+    50% {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(168, 85, 247, 0.38);
+    }
+}
+
+.onboarding-title {
+    position: relative;
+    z-index: 1;
+    font-size: 1.85rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #ffffff 40%, var(--v5-starlight-cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+}
+
+body:not(.dark-mode) .onboarding-title {
+    background: linear-gradient(135deg, var(--v5-porcelain-900) 40%, var(--v5-nebula-purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.onboarding-subtitle {
+    position: relative;
+    z-index: 1;
+    font-size: 0.98rem;
+    line-height: 1.6;
+    color: var(--v5-porcelain-400);
+    max-width: 520px;
+    margin: 0 auto 28px;
+}
+
+body:not(.dark-mode) .onboarding-subtitle {
+    color: var(--v5-porcelain-600);
+}
+
+.onboarding-actions-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+@media (max-width: 640px) {
+    .onboarding-actions-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+.onboarding-cta-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 14px;
+    background: var(--v5-glass-bg-subtle);
+    border: 1px solid var(--v5-glass-border-subtle);
+    border-radius: var(--v5-radius-md);
+    cursor: pointer;
+    transition: all var(--v5-duration-fast) var(--v5-ease-smooth);
+    text-align: center;
+    color: var(--v5-porcelain-100);
+    min-height: 108px;
+}
+
+body:not(.dark-mode) .onboarding-cta-card {
+    color: var(--v5-porcelain-900);
+}
+
+.onboarding-cta-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--v5-aurora-violet);
+    box-shadow: var(--v5-shadow-md), 0 0 16px rgba(168, 85, 247, 0.2);
+    background: var(--v5-glass-bg-active);
+}
+
+.onboarding-cta-card.cta-primary {
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(56, 189, 248, 0.18));
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+.onboarding-cta-icon {
+    font-size: 26px;
+    margin-bottom: 8px;
+    color: var(--v5-starlight-cyan);
+}
+
+.onboarding-cta-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.onboarding-cta-desc {
+    font-size: 0.76rem;
+    opacity: 0.75;
+    line-height: 1.35;
+}
+
+.onboarding-guide-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 18px;
+    border-top: 1px solid var(--v5-glass-border-subtle);
+}
+
+.onboarding-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: var(--v5-radius-pill);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--v5-porcelain-300);
+}
+
+body:not(.dark-mode) .onboarding-pill {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.08);
+    color: var(--v5-porcelain-700);
+}
+
+/* ==========================================================================
+   V5 RESPONSIVE SRS RATING CONTROLS ENHANCEMENT
+   ========================================================================== */
+
+/* Mobile Touch Target Expansion (< 440px) */
+@media (max-width: 440px) {
+    .srs-feedback-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        max-width: 360px !important;
+        margin: 12px auto 0 !important;
+    }
+    
+    .srs-btn {
+        min-height: 52px !important;
+        padding: 8px 14px !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        border-radius: var(--v5-radius-md) !important;
+    }
+
+    .srs-btn-label-group {
+        gap: 8px !important;
+        font-size: 0.95rem !important;
+    }
+
+    .srs-interval-badge {
+        font-size: 0.78rem !important;
+        padding: 2px 8px !important;
+    }
+}
+
+/* High Contrast & Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ==========================================================================
+   V5 CRITICAL CASCADE & VIEWPORT REFINEMENTS
+   ========================================================================== */
+
+/* 1. Deduplication Button Hidden Cascade Fix (Overrides downstream !important) */
+.merge-all-action-btn.hidden,
+#merge-all-dups-btn.hidden {
+    display: none !important;
+}
+
+/* 2. Starred Card Quick Action Visibility & Luminescent Gold Glow */
+.word-card .star-btn-card.starred {
+    opacity: 1 !important;
+    color: var(--v5-amber-gold, #f59e0b) !important;
+}
+
+.word-card:has(.star-btn-card.starred) .word-card-actions {
+    opacity: 1 !important;
+}
+
+.star-btn-card.starred i {
+    color: var(--v5-amber-gold, #f59e0b) !important;
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+}
+
+/* 3. Mobile Header Brand Title Anti-Clipping */
+@media (max-width: 600px) {
+    .brand-title {
+        font-size: 0.85rem !important;
+        letter-spacing: -0.02em !important;
+        max-width: none !important;
+        white-space: nowrap !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .brand-title {
+        font-size: 0.78rem !important;
+    }
+}
+
+/* 4. Add/Edit Word Modal Viewport Safety (Guarantees Save Button is on-screen) */
+#add-edit-modal .modal-content {
+    max-width: 580px !important;
+    padding: 24px 30px !important;
+    max-height: 90vh !important;
+}
+
+#add-edit-form {
+    gap: 12px !important;
+}
+
+#add-edit-form .form-group {
+    gap: 4px !important;
+}
+
+#add-edit-form .form-group label {
+    font-size: 0.84rem !important;
+    font-weight: 600 !important;
+    color: var(--text-light) !important;
+}
+
+#add-edit-form input,
+#add-edit-form textarea {
+    padding: 8px 12px !important;
+    font-size: 0.9rem !important;
+    border-radius: var(--v5-radius-sm, 8px) !important;
+}
+
+#add-edit-form textarea {
+    min-height: 52px !important;
+    resize: vertical !important;
+}
+
+#add-edit-form button[type="submit"] {
+    margin-top: 10px !important;
+    padding: 10px 24px !important;
+    width: 100% !important;
+    border-radius: var(--v5-radius-md, 12px) !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+

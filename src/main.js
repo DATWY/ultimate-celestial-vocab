@@ -1,4 +1,5 @@
 
+import './css/tokens/celestial-v5.css';
 import './css/style.css';
 import './css/transition.css';
 import { loadVocabulary, getState, addXP, setXP, saveGamification } from './core/state.js';
@@ -8,7 +9,8 @@ import { displayCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode,
 import { setupEventListeners } from './events.js';
 import { smartSync } from './core/firebase.js';
 
-// --- CHEAT ENGINE ---
+// --- CHEAT ENGINE & DEV TOOLS (Development Mode Only) ---
+if (import.meta.env.DEV || (typeof window !== 'undefined' && window.__ENABLE_DEV_TOOLS__)) {
 window.cheat = {
     addXP: (amount) => {
         sessionStorage.setItem('CHEAT_MODE', 'true');
@@ -82,7 +84,62 @@ window.cheat = {
         console.log("   → Optimizer sẽ tự train lại khi đủ 400+ reviews.");
     }
 };
+}
 
+// Sample Vocabulary Seeder for Isolated Testing & First-Run Exploration
+window.loadIsolatedSampleVocabulary = async function() {
+    const { seedIsolatedDemoVocabulary } = await import('./core/state.js');
+    await seedIsolatedDemoVocabulary();
+    populateTopicFilters(true);
+    buildReviewQueue();
+    const nextIdx = getNextCardToReview();
+    displayCard(nextIdx);
+    console.log("✨ 10 từ vựng thiên hà mẫu đã sẵn sàng trong kho học!");
+};
+
+// Celestial Audit & Test Automation Harness
+window.__celestialAudit = {
+    seed: window.loadIsolatedSampleVocabulary,
+    clear: async () => {
+        const { setVocabulary } = await import('./core/state.js');
+        const { saveAllVocabularyToDB } = await import('./core/idb.js');
+        setVocabulary([]);
+        await saveAllVocabularyToDB([]);
+        displayCard(null);
+    },
+    flipCard: async () => {
+        const { flipCard } = await import('./ui/render.js');
+        flipCard();
+    },
+    openHub: async (tab = 'overview') => {
+        const { openManageModal } = await import('./ui/modal.js');
+        openManageModal(tab);
+    },
+    openAddWord: async () => {
+        const { openAddEditModal } = await import('./ui/modal.js');
+        openAddEditModal(false);
+    },
+    openDedup: async () => {
+        const { openDedupModal } = await import('./ui/modal.js');
+        openDedupModal();
+    },
+    openFsrs7Config: async () => {
+        const { openModal } = await import('./ui/modal.js');
+        const modal = document.getElementById('fsrs7-config-modal');
+        if (modal) openModal(modal);
+    },
+    showQuizSetup: async () => {
+        const { showQuizSetup } = await import('./features/quiz.js');
+        showQuizSetup();
+    },
+    showVictoryStage: () => {
+        displayCard(null);
+    },
+    setDarkMode: async (isDark) => {
+        const { applyDarkMode } = await import('./ui/render.js');
+        applyDarkMode(isDark);
+    }
+};
 
 import { initCelestialCanvas } from './ui/celestial-canvas.js';
 
@@ -93,7 +150,11 @@ async function initializeApp() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const themeParam = urlParams.get('theme');
-    const initialDarkMode = themeParam ? (themeParam === 'dark') : (localStorage.getItem('celestialDarkMode') === 'true');
+    const savedDark = localStorage.getItem('celestialDarkMode');
+    const systemPrefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialDarkMode = themeParam 
+        ? (themeParam === 'dark') 
+        : (savedDark !== null ? savedDark === 'true' : (systemPrefersDark !== false));
     applyDarkMode(initialDarkMode);
 
     const initialSoundMode = localStorage.getItem('celestialSoundMode') || 'all';

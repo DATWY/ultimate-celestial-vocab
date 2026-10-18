@@ -88,7 +88,7 @@ export function displayCard(index, preserveFlipState = false) {
     const { vocabulary } = getState();
     const cardData = vocabulary[index];
 
-    // Trường hợp không có thẻ để hiển thị: Màn hình Vinh Quang (Grand Celestial Victory Stage)
+    // Trường hợp không có thẻ để hiển thị: Phân biệt Onboarding Rỗng vs Màn hình Vinh Quang (Victory Stage)
     if (!cardData) {
         DOM.flashcardArea?.classList.add('hidden');
         DOM.controlsArea?.classList.add('hidden');
@@ -97,12 +97,19 @@ export function displayCard(index, preserveFlipState = false) {
         // Reset trạng thái nghỉ ngơi khi mở lại
         if (DOM.finalDayRestState) DOM.finalDayRestState.classList.add('hidden');
 
-        if (vocabulary.length === 0) {
-            if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "KHO TỪ VỰNG TRỐNG";
-            if (DOM.victoryTagline) DOM.victoryTagline.textContent = "Chưa có từ vựng nào trong kho học của bạn.";
-            if (DOM.noCardText) DOM.noCardText.textContent = "Hãy thêm từ mới hoặc tải file TSV vào hệ thống để bắt đầu hành trình chinh phục!";
-            DOM.smartCrammingActions?.classList.add('hidden');
+        const emptyOnboarding = document.getElementById('empty-onboarding-container');
+        const victoryStage = document.getElementById('victory-stage-container');
+        const activeVocab = (vocabulary || []).filter(w => !w.isDeleted);
+
+        if (activeVocab.length === 0) {
+            // Trường hợp 1: Kho từ vựng hoàn toàn trống -> Hiển thị Onboarding chào mừng
+            if (emptyOnboarding) emptyOnboarding.classList.remove('hidden');
+            if (victoryStage) victoryStage.classList.add('hidden');
         } else {
+            // Trường hợp 2: Có từ vựng nhưng đã hoàn tất phiên ôn tập -> Hiển thị Grand Victory Stage
+            if (emptyOnboarding) emptyOnboarding.classList.add('hidden');
+            if (victoryStage) victoryStage.classList.remove('hidden');
+            launchVictoryConfetti();
             const state = getState();
             const filterLowerCase = (state.currentTopicFilter || 'all').trim().toLowerCase();
             const pendingLearning = getPendingLearningCards(vocabulary, filterLowerCase);
@@ -871,7 +878,28 @@ export function updatePanelWordList(resetScroll = true) {
     }
 
     if (filteredWordsCache.length === 0) {
-        DOM.wordListDisplay.innerHTML = `<p style="text-align:center; padding: 40px; opacity: 0.7;">Không có từ nào khớp với bộ lọc của bạn.</p>`;
+        DOM.wordListDisplay.innerHTML = `
+            <div class="vocab-empty-results" style="text-align: center; padding: 48px 20px; opacity: 0.85;">
+                <div style="font-size: 3rem; color: var(--v5-starlight-cyan, #38bdf8); margin-bottom: 12px;">
+                    <i class="ph-duotone ph-magnifying-glass"></i>
+                </div>
+                <h4 style="font-size: 1.15rem; font-weight: 600; margin-bottom: 8px;">Không tìm thấy từ vựng nào</h4>
+                <p style="font-size: 0.9rem; color: var(--text-light, #94a3b8); max-width: 400px; margin: 0 auto 16px;">
+                    Không có thẻ nào khớp với từ khóa tìm kiếm hoặc bộ lọc trạng thái hiện tại.
+                </p>
+                <button type="button" id="reset-vocab-filter-btn" class="primary-btn outline-btn" style="margin: 0 auto; padding: 8px 16px; font-size: 0.85rem; border-radius: 9999px;">
+                    <i class="ph-bold ph-arrow-counter-clockwise"></i> Đặt lại bộ lọc
+                </button>
+            </div>
+        `;
+        document.getElementById('reset-vocab-filter-btn')?.addEventListener('click', () => {
+            if (DOM.manageSearchInput) DOM.manageSearchInput.value = '';
+            const tFilter = document.getElementById('panel-topic-filter');
+            const sFilter = document.getElementById('panel-status-filter');
+            if (tFilter) tFilter.value = 'all';
+            if (sFilter) sFilter.value = 'all';
+            updatePanelWordList(true);
+        });
         updateSentinelState();
         return;
     }
@@ -918,7 +946,7 @@ export function updatePanelWordList(resetScroll = true) {
     }
 }
 
-// HÀM MỚI: Tạo một thẻ từ vựng (Material Design 3)
+// HÀM MỚI: Tạo một thẻ từ vựng (Material Design 3 & Celestial V5)
 function createWordCard(word) {
     const cardEl = document.createElement('div');
     cardEl.className = 'word-card';
@@ -949,6 +977,10 @@ function createWordCard(word) {
     const safeTagsStr = escapeHTML(rawWordTags.map(t => (t ? String(t).trim().replace(/_/g, ' ') : '')).filter(Boolean).join(', '));
     const safeTagsDisplay = safeTagsStr || 'Không có chủ đề';
 
+    const srsMetricPill = (typeof word.stability === 'number' && word.stability > 0)
+        ? `<span class="word-card-srs-badge" style="background: rgba(138,43,226,0.18); border-color: rgba(168,85,247,0.35); color: #c084fc;" title="Độ bền FSRS-7: ${word.stability.toFixed(1)} ngày">S: ${word.stability.toFixed(1)}d</span>`
+        : '';
+
     cardEl.innerHTML = `
         <div class="word-card-status-bar"></div>
         <div class="word-card-inner">
@@ -958,6 +990,7 @@ function createWordCard(word) {
                     <span class="word-type">${safeType}</span>
                 </div>
                 <div class="word-card-header-right">
+                    ${srsMetricPill}
                     <span class="word-card-srs-badge">${statusLabel}</span>
                     <input type="checkbox" class="word-card-checkbox" data-id="${word.id}" aria-label="Chọn từ ${safeEnglish}">
                 </div>
@@ -983,6 +1016,21 @@ function createWordCard(word) {
     ttsBtn.onclick = (e) => {
         e.stopPropagation();
         import('../core/sound.js').then(m => m.speakText(word.english));
+    };
+
+    // Nút Đánh dấu sao (Star)
+    const starBtn = document.createElement('button');
+    starBtn.className = `icon-btn card-action-btn star-btn-card ${word.isStarred ? 'starred' : ''}`;
+    starBtn.title = word.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
+    starBtn.innerHTML = `<i class="${word.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
+    starBtn.onclick = (e) => {
+        e.stopPropagation();
+        word.isStarred = !word.isStarred;
+        word.updatedAt = Date.now();
+        import('../core/state.js').then(m => m.saveOneWord(word));
+        starBtn.className = `icon-btn card-action-btn star-btn-card ${word.isStarred ? 'starred' : ''}`;
+        starBtn.innerHTML = `<i class="${word.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
+        starBtn.title = word.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
     };
 
     // Nút Sửa
@@ -1016,6 +1064,7 @@ function createWordCard(word) {
     };
 
     actionsContainer.appendChild(ttsBtn);
+    actionsContainer.appendChild(starBtn);
     actionsContainer.appendChild(editBtn);
 
     // Nút Kích hoạt lại (nếu bị tạm ngưng)

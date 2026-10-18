@@ -179,14 +179,14 @@ console.log("✓ Nhóm 6 hoàn tất (5/5 cases pass)");
 // NHÓM 7: Typing Modality Bonus (+25% Stability)
 // -----------------------------------------------------------------------------
 console.log("\n--- NHÓM 7: Typing Modality Bonus ---");
-const testCard = { english: 'type', stability: 10.0, stabilityShort: 8.0, difficulty: 5.0, srsStatus: 'Mastered' };
+const testCard = { english: 'type', stability: 10.0, stabilityShort: 8.0, difficulty: 5.0, srsStatus: 'Mastered', reps: 3, lastReviewDate: Date.now() - 10 * 86400000 };
 const { newState: btnState } = calculateNextSrsState(testCard, 3, 'en-vi');
 const { newState: typingState } = calculateNextSrsState(testCard, 3, 'typing');
 
 assert(typingState.stability > btnState.stability, "Gõ đúng (typing) phải tăng stability_long nhiều hơn bấm nút");
 assert(typingState.stabilityShort > btnState.stabilityShort, "Gõ đúng (typing) phải tăng stability_short nhiều hơn bấm nút");
-const ratioLong = typingState.stability / btnState.stability;
-assert(Math.abs(ratioLong - 1.25) < 0.05, `Tỷ lệ thưởng gõ đúng phải xấp xỉ 1.25 (+25%) (nhận được ${ratioLong.toFixed(3)})`);
+const ratioDeltaLong = (typingState.stability - testCard.stability) / (btnState.stability - testCard.stability);
+assert(Math.abs(ratioDeltaLong - 1.25) < 0.05, `Tỷ lệ thưởng gia số gõ đúng phải xấp xỉ 1.25 (+25%) (nhận được ${ratioDeltaLong.toFixed(3)})`);
 
 // Typing sai (rating 1) không được thưởng bonus
 const { newState: typingFail } = calculateNextSrsState(testCard, 1, 'typing');

@@ -1,0 +1,194 @@
+================================================================================
+ULTIMATE CELESTIAL VOCAB — SOURCE CODE TREE & ANNOTATED STRUCTURE
+Version: 4.3.0 | Engine: FSRS-7 (34 Parameters) | Architecture: Vanilla JS SPA
+================================================================================
+
+ultimate-celestial-vocab/
+│
+├── index.html                           [69 KB, 1,015 lines] SPA HTML Shell & All Modal Templates
+│                                        Contains Header, Flashcard Perspective, Victory Stage,
+│                                        Celestial Stats Dock, Quiz Container, Central Hub Modal (4 tabs),
+│                                        Add/Edit Modal, Dedup Modal, FSRS-7 Config Modal, Curtain Transition.
+│
+├── vite.config.js                       [4.2 KB, 150 lines] Vite Bundler & PWA Workbox Config
+│                                        PWA manifest, Runtime caching for Google Fonts, CDNs, Firebase SDK.
+│
+├── package.json                         [424 B, 22 lines] Project Manifest & Scripts
+│                                        Scripts: dev, build, preview, train.
+│                                        Dependencies: animejs (^3.2.1), idb (^8.0.3).
+│                                        DevDependencies: vite (^5.0.0), vite-plugin-pwa (^1.3.0), workbox-window (^7.4.1).
+│
+├── firebase.json                        [234 B, 17 lines] Firebase Hosting SPA Rewrites Config
+├── .firebaserc                          [51 B, 6 lines] Firebase Project ID: "[hidden]"
+├── .env.example                         [416 B, 9 lines] Firebase Client Config Environment Template
+│
+├── DESIGN_DOC.md                        [7.8 KB, 88 lines] Original Architecture Design Document
+├── README.md                            [29.1 KB, 461 lines] Complete Scientific & Product Documentation
+├── JOURNEY_ARTICLE.md                   [8.3 KB, 185 lines] Engineering Journey & Refactor History
+│
+├── run_trainer.bat                      [86 B] Quick launcher for FSRS-7 offline optimizer
+├── train_fsrs7.bat                      [471 B] Windows drag-and-drop batch runner for FSRS-7 training
+│
+├── tools/                               # Standalone Node.js Optimization Tools
+│   └── train_fsrs7.js                   [24.5 KB, 680 lines] (1+lambda)-ES Evolutionary Optimizer
+│                                        Zero-dependency FSRS-7 offline parameter trainer.
+│                                        Calculates BCE loss, TimeSeriesSplit (80/20), Calibration table.
+│
+├── public/                              # PWA Static Assets & Sound Files
+│   ├── favicon.ico                      [15 KB] App Favicon
+│   ├── favicon.svg                      [1.2 KB] Vector Orb Logo
+│   ├── apple-touch-icon.png             [2.5 KB] iOS Icon
+│   ├── icon-192.png, icon-512.png       PWA App Icons
+│   └── sounds/                          [Pre-recorded audio effects]
+│       ├── flip.wav, success.wav, error.wav, click.wav, streak.wav, etc.
+│
+├── docs/                                # Project Assets & Historical Screenshots
+│   └── screenshots/                     [14 high-res WebP captures of original UI]
+│
+├── scratch/                             # Test Suites & Algorithmic Verifications
+│   ├── test_fsrs7_scenarios.js          [17.4 KB, 261 lines] 60 test cases for FSRS-7 math & edge cases
+│   ├── test_fsrs7_validation.js         [2.9 KB, 82 lines] Validator tests for 34 parameter input strings
+│   ├── test_sync_merger.mjs             [15.7 KB, 340 lines] Adversarial tests for 4-Vector sync engine
+│   ├── test_full_fuzzy_engine.js        [9.5 KB, 210 lines] Deduplication & phonetic fuzzy matching tests
+│   ├── test_streak_comprehensive.js     [9.3 KB, 205 lines] Streak calculation & timezone tests
+│   ├── test_streak_freeze_recovery.js   [17.4 KB, 420 lines] Streak recovery & freeze mechanisms
+│   ├── test_chrome_direct.js            [2.5 KB, 73 lines] Headless Chrome screenshot verification harness
+│   ├── measure_layout.mjs               [9.9 KB, 232 lines] CDP WebSocket viewport layout auditor
+│   └── capture_audit_screens.mjs        [9.8 KB, 260 lines] Full-suite screenshot generation script
+│
+└── src/                                 # Application Source Code
+    │
+    ├── main.js                          [9.1 KB, 206 lines] Application Bootstrapper
+    │                                    Initializes Audio, Celestial Canvas, Theme, State, DB,
+    │                                    Queue, Events, Sync, Cheat Engine window.cheat, DevTools hooks.
+    │
+    ├── events.js                        [47.9 KB, 1,029 lines] Central Event Broker & Keyboard Router
+    │                                    Global shortcuts (F, P, S, N, Enter, 1-4, Ctrl+Shift+Z),
+    │                                    SRS rating processor, Typing submit handler, Modal triggers,
+    │                                    Hub tab navigation (W3C ARIA tablist), Bulk deletion handler.
+    │
+    ├── core/                            # Core Business Logic & Algorithms
+    │   ├── state.js                     [50.3 KB, 1,264 lines] Global In-Memory Reactive Store
+    │   │                                Vocabulary array + Map index O(1), Review queue, Gamification state,
+    │   │                                Daily stats, Typing filter, FSRS-7 user weights, Undo snapshot stack,
+    │   │                                Incremental saveOneWord(word) O(1) writer.
+    │   │
+    │   ├── idb.js                       [1.7 KB, 67 lines] Local IndexedDB Abstraction
+    │   │                                Database: "celestial-vocab-idb" (v1).
+    │   │                                Stores: "vocabulary" (keyPath: 'id') & "settings" (key-value).
+    │   │
+    │   ├── firebase.js                  [44.9 KB, 929 lines] Cloud Firestore Client & 4-Vector Smart Sync
+    │   │                                Firebase 10.8.1 initialization with persistentLocalCache,
+    │   │                                4-Vector Disentangled Merge (Tombstone, SRS, Content, Tags),
+    │   │                                Server time offset calibration, Device ID anti-echo suppression,
+    │   │                                Mutex lock for background syncing.
+    │   │
+    │   ├── sync.js                      [9.5 KB, 255 lines] Cloud Sync Dispatcher & Convergence Queue
+    │   │                                Pending sync queue, 30s debounce flusher, beforeunload flusher,
+    │   │                                Tab visibilitychange auto-sync listener.
+    │   │
+    │   ├── queue.js                     [10.4 KB, 275 lines] Intelligent Spaced Review Queue Scheduler
+    │   │                                Priority sort: Re-learning (<1.2h) -> Due today -> New cards -> Later,
+    │   │                                Smart Cramming (+10 cards) algorithm, Leech separation.
+    │   │
+    │   ├── sound.js                     [22.2 KB, 572 lines] Audio Synthesis & TTS Subsystem
+    │   │                                Personal Google Apps Script proxy for TTS mp3 audio,
+    │   │                                IndexedDB audio cache ("audio-db-v2"), Web Speech API fallback,
+    │   │                                Web Audio API procedural synthesizer for UI SFX.
+    │   │
+    │   ├── animations.js                [8.1 KB, 235 lines] Anime.js & CSS Animation Helpers
+    │   │                                Card flip 3D animation, Number count-up odometer,
+    │   │                                Modal entrance/exit transforms, Heatmap cell reveals.
+    │   │
+    │   ├── dedup.js                     [26.5 KB, 678 lines] Radar Semantic Deduplication Engine v5.0
+    │   │                                Levenshtein distance, Vietnamese tone stripper, Stopword cleaner,
+    │   │                                Fuzzy match classification (EXACT, INFLECTION, FUZZY_TYPO),
+    │   │                                Automated duplicate merger preserving highest FSRS progress.
+    │   │
+    │   ├── srs/                         # FSRS-7 Dual-Stability Mathematical Engine
+    │   │   ├── constants.js             [3.4 KB, 86 lines] 34 Canonical Parameters & Clamping Bounds
+    │   │   ├── forgetting.js            [5.2 KB, 142 lines] Dual-Trace Power-Law Forgetting Curve & Newton-Raphson
+    │   │   ├── difficulty.js            [2.6 KB, 78 lines] Difficulty Dynamics with Mean Reversion
+    │   │   ├── stability.js             [2.8 KB, 85 lines] Dual-Track Stability Kinetics (Short & Long)
+    │   │   ├── heuristics.js            [5.5 KB, 155 lines] Cold-Start Syllable & Frequency Heuristics v2
+    │   │   ├── frequency-data.js        [5.5 KB, 65 lines] O(1) Top 500 English Common Word Dictionary
+    │   │   ├── worker-manager.js        [3.2 KB, 88 lines] Background Web Worker Manager for Optimization
+    │   │   ├── optimizer.worker.js      [7.8 KB, 220 lines] Web Worker CMA-ES Parameter Fitter
+    │   │   └── index.js                 [11.3 KB, 246 lines] Master FSRS-7 Coordinator & Fail-Safe Clamps
+    │   │
+    │   └── utils/
+    │       ├── date.js                  [2.0 KB, 58 lines] Local Timezone Date & Offset Helpers
+    │       └── sanitize.js              [880 B, 28 lines] HTML Entity Sanitizer & XSS Protector
+    │
+    ├── features/                        # Domain Features & Modalities
+    │   ├── gamification.js              [73.0 KB, 1,333 lines] Scholar Ranks, XP Progression, Heatmap
+    │   │                                5 Scholar Ranks (Bronze to Diamond), Level exponential math,
+    │   │                                84-day SVG heatmap matrix, 7-day review forecast chart,
+    │   │                                FusionSRS Memory Health telemetry HUD gauges.
+    │   │
+    │   ├── badges.js                    [25.2 KB, 167 lines] Cosmic / Xianxia Badge System
+    │   │                                7 Rarity Tiers (Common, Uncommon, Rare, Epic, Legendary, Mythic, Divine),
+    │   │                                Tracks: XP Cultivation (25 ranks), Streak Fire (25 ranks),
+    │   │                                Mastered Vocab (25 ranks), Review Grinding (25 ranks).
+    │   │
+    │   ├── typing.js                    [8.0 KB, 215 lines] Active Recall Typing Modality
+    │   │                                Cognitive reaction timer (first valid keystroke tracking),
+    │   │                                Orthographic super-normalization, Typo vs Incorrect scoring,
+    │   │                                Masking & progressive hint reveals (Level 1 & Level 2).
+    │   │
+    │   ├── quiz.js                      [19.1 KB, 461 lines] Challenge Quiz Mode
+    │   │                                Custom question counts (10, 20, all), Countdown timer,
+    │   │                                Interactive question loop, Luxury HUD Results screen,
+    │   │                                Radial SVG score gauge, Missed vocabulary review queue.
+    │   │
+    │   ├── streakRecovery.js            [17.5 KB, 410 lines] Autonomous Streak Recovery & Freezes
+    │   │                                Streak freeze shields, Missed day recovery challenges,
+    │   │                                Heatmap gap reconciliation logic.
+    │   │
+    │   ├── fsrsPersona.js               [24.4 KB, 560 lines] AI Memory Personality Diagnostics
+    │   │                                Analyzes learner curve into cognitive memory personas,
+    │   │                                Visual radar dials and retention efficiency charts.
+    │   │
+    │   └── io.js                        [24.2 KB, 620 lines] Data Ingestion & Export Subsystem
+    │                                    Drag-and-drop TSV/TXT importer with preview modal,
+    │                                    TSV exporter, FSRS-7 Review Logs JSON exporter,
+    │                                    Interactive 34-parameter validator & applicator.
+    │
+    ├── ui/                              # Presentation & View Components
+    │   ├── elements.js                  [8.9 KB, 230 lines] Centralized Cached DOM References
+    │   │                                O(1) DOM query cache preventing redundant document.getElementById.
+    │   │
+    │   ├── render.js                    [51.0 KB, 1,105 lines] DOM Renderers & View Updaters
+    │   │                                Flashcard view (Front/Back), Prediction interval badges,
+    │   │                                Celestial Stats Dock (circular SVG progress rings),
+    │   │                                Segmented progress bar, Manage panel list with infinite scroll,
+    │   │                                Confetti particle physics engine, Dark/Light theme applier.
+    │   │
+    │   ├── modal.js                     [29.6 KB, 675 lines] Modal Dialog Coordinator & Toast System
+    │   │                                Open/close animations, Backdrop blur locks, Toast notifications,
+    │   │                                Celestial Hub tab router ('overview', 'words', 'io', 'badges').
+    │   │
+    │   ├── celestial-canvas.js          [11.7 KB, 362 lines] Interactive Cosmic Canvas Background
+    │   │                                Dynamic twinkling stars, shooting stars, mouse gravity parallax,
+    │   │                                Pre-rendered offscreen sprite cache, 3-second eco idle drain.
+    │   │
+    │   └── waveform.js                  [1.2 KB, 35 lines] Audio Waveform Dynamic Bar Visualizer
+    │
+    └── css/                             # Styling Layer (Pure Custom CSS)
+        ├── style.css                    [386.7 KB, 8,600+ lines] Monolithic Core Styling
+        │                                CSS Custom Properties (:root & body.dark),
+        │                                Glassmorphism card surfaces, Glow filters, Layout grids,
+        │                                Responsive breakpoints (mobile, tablet, desktop, ultra-wide).
+        │
+        └── transition.css               [4.3 KB, 130 lines] Shipper Curtain Transition Animations
+                                         Hardware-accelerated CSS transforms for seamless theme swaps.
+
+================================================================================
+TOTAL CODEBASE METRICS:
+- JavaScript (Source): ~390 KB / 24 files
+- CSS (Source):        ~391 KB / 2 files
+- HTML (Shell):        ~69 KB / 1 file
+- Unit/Adversarial:    ~90 KB / 7 test files
+- Production Bundle:   246.85 KB JS (79.27 KB gzip) | 269.93 KB CSS (47.58 KB gzip)
+- External Runtime:    Zero heavyweight frontend frameworks (100% Vanilla ES Modules)
+================================================================================
