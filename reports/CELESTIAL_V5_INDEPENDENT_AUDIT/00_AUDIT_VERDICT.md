@@ -32,14 +32,18 @@
 
 ## 3. Các Phát hiện Trọng yếu & Hành động Khắc phục (Key Findings & Remediation)
 
-### 3.1. Bảy Lỗi Thực Tế Đã Được Khắc Phục Hoàn Toàn (All 7 Verified Fixed Bugs)
+### 3.1. Danh Sách 11 Lỗi Thực Tế Đã Được Khắc Phục Hoàn Toàn (All 11 Verified Fixed Bugs)
 1. **Breakpoint SRS Mobile 440px -> 640px (`celestial-v5.css`):** Đảm bảo lưới 2x2 nút to công thái học trên toàn bộ viewport `< 640px`.
-2. **Bổ sung Phím tắt Space (`events.js`):** Lật thẻ 2 chiều mượt mà với Windows Virtual Key Code 32.
+2. **Bổ sung Phím tắt Space & Điều Hướng Chuẩn Anki (`events.js`):** Mặt trước bấm Space lật thẻ ra mặt sau; mặt sau bấm Space gửi đánh giá Good (3) hoặc chuyển thẻ tiếp theo mà không bị lật ngược.
 3. **Bảo vệ Keyboard Accessibility của Nút Đang Focus (`events.js`):** Khi focus vào Button (như TTS, Star, SRS Rating 3), Space/Enter kích hoạt sự kiện click của nút thay vì cướp quyền lật thẻ.
 4. **Xóa Bỏ Vùng Chết ~900ms Của Tính Năng Hoàn Tác F15 (`events.js`):** Hàng đợi chờ animation hoàn tất trước khi khôi phục thẻ giúp người dùng hoàn tác tức thì ngay cả khi bấm trong 150ms đầu tiên.
 5. **Khối Phòng Ngự Ngoại Lệ Trong `processSrsFeedback` (`events.js`):** Bọc try-catch đảm bảo cờ `isTransitioning` không bao giờ bị kẹt nếu xảy ra sự cố đột xuất.
 6. **Đệm Thanh Cuộn Cho Danh Sách Từ Vựng Hub Tab 2 (`celestial-v5.css`):** Bổ sung `padding-right: 14px !important; scrollbar-gutter: stable;` triệt tiêu lỗi che khuất viền card.
 7. **Tách Rời Liên Kết Cứng Trong Module Typing (`typing.js`):** Chuyển sang Safe Dynamic Dispatch giúp bộ kiểm thử đối kháng `test_adversarial_deep.mjs` chạy trơn tru trong môi trường Node.js chuẩn.
+8. **Khắc Phục Lỗi Space Lật Ngược Thẻ Khi Focus Tại Body (`events.js`):** Đảm bảo phím Space trên mặt sau thẻ luôn gửi đánh giá Good (3) hoặc chuyển tiếp ngay cả khi người dùng click vào nội dung hoặc bỏ focus khỏi nút rating.
+9. **Làm Sạch Biến Trạng Thái Gõ Thử Lại Sau Hoàn Tác (`events.js`):** Reset `stashedCardIndex`, `stashedCardState`, `typingRetryCount`, `isTypoRetry` trong `undoLastReview()` để tránh nhiễm bẩn trạng thái sang các lượt gõ tiếp theo.
+10. **Chống Xung Đột Race Condition Khi Chuyển Chủ Đề / Chế Độ Gõ (`events.js`):** Thêm cờ bảo vệ `if (getState().isTransitioning) return;` vào dropdown chủ đề và menu gõ phím.
+11. **Mở Rộng Phím Tắt Hoàn Tác Cả `Ctrl+Z` Lẫn `Ctrl+Shift+Z` (`events.js`):** Hỗ trợ thói quen thao tác phổ thông của người dùng trên toàn bộ hệ thống phím tắt.
 
 ### 3.2. Làm rõ Kiến trúc Huy hiệu (F40 - Badges Room Clarification)
 - 4 Track Cards (100 cột mốc) + 80 Huy hiệu đặc nhiệm = **180 huy hiệu logic**. Hiển thị trong 84 container giao diện để tối ưu render.

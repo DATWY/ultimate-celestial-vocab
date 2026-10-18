@@ -16,9 +16,9 @@
 | 5 | `test_full_fuzzy_engine.js` | Thuật toán nhận diện mờ & biến thể ngữ pháp | 7 cases | 7 / 7 PASS | **100% PASS** |
 | 6 | `test_streak_freeze_recovery.js`| Khiên băng bảo vệ & Thử thách tái sinh chuỗi | 9 test suites | 9 / 9 PASS | **100% PASS** |
 | 7 | `test_final_verification.js` | Khử trùng nội bộ, bảo toàn tiến trình SRS | 6 test groups | 6 / 6 PASS | **100% PASS** |
-| 8 | `test_cdp_fixes.mjs` | Kiểm thử tương tác CDP: Space, Fast Undo, Tab 2 | 5 real tests | 5 / 5 PASS | **100% PASS** |
+| 8 | `test_cdp_fixes.mjs` | Kiểm thử tương tác CDP: Space, Fast Undo, Ctrl+Z, Typing Undo, Tab 2 | 8 real tests | 8 / 8 PASS | **100% PASS** |
 | 9 | `test_adversarial_deep.mjs` | Kiểm thử đối kháng TSV Chaos & Unicode/Emoji | 3 test clusters | 3 / 3 PASS | **100% PASS** |
-| **TỔNG**| **9 Bộ Test Suite** | **Toàn bộ hệ thống cốt lõi & tương tác UI** | **229+ Checks** | **TẤT CẢ ĐẠT** | **ZERO REGRESSIONS** |
+| **TỔNG**| **9 Bộ Test Suite** | **Toàn bộ hệ thống cốt lõi & tương tác UI** | **232+ Checks** | **TẤT CẢ ĐẠT** | **ZERO REGRESSIONS** |
 
 ---
 

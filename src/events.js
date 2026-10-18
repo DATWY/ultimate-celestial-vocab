@@ -98,6 +98,10 @@ export async function undoLastReview() {
         setReviewQueue(newQueue);
         
         // 5. Điều hướng về lại Thẻ cũ (targetIndex)
+        stashedCardIndex = -1;
+        stashedCardState = null;
+        typingRetryCount = 0;
+        isTypoRetry = false;
         setCurrentCardIndex(targetIndex);
         displayCard(targetIndex);
         playSound('click');
@@ -417,6 +421,7 @@ export function setupEventListeners() {
 
     // Xử lý chọn chế độ lọc trong Menu
     DOM.customTypingOptions?.addEventListener('click', (e) => {
+        if (getState().isTransitioning) return;
         const option = e.target.closest('.custom-typing-option');
         if (!option) return;
         const selectedFilter = option.dataset.value;
@@ -447,6 +452,7 @@ export function setupEventListeners() {
 
     // Nút tạo phiên luyện gõ tập trung theo bộ lọc
     DOM.startDedicatedTypingBtn?.addEventListener('click', () => {
+        if (getState().isTransitioning) return;
         toggleTypingMenu(false);
         const { vocabulary, typingFilter } = getState();
         const activeFilter = typingFilter === 'off' ? 'leech' : typingFilter;
@@ -609,6 +615,7 @@ export function setupEventListeners() {
     });
 
     DOM.customTopicOptions?.addEventListener('click', (e) => {
+        if (getState().isTransitioning) return;
         const item = e.target.closest('.custom-topic-item');
         if (!item) return;
         const tag = item.dataset.value;
@@ -633,6 +640,7 @@ export function setupEventListeners() {
     });
 
     DOM.mainTopicFilter?.addEventListener('change', (e) => {
+        if (getState().isTransitioning) return;
         setCurrentTopicFilter(e.target.value);
         updateCustomTopicUI(e.target.value);
         import('./core/state.js').then(s => s.trackEvent('topicHopping'));
@@ -1051,8 +1059,8 @@ function handleGlobalShortcuts(e) {
         }
         return;
     }
-    // Phím tắt Hoàn tác (Undo): Ctrl + Shift + Z (hoặc Cmd + Shift + Z)
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
+    // Phím tắt Hoàn tác (Undo): Ctrl + Z hoặc Ctrl + Shift + Z (Cmd + Z / Cmd + Shift + Z)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (!isTyping) {
             e.preventDefault();
             undoLastReview();
@@ -1082,7 +1090,17 @@ function handleGlobalShortcuts(e) {
     const { isFlipped } = getState();
     if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault();
-        flipCard();
+        if (isFlipped) {
+            // When flipped, Space grades as Good (3) or advances to Next Card (standard Anki / SRS flow)
+            if (DOM.nextCardBtn && !DOM.nextCardBtn.classList.contains('hidden')) {
+                DOM.nextCardBtn.click();
+            } else {
+                const btn3 = DOM.srsFeedbackButtons?.querySelector('.srs-btn[data-rating="3"]');
+                if (btn3) btn3.click();
+            }
+        } else {
+            flipCard();
+        }
         return;
     }
     switch (e.key.toUpperCase()) {

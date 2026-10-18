@@ -160,11 +160,94 @@
 
 ---
 
+### Bug 8: Phím Space Trên Mặt Sau Thẻ Lật Ngược Về Mặt Trước Thay Vì Đánh Giá Thẻ (Non-Button Focus Space Flip Regression)
+- **Mức độ nghiêm trọng:** `Cao (Core SRS Interaction Defect)`
+- **Tập tin bị ảnh hưởng:** `src/events.js`
+- **Mô tả chi tiết:**
+  - Trong bản vá ban đầu, phím Space chỉ gọi `flipCard()` nếu phần tử active không phải là button.
+  - Khi thẻ đã lật ra mặt sau (`isFlipped === true`), nếu người dùng click vào nội dung thẻ, phát âm, hoặc focus bị mất khỏi nút rating (ví dụ: click vào nền thẻ hoặc window), việc bấm phím Space gọi hàm `flipCard()`, làm thẻ **lật ngược trở lại mặt trước** thay vì gửi điểm đánh giá Good (3) hoặc chuyển tiếp như quy ước chuẩn của Anki / SuperMemo.
+- **Biện pháp khắc phục:**
+  - Phân nhánh rõ ràng theo `isFlipped`:
+    ```javascript
+    if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        if (isFlipped) {
+            if (DOM.nextCardBtn && !DOM.nextCardBtn.classList.contains('hidden')) {
+                DOM.nextCardBtn.click();
+            } else {
+                const btn3 = DOM.srsFeedbackButtons?.querySelector('.srs-btn[data-rating="3"]');
+                if (btn3) btn3.click();
+            }
+        } else {
+            flipCard();
+        }
+        return;
+    }
+    ```
+- **Kiểm chứng sau sửa (`scratch/test_cdp_fixes.mjs` TEST 6):**
+  - Mặt sau thẻ với focus tại `BODY`: Bấm Space gửi đánh giá Good (3) và tự động chuyển sang từ tiếp theo (`conundrum`). Hoàn toàn không bị lật ngược.
+
+---
+
+### Bug 9: Biến Trạng Thái Gõ Thử Lại (Typing Retry State) Bị Nhiễm Bẩn Sau Khi Hoàn Tác (Stale Typing Retry State Post-Undo)
+- **Mức độ nghiêm trọng:** `Trung bình (Active Recall State Corruption)`
+- **Tập tin bị ảnh hưởng:** `src/events.js`
+- **Mô tả chi tiết:**
+  - Khi người dùng gõ sai hoặc mắc lỗi chính tả trong chế độ Active Recall Typing, các biến module `stashedCardIndex`, `stashedCardState`, `typingRetryCount`, `isTypoRetry` được thiết lập để quản lý lượt gõ lại.
+  - Khi người dùng bấm Hoàn tác (Undo), hàm `undoLastReview()` khôi phục thẻ và nhật ký, nhưng **bỏ quên việc reset các biến retry module này**.
+  - Kết quả: Khi người dùng gõ từ ở lần thử tiếp theo, hệ thống nhận diện nhầm là đang trong chu trình thử lại của thẻ cũ, dẫn đến việc phạt điểm sai hoặc lộ đáp án trước thời hạn.
+- **Biện pháp khắc phục:**
+  - Reset toàn bộ trạng thái gõ thử lại ngay trong bước khôi phục của `undoLastReview()`:
+    ```javascript
+    stashedCardIndex = -1;
+    stashedCardState = null;
+    typingRetryCount = 0;
+    isTypoRetry = false;
+    ```
+- **Kiểm chứng sau sửa (`scratch/test_cdp_fixes.mjs` TEST 8):**
+  - Sau khi gặp lỗi chính tả và bấm Hoàn tác: `inputValue: '', inputDisabled: false, feedbackText: ''`, các biến retry được làm sạch 100%.
+
+---
+
+### Bug 10: Xung Đột Chuyển Đổi Chủ Đề & Chế Độ Gõ Khi Hoạt Ảnh Thẻ Đang Chạy (In-Flight Transition Race Condition)
+- **Mức độ nghiêm trọng:** `Trung bình (Concurrency & UI State Race)`
+- **Tập tin bị ảnh hưởng:** `src/events.js`
+- **Mô tả chi tiết:**
+  - Bộ chọn chủ đề (`DOM.customTopicOptions`, `DOM.mainTopicFilter`) và menu chế độ gõ (`DOM.customTypingOptions`, `DOM.startDedicatedTypingBtn`) thiếu cờ bảo vệ `if (getState().isTransitioning) return;`.
+  - Nếu người dùng bấm đổi chủ đề hoặc chọn chế độ gõ trong khi thẻ đang trượt (`isTransitioning === true`), hai chu trình `switchCardWithAnimation()` chạy đồng thời, gây ra lỗi hiển thị thẻ đè chồng hoặc reset hàng đợi sai lệch.
+- **Biện pháp khắc phục:**
+  - Thêm chốt chặn bảo vệ `if (getState().isTransitioning) return;` vào toàn bộ các bộ lắng nghe sự kiện đổi chủ đề và bộ lọc gõ phím.
+- **Kiểm chứng sau sửa:**
+  - Không thể kích hoạt chuyển thẻ chồng chéo trong suốt thời gian hoạt ảnh 800ms.
+
+---
+
+### Bug 11: Mở Rộng Hỗ Trợ Phím Tắt Hoàn Tác Cả `Ctrl+Z` Lẫn `Ctrl+Shift+Z`
+- **Mức độ nghiêm trọng:** `Thấp (Ergonomics & Universal Shortcut Support)`
+- **Tập tin bị ảnh hưởng:** `src/events.js`
+- **Mô tả chi tiết:**
+  - Nhiều người dùng có thói quen bấm `Ctrl+Z` (hoặc `Cmd+Z`) thay vì tổ hợp 3 phím `Ctrl+Shift+Z` để hoàn tác thẻ học.
+- **Biện pháp khắc phục:**
+  - Chấp nhận cả hai tổ hợp phím `Ctrl+Z` và `Ctrl+Shift+Z` khi không ở trong ô nhập văn bản:
+    ```javascript
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (!isTyping) {
+            e.preventDefault();
+            undoLastReview();
+            return;
+        }
+    }
+    ```
+- **Kiểm chứng sau sửa (`scratch/test_cdp_fixes.mjs` TEST 7):**
+  - Nhấn `Ctrl+Z` (shiftKey: false) phục hồi thành công thẻ học trước đó.
+
+---
+
 ## 2. Tổng Hợp Tác Động Mã Nguồn
 
 Toàn bộ các bản sửa đổi được giới hạn chặt chẽ trong:
 - `src/css/tokens/celestial-v5.css`: Khắc phục breakpoint 640px, phát quang sao và đệm thanh cuộn Tab 2.
-- `src/events.js`: Khắc phục phím Space, bảo vệ accessibility nút focused, xóa bỏ deadzone Undo và thêm try-catch phòng thủ.
+- `src/events.js`: Khắc phục phím Space trên cả 2 mặt thẻ, bảo vệ accessibility nút focused, xóa bỏ deadzone Undo, làm sạch typing retry state sau undo, thêm guards chuyển cảnh chống race condition, hỗ trợ cả Ctrl+Z lẫn Ctrl+Shift+Z.
 - `src/main.js`: Tái cấu trúc static imports cho dev/audit toolchain.
 - `src/features/typing.js`: Tách rời static dependency với Firebase, kích hoạt kiểm thử đối kháng ngoại tuyến.
 
@@ -172,5 +255,5 @@ Toàn bộ các bản sửa đổi được giới hạn chặt chẽ trong:
 - Không sửa đổi 34 tham số thuật toán FSRS-7.
 - Không phá vỡ cấu trúc đồng bộ 4-Vector Firestore.
 - Không làm thay đổi lược đồ cơ sở dữ liệu IndexedDB.
-- 0 cảnh báo hồi quy trên toàn bộ 8 test suite.
+- 0 cảnh báo hồi quy trên toàn bộ 9 test suite (232+ checks).
 

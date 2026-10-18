@@ -323,7 +323,173 @@ server.listen(PORT, async () => {
     });
     console.log('Word list container styles:', wordListStyle.result.value);
     assert.ok(parseFloat(wordListStyle.result.value.paddingRight) >= 14, 'Padding right must be at least 14px');
-    console.log('✅ TEST 5 PASSED: Word list container has stable scrollbar clearance!\n');
+    // TEST 6: Space Key on Flipped Card with Focus on Body / Card Face Rates Good (3) & Advances
+    console.log('--- TEST 6: Space Key on Flipped Card with Non-Button Focus (Body/Card) ---');
+    // Close modal and seed fresh
+    await send('Runtime.evaluate', {
+      expression: `(async () => {
+        const closeBtn = document.getElementById('close-manage-modal-btn');
+        if (closeBtn) closeBtn.click();
+        await window.__celestialAudit.seed();
+      })()`,
+      awaitPromise: true
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    // Flip card
+    await send('Runtime.evaluate', {
+      expression: `(async () => {
+        await window.__celestialAudit.flipCard();
+        // Explicitly blur any focused element to simulate user clicking card body or reading
+        document.activeElement?.blur();
+      })()`,
+      awaitPromise: true
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    const flippedNonFocusState = await send('Runtime.evaluate', {
+      expression: `(() => {
+        const card = document.getElementById('flashcard');
+        return {
+          english: document.getElementById('card-english')?.textContent,
+          isFlipped: card.classList.contains('is-flipped'),
+          activeTag: document.activeElement?.tagName
+        };
+      })()`,
+      returnByValue: true
+    });
+    console.log('Flipped card with activeTag:', flippedNonFocusState.result.value);
+    assert.strictEqual(flippedNonFocusState.result.value.isFlipped, true);
+    assert.strictEqual(flippedNonFocusState.result.value.activeTag, 'BODY');
+
+    const wordBeforeSpace = flippedNonFocusState.result.value.english;
+
+    // Send Space key when focus is on BODY
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      windowsVirtualKeyCode: 32,
+      code: 'Space',
+      key: ' ',
+      text: ' '
+    });
+    await send('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      windowsVirtualKeyCode: 32,
+      code: 'Space',
+      key: ' '
+    });
+
+    await new Promise(r => setTimeout(r, 1100));
+
+    const stateAfterFlippedSpace = await send('Runtime.evaluate', {
+      expression: `(() => {
+        const card = document.getElementById('flashcard');
+        return {
+          english: document.getElementById('card-english')?.textContent,
+          isFlipped: card.classList.contains('is-flipped')
+        };
+      })()`,
+      returnByValue: true
+    });
+    console.log('State after Space on flipped card:', stateAfterFlippedSpace.result.value);
+    assert.notStrictEqual(stateAfterFlippedSpace.result.value.english, wordBeforeSpace, 'Space on back must grade Good and advance card!');
+    console.log('✅ TEST 6 PASSED: Space on flipped card with focus on body graded Good and advanced card!\n');
+
+    // TEST 7: Ctrl+Z (without shift) Triggers Undo
+    console.log('--- TEST 7: Ctrl+Z Shortcut Triggers Undo ---');
+    const wordBeforeCtrlZ = stateAfterFlippedSpace.result.value.english;
+    console.log(`Current word before Ctrl+Z: "${wordBeforeCtrlZ}", expecting to restore: "${wordBeforeSpace}"`);
+
+    await send('Runtime.evaluate', {
+      expression: `(() => {
+        const evt = new KeyboardEvent('keydown', {
+          key: 'z',
+          code: 'KeyZ',
+          ctrlKey: true,
+          shiftKey: false,
+          bubbles: true,
+          cancelable: true
+        });
+        document.dispatchEvent(evt);
+      })()`
+    });
+
+    await new Promise(r => setTimeout(r, 1200));
+
+    const stateAfterCtrlZ = await send('Runtime.evaluate', {
+      expression: `(() => {
+        return {
+          currentEnglish: document.getElementById('card-english')?.textContent
+        };
+      })()`,
+      returnByValue: true
+    });
+    console.log('Word restored by Ctrl+Z:', stateAfterCtrlZ.result.value);
+    assert.strictEqual(stateAfterCtrlZ.result.value.currentEnglish, wordBeforeSpace, 'Ctrl+Z must restore previous card!');
+    console.log('✅ TEST 7 PASSED: Ctrl+Z successfully triggered Undo!\n');
+
+    // TEST 8: Undo Resets Typing Retry State Cleanly
+    console.log('--- TEST 8: Typing Retry State Reset on Undo ---');
+    // Set typing mode
+    await send('Runtime.evaluate', {
+      expression: `(async () => {
+        const typingOption = document.querySelector('.custom-typing-option[data-value="all"]');
+        if (typingOption) typingOption.click();
+      })()`,
+      awaitPromise: true
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    // Submit typo answer
+    await send('Runtime.evaluate', {
+      expression: `(() => {
+        const input = document.getElementById('typing-input');
+        input.value = 'ephemerall'; // Typo for ephemeral
+        const submitBtn = document.getElementById('typing-submit-btn');
+        submitBtn.click();
+      })()`
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    // Verify typo feedback is shown and retry state was set
+    const typoState = await send('Runtime.evaluate', {
+      expression: `(() => {
+        const fb = document.getElementById('typing-feedback');
+        return {
+          feedback: fb ? fb.textContent : '',
+          hasUndo: !document.getElementById('undo-btn')?.disabled
+        };
+      })()`,
+      returnByValue: true
+    });
+    console.log('Typo state before Undo:', typoState.result.value);
+
+    // Now trigger Undo via undo-btn click
+    await send('Runtime.evaluate', {
+      expression: `(() => {
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) undoBtn.click();
+      })()`
+    });
+    await new Promise(r => setTimeout(r, 1200));
+
+    // Check that typing input is cleared and enabled, and clean for a fresh attempt
+    const stateAfterTypingUndo = await send('Runtime.evaluate', {
+      expression: `(() => {
+        const input = document.getElementById('typing-input');
+        const fb = document.getElementById('typing-feedback');
+        return {
+          inputValue: input ? input.value : null,
+          inputDisabled: input ? input.disabled : true,
+          feedbackText: fb ? fb.textContent : null
+        };
+      })()`,
+      returnByValue: true
+    });
+    console.log('Typing state after Undo:', stateAfterTypingUndo.result.value);
+    assert.strictEqual(stateAfterTypingUndo.result.value.inputValue, '', 'Typing input must be empty after Undo');
+    assert.strictEqual(stateAfterTypingUndo.result.value.inputDisabled, false, 'Typing input must be enabled after Undo');
+    console.log('✅ TEST 8 PASSED: Typing retry state reset on Undo!\n');
 
     console.log('🎉 ALL CDP BROWSER REMEDIATION TESTS PASSED 100%!');
 
