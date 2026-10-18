@@ -1,7 +1,7 @@
 // src/events.js
 
 import { DOM } from './ui/elements.js';
-import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, popLastReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue } from './core/state.js';
+import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, popLastReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
@@ -45,8 +45,25 @@ export function updateUndoButtonState() {
     }
 }
 
+let _isUndoQueued = false;
 export async function undoLastReview() {
-    if (getState().isTransitioning) return;
+    if (_isUndoQueued) return;
+    
+    // If card transition is in progress, queue and wait for transition to finish
+    // eliminating the ~900ms deadzone when an animation is in flight.
+    if (getState().isTransitioning) {
+        _isUndoQueued = true;
+        const maxWaitMs = 1200;
+        const pollMs = 50;
+        let waited = 0;
+        while (getState().isTransitioning && waited < maxWaitMs) {
+            await new Promise(r => setTimeout(r, pollMs));
+            waited += pollMs;
+        }
+        _isUndoQueued = false;
+        if (getState().isTransitioning) return;
+    }
+
     const snapshot = getLastReviewSnapshot();
     if (!snapshot) {
         showToast('Hoàn tác', 'Chưa có lượt đánh giá nào để hoàn tác.', 'ph-info');
@@ -110,101 +127,106 @@ function processSrsFeedback(rating, autoAdvance = true) {
         return;
     }
 
-    const currentCard = vocabulary[currentCardIndex];
-    const previousCard = JSON.parse(JSON.stringify(currentCard));
-    const comboBefore = getState().gamification?.consecutiveCorrect || 0;
-    const isNewCard = currentCard.srsStatus === 'New' && (!currentCard.learningStep || currentCard.learningStep === 0);
-    
-    const modality = shouldCardUseTyping(currentCard) ? 'typing' : 'en-vi';
-    const { newState: updatedCard, log } = calculateNextSrsState(currentCard, rating, modality, 0, getState().userFsrs7Params);
-    if (log) {
-        import('./core/state.js').then(s => s.addReviewLog(log));
-    }
+    try {
+        const currentCard = vocabulary[currentCardIndex];
+        const previousCard = JSON.parse(JSON.stringify(currentCard));
+        const comboBefore = getState().gamification?.consecutiveCorrect || 0;
+        const isNewCard = currentCard.srsStatus === 'New' && (!currentCard.learningStep || currentCard.learningStep === 0);
+        
+        const modality = shouldCardUseTyping(currentCard) ? 'typing' : 'en-vi';
+        const { newState: updatedCard, log } = calculateNextSrsState(currentCard, rating, modality, 0, getState().userFsrs7Params);
+        if (log) {
+            import('./core/state.js').then(s => s.addReviewLog(log));
+        }
 
-    // Record stats & Gamification
-    if (isNewCard && rating > 1) { 
-        incrementNewCardsDone();
-    }
-    
-    // NÂNG CẤP: Tracking tiến trình theo ngày cho thanh Progress Bar
-    if (rating > 1) {
-        if (previousCard.srsStatus === 'Learning') {
-            incrementLearningCardsDone();
-        } else if (previousCard.srsStatus === 'Mastered') {
-            const endOfDay = new Date().setHours(23, 59, 59, 999);
-            // Chỉ tính những thẻ thực sự đến hạn (không phải cramming vớ vẩn hay thẻ chưa đến hạn)
-            if (previousCard.srsDueDate && previousCard.srsDueDate <= endOfDay) {
-                incrementDueCardsDone();
+        // Record stats & Gamification
+        if (isNewCard && rating > 1) { 
+            incrementNewCardsDone();
+        }
+        
+        // NÂNG CẤP: Tracking tiến trình theo ngày cho thanh Progress Bar
+        if (rating > 1) {
+            if (previousCard.srsStatus === 'Learning') {
+                incrementLearningCardsDone();
+            } else if (previousCard.srsStatus === 'Mastered') {
+                const endOfDay = new Date().setHours(23, 59, 59, 999);
+                // Chỉ tính những thẻ thực sự đến hạn (không phải cramming vớ vẩn hay thẻ chưa đến hạn)
+                if (previousCard.srsDueDate && previousCard.srsDueDate <= endOfDay) {
+                    incrementDueCardsDone();
+                }
             }
         }
-    }
-    
-    if (rating === 4) trackEvent('easyPresses');
-    if (rating === 2) trackEvent('hardPresses');
-    
-    let finalExp = 0;
-    if (rating > 1) {
-        let baseExp = 0;
-        if (isNewCard) {
-            baseExp = 5;
+        
+        if (rating === 4) trackEvent('easyPresses');
+        if (rating === 2) trackEvent('hardPresses');
+        
+        let finalExp = 0;
+        if (rating > 1) {
+            let baseExp = 0;
+            if (isNewCard) {
+                baseExp = 5;
+            } else {
+                const interval = currentCard.srsInterval || 0;
+                baseExp = 3 + Math.min(15, Math.floor(Math.sqrt(interval)));
+                if (rating === 2) {
+                    baseExp = Math.max(1, Math.floor(baseExp * 0.8));
+                }
+            }
+            
+            const combo = getComboMultiplier();
+            finalExp = Math.floor(baseExp * combo);
+            let floatText = `+${finalExp} XP`;
+            if (combo > 1) floatText += ` (Combo x${combo})`;
+            
+            addXP(finalExp, floatText);
+        }
+        
+        // Rating 1 = Again -> incorrect. Rating > 1 -> correct
+        recordReviewResult(rating > 1);
+        logActivity(); // Ghi nhận hoạt động vào Heatmap
+
+        vocabulary[currentCardIndex] = updatedCard;
+        // Incremental save: chỉ ghi 1 word + auto queue sync (thay vì saveVocabulary full)
+        saveOneWord(updatedCard);
+
+        const soundToPlay = (rating === 1) ? 'incorrect' : 'correct';
+        playSound(soundToPlay);
+
+        if (updatedCard.isSuspended) {
+            showPopup(`Từ "${updatedCard.english}" bị quên quá nhiều lần và đã được tạm ngưng. Bạn có thể kích hoạt lại trong phần Quản lý.`, 'info');
+        }
+
+        const wasLearningInserted = (updatedCard.srsDueDate <= Date.now() + 10000);
+        // Nâng cấp: Chèn lại thẻ nếu đang trong giai đoạn ươm mầm (Learning steps)
+        // Nếu nextDueDate <= Date.now() + 10s (được hẹn ngay lập tức)
+        if (wasLearningInserted) {
+            insertCardForLearningStep(currentCardIndex);
+        }
+
+        // Lưu Snapshot để hỗ trợ tính năng Hoàn Tác (Undo)
+        setLastReviewSnapshot({
+            cardId: currentCard.id,
+            cardIndex: currentCardIndex,
+            previousCard: previousCard,
+            rating: rating,
+            modality: modality,
+            addedXP: finalExp,
+            comboBefore: comboBefore,
+            wasNewCard: isNewCard,
+            isCorrect: rating > 1,
+            wasLearningInserted: wasLearningInserted,
+            timestamp: Date.now()
+        });
+        updateUndoButtonState();
+
+        document.activeElement?.blur();
+        if (autoAdvance) {
+            switchCardWithAnimation();
         } else {
-            const interval = currentCard.srsInterval || 0;
-            baseExp = 3 + Math.min(15, Math.floor(Math.sqrt(interval)));
-            if (rating === 2) {
-                baseExp = Math.max(1, Math.floor(baseExp * 0.8));
-            }
+            setIsTransitioning(false);
         }
-        
-        const combo = getComboMultiplier();
-        finalExp = Math.floor(baseExp * combo);
-        let floatText = `+${finalExp} XP`;
-        if (combo > 1) floatText += ` (Combo x${combo})`;
-        
-        addXP(finalExp, floatText);
-    }
-    
-    // Rating 1 = Again -> incorrect. Rating > 1 -> correct
-    recordReviewResult(rating > 1);
-    logActivity(); // Ghi nhận hoạt động vào Heatmap
-
-    vocabulary[currentCardIndex] = updatedCard;
-    // Incremental save: chỉ ghi 1 word + auto queue sync (thay vì saveVocabulary full)
-    saveOneWord(updatedCard);
-
-    const soundToPlay = (rating === 1) ? 'incorrect' : 'correct';
-    playSound(soundToPlay);
-
-    if (updatedCard.isSuspended) {
-        showPopup(`Từ "${updatedCard.english}" bị quên quá nhiều lần và đã được tạm ngưng. Bạn có thể kích hoạt lại trong phần Quản lý.`, 'info');
-    }
-
-    const wasLearningInserted = (updatedCard.srsDueDate <= Date.now() + 10000);
-    // Nâng cấp: Chèn lại thẻ nếu đang trong giai đoạn ươm mầm (Learning steps)
-    // Nếu nextDueDate <= Date.now() + 10s (được hẹn ngay lập tức)
-    if (wasLearningInserted) {
-        insertCardForLearningStep(currentCardIndex);
-    }
-
-    // Lưu Snapshot để hỗ trợ tính năng Hoàn Tác (Undo)
-    setLastReviewSnapshot({
-        cardId: currentCard.id,
-        cardIndex: currentCardIndex,
-        previousCard: previousCard,
-        rating: rating,
-        modality: modality,
-        addedXP: finalExp,
-        comboBefore: comboBefore,
-        wasNewCard: isNewCard,
-        isCorrect: rating > 1,
-        wasLearningInserted: wasLearningInserted,
-        timestamp: Date.now()
-    });
-    updateUndoButtonState();
-
-	document.activeElement?.blur();
-    if (autoAdvance) {
-        switchCardWithAnimation();
-    } else {
+    } catch (err) {
+        console.error("Lỗi khi xử lý SRS feedback:", err);
         setIsTransitioning(false);
     }
 }
@@ -352,7 +374,6 @@ export function setupEventListeners() {
     });
 
     btnEmptySample?.addEventListener('click', async () => {
-        const { seedIsolatedDemoVocabulary } = await import('./core/state.js');
         await seedIsolatedDemoVocabulary();
         populateTopicFilters(true);
         buildReviewQueue();
@@ -917,7 +938,7 @@ export function setupEventListeners() {
     // Global Keyboard
     document.addEventListener('keydown', handleGlobalShortcuts);
 	DOM.manualSyncBtn?.addEventListener('click', () => {
-        import('./core/state.js').then(s => s.trackEvent('syncSpamCount'));
+        trackEvent('syncSpamCount');
         smartSync({ forceFullPull: true, isManual: true });
     });
 }
@@ -1042,16 +1063,42 @@ function handleGlobalShortcuts(e) {
     if (isModalOpen || isTyping) return;
     if (getState().isTransitioning) return;
     
+    // Accessibility Guard: If an interactive button, link, or dropdown is currently focused,
+    // allow native Space and Enter keys to activate it (e.g. clicking focused TTS button,
+    // Star button, SRS rating button, or modal controls).
+    const isInteractive = active && (
+        active.tagName === 'BUTTON' || 
+        active.tagName === 'A' || 
+        active.tagName === 'SELECT' || 
+        active.getAttribute('role') === 'button'
+    );
+    if (isInteractive && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter')) {
+        return;
+    }
+
     // Track global shortcuts use
-    import('./core/state.js').then(s => s.trackEvent('consecutiveShortcuts'));
+    trackEvent('consecutiveShortcuts');
     
     const { isFlipped } = getState();
+    if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        flipCard();
+        return;
+    }
     switch (e.key.toUpperCase()) {
         case 'F': e.preventDefault(); flipCard(); break;
         case 'P': e.preventDefault(); DOM.ttsBtn?.click(); break;
         case 'S': e.preventDefault(); DOM.starBtn?.click(); break;
         case 'N': case 'ENTER':
-            if (isFlipped) { e.preventDefault(); DOM.nextCardBtn?.click(); }
+            if (isFlipped) {
+                e.preventDefault();
+                if (DOM.nextCardBtn && !DOM.nextCardBtn.classList.contains('hidden')) {
+                    DOM.nextCardBtn.click();
+                } else {
+                    const btn3 = DOM.srsFeedbackButtons?.querySelector('.srs-btn[data-rating="3"]');
+                    if (btn3) btn3.click();
+                }
+            }
             break;
         case '1': case '2': case '3': case '4':
             if (isFlipped) {

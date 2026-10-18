@@ -1,0 +1,568 @@
+{
+  "timestamp": "2026-10-18T07:11:29.657Z",
+  "features": {
+    "F01": {
+      "passed": true,
+      "data": {
+        "isOpenAfterClick": true,
+        "optionsCount": 1,
+        "filterValue": "all",
+        "selectedTopic": "all"
+      }
+    },
+    "F02": {
+      "passed": true,
+      "data": {
+        "syncBtnExists": true,
+        "iconClassBefore": "ph-duotone ph-arrows-clockwise",
+        "iconClassAfter": "ph-duotone ph-arrows-clockwise"
+      }
+    },
+    "F03": {
+      "passed": true,
+      "data": {
+        "quizBtnExists": true,
+        "quizAreaOpened": true,
+        "hasCountSelect": true
+      }
+    },
+    "F04": {
+      "passed": true,
+      "data": {
+        "isManageOpen": true,
+        "tabCount": 4,
+        "activeTab": "overview"
+      }
+    },
+    "F05": {
+      "passed": true,
+      "data": {
+        "triggerExists": true,
+        "isTypingMenuOpen": true,
+        "optionsCount": 7,
+        "hasDedicatedBtn": true
+      }
+    },
+    "F06": {
+      "passed": true,
+      "data": {
+        "triggerExists": true,
+        "isTypingMenuOpen": true,
+        "optionsCount": 7,
+        "hasDedicatedBtn": true
+      }
+    },
+    "F07": {
+      "passed": true,
+      "data": {
+        "bodyBefore": true,
+        "isCurtainActive": true,
+        "bodyAfter": false,
+        "toggledSuccessfully": true
+      }
+    },
+    "F08": {
+      "passed": true,
+      "data": {
+        "s1": "all",
+        "s2": "sfx",
+        "s3": "tts",
+        "s4": "off",
+        "s5": "all"
+      }
+    },
+    "F09": {
+      "passed": true,
+      "data": {
+        "toggleExists": true,
+        "opened": true,
+        "closed": true
+      }
+    },
+    "F10": {
+      "passed": true,
+      "data": {
+        "isFlippedBefore": false,
+        "isFlippedAfter": true,
+        "srsVisible": true,
+        "buttonsCount": 4,
+        "badges": [
+          {
+            "rating": "1",
+            "name": "Quên",
+            "badge": "<10p"
+          },
+          {
+            "rating": "2",
+            "name": "Khó",
+            "badge": "4d"
+          },
+          {
+            "rating": "3",
+            "name": "Nhớ",
+            "badge": "11d"
+          },
+          {
+            "rating": "4",
+            "name": "Dễ",
+            "badge": "22d"
+          }
+        ]
+      }
+    },
+    "F11": {
+      "passed": true,
+      "data": {
+        "isFlippedBefore": false,
+        "isFlippedAfter": true,
+        "srsVisible": true,
+        "buttonsCount": 4,
+        "badges": [
+          {
+            "rating": "1",
+            "name": "Quên",
+            "badge": "<10p"
+          },
+          {
+            "rating": "2",
+            "name": "Khó",
+            "badge": "4d"
+          },
+          {
+            "rating": "3",
+            "name": "Nhớ",
+            "badge": "11d"
+          },
+          {
+            "rating": "4",
+            "name": "Dễ",
+            "badge": "22d"
+          }
+        ]
+      }
+    },
+    "F12": {
+      "passed": true,
+      "data": {
+        "isFlippedBefore": false,
+        "isFlippedAfter": true,
+        "srsVisible": true,
+        "buttonsCount": 4,
+        "badges": [
+          {
+            "rating": "1",
+            "name": "Quên",
+            "badge": "<10p"
+          },
+          {
+            "rating": "2",
+            "name": "Khó",
+            "badge": "4d"
+          },
+          {
+            "rating": "3",
+            "name": "Nhớ",
+            "badge": "11d"
+          },
+          {
+            "rating": "4",
+            "name": "Dễ",
+            "badge": "22d"
+          }
+        ]
+      }
+    },
+    "F13": {
+      "passed": true,
+      "data": {
+        "ttsBtnExists": true
+      }
+    },
+    "F14": {
+      "passed": true,
+      "data": {
+        "starBtnExists": true,
+        "starIconBefore": "ph ph-star",
+        "starIconAfter": "ph-fill ph-star"
+      }
+    },
+    "F15": {
+      "passed": true,
+      "data": {
+        "cardBeforeEnglish": "resilience",
+        "cardAfterEnglish": "ephemeral",
+        "undoEnabled": true,
+        "cardRestoredEnglish": "resilience",
+        "undoSuccess": true
+      }
+    },
+    "F16": {
+      "passed": true,
+      "data": {
+        "res1": {
+          "eval": {
+            "rating": 4,
+            "distance": 0,
+            "message": "Hoàn hảo!",
+            "status": "perfect_fast"
+          },
+          "stripped": "conundrum"
+        },
+        "res2": {
+          "eval": {
+            "rating": 4,
+            "distance": 0,
+            "message": "Hoàn hảo!",
+            "status": "perfect_fast"
+          },
+          "stripped": "resilience"
+        },
+        "res3": {
+          "eval": {
+            "rating": 4,
+            "distance": 0,
+            "message": "Hoàn hảo!",
+            "status": "perfect_fast"
+          },
+          "stripped": "ephemeral"
+        }
+      }
+    },
+    "F17": {
+      "passed": true,
+      "data": {
+        "res1": {
+          "eval": {
+            "rating": 4,
+            "distance": 0,
+            "message": "Hoàn hảo!",
+            "status": "perfect_fast"
+          },
+          "stripped": "conundrum"
+        },
+        "res2": {
+          "eval": {
+            "rating": 4,
+            "distance": 0,
+            "message": "Hoàn hảo!",
+            "status": "perfect_fast"
+          },
+          "stripped": "resilience"
+        },
+        "res3": {
+          "eval": {
+            "rating": 4,
+            "distance": 0,
+            "message": "Hoàn hảo!",
+            "status": "perfect_fast"
+          },
+          "stripped": "ephemeral"
+        }
+      }
+    },
+    "F18": {
+      "passed": true,
+      "data": {
+        "badgeExists": true
+      }
+    },
+    "F19": {
+      "passed": true,
+      "data": {
+        "statNew": "2",
+        "statLearning": "3",
+        "statMastered": "5",
+        "statDue": "2"
+      }
+    },
+    "F20": {
+      "passed": true,
+      "data": {
+        "isVictoryVisible": true,
+        "hasBtnCram": true,
+        "hasBtnFinalDay": true,
+        "isRestVisible": true
+      }
+    },
+    "F21": {
+      "passed": true,
+      "data": {
+        "isVictoryVisible": true,
+        "hasBtnCram": true,
+        "hasBtnFinalDay": true,
+        "isRestVisible": true
+      }
+    },
+    "F22": {
+      "passed": true,
+      "data": {
+        "isVictoryVisible": true,
+        "hasBtnCram": true,
+        "hasBtnFinalDay": true,
+        "isRestVisible": true
+      }
+    },
+    "F23": {
+      "passed": false,
+      "data": {
+        "hasHeatmap": true,
+        "hasForecast": true,
+        "hasScholarRank": false,
+        "hasXP": false
+      }
+    },
+    "F24": {
+      "passed": true,
+      "data": {
+        "hasHeatmap": true,
+        "hasForecast": true,
+        "hasScholarRank": false,
+        "hasXP": false
+      }
+    },
+    "F25": {
+      "passed": true,
+      "data": {
+        "hasHeatmap": true,
+        "hasForecast": true,
+        "hasScholarRank": false,
+        "hasXP": false
+      }
+    },
+    "F26": {
+      "passed": false,
+      "data": {
+        "hasHeatmap": true,
+        "hasForecast": true,
+        "hasScholarRank": false,
+        "hasXP": false
+      }
+    },
+    "F27": {
+      "passed": true,
+      "data": {
+        "hasSearch": true,
+        "hasTopicFilter": true,
+        "hasStatusFilter": true,
+        "initialWordCount": 10,
+        "filteredCount": 1
+      }
+    },
+    "F28": {
+      "passed": true,
+      "data": {
+        "hasSearch": true,
+        "hasTopicFilter": true,
+        "hasStatusFilter": true,
+        "initialWordCount": 10,
+        "filteredCount": 1
+      }
+    },
+    "F29": {
+      "passed": true,
+      "data": {
+        "hasSearch": true,
+        "hasTopicFilter": true,
+        "hasStatusFilter": true,
+        "initialWordCount": 10,
+        "filteredCount": 1
+      }
+    },
+    "F30": {
+      "passed": true,
+      "data": {
+        "isAddOpen": true
+      }
+    },
+    "F31": {
+      "passed": true,
+      "data": {
+        "isAddOpen": true
+      }
+    },
+    "F32": {
+      "passed": true,
+      "data": {
+        "verifiedByCode": true
+      }
+    },
+    "F33": {
+      "passed": true,
+      "data": {
+        "isDedupOpen": true
+      }
+    },
+    "F34": {
+      "passed": true,
+      "data": {
+        "hasImportBtn": false,
+        "hasExportBtn": true,
+        "hasExportLogsBtn": true,
+        "hasClearAllBtn": true,
+        "hasDropZone": true,
+        "hasTextarea": true
+      }
+    },
+    "F35": {
+      "passed": true,
+      "data": {
+        "hasImportBtn": false,
+        "hasExportBtn": true,
+        "hasExportLogsBtn": true,
+        "hasClearAllBtn": true,
+        "hasDropZone": true,
+        "hasTextarea": true
+      }
+    },
+    "F36": {
+      "passed": true,
+      "data": {
+        "hasImportBtn": false,
+        "hasExportBtn": true,
+        "hasExportLogsBtn": true,
+        "hasClearAllBtn": true,
+        "hasDropZone": true,
+        "hasTextarea": true
+      }
+    },
+    "F37": {
+      "passed": true,
+      "data": {
+        "hasImportBtn": false,
+        "hasExportBtn": true,
+        "hasExportLogsBtn": true,
+        "hasClearAllBtn": true,
+        "hasDropZone": true,
+        "hasTextarea": true
+      }
+    },
+    "F38": {
+      "passed": true,
+      "data": {
+        "verifiedModal": true
+      }
+    },
+    "F39": {
+      "passed": true,
+      "data": {
+        "hasImportBtn": false,
+        "hasExportBtn": true,
+        "hasExportLogsBtn": true,
+        "hasClearAllBtn": true,
+        "hasDropZone": true,
+        "hasTextarea": true
+      }
+    },
+    "F40": {
+      "passed": false,
+      "data": {
+        "badgeCount": 84
+      }
+    },
+    "F41": {
+      "passed": true,
+      "data": {
+        "questionActive": true,
+        "hasInput": true,
+        "hasPrompt": true
+      }
+    },
+    "F42": {
+      "passed": true,
+      "data": {
+        "questionActive": true,
+        "hasInput": true,
+        "hasPrompt": true
+      }
+    },
+    "F43": {
+      "passed": true,
+      "data": {
+        "verifiedHUD": true
+      }
+    },
+    "F44": {
+      "passed": true,
+      "data": {
+        "srsCalculated": true,
+        "lingBias": -0.5,
+        "onboardingVisible": true
+      }
+    },
+    "F45": {
+      "passed": true,
+      "data": {
+        "srsCalculated": true,
+        "lingBias": -0.5,
+        "onboardingVisible": true
+      }
+    },
+    "F46": {
+      "passed": true,
+      "data": {
+        "webWorkerOptimizer": true
+      }
+    },
+    "F47": {
+      "passed": true,
+      "data": {
+        "fourVectorSync": true
+      }
+    },
+    "F48": {
+      "passed": true,
+      "data": {
+        "srsCalculated": true,
+        "lingBias": -0.5,
+        "onboardingVisible": true
+      }
+    }
+  },
+  "adversarial": {
+    "rapidClickTest": {
+      "clicks": 50,
+      "errorCount": 0
+    },
+    "spaceShortcutTest": {
+      "wasFlipped": true,
+      "isFlippedAfterSpace": true,
+      "spaceFlipsCard": false
+    },
+    "boundary480Test": {
+      "gridTemplateColumns": "repeat(2, 1fr)",
+      "columnsCount": 2,
+      "is2x2Grid": true
+    },
+    "longStringTest": {
+      "cardScrollWidth": 408,
+      "cardClientWidth": 408,
+      "areaOverflow": false
+    },
+    "viewport320Test": {
+      "bodyWidth": 320,
+      "scrollWidth": 320,
+      "hasHorizontalScroll": false,
+      "brandText": "Ultimate Celestial Vocab"
+    }
+  },
+  "performance": {
+    "metrics": {},
+    "domPerf": {
+      "domContentLoaded": 520.6000000014901,
+      "loadEvent": 828.3000000007451,
+      "transferSize": 72892
+    },
+    "drainTest": {
+      "canvasExists": true,
+      "canvasWidth": 1440,
+      "canvasHeight": 900
+    }
+  },
+  "visualCritique": {},
+  "summary": {
+    "totalTested": 0,
+    "passed": 0,
+    "failed": 0,
+    "warnings": 0
+  }
+}

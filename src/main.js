@@ -2,12 +2,18 @@
 import './css/tokens/celestial-v5.css';
 import './css/style.css';
 import './css/transition.css';
-import { loadVocabulary, getState, addXP, setXP, saveGamification } from './core/state.js';
+import { loadVocabulary, getState, addXP, setXP, saveGamification, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
 import { initializeSound, startBackgroundAudioPreload } from './core/sound.js';
-import { displayCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting } from './ui/render.js';
+import { displayCard, flipCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting } from './ui/render.js';
 import { setupEventListeners } from './events.js';
 import { smartSync } from './core/firebase.js';
+import { openManageModal, openAddEditModal, openDedupModal, openModal } from './ui/modal.js';
+import { showQuizSetup } from './features/quiz.js';
+import { evaluateTyping, stripVietnameseDiacritics } from './features/typing.js';
+import { calculateNextSrsState } from './core/srs/index.js';
+import { getDifficultyBias, getStabilityMultiplier } from './core/srs/heuristics.js';
+import { saveAllVocabularyToDB } from './core/idb.js';
 
 // --- CHEAT ENGINE & DEV TOOLS (Development Mode Only) ---
 if (import.meta.env.DEV || (typeof window !== 'undefined' && window.__ENABLE_DEV_TOOLS__)) {
@@ -88,7 +94,6 @@ window.cheat = {
 
 // Sample Vocabulary Seeder for Isolated Testing & First-Run Exploration
 window.loadIsolatedSampleVocabulary = async function() {
-    const { seedIsolatedDemoVocabulary } = await import('./core/state.js');
     await seedIsolatedDemoVocabulary();
     populateTopicFilters(true);
     buildReviewQueue();
@@ -101,43 +106,48 @@ window.loadIsolatedSampleVocabulary = async function() {
 window.__celestialAudit = {
     seed: window.loadIsolatedSampleVocabulary,
     clear: async () => {
-        const { setVocabulary } = await import('./core/state.js');
-        const { saveAllVocabularyToDB } = await import('./core/idb.js');
         setVocabulary([]);
         await saveAllVocabularyToDB([]);
         displayCard(null);
     },
     flipCard: async () => {
-        const { flipCard } = await import('./ui/render.js');
-        flipCard();
+        await flipCard();
     },
-    openHub: async (tab = 'overview') => {
-        const { openManageModal } = await import('./ui/modal.js');
+    openHub: (tab = 'overview') => {
         openManageModal(tab);
     },
-    openAddWord: async () => {
-        const { openAddEditModal } = await import('./ui/modal.js');
+    openAddWord: () => {
         openAddEditModal(false);
     },
-    openDedup: async () => {
-        const { openDedupModal } = await import('./ui/modal.js');
+    openDedup: () => {
         openDedupModal();
     },
-    openFsrs7Config: async () => {
-        const { openModal } = await import('./ui/modal.js');
+    openFsrs7Config: () => {
         const modal = document.getElementById('fsrs7-config-modal');
         if (modal) openModal(modal);
     },
-    showQuizSetup: async () => {
-        const { showQuizSetup } = await import('./features/quiz.js');
+    showQuizSetup: () => {
         showQuizSetup();
     },
     showVictoryStage: () => {
         displayCard(null);
     },
-    setDarkMode: async (isDark) => {
-        const { applyDarkMode } = await import('./ui/render.js');
+    setDarkMode: (isDark) => {
         applyDarkMode(isDark);
+    },
+    evaluateTyping: (input, target) => {
+        return {
+            eval: evaluateTyping(input, target),
+            stripped: stripVietnameseDiacritics(input)
+        };
+    },
+    calculateSRS: (card, rating) => {
+        return calculateNextSrsState(card, rating, 'en-vi');
+    },
+    getHeuristics: (card) => {
+        const bias = getDifficultyBias(card);
+        const mult = getStabilityMultiplier(bias);
+        return { bias, mult };
     }
 };
 
