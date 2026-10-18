@@ -755,9 +755,19 @@
                         </div>
                     </section>
 
-                    <!-- Ma Trận Nhịp Điệu Ôn Tập & Hoạt Động (2 Cột Cân Đối) -->
+                    <!-- Ma Trận Nhịp Điệu Ôn Tập & Hoạt Động (Tỷ Lệ Vàng 62% / 38% Bento) -->
                     <div class="profile-rhythm-grid bento-charts-row">
-                        <section class="profile-card forecast-card chart-bento-card">
+                        <section class="profile-card heatmap-card heatmap-bento-card" id="activity-heatmap-card">
+                            <div class="card-header-flex">
+                                <h3><i class="ph-duotone ph-calendar-check"></i> Hoạt động Ôn tập</h3>
+                                <span class="bento-badge bento-badge-cyan"><i class="ph-bold ph-calendar"></i> 84 Ngày Qua</span>
+                            </div>
+                            <div class="heatmap-container" id="activity-heatmap">
+                                <!-- Render JS -->
+                            </div>
+                        </section>
+
+                        <section class="profile-card forecast-card chart-bento-card" id="review-forecast-card">
                             <div class="card-header-flex">
                                 <h3><i class="ph-duotone ph-chart-bar"></i> Dự báo Ôn tập (7 ngày tới)</h3>
                                 <span class="bento-badge bento-badge-emerald"><i class="ph-fill ph-lightning"></i> FSRS-7</span>
@@ -765,14 +775,7 @@
                             <div class="forecast-chart-container" id="forecast-chart">
                                 <!-- Render JS -->
                             </div>
-                        </section>
-
-                        <section class="profile-card heatmap-card heatmap-bento-card">
-                            <div class="card-header-flex">
-                                <h3><i class="ph-duotone ph-calendar-check"></i> Hoạt động Ôn tập</h3>
-                                <span class="bento-badge bento-badge-cyan"><i class="ph-bold ph-calendar"></i> 84 Ngày Qua</span>
-                            </div>
-                            <div class="heatmap-container" id="activity-heatmap">
+                            <div class="forecast-summary-strip" id="forecast-summary-strip">
                                 <!-- Render JS -->
                             </div>
                         </section>

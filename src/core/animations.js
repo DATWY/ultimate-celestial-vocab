@@ -194,35 +194,42 @@ export function animateForecastChart(chartContainer) {
 
     if (bars.length === 0) return;
 
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        bars.forEach(bar => {
+            bar.style.height = bar.dataset.targetHeight || bar.style.height || '4px';
+        });
+        return;
+    }
+
     // Chuẩn bị trạng thái ban đầu
     bars.forEach(bar => {
         bar.dataset.targetHeight = bar.style.height || '2px';
         bar.style.height = '0%';
     });
-    anime.set(counts, { opacity: 0, translateY: 15 });
-    anime.set(days, { opacity: 0, translateY: -10 });
+    anime.set(counts, { opacity: 0, translateY: 10 });
+    anime.set(days, { opacity: 0, translateY: -6 });
 
     // Timeline cho biểu đồ
     const tl = anime.timeline({
-        easing: 'easeOutElastic(1, 0.8)',
+        easing: 'easeOutCubic',
     });
 
     // 1. Cột mọc lên tuần tự
     tl.add({
         targets: bars,
         height: function(el) { return el.dataset.targetHeight; },
-        duration: 1000,
-        delay: anime.stagger(80)
+        duration: 500,
+        delay: anime.stagger(40)
     })
     // 2. Hiện số và tên ngày
     .add({
         targets: [counts, days],
         opacity: 1,
         translateY: 0,
-        duration: 600,
+        duration: 350,
         easing: 'easeOutCubic',
-        delay: anime.stagger(50)
-    }, '-=800');
+        delay: anime.stagger(30)
+    }, '-=350');
 }
 
 /**
@@ -234,17 +241,32 @@ export function animateHeatmap(heatmapContainer) {
     const cells = heatmapContainer.querySelectorAll('.heatmap-cell');
     if (cells.length === 0) return;
 
-    anime.set(cells, { scale: 0, opacity: 0, borderRadius: '50%' });
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        cells.forEach(c => {
+            c.style.opacity = '';
+            c.style.transform = '';
+        });
+        return;
+    }
+
+    // Hiển thị mờ ban đầu (opacity 0.25) thay vì ẩn hoàn toàn (opacity 0) để không tạo khoảng trắng trống trải
+    anime.set(cells, { scale: 0.65, opacity: 0.25, borderRadius: '6px' });
 
     anime({
         targets: cells,
         scale: [
-            { value: 1.3, easing: 'easeOutSine', duration: 200 },
-            { value: 1, easing: 'easeInOutQuad', duration: 400 }
+            { value: 1.15, easing: 'easeOutSine', duration: 120 },
+            { value: 1, easing: 'easeInOutQuad', duration: 180 }
         ],
-        opacity: [0, 1],
-        borderRadius: ['50%', '4px'],
-        delay: anime.stagger(30, { from: 'last' }), // Lan tỏa từ ngày gần nhất ngược về quá khứ
-        easing: 'easeOutQuad'
+        opacity: [0.25, 1],
+        borderRadius: ['6px', '4px'],
+        delay: anime.stagger(6, { from: 'last' }), // 84 * 6ms = ~500ms tổng thời gian lan tỏa
+        easing: 'easeOutQuad',
+        complete: () => {
+            cells.forEach(c => {
+                c.style.opacity = '';
+                c.style.transform = '';
+            });
+        }
     });
 }

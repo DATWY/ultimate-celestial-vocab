@@ -837,7 +837,7 @@ function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
 
     const summary = document.createElement('div');
     summary.className = 'heatmap-stats-summary';
-    summary.innerHTML = `<span class="heatmap-summary-text">84 ngày qua: <strong>${totalReviews}</strong> lượt ôn</span>`;
+    summary.innerHTML = `<span class="heatmap-summary-text">84 ngày qua: <strong>${totalReviews.toLocaleString('vi-VN')}</strong> lượt ôn</span>`;
 
     const legend = document.createElement('div');
     legend.className = 'heatmap-legend';
@@ -906,24 +906,33 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
     }
 
     const avgCount = forecastData.reduce((a, b) => a + b, 0) / 7;
-    const avgHeightPercent = maxCount > 0 ? (avgCount / maxCount) * 100 : 0;
+    // Tỷ lệ trần cột 82% để số đếm trên đỉnh cột không va chạm với viền trên
+    const maxBarScale = 82;
+    const avgHeightPercent = maxCount > 0 ? (avgCount / maxCount) * maxBarScale : 0;
     
     // Thêm đường trung bình (Average Line)
     const avgLine = document.createElement('div');
     avgLine.className = 'forecast-avg-line';
-    avgLine.style.bottom = `calc(${avgHeightPercent}% + 22px)`; // Căn theo chữ dayLabel
-    avgLine.title = `Trung bình: ${Math.round(avgCount)} từ/ngày`;
+    avgLine.style.bottom = `calc(${avgHeightPercent}% + 22px)`; // Căn chuẩn theo nhãn dayLabel
+    avgLine.title = `Trung bình: ${avgCount.toFixed(1)} từ/ngày`;
     DOM.forecastChart.appendChild(avgLine);
 
     forecastData.forEach((count, index) => {
         const barContainer = document.createElement('div');
         barContainer.className = 'forecast-bar-container';
+        if (index === 0) {
+            barContainer.classList.add('today');
+        }
+        if (count === Math.max(...forecastData) && count > 0) {
+            barContainer.classList.add('peak');
+        }
 
         const bar = document.createElement('div');
         bar.className = 'forecast-bar';
-        const heightPercent = (count / maxCount) * 100;
+        // Đảm bảo ngày có từ (count > 0) luôn cao ít nhất 8% và cao hơn ngày 0 từ
+        const heightPercent = count === 0 ? 0 : Math.max(Math.round((count / maxCount) * maxBarScale), 8);
         bar.style.height = `${heightPercent}%`;
-        if (count === 0) bar.style.height = '4px'; // Min height
+        if (count === 0) bar.style.height = '4px'; // Min height cho ngày 0 từ
 
         const dot = document.createElement('div');
         dot.className = 'forecast-dot';
@@ -944,15 +953,6 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
         // Nâng cấp: Cho phép click để xem danh sách từ
         barContainer.style.cursor = 'pointer';
         barContainer.title = 'Bấm để xem danh sách từ vựng cần ôn';
-        barContainer.addEventListener('mouseenter', () => {
-            bar.style.filter = 'brightness(1.5)';
-            bar.style.transform = 'scaleY(1.05)';
-        });
-        barContainer.addEventListener('mouseleave', () => {
-            bar.style.filter = 'none';
-            bar.style.transform = 'none';
-        });
-        bar.style.transition = 'all 0.2s ease';
 
         barContainer.addEventListener('click', () => {
             if (count > 0) {
@@ -965,6 +965,34 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
 
         DOM.forecastChart.appendChild(barContainer);
     });
+
+    // Render smart summary footer strip (Concept 1 Bento Architecture)
+    let summaryStrip = document.getElementById('forecast-summary-strip');
+    if (!summaryStrip && DOM.forecastChart?.parentElement) {
+        summaryStrip = document.createElement('div');
+        summaryStrip.id = 'forecast-summary-strip';
+        summaryStrip.className = 'forecast-summary-strip';
+        DOM.forecastChart.parentElement.appendChild(summaryStrip);
+    }
+    if (summaryStrip) {
+        const todayCount = forecastData[0];
+        const maxWorkload = Math.max(...forecastData);
+        const isPeak = todayCount === maxWorkload && todayCount > 0;
+        const avgDisplay = avgCount > 0 && avgCount < 1 ? avgCount.toFixed(1) : Math.round(avgCount);
+
+        let pillHtml = '';
+        if (todayCount === 0) {
+            pillHtml = `<span class="forecast-pill-normal" title="Không có từ nào đến hạn hôm nay">✓ Thảnh thơi</span>`;
+        } else if (isPeak) {
+            pillHtml = `<span class="forecast-pill-peak" title="Hôm nay là ngày có khối lượng ôn tập cao nhất tuần">⚠ Đỉnh tải</span>`;
+        } else if (todayCount > avgCount) {
+            pillHtml = `<span class="forecast-pill-peak" title="Khối lượng ôn tập trên mức trung bình">⚡ Cao tải</span>`;
+        } else {
+            pillHtml = `<span class="forecast-pill-normal" title="Khối lượng ôn tập ở mức nhẹ và cân bằng">✓ Tải nhẹ</span>`;
+        }
+
+        summaryStrip.innerHTML = `<span>Hôm nay: <strong>${todayCount} từ</strong></span> ${pillHtml} <span>TB: <strong>${avgDisplay}/ngày</strong></span>`;
+    }
 
     // Gọi animation
     if (!isBackgroundUpdate) {
