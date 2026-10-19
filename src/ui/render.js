@@ -821,6 +821,7 @@ export function applyBoostMode(isBoost, showToastNotification = false) {
 
     document.body.classList.toggle('boost-mode', isBoost);
     document.documentElement.classList.toggle('boost-mode', isBoost);
+    document.querySelectorAll('.floating-xp').forEach(el => el.remove());
 
     const btn = DOM.toggleBoostModeBtn || document.getElementById('toggle-boost-mode-btn');
     if (btn) {

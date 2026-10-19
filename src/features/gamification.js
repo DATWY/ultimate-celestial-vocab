@@ -1177,11 +1177,19 @@ document.getElementById('app-container')?.addEventListener('gamification:update'
     });
 });
 
-// Hiệu ứng Floating XP — CSS-only, không dùng anime.js để tránh xung đột layout
+// Hiệu ứng Floating XP — CSS-only, tự động dọn dẹp an toàn trong mọi chế độ (kể cả Boost Mode)
 document.getElementById('app-container')?.addEventListener('gamification:xp_added', (e) => {
     const amount = e.detail?.amount;
     const text = e.detail?.text;
     if (!amount) return;
+
+    // Dọn dẹp bất kỳ phần tử XP cũ nào nếu có quá 2 phần tử dồn ứ
+    const existingFloats = document.querySelectorAll('.floating-xp');
+    if (existingFloats.length >= 2) {
+        existingFloats.forEach((el, idx) => {
+            if (idx < existingFloats.length - 1) el.remove();
+        });
+    }
 
     const floatEl = document.createElement('div');
     floatEl.className = 'floating-xp';
@@ -1200,10 +1208,22 @@ document.getElementById('app-container')?.addEventListener('gamification:xp_adde
 
     document.body.appendChild(floatEl);
 
-    // Tự hủy sau khi animation kết thúc
-    floatEl.addEventListener('animationend', () => {
-        if (floatEl.parentNode) floatEl.parentNode.removeChild(floatEl);
-    });
+    // Cơ chế dọn dẹp fail-safe 2 lớp:
+    // Lớp 1: Bắt sự kiện animationend
+    // Lớp 2: Fallback setTimeout (chống trường hợp animation bị huỷ, boost mode, hoặc tab background)
+    let isCleaned = false;
+    const removeFloatEl = () => {
+        if (isCleaned) return;
+        isCleaned = true;
+        if (floatEl && floatEl.parentNode) {
+            floatEl.parentNode.removeChild(floatEl);
+        }
+    };
+
+    floatEl.addEventListener('animationend', removeFloatEl, { once: true });
+    
+    const isBoost = document.body.classList.contains('boost-mode');
+    setTimeout(removeFloatEl, isBoost ? 950 : 2100);
 });
 
 // Debug / Test Utils for Gamification (SAFE - không lưu, không sync Firebase)

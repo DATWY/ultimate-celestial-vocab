@@ -15222,7 +15222,7 @@ body.boost-mode [class*="shimmer"],
 body.boost-mode [class*="glow"],
 body.boost-mode [class*="breathing"],
 body.boost-mode [class*="ring"],
-body.boost-mode [class*="float"],
+body.boost-mode [class*="float"]:not(.floating-xp),
 body.boost-mode [class*="glint"],
 body.boost-mode [class*="orbit"],
 body.boost-mode [class*="aura"],
@@ -15252,6 +15252,11 @@ body.boost-mode .level-card::after,
 body.boost-mode .level-card *,
 body.boost-mode .tts-waveform-btn.is-playing .waveform-bar {
     animation: none !important;
+}
+
+/* Floating XP in Boost Mode: swift, clean single-pass animation */
+body.boost-mode .floating-xp {
+    animation: floatXP 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 /* Simplify complex shadows for high FPS in Boost Mode */
