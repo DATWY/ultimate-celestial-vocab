@@ -1042,17 +1042,17 @@
             </div>
         </div>
 
-        <!-- Shipper Curtain Transition Container -->
-        <div id="shipper-curtain-container" class="shipper-curtain-container hidden">
-            <div id="curtain-left" class="curtain-left"></div>
-            <div id="curtain-right" class="curtain-right"></div>
-            <div id="curtain-badge" class="curtain-badge">
-                <div id="badge-icon" class="badge-icon"></div>
-                <div id="badge-text" class="badge-text"></div>
-            </div>
-        </div>
-
     </div> <!-- End #app-container -->
+
+    <!-- Shipper Curtain Transition Container (Direct child of body for 100vw x 100vh viewport pinning) -->
+    <div id="shipper-curtain-container" class="shipper-curtain-container hidden" aria-hidden="true">
+        <div id="curtain-left" class="curtain-left"></div>
+        <div id="curtain-right" class="curtain-right"></div>
+        <div id="curtain-badge" class="curtain-badge">
+            <div id="badge-icon" class="badge-icon"></div>
+            <div id="badge-text" class="badge-text"></div>
+        </div>
+    </div>
 
     <script type="module" src="/src/main.js"></script>
 </body>

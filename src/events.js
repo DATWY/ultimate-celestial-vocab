@@ -515,13 +515,29 @@ export function setupEventListeners() {
 
     let isTransitioning = false;
     DOM.toggleDarkModeBtn?.addEventListener('click', () => { 
-        if (isTransitioning) return;
-        isTransitioning = true;
+        if (isTransitioning || getState().isTransitioning) return;
         closeMenu(); 
         DOM.toggleDarkModeBtn?.blur();
 
         const currentIsDark = getState().isDarkMode;
         const targetModeIsDark = !currentIsDark;
+
+        // Boost mode or Reduced Motion: instantaneous clean transition
+        const isBoost = getState().isBoostMode || document.body.classList.contains('boost-mode');
+        const isReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (isBoost || isReducedMotion) {
+            applyDarkMode(targetModeIsDark);
+            if (targetModeIsDark) {
+                const hour = new Date().getHours();
+                if (hour === 0 && new Date().getMinutes() === 0) trackEvent('stargazer');
+                if (getState().soundMode === 'off') trackEvent('eclipse');
+            }
+            return;
+        }
+
+        isTransitioning = true;
+        setIsTransitioning(true);
         
         const container = document.getElementById('shipper-curtain-container');
         const leftRem = document.getElementById('curtain-left');
@@ -530,54 +546,138 @@ export function setupEventListeners() {
         const badgeIcon = document.getElementById('badge-icon');
         const badgeText = document.getElementById('badge-text');
 
+        if (!container || !leftRem || !rightRem || !centerBadge) {
+            applyDarkMode(targetModeIsDark);
+            isTransitioning = false;
+            setIsTransitioning(false);
+            return;
+        }
+
+        // Guarantee container is direct child of body for 100vw x 100vh viewport pinning
+        if (container.parentElement !== document.body) {
+            document.body.appendChild(container);
+        }
+
+        // Clear any stale animation classes or styles
+        leftRem.classList.remove('curtain-left-closing', 'curtain-left-opening');
+        rightRem.classList.remove('curtain-right-closing', 'curtain-right-opening');
+        centerBadge.classList.remove('badge-in', 'badge-out');
+        leftRem.style.transform = '';
+        rightRem.style.transform = '';
+        centerBadge.style.transform = '';
+        centerBadge.style.opacity = '';
+
         if (targetModeIsDark) {
             leftRem.className = "curtain-left curtain-dark-left";
             rightRem.className = "curtain-right curtain-dark-right";
             centerBadge.className = "curtain-badge curtain-badge-dark";
-            badgeIcon.className = "badge-icon badge-icon-dark";
-            badgeIcon.innerHTML = '<i class="ph-fill ph-moon"></i>';
-            badgeText.className = "badge-text badge-text-dark";
+            if (badgeIcon) {
+                badgeIcon.className = "badge-icon badge-icon-dark";
+                badgeIcon.innerHTML = '<i class="ph-fill ph-moon"></i>';
+            }
+            if (badgeText) {
+                badgeText.className = "badge-text badge-text-dark";
+                badgeText.textContent = "Dạ Thể";
+            }
         } else {
             leftRem.className = "curtain-left curtain-light-left";
             rightRem.className = "curtain-right curtain-light-right";
             centerBadge.className = "curtain-badge curtain-badge-light";
-            badgeIcon.className = "badge-icon badge-icon-light";
-            badgeIcon.innerHTML = '<i class="ph-fill ph-sun"></i>';
-            badgeText.className = "badge-text badge-text-light";
+            if (badgeIcon) {
+                badgeIcon.className = "badge-icon badge-icon-light";
+                badgeIcon.innerHTML = '<i class="ph-fill ph-sun"></i>';
+            }
+            if (badgeText) {
+                badgeText.className = "badge-text badge-text-light";
+                badgeText.textContent = "Nhật Thể";
+            }
         }
 
         container.classList.remove('hidden');
+        container.setAttribute('aria-hidden', 'false');
+
+        // Force browser layout reflow before triggering animations
+        void container.offsetWidth;
 
         leftRem.classList.add('curtain-left-closing');
         rightRem.classList.add('curtain-right-closing');
         centerBadge.classList.add('badge-in');
 
-        setTimeout(() => {
-            applyDarkMode(targetModeIsDark);
-            import('./core/state.js').then(s => {
-                if (targetModeIsDark) {
-                    const hour = new Date().getHours();
-                    if (hour === 0 && new Date().getMinutes() === 0) s.trackEvent('stargazer');
-                    if (s.getState().soundMode === 'off') s.trackEvent('eclipse');
+        // Fail-safe cleanup guard to ensure curtain NEVER gets stuck
+        // and target theme mode is GUARANTEED to be applied even if timers or frame drops occur
+        let cleanedUp = false;
+        let themeApplied = false;
+        const cleanup = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            clearTimeout(safetyTimeout);
+
+            // Ensure theme swap always takes effect even if safety timeout caught an interrupted transition
+            if (!themeApplied) {
+                themeApplied = true;
+                try {
+                    applyDarkMode(targetModeIsDark);
+                    if (targetModeIsDark) {
+                        const hour = new Date().getHours();
+                        if (hour === 0 && new Date().getMinutes() === 0) trackEvent('stargazer');
+                        if (getState().soundMode === 'off') trackEvent('eclipse');
+                    }
+                } catch (err) {
+                    console.error('Error during theme transition applyDarkMode:', err);
                 }
-            });
+            }
 
-            leftRem.classList.replace('curtain-left-closing', 'curtain-left-opening');
-            rightRem.classList.replace('curtain-right-closing', 'curtain-right-opening');
-            centerBadge.classList.replace('badge-in', 'badge-out');
+            container.classList.add('hidden');
+            container.setAttribute('aria-hidden', 'true');
+            leftRem.classList.remove('curtain-left-closing', 'curtain-left-opening');
+            rightRem.classList.remove('curtain-right-closing', 'curtain-right-opening');
+            centerBadge.classList.remove('badge-in', 'badge-out');
+            leftRem.style.transform = '';
+            rightRem.style.transform = '';
+            centerBadge.style.transform = '';
+            centerBadge.style.opacity = '';
+            isTransitioning = false;
+            setIsTransitioning(false);
+        };
 
+        const safetyTimeout = setTimeout(cleanup, 2500);
+
+        // Phase 1: Curtains close (380ms)
+        setTimeout(() => {
+            if (cleanedUp) return;
+
+            // Phase 2: Theme swap during full opacity dwell (screen 100% veiled)
+            if (!themeApplied) {
+                themeApplied = true;
+                try {
+                    applyDarkMode(targetModeIsDark);
+                    if (targetModeIsDark) {
+                        const hour = new Date().getHours();
+                        if (hour === 0 && new Date().getMinutes() === 0) trackEvent('stargazer');
+                        if (getState().soundMode === 'off') trackEvent('eclipse');
+                    }
+                } catch (err) {
+                    console.error('Error during theme transition applyDarkMode:', err);
+                }
+            }
+
+            // Phase 3: Short dwell (60ms) then start opening
             setTimeout(() => {
-                container.classList.add('hidden');
-                leftRem.classList.remove('curtain-left-opening');
-                rightRem.classList.remove('curtain-right-opening');
-                centerBadge.classList.remove('badge-out');
-                
-                leftRem.style.transform = '';
-                rightRem.style.transform = '';
-                centerBadge.style.opacity = '';
-                isTransitioning = false;
-            }, 500);
-        }, 500);
+                if (cleanedUp) return;
+
+                leftRem.classList.remove('curtain-left-closing');
+                leftRem.classList.add('curtain-left-opening');
+                rightRem.classList.remove('curtain-right-closing');
+                rightRem.classList.add('curtain-right-opening');
+                centerBadge.classList.remove('badge-in');
+                centerBadge.classList.add('badge-out');
+
+                // Phase 4: Curtains open (380ms) -> Complete transition
+                setTimeout(() => {
+                    cleanup();
+                }, 400);
+            }, 60);
+        }, 380);
     });
     DOM.toggleSoundBtn?.addEventListener('click', () => { 
         closeMenu(); 
