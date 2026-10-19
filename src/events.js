@@ -5,13 +5,14 @@ import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabular
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
-import { displayCard, flipCard, applyDarkMode, applySoundSetting, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI } from './ui/render.js';
+import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { openProfileModal } from './features/gamification.js';
 import { setupIOEventListeners } from './features/io.js';
 import { playSound, speakText, preloadAudio  } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { smartSync } from './core/firebase.js';
+import { setTypingActive } from './ui/celestial-canvas.js';
 
 async function loadAndShowQuiz() {
     DOM.startQuizBtn.disabled = true;
@@ -297,10 +298,21 @@ export function setupEventListeners() {
         }
     }, true); // Use capture phase to bypass stopPropagation
 
-    // Typing Mode Window Listeners for Timer Pause/Resume
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
+
+    // Auto-suspend background canvas during typing to allocate 100% frame budget to virtual keyboards & input
+    document.addEventListener('focusin', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            setTypingActive(true);
+        }
+    });
+    document.addEventListener('focusout', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            setTypingActive(false);
+        }
+    });
     
     // Header
     const closeMenu = () => {
@@ -494,6 +506,13 @@ export function setupEventListeners() {
         if (nextIdx >= 0) displayCard(nextIdx);
     });
 
+    DOM.toggleBoostModeBtn?.addEventListener('click', () => {
+        closeMenu();
+        DOM.toggleBoostModeBtn?.blur();
+        const currentBoost = getState().isBoostMode;
+        applyBoostMode(!currentBoost, true);
+    });
+
     let isTransitioning = false;
     DOM.toggleDarkModeBtn?.addEventListener('click', () => { 
         if (isTransitioning) return;
@@ -612,6 +631,15 @@ export function setupEventListeners() {
             const match = !query || name.includes(query) || name.includes(cleanQuery) || rawVal.includes(query);
             item.style.display = match ? 'flex' : 'none';
         });
+    });
+
+    DOM.customTopicSearch?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.value.trim().toLowerCase() === '/boost') {
+            e.preventDefault();
+            e.target.value = '';
+            toggleCustomTopicMenu(false);
+            applyBoostMode(!getState().isBoostMode, true);
+        }
     });
 
     DOM.customTopicOptions?.addEventListener('click', (e) => {
@@ -850,7 +878,15 @@ export function setupEventListeners() {
     DOM.typingSubmitBtn?.addEventListener('click', handleTypingSubmit);
     DOM.typingInput?.addEventListener('keydown', (e) => {
         if (e.isComposing || e.keyCode === 229) return;
-        if (e.key === 'Enter') handleTypingSubmit();
+        if (e.key === 'Enter') {
+            if (DOM.typingInput.value.trim().toLowerCase() === '/boost') {
+                e.preventDefault();
+                DOM.typingInput.value = '';
+                applyBoostMode(!getState().isBoostMode, true);
+                return;
+            }
+            handleTypingSubmit();
+        }
     });
     DOM.typingInput?.addEventListener('input', (e) => {
         recordFirstKeystroke(e);
@@ -930,6 +966,13 @@ export function setupEventListeners() {
     // Manage Panel (New and updated listeners)
     setupIOEventListeners(); // Handles Import, Export, Clear All
     let searchTimeout;
+    DOM.manageSearchInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.value.trim().toLowerCase() === '/boost') {
+            e.preventDefault();
+            e.target.value = '';
+            applyBoostMode(!getState().isBoostMode, true);
+        }
+    });
     DOM.manageSearchInput?.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => { updatePanelWordList(e); }, 300);
@@ -1047,6 +1090,9 @@ function handleWordCardCheckboxChange(event) {
     }
 }
 
+let globalKeystrokeBuffer = '';
+let globalKeystrokeTimer = null;
+
 function handleGlobalShortcuts(e) {
     const active = document.activeElement;
     const isTyping = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
@@ -1070,6 +1116,17 @@ function handleGlobalShortcuts(e) {
 
     if (isModalOpen || isTyping) return;
     if (getState().isTransitioning) return;
+
+    if (globalKeystrokeTimer) clearTimeout(globalKeystrokeTimer);
+    globalKeystrokeBuffer = (globalKeystrokeBuffer + e.key).slice(-10).toLowerCase();
+    globalKeystrokeTimer = setTimeout(() => { globalKeystrokeBuffer = ''; }, 2000);
+
+    if (globalKeystrokeBuffer.endsWith('/boost') || globalKeystrokeBuffer.endsWith('boost')) {
+        e.preventDefault();
+        globalKeystrokeBuffer = '';
+        applyBoostMode(!getState().isBoostMode, true);
+        return;
+    }
     
     // Accessibility Guard: If an interactive button, link, or dropdown is currently focused,
     // allow native Space and Enter keys to activate it (e.g. clicking focused TTS button,
@@ -1104,6 +1161,7 @@ function handleGlobalShortcuts(e) {
         return;
     }
     switch (e.key.toUpperCase()) {
+        case 'B': e.preventDefault(); DOM.toggleBoostModeBtn?.click(); break;
         case 'F': e.preventDefault(); flipCard(); break;
         case 'P': e.preventDefault(); DOM.ttsBtn?.click(); break;
         case 'S': e.preventDefault(); DOM.starBtn?.click(); break;

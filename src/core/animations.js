@@ -1,4 +1,6 @@
 
+import { getState } from './state.js';
+
 // 'anime' là biến toàn cục từ CDN, không cần import
 
 const DEFAULT_DURATION = 400;
@@ -7,14 +9,26 @@ const EASE_IN_OUT_SINE = 'easeInOutSine';
 
 export async function animateFlip(cardElement) {
     if (!cardElement) return;
-    const currentRotation = anime.get(cardElement, 'rotateY', 'deg');
+    const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
+    const currentRotation = typeof anime !== 'undefined' && anime.get ? anime.get(cardElement, 'rotateY', 'deg') : 0;
     cardElement.style.pointerEvents = 'none';
-    await anime({
-        targets: cardElement,
-        rotateY: `${parseFloat(currentRotation) + 180}deg`,
-        easing: 'easeInOutSine',
-        duration: 500,
-    }).finished;
+    if (isBoost) {
+        if (typeof anime !== 'undefined') {
+            await anime({
+                targets: cardElement,
+                rotateY: `${parseFloat(currentRotation) + 180}deg`,
+                easing: 'easeOutQuad',
+                duration: 120,
+            }).finished;
+        }
+    } else {
+        await anime({
+            targets: cardElement,
+            rotateY: `${parseFloat(currentRotation) + 180}deg`,
+            easing: 'easeInOutSine',
+            duration: 500,
+        }).finished;
+    }
     cardElement.style.pointerEvents = 'auto';
 }
 
@@ -22,6 +36,8 @@ let lastExitDirection = -1; // -1 for left, 1 for right
 
 export async function animateCardOut(cardElement) {
     if (!cardElement) return;
+    const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
+    if (isBoost) return;
     lastExitDirection = Math.random() > 0.5 ? 1 : -1;
     const targetX = lastExitDirection * 150;
     const targetRot = lastExitDirection * 15;
@@ -37,6 +53,17 @@ export async function animateCardOut(cardElement) {
 
 export async function animateCardIn(cardElement) {
     if (!cardElement) return;
+    const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
+    if (isBoost) {
+        if (typeof anime !== 'undefined') {
+            anime.set(cardElement, {
+                translateX: '0%',
+                opacity: 1,
+                rotate: '0deg'
+            });
+        }
+        return;
+    }
     const enterDirection = -lastExitDirection; // come from the opposite side
     const startX = enterDirection * 150;
     const startRot = enterDirection * 15;
@@ -180,6 +207,12 @@ export function animateNumber(element, endValue, duration = 1600, options = fals
         }
         return `${prefix}${numStr}${suffix}`;
     };
+
+    const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
+    if (isBoost) {
+        element.textContent = formatVal(endValue);
+        return;
+    }
 
     if (startValue === endValue) {
         element.textContent = formatVal(endValue);
@@ -330,11 +363,16 @@ export function animateHeatmap(heatmapContainer) {
 
     if (cells.length === 0) return;
 
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
+    if (isBoost || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
         cells.forEach(c => {
             c.style.opacity = '';
             c.style.transform = '';
         });
+        if (summaryText) {
+            const totalReviews = parseInt(summaryText.textContent.replace(/\D/g, ''), 10) || 0;
+            summaryText.textContent = totalReviews.toLocaleString('vi-VN');
+        }
         return;
     }
 

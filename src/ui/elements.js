@@ -23,6 +23,7 @@ export const DOM = {
     celestialHubBtn: getEl('celestial-hub-btn'),
     manageWordsBtnOpen: getEl('manage-words-btn-open') || getEl('celestial-hub-btn'),
     profileBtn: getEl('profile-btn') || getEl('celestial-hub-btn'),
+    toggleBoostModeBtn: getEl('toggle-boost-mode-btn'),
     toggleDarkModeBtn: getEl('toggle-dark-mode-btn'),
     toggleSoundBtn: getEl('toggle-sound-btn'),
     customTypingDropdown: getEl('custom-typing-dropdown'),

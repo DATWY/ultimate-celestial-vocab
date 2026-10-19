@@ -22,6 +22,7 @@ let _allTags = new Set(['all']);
 let _currentCardIndex = -1;
 let _isFlipped = false;
 let _isDarkMode = false;
+let _isBoostMode = false;
 let _soundMode = 'all'; // 'all', 'sfx', 'tts', 'off'
 let _isTypingMode = false;
 let _typingFilter = 'off'; // 'off', 'leech', 'all', 'hard', 'learning', 'starred', 'long'
@@ -127,6 +128,7 @@ export const getState = () => ({
     currentCardIndex: _currentCardIndex,
     isFlipped: _isFlipped,
     isDarkMode: _isDarkMode,
+    isBoostMode: _isBoostMode,
     soundMode: _soundMode,
     isTypingMode: _isTypingMode,
     typingFilter: _typingFilter,
@@ -195,6 +197,7 @@ export function pushCardToVocabulary(card) {
 }
 export function setIsFlipped(flipped) { _isFlipped = flipped; }
 export function setIsDarkMode(isDark) { _isDarkMode = isDark; }
+export function setIsBoostMode(isBoost) { _isBoostMode = !!isBoost; }
 export function setIsTypingMode(isTyping) { 
     _isTypingMode = isTyping; 
     if (!isTyping) {

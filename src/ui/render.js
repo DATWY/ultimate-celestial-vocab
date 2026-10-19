@@ -1,13 +1,15 @@
 import { DOM } from './elements.js';
-import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter } from '../core/state.js';
+import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter } from '../core/state.js';
 import { playSound, preloadAudio } from '../core/sound.js';
 import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards } from '../core/queue.js';
-import { openAddEditModal, showConfirmation, showPopup, closeModal } from './modal.js';
+import { openAddEditModal, showConfirmation, showPopup, closeModal, showToast } from './modal.js';
+import { setBoostMode, updateCanvasTheme } from './celestial-canvas.js';
 import { animateFlip, animateNumber } from '../core/animations.js';
 import { isFuzzySearchMatch } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 
 export function launchVictoryConfetti() {
+    if (getState().isBoostMode) return;
     const canvas = document.getElementById('victory-confetti-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -785,7 +787,7 @@ export function applyDarkMode(isDark) {
     const icon = DOM.toggleDarkModeBtn?.querySelector('i');
     if (icon) icon.className = isDark ? 'ph-duotone ph-sun' : 'ph-duotone ph-moon-stars';
 
-    import('./celestial-canvas.js').then(m => m.updateCanvasTheme(isDark));
+    updateCanvasTheme(isDark);
 }
 
 export function applySoundSetting(mode) {
@@ -809,6 +811,43 @@ export function applySoundSetting(mode) {
         else label.textContent = 'Âm thanh: Tắt';
     }
     DOM.toggleSoundBtn?.classList.toggle('muted', mode === 'off');
+}
+
+export function applyBoostMode(isBoost, showToastNotification = false) {
+    setIsBoostMode(isBoost);
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('celestialBoostMode', isBoost ? 'true' : 'false');
+    }
+
+    document.body.classList.toggle('boost-mode', isBoost);
+    document.documentElement.classList.toggle('boost-mode', isBoost);
+
+    const btn = DOM.toggleBoostModeBtn || document.getElementById('toggle-boost-mode-btn');
+    if (btn) {
+        btn.classList.toggle('active', isBoost);
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = isBoost ? 'ph-fill ph-lightning' : 'ph-duotone ph-lightning';
+        }
+        const label = btn.querySelector('.btn-label');
+        if (label) {
+            label.textContent = isBoost ? 'Tăng Tốc: BẬT' : 'Tăng Tốc (Boost)';
+        }
+        btn.setAttribute('aria-pressed', isBoost ? 'true' : 'false');
+        btn.title = isBoost 
+            ? 'Chế độ Tăng Tốc đang BẬT (0% GPU, siêu mượt, tiết kiệm pin)' 
+            : 'Bật Chế độ Tăng Tốc (Boost Mode: 0% GPU & Pin)';
+    }
+
+    setBoostMode(isBoost);
+
+    if (showToastNotification) {
+        if (isBoost) {
+            showToast('Chế Độ Tăng Tốc ⚡', 'Đã bật Boost Mode: 0% GPU, siêu mượt và tiết kiệm pin tối đa!', 'ph-lightning');
+        } else {
+            showToast('Hiệu Ứng Thiên Hà ✨', 'Đã khôi phục giao diện sao trời đầy đủ.', 'ph-sparkle');
+        }
+    }
 }
 
 let visibleCount = 40;

@@ -5,7 +5,7 @@ import './css/transition.css';
 import { loadVocabulary, getState, addXP, setXP, saveGamification, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
 import { initializeSound, startBackgroundAudioPreload } from './core/sound.js';
-import { displayCard, flipCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting } from './ui/render.js';
+import { displayCard, flipCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting, applyBoostMode } from './ui/render.js';
 import { setupEventListeners } from './events.js';
 import { smartSync } from './core/firebase.js';
 import { openManageModal, openAddEditModal, openDedupModal, openModal } from './ui/modal.js';
@@ -135,6 +135,12 @@ window.__celestialAudit = {
     setDarkMode: (isDark) => {
         applyDarkMode(isDark);
     },
+    setBoostMode: (isBoost) => {
+        applyBoostMode(isBoost, true);
+    },
+    getBoostMode: () => {
+        return getState().isBoostMode;
+    },
     evaluateTyping: (input, target) => {
         return {
             eval: evaluateTyping(input, target),
@@ -151,12 +157,11 @@ window.__celestialAudit = {
     }
 };
 
-import { initCelestialCanvas } from './ui/celestial-canvas.js';
+import { initCelestialCanvas, isMobileDevice } from './ui/celestial-canvas.js';
 
 async function initializeApp() {
     console.log("Initializing Celestial Vocab App...");
     initializeSound();
-    initCelestialCanvas();
 
     const urlParams = new URLSearchParams(window.location.search);
     const themeParam = urlParams.get('theme');
@@ -169,6 +174,26 @@ async function initializeApp() {
 
     const initialSoundMode = localStorage.getItem('celestialSoundMode') || 'all';
     applySoundSetting(initialSoundMode);
+
+    // --- BOOST MODE (0% GPU & ECO HIGH PERFORMANCE) ---
+    const mobileDevice = isMobileDevice();
+    const boostParam = urlParams.get('boost');
+    const hashBoost = typeof window !== 'undefined' && window.location.hash.toLowerCase() === '#boost';
+    const pathBoost = typeof window !== 'undefined' && window.location.pathname.toLowerCase().endsWith('/boost');
+    const savedBoost = localStorage.getItem('celestialBoostMode');
+    
+    let initialBoostMode = false;
+    if (boostParam !== null || hashBoost || pathBoost) {
+        initialBoostMode = (boostParam === '1' || boostParam === 'true' || boostParam === '' || hashBoost || pathBoost);
+    } else if (savedBoost !== null) {
+        initialBoostMode = (savedBoost === 'true');
+    } else if (mobileDevice) {
+        // Auto-enable Boost Mode on mobile devices for 0% GPU waste and maximum responsiveness
+        initialBoostMode = true;
+    }
+    applyBoostMode(initialBoostMode, false);
+
+    initCelestialCanvas();
 
     await loadVocabulary();
     populateTopicFilters();

@@ -8,6 +8,7 @@ import { displayCard, launchVictoryConfetti } from '../ui/render.js';
 import { saveVocabulary, saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent } from '../core/state.js';
 import { animateNumber } from '../core/animations.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
+import { suspendCelestialCanvas, resumeCelestialCanvas } from '../ui/celestial-canvas.js';
 
 let quizIntervalId = null;
 let quizTimeLeft = 0;
@@ -31,6 +32,7 @@ function shuffleArray(array) {
 
 export function showQuizSetup() {
     if (!DOM.quizArea) return;
+    suspendCelestialCanvas();
     DOM.mainFlashcardView?.classList.add('hidden');
     DOM.statsArea?.classList.add('hidden');
     DOM.quizArea.classList.remove('hidden');
@@ -389,6 +391,7 @@ function returnToFlashcards() {
     buildReviewQueue();
     displayCard(getNextCardToReview());
     playSound('next');
+    resumeCelestialCanvas();
 }
 
 function updateQuizProgress() {

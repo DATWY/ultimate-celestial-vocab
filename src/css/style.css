@@ -162,7 +162,7 @@ body {
     font-family: var(--font-primary);
     background-color: var(--bg-color);
     background-image: var(--bg-image);
-    background-attachment: fixed;
+    background-attachment: scroll;
     background-size: cover;
     color: var(--text-color);
     min-height: 100vh;
@@ -177,12 +177,19 @@ body {
     /* Slightly more line height */
 }
 
+@media (min-width: 769px) and (hover: hover) {
+    body:not(.boost-mode) {
+        background-attachment: fixed;
+    }
+}
+
 #app-container {
     width: 100%;
     max-width: 1140px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
+    contain: layout style;
     gap: 40px;
     box-sizing: border-box;
 }
@@ -1036,6 +1043,54 @@ body:not(.dark-mode) #toggle-sound-btn.muted {
     color: #e11d48 !important;
 }
 
+/* ===== BOOST MODE TOGGLE BUTTON ===== */
+#toggle-boost-mode-btn {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    transition: all 0.25s ease;
+}
+
+#toggle-boost-mode-btn:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+
+#toggle-boost-mode-btn.active {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(234, 179, 8, 0.2)) !important;
+    border-color: rgba(245, 158, 11, 0.6) !important;
+    color: #f59e0b !important;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.3) !important;
+}
+
+#toggle-boost-mode-btn.active i {
+    color: #f59e0b !important;
+}
+
+body:not(.dark-mode) #toggle-boost-mode-btn {
+    background: #ffffff !important;
+    border: 1px solid rgba(203, 213, 225, 0.7) !important;
+    color: #475569 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    outline: none !important;
+}
+
+body:not(.dark-mode) #toggle-boost-mode-btn:hover {
+    background: #f8fafc !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    color: #d97706 !important;
+}
+
+body:not(.dark-mode) #toggle-boost-mode-btn.active {
+    background: #fef3c7 !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2) !important;
+}
+
+body:not(.dark-mode) #toggle-boost-mode-btn.active i {
+    color: #d97706 !important;
+}
+
 /* Study Action Buttons: Start Quiz & Celestial Hub */
 #start-quiz-btn {
     background: rgba(99, 102, 241, 0.15) !important;
@@ -1152,6 +1207,7 @@ body:not(.dark-mode) #add-word-btn-open {
 @media (min-width: 1001px) {
     #toggle-typing-mode-btn .btn-label,
     #profile-btn .btn-label,
+    #toggle-boost-mode-btn .btn-label,
     #toggle-dark-mode-btn .btn-label,
     #toggle-sound-btn .btn-label,
     #manual-sync-btn .btn-label {
@@ -1160,6 +1216,7 @@ body:not(.dark-mode) #add-word-btn-open {
 
     #toggle-typing-mode-btn,
     #profile-btn,
+    #toggle-boost-mode-btn,
     #toggle-dark-mode-btn,
     #toggle-sound-btn,
     #manual-sync-btn {
@@ -11950,6 +12007,12 @@ body:not(.dark-mode) .toast-message {
     z-index: 0;
     opacity: 1;
     transition: opacity 0.5s ease;
+    contain: strict;
+}
+
+body.boost-mode #celestial-canvas {
+    display: none !important;
+    visibility: hidden !important;
 }
 
 /* ===== INTEGRATED CELESTIAL TTS AUDIO WAVEFORM BUTTON ===== */
@@ -15120,5 +15183,127 @@ body:not(.dark-mode) .btn-penance-close {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+}
+
+/* ==========================================================================
+   CELESTIAL BOOST MODE ENGINE (0% GPU & ZERO LAG ARCHITECTURE)
+   ========================================================================== */
+
+body.boost-mode {
+    background-image: none !important;
+    background-color: var(--bg-color) !important;
+    background-attachment: scroll !important;
+}
+
+body.boost-mode #celestial-canvas {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Eliminate all expensive backdrop blur in Boost Mode */
+body.boost-mode *,
+body.boost-mode *::before,
+body.boost-mode *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Halt all infinite loops in Boost Mode */
+body.boost-mode * {
+    animation-iteration-count: 1 !important;
+}
+
+/* Disable continuous animations in Boost Mode */
+body.boost-mode [class*="pulse"],
+body.boost-mode [class*="spin"],
+body.boost-mode [class*="shimmer"],
+body.boost-mode [class*="glow"],
+body.boost-mode [class*="breathing"],
+body.boost-mode [class*="ring"],
+body.boost-mode [class*="float"],
+body.boost-mode [class*="glint"],
+body.boost-mode [class*="orbit"],
+body.boost-mode [class*="aura"],
+body.boost-mode [class*="sweep"],
+body.boost-mode [class*="ember"],
+body.boost-mode .v5-shimmer,
+body.boost-mode .halo-spin,
+body.boost-mode .victory-halo-spin,
+body.boost-mode .victory-nebula-glow,
+body.boost-mode .victory-ambient-ring,
+body.boost-mode .example-focus-tag,
+body.boost-mode .detail-row.example-row.is-hard-focus,
+body.boost-mode .waveform-bar,
+body.boost-mode .ring-rotate,
+body.boost-mode .fire-flame-pulse,
+body.boost-mode .gold-pulse,
+body.boost-mode .summary-shine-sweep,
+body.boost-mode .summary-trophy-pulse,
+body.boost-mode .trophy-bounce,
+body.boost-mode .float-twinkle,
+body.boost-mode .text-glow-shimmer,
+body.boost-mode .btn-penance-close,
+body.boost-mode .badge,
+body.boost-mode .badge-item::after,
+body.boost-mode .badge-icon-wrapper::before,
+body.boost-mode .level-card::after,
+body.boost-mode .level-card *,
+body.boost-mode .tts-waveform-btn.is-playing .waveform-bar {
+    animation: none !important;
+}
+
+/* Simplify complex shadows for high FPS in Boost Mode */
+body.boost-mode .celestial-victory-card,
+body.boost-mode .modal-content,
+body.boost-mode .manage-panel,
+body.boost-mode .dedup-panel,
+body.boost-mode .profile-panel,
+body.boost-mode .flashcard,
+body.boost-mode .card-face,
+body.boost-mode .celestial-stats-dock {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body:not(.dark-mode).boost-mode .celestial-victory-card,
+body:not(.dark-mode).boost-mode .modal-content,
+body:not(.dark-mode).boost-mode .manage-panel,
+body:not(.dark-mode).boost-mode .dedup-panel,
+body:not(.dark-mode).boost-mode .profile-panel,
+body:not(.dark-mode).boost-mode .flashcard,
+body:not(.dark-mode).boost-mode .card-face,
+body:not(.dark-mode).boost-mode .celestial-stats-dock {
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ==========================================================================
+   MOBILE HARDWARE GPU & BATTERY DEFENDER (UNIVERSAL MOBILE OPTIMIZATION)
+   ========================================================================== */
+@media (max-width: 768px) {
+    body {
+        background-attachment: scroll !important;
+    }
+
+    /* Universal zero-backdrop-blur for all mobile screens */
+    *, *::before, *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Disable continuous background ambient animation on mobile */
+    .example-focus-tag,
+    .detail-row.example-row.is-hard-focus,
+    .victory-halo-spin,
+    .victory-nebula-glow,
+    .victory-ambient-ring {
+        animation: none !important;
+    }
+
+    /* Restrain massive multi-layer box shadows on mobile GPUs */
+    .celestial-victory-card {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5) !important;
     }
 }
