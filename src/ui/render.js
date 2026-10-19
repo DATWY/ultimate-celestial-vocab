@@ -879,15 +879,15 @@ export function updatePanelWordList(resetScroll = true) {
 
     if (filteredWordsCache.length === 0) {
         DOM.wordListDisplay.innerHTML = `
-            <div class="vocab-empty-results" style="text-align: center; padding: 48px 20px; opacity: 0.85;">
-                <div style="font-size: 3rem; color: var(--v5-starlight-cyan, #38bdf8); margin-bottom: 12px;">
+            <div class="vocab-empty-results">
+                <div class="empty-icon-wrap">
                     <i class="ph-duotone ph-magnifying-glass"></i>
                 </div>
-                <h4 style="font-size: 1.15rem; font-weight: 600; margin-bottom: 8px;">Không tìm thấy từ vựng nào</h4>
-                <p style="font-size: 0.9rem; color: var(--text-light, #94a3b8); max-width: 400px; margin: 0 auto 16px;">
+                <h4>Không tìm thấy từ vựng nào</h4>
+                <p>
                     Không có thẻ nào khớp với từ khóa tìm kiếm hoặc bộ lọc trạng thái hiện tại.
                 </p>
-                <button type="button" id="reset-vocab-filter-btn" class="primary-btn outline-btn" style="margin: 0 auto; padding: 8px 16px; font-size: 0.85rem; border-radius: 9999px;">
+                <button type="button" id="reset-vocab-filter-btn" class="primary-btn outline-btn reset-filter-btn">
                     <i class="ph-bold ph-arrow-counter-clockwise"></i> Đặt lại bộ lọc
                 </button>
             </div>

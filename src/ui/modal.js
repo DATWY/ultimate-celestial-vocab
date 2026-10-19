@@ -266,7 +266,7 @@ export function switchHubTab(targetTab = 'overview') {
         updatePanelWordList(false);
         import('../events.js').then(m => m.updateUndoButtonState?.());
     } else if (activeTabId === 'overview') {
-        import('../features/gamification.js').then(m => m.renderGamificationUI?.());
+        import('../features/gamification.js').then(m => m.renderGamificationUI?.({ force: true }));
     } else if (activeTabId === 'badges') {
         import('../features/gamification.js').then(m => (m.renderBadgesTab || m.renderGamificationUI)?.());
     }

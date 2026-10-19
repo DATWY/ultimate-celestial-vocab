@@ -5,7 +5,7 @@ import { openModal, showPopup, openManageModal, switchHubTab } from '../ui/modal
 import { getLocalDateString } from '../core/utils/date.js';
 
 // Removed static import for BADGES to use dynamic import for BADGE_TRACKS and SPECIAL_BADGES
-import { animateNumber, animateForecastChart, animateHeatmap } from '../core/animations.js';
+import { animateNumber, animateForecastChart, animateHeatmap, animateOverviewEntrance } from '../core/animations.js';
 import { renderFsrsPersonaUI } from './fsrsPersona.js';
 
 export function openProfileModal(targetTab = 'overview') {
@@ -61,7 +61,7 @@ export function renderGamificationUI(options = {}) {
         }
     }
 
-    const numDuration = isBackgroundUpdate ? 400 : 2500;
+    const numDuration = isBackgroundUpdate ? 400 : 1500;
 
     // Render Level & Rank & XP
     if (DOM.profileLevel) animateNumber(DOM.profileLevel, currentLevel, numDuration);
@@ -70,7 +70,7 @@ export function renderGamificationUI(options = {}) {
         rankTitleElement.innerHTML = `<i class="ph ${rankInfo.icon}"></i> ${rankInfo.name}`;
     }
     
-    if (DOM.profileTotalXP) animateNumber(DOM.profileTotalXP, userXP, numDuration, true);
+    if (DOM.profileTotalXP) animateNumber(DOM.profileTotalXP, userXP, numDuration, { format: true });
     
     // XP Calculation
     const xpForCurrentLevel = Math.pow(currentLevel - 1, 2) * 100;
@@ -81,8 +81,12 @@ export function renderGamificationUI(options = {}) {
     let progressPercent = (xpInCurrentLevel / xpNeededTotalForCurrentLevel) * 100;
     progressPercent = Math.max(0, Math.min(100, progressPercent)); // Clamping
 
-    if (DOM.profileXpFill) DOM.profileXpFill.style.width = `${progressPercent}%`;
-    if (DOM.profileXpNeeded) animateNumber(DOM.profileXpNeeded, xpForNextLevel - userXP, numDuration, true);
+    if (DOM.profileXpFill) {
+        const pct = `${progressPercent.toFixed(1)}%`;
+        DOM.profileXpFill.dataset.targetWidth = pct;
+        if (isBackgroundUpdate) DOM.profileXpFill.style.width = pct;
+    }
+    if (DOM.profileXpNeeded) animateNumber(DOM.profileXpNeeded, xpForNextLevel - userXP, numDuration, { format: true });
 
     // Render Memory Analytics
     const totalReviews = gamification.totalReviews || 0;
@@ -102,9 +106,6 @@ export function renderGamificationUI(options = {}) {
     const avgStabilityNum = stabilityCount > 0 ? (totalStability / stabilityCount) : (totalReviews > 0 ? 1.0 : 0);
     const retentionRateNum = totalReviews > 0 ? Math.min(99.4, Math.max(82.0, (100 - (totalLapses / (totalReviews || 1)) * 100))) : 94.2;
 
-    const avgStability = avgStabilityNum.toFixed(1);
-    const retentionRate = retentionRateNum.toFixed(1);
-
     const elRetention = document.getElementById('profile-retention-rate');
     const elStability = document.getElementById('profile-avg-stability');
     const elTotalRev = document.getElementById('profile-total-reviews');
@@ -112,28 +113,32 @@ export function renderGamificationUI(options = {}) {
     const elStabilitySub = document.getElementById('profile-stability-sub');
     const elMemoryStatus = document.getElementById('profile-memory-status');
 
-    if (elRetention) elRetention.textContent = `${retentionRate}%`;
-    if (elStability) elStability.textContent = `${avgStability} ngày`;
-    if (elTotalRev) animateNumber(elTotalRev, totalReviews, numDuration, true);
+    if (elRetention) animateNumber(elRetention, retentionRateNum, numDuration, { decimals: 1, suffix: '%' });
+    if (elStability) animateNumber(elStability, avgStabilityNum, numDuration, { decimals: 1, suffix: ' ngày' });
+    if (elTotalRev) animateNumber(elTotalRev, totalReviews, numDuration, { format: true });
 
     // Micro-meter visual telemetry bars
     const elRetentionMeter = document.getElementById('profile-retention-meter');
     if (elRetentionMeter) {
-        elRetentionMeter.style.width = `${Math.min(100, Math.max(0, retentionRateNum))}%`;
+        const pct = `${Math.min(100, Math.max(0, retentionRateNum)).toFixed(1)}%`;
+        elRetentionMeter.dataset.targetWidth = pct;
+        if (isBackgroundUpdate) elRetentionMeter.style.width = pct;
     }
 
     const elStabilityMeter = document.getElementById('profile-stability-meter');
     if (elStabilityMeter) {
         // Map 0 - 30 days to 0 - 100% with a minimum 12% for visibility
-        const stabPct = Math.min(100, Math.max(12, (avgStabilityNum / 30) * 100));
-        elStabilityMeter.style.width = `${stabPct.toFixed(1)}%`;
+        const stabPct = `${Math.min(100, Math.max(12, (avgStabilityNum / 30) * 100)).toFixed(1)}%`;
+        elStabilityMeter.dataset.targetWidth = stabPct;
+        if (isBackgroundUpdate) elStabilityMeter.style.width = stabPct;
     }
 
     const elReviewsMeter = document.getElementById('profile-reviews-meter');
     if (elReviewsMeter) {
         // Progressive scale up to 10k reviews
-        const reviewsPct = totalReviews <= 0 ? 15 : Math.min(100, Math.max(18, (Math.log10(Math.max(1, totalReviews)) / 4) * 100));
-        elReviewsMeter.style.width = `${reviewsPct.toFixed(1)}%`;
+        const reviewsPct = `${(totalReviews <= 0 ? 15 : Math.min(100, Math.max(18, (Math.log10(Math.max(1, totalReviews)) / 4) * 100))).toFixed(1)}%`;
+        elReviewsMeter.dataset.targetWidth = reviewsPct;
+        if (isBackgroundUpdate) elReviewsMeter.style.width = reviewsPct;
     }
 
     if (elRetentionSub) {
@@ -207,6 +212,11 @@ export function renderGamificationUI(options = {}) {
 
     // Render Forecast
     renderForecast(state.vocabulary, isBackgroundUpdate);
+
+    // Animate Overview entrance cascade
+    if (!isBackgroundUpdate) {
+        animateOverviewEntrance();
+    }
 
     // Render Badges chỉ khi pane badges đang mở
     const isBadgesPaneActive = document.getElementById('profile-view-badges')?.classList.contains('active');
