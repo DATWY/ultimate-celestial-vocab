@@ -194,6 +194,25 @@ function playSynthSound(soundName) {
                 osc.start(now);
                 osc.stop(now + 0.08);
                 break;
+            case 'themeEclipse':
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(329.63, now);
+                osc.frequency.exponentialRampToValueAtTime(164.81, now + 0.35);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+                osc.start(now);
+                osc.stop(now + 0.55);
+                break;
+            case 'themeDawn':
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.12);
+                osc.frequency.setValueAtTime(880, now + 0.24);
+                gain.gain.setValueAtTime(0.16, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+                break;
             default:
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(440, now);

@@ -640,9 +640,9 @@ export function setupEventListeners() {
             setIsTransitioning(false);
         };
 
-        const safetyTimeout = setTimeout(cleanup, 2500);
+        const safetyTimeout = setTimeout(cleanup, 4000);
 
-        // Phase 1: Curtains close (380ms)
+        // Phase 1: Curtains close with majestic glide (720ms)
         setTimeout(() => {
             if (cleanedUp) return;
 
@@ -659,9 +659,16 @@ export function setupEventListeners() {
                 } catch (err) {
                     console.error('Error during theme transition applyDarkMode:', err);
                 }
+
+                // Play celestial chime audio harmonic
+                try {
+                    playSound(targetModeIsDark ? 'themeEclipse' : 'themeDawn');
+                } catch (_) {
+                    // Non-blocking sound
+                }
             }
 
-            // Phase 3: Short dwell (60ms) then start opening
+            // Phase 3: Satisfying celestial center dwell (450ms) while emblem levitates/shines, then glide open
             setTimeout(() => {
                 if (cleanedUp) return;
 
@@ -672,12 +679,12 @@ export function setupEventListeners() {
                 centerBadge.classList.remove('badge-in');
                 centerBadge.classList.add('badge-out');
 
-                // Phase 4: Curtains open (380ms) -> Complete transition
+                // Phase 4: Curtains glide open smoothly (740ms) -> Complete transition
                 setTimeout(() => {
                     cleanup();
-                }, 400);
-            }, 60);
-        }, 380);
+                }, 740);
+            }, 450);
+        }, 720);
     });
     DOM.toggleSoundBtn?.addEventListener('click', () => { 
         closeMenu(); 

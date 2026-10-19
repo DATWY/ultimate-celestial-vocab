@@ -33,8 +33,12 @@
 /* Ensure animation always runs smoothly without being paused by window-blurred or modal-active */
 body.window-blurred #shipper-curtain-container,
 body.window-blurred #shipper-curtain-container *,
+body.window-blurred #shipper-curtain-container *::before,
+body.window-blurred #shipper-curtain-container *::after,
 body.modal-active #shipper-curtain-container,
-body.modal-active #shipper-curtain-container * {
+body.modal-active #shipper-curtain-container *,
+body.modal-active #shipper-curtain-container *::before,
+body.modal-active #shipper-curtain-container *::after {
     animation-play-state: running !important;
 }
 
@@ -50,7 +54,7 @@ body.boost-mode .shipper-curtain-container {
     pointer-events: none !important;
 }
 
-/* Curtain Panels - Overlap by 4px each (total 8px center overlap) to unconditionally prevent center slit/gap */
+/* Curtain Panels - Overlap by 12px each (total 24px center overlap) to unconditionally prevent center slit/gap */
 .curtain-left,
 .curtain-right {
     position: fixed !important;
@@ -58,57 +62,167 @@ body.boost-mode .shipper-curtain-container {
     bottom: 0 !important;
     height: 100vh !important;
     height: 100dvh !important;
-    width: calc(50% + 4px) !important;
+    width: calc(50% + 12px) !important;
     will-change: transform;
     pointer-events: none !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
 }
 
 .curtain-left {
     left: 0 !important;
-    transform: translateX(calc(-100% - 50px));
+    transform: translateX(calc(-100% - 80px));
 }
 
 .curtain-right {
     right: 0 !important;
-    transform: translateX(calc(100% + 50px));
+    transform: translateX(calc(100% + 80px));
 }
 
-/* Dark Mode Curtain Styles (To Night/Dark) */
+/* Dark Mode Curtain Styles (To Night/Dark - Deep Cosmic Nebula & Starfield) */
 .curtain-dark-left {
-    background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
-    border-right: 2px solid rgba(99, 102, 241, 0.5);
-    box-shadow: 12px 0 35px rgba(99, 102, 241, 0.35);
+    background: radial-gradient(circle at 100% 50%, rgba(67, 56, 202, 0.45) 0%, transparent 65%), linear-gradient(135deg, #020617 0%, #0a0f2c 35%, #0f172a 70%, #1e1b4b 100%);
+    border-right: 2px solid rgba(165, 180, 252, 0.6);
+    box-shadow: 15px 0 40px rgba(99, 102, 241, 0.45), 5px 0 15px rgba(165, 180, 252, 0.3), inset -3px 0 15px rgba(129, 140, 248, 0.2);
 }
 
 .curtain-dark-right {
-    background: linear-gradient(225deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
-    border-left: 2px solid rgba(99, 102, 241, 0.5);
-    box-shadow: -12px 0 35px rgba(99, 102, 241, 0.35);
+    background: radial-gradient(circle at 0% 50%, rgba(67, 56, 202, 0.45) 0%, transparent 65%), linear-gradient(225deg, #020617 0%, #0a0f2c 35%, #0f172a 70%, #1e1b4b 100%);
+    border-left: 2px solid rgba(165, 180, 252, 0.6);
+    box-shadow: -15px 0 40px rgba(99, 102, 241, 0.45), -5px 0 15px rgba(165, 180, 252, 0.3), inset 3px 0 15px rgba(129, 140, 248, 0.2);
 }
 
-/* Light Mode Curtain Styles (To Day/Light) */
+/* Starfield Shimmer Layer for Dark Curtain */
+.curtain-dark-left::before,
+.curtain-dark-right::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+        radial-gradient(1.5px 1.5px at 15% 20%, rgba(255, 255, 255, 0.85), transparent),
+        radial-gradient(1px 1px at 45% 15%, rgba(147, 197, 253, 0.9), transparent),
+        radial-gradient(2px 2px at 70% 35%, rgba(199, 210, 254, 0.85), transparent),
+        radial-gradient(1px 1px at 25% 65%, rgba(255, 255, 255, 0.75), transparent),
+        radial-gradient(2px 2px at 60% 80%, rgba(165, 180, 252, 0.9), transparent),
+        radial-gradient(1.5px 1.5px at 85% 70%, rgba(147, 197, 253, 0.8), transparent),
+        radial-gradient(1px 1px at 35% 45%, rgba(255, 255, 255, 0.7), transparent),
+        radial-gradient(2px 2px at 80% 18%, rgba(224, 231, 255, 0.85), transparent);
+    opacity: 0.8;
+    pointer-events: none;
+    animation: celestialStarlightPulse 2.8s ease-in-out infinite alternate;
+}
+
+/* Radiant Ethereal Edge Beam for Dark Curtain */
+.curtain-dark-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, 
+        rgba(99, 102, 241, 0) 0%, 
+        rgba(165, 180, 252, 0.7) 25%, 
+        rgba(255, 255, 255, 0.95) 50%, 
+        rgba(165, 180, 252, 0.7) 75%, 
+        rgba(99, 102, 241, 0) 100%
+    );
+    box-shadow: 0 0 20px rgba(165, 180, 252, 0.9), 0 0 40px rgba(99, 102, 241, 0.6);
+}
+
+.curtain-dark-right::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, 
+        rgba(99, 102, 241, 0) 0%, 
+        rgba(165, 180, 252, 0.7) 25%, 
+        rgba(255, 255, 255, 0.95) 50%, 
+        rgba(165, 180, 252, 0.7) 75%, 
+        rgba(99, 102, 241, 0) 100%
+    );
+    box-shadow: 0 0 20px rgba(165, 180, 252, 0.9), 0 0 40px rgba(99, 102, 241, 0.6);
+}
+
+/* Light Mode Curtain Styles (To Day/Light - Radiant Dawn & Solar Gleam) */
 .curtain-light-left {
-    background: linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #fef3c7 100%);
-    border-right: 2px solid rgba(249, 115, 22, 0.5);
-    box-shadow: 12px 0 35px rgba(245, 158, 11, 0.35);
+    background: radial-gradient(circle at 100% 50%, rgba(253, 186, 116, 0.5) 0%, transparent 65%), linear-gradient(135deg, #fffbeb 0%, #fef3c7 30%, #fb923c 75%, #f59e0b 100%);
+    border-right: 2px solid rgba(251, 146, 60, 0.7);
+    box-shadow: 15px 0 40px rgba(245, 158, 11, 0.45), 5px 0 15px rgba(251, 146, 60, 0.35), inset -3px 0 15px rgba(254, 243, 199, 0.3);
 }
 
 .curtain-light-right {
-    background: linear-gradient(225deg, #f59e0b 0%, #fb923c 50%, #fef3c7 100%);
-    border-left: 2px solid rgba(249, 115, 22, 0.5);
-    box-shadow: -12px 0 35px rgba(245, 158, 11, 0.35);
+    background: radial-gradient(circle at 0% 50%, rgba(253, 186, 116, 0.5) 0%, transparent 65%), linear-gradient(225deg, #fffbeb 0%, #fef3c7 30%, #fb923c 75%, #f59e0b 100%);
+    border-left: 2px solid rgba(251, 146, 60, 0.7);
+    box-shadow: -15px 0 40px rgba(245, 158, 11, 0.45), -5px 0 15px rgba(251, 146, 60, 0.35), inset 3px 0 15px rgba(254, 243, 199, 0.3);
 }
 
-/* Badge Styles */
+/* Solar Gleam Shimmer Layer for Light Curtain */
+.curtain-light-left::before,
+.curtain-light-right::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: 
+        radial-gradient(1.5px 1.5px at 15% 25%, rgba(255, 255, 255, 0.95), transparent),
+        radial-gradient(2px 2px at 50% 20%, rgba(254, 240, 138, 0.9), transparent),
+        radial-gradient(1.5px 1.5px at 75% 40%, rgba(254, 215, 170, 0.85), transparent),
+        radial-gradient(2px 2px at 30% 75%, rgba(255, 255, 255, 0.9), transparent),
+        radial-gradient(1.5px 1.5px at 70% 85%, rgba(253, 186, 116, 0.85), transparent),
+        radial-gradient(1px 1px at 40% 55%, rgba(255, 255, 255, 0.75), transparent),
+        radial-gradient(2px 2px at 85% 25%, rgba(254, 243, 199, 0.9), transparent);
+    opacity: 0.85;
+    pointer-events: none;
+    animation: solarGleamPulse 2.8s ease-in-out infinite alternate;
+}
+
+/* Radiant Ethereal Edge Beam for Light Curtain */
+.curtain-light-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, 
+        rgba(245, 158, 11, 0) 0%, 
+        rgba(254, 215, 170, 0.8) 25%, 
+        rgba(255, 255, 255, 1) 50%, 
+        rgba(254, 215, 170, 0.8) 75%, 
+        rgba(245, 158, 11, 0) 100%
+    );
+    box-shadow: 0 0 20px rgba(251, 146, 60, 0.9), 0 0 40px rgba(245, 158, 11, 0.6);
+}
+
+.curtain-light-right::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, 
+        rgba(245, 158, 11, 0) 0%, 
+        rgba(254, 215, 170, 0.8) 25%, 
+        rgba(255, 255, 255, 1) 50%, 
+        rgba(254, 215, 170, 0.8) 75%, 
+        rgba(245, 158, 11, 0) 100%
+    );
+    box-shadow: 0 0 20px rgba(251, 146, 60, 0.9), 0 0 40px rgba(245, 158, 11, 0.6);
+}
+
+/* Badge Styles - Central Celestial Emblem */
 .curtain-badge {
     position: fixed !important;
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) scale(0);
     z-index: 1000000 !important;
-    width: 6.5rem;
-    height: 6.5rem;
+    width: 7.25rem;
+    height: 7.25rem;
     border-radius: 9999px;
     border: 2px solid;
     display: flex;
@@ -121,25 +235,69 @@ body.boost-mode .shipper-curtain-container {
     will-change: transform, opacity;
 }
 
+/* Orbital Dashed Halo Ring (::before) */
+.curtain-badge::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 9999px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Outer Breathing Celestial Aura Corona (::after) */
+.curtain-badge::after {
+    content: '';
+    position: absolute;
+    inset: -24px;
+    border-radius: 9999px;
+    pointer-events: none;
+    z-index: -2;
+}
+
 .curtain-badge-dark {
-    background-color: rgba(2, 6, 23, 0.95);
-    border-color: rgba(99, 102, 241, 0.6);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 45px rgba(99, 102, 241, 0.5);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: radial-gradient(circle at 35% 35%, rgba(30, 27, 75, 0.96) 0%, rgba(2, 6, 23, 0.98) 100%);
+    border-color: rgba(147, 197, 253, 0.6);
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 45px rgba(99, 102, 241, 0.65), 0 0 80px rgba(139, 92, 246, 0.35), inset 0 2px 4px rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.curtain-badge-dark::before {
+    border: 1.5px dashed rgba(165, 180, 252, 0.45);
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.1) 60%, transparent 72%);
+    animation: celestialOrbitSpin 14s linear infinite;
+}
+
+.curtain-badge-dark::after {
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(99, 102, 241, 0.2) 45%, transparent 70%);
+    filter: blur(10px);
+    animation: celestialAuraBreathe 2s ease-in-out infinite alternate;
 }
 
 .curtain-badge-light {
-    background-color: #ffffff;
-    border-color: #fb923c;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 45px rgba(249, 115, 22, 0.5);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fffbeb 50%, #fef3c7 100%);
+    border-color: rgba(245, 158, 11, 0.75);
+    box-shadow: 0 25px 60px -10px rgba(245, 158, 11, 0.3), 0 0 50px rgba(251, 146, 60, 0.6), 0 0 90px rgba(253, 186, 116, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.curtain-badge-light::before {
+    border: 1.5px dashed rgba(245, 158, 11, 0.5);
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, rgba(251, 146, 60, 0.12) 60%, transparent 72%);
+    animation: celestialOrbitSpin 14s linear infinite;
+}
+
+.curtain-badge-light::after {
+    background: radial-gradient(circle, rgba(251, 146, 60, 0.3) 0%, rgba(245, 158, 11, 0.22) 45%, transparent 70%);
+    filter: blur(10px);
+    animation: celestialAuraBreathe 2s ease-in-out infinite alternate;
 }
 
 .badge-icon {
-    font-size: 2.35rem;
-    line-height: 2.5rem;
+    font-size: 2.5rem;
+    line-height: 2.75rem;
     user-select: none;
     display: flex;
     align-items: center;
@@ -147,93 +305,160 @@ body.boost-mode .shipper-curtain-container {
 }
 
 .badge-icon-dark {
-    color: #22d3ee;
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    color: #38bdf8;
+    animation: lunarLevitate 2.4s ease-in-out infinite;
 }
 
 .badge-icon-light {
     color: #ea580c;
-    animation: spin 4s linear infinite;
+    animation: solarCorona 5s linear infinite;
 }
 
 .badge-text {
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: 0.12em;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    margin-top: 3px;
+    margin-top: 4px;
     user-select: none;
 }
 
 .badge-text-dark {
-    color: #a5b4fc;
+    color: #c7d2fe;
+    text-shadow: 0 0 12px rgba(165, 180, 252, 0.85);
+}
+
+.badge-text-dark::after {
+    content: 'NOCTURNAL';
+    display: block;
+    font-size: 6.5px;
+    letter-spacing: 0.22em;
+    color: rgba(165, 180, 252, 0.7);
+    margin-top: 1px;
+    font-weight: 600;
 }
 
 .badge-text-light {
-    color: #ea580c;
+    color: #b45309;
+    text-shadow: 0 0 12px rgba(251, 146, 60, 0.65);
 }
 
-/* GPU Accelerated Animations */
+.badge-text-light::after {
+    content: 'DIURNAL';
+    display: block;
+    font-size: 6.5px;
+    letter-spacing: 0.22em;
+    color: rgba(194, 65, 12, 0.75);
+    margin-top: 1px;
+    font-weight: 600;
+}
+
+/* GPU Accelerated Smooth Celestial Animations */
 @keyframes slideInLeft {
-    0% { transform: translateX(calc(-100% - 50px)); }
+    0% { transform: translateX(calc(-100% - 80px)); }
     100% { transform: translateX(0); }
 }
 
 @keyframes slideOutLeft {
     0% { transform: translateX(0); }
-    100% { transform: translateX(calc(-100% - 50px)); }
+    100% { transform: translateX(calc(-100% - 80px)); }
 }
 
 @keyframes slideInRight {
-    0% { transform: translateX(calc(100% + 50px)); }
+    0% { transform: translateX(calc(100% + 80px)); }
     100% { transform: translateX(0); }
 }
 
 @keyframes slideOutRight {
     0% { transform: translateX(0); }
-    100% { transform: translateX(calc(100% + 50px)); }
+    100% { transform: translateX(calc(100% + 80px)); }
 }
 
 .curtain-left-closing {
-    animation: slideInLeft 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slideInLeft 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .curtain-left-opening {
-    animation: slideOutLeft 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slideOutLeft 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .curtain-right-closing {
-    animation: slideInRight 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slideInRight 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .curtain-right-opening {
-    animation: slideOutRight 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slideOutRight 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes popIn {
-    0% { transform: translate(-50%, -50%) scale(0) rotate(-180deg); opacity: 0; }
-    70% { transform: translate(-50%, -50%) scale(1.15) rotate(15deg); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    0% {
+        transform: translate(-50%, -50%) scale(0.3) rotate(-25deg);
+        opacity: 0;
+        filter: blur(10px);
+    }
+    60% {
+        transform: translate(-50%, -50%) scale(1.08) rotate(3deg);
+        opacity: 1;
+        filter: blur(0px);
+    }
+    82% {
+        transform: translate(-50%, -50%) scale(0.97) rotate(-1deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+        filter: blur(0px);
+    }
 }
 
 @keyframes popOut {
-    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    0% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+        filter: blur(0px);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.4) rotate(15deg);
+        opacity: 0;
+        filter: blur(8px);
+    }
 }
 
 .badge-in {
-    animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation: popIn 0.62s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .badge-out {
-    animation: popOut 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: popOut 0.52s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.75; transform: scale(0.92); }
+@keyframes celestialStarlightPulse {
+    0%, 100% { opacity: 0.65; transform: scale(1); }
+    50% { opacity: 0.95; transform: scale(1.01); }
 }
 
-@keyframes spin {
+@keyframes solarGleamPulse {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.01); }
+}
+
+@keyframes celestialOrbitSpin {
     to { transform: rotate(360deg); }
+}
+
+@keyframes celestialAuraBreathe {
+    0% { transform: scale(0.92); opacity: 0.5; }
+    100% { transform: scale(1.08); opacity: 0.85; }
+}
+
+@keyframes lunarLevitate {
+    0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.75)); }
+    50% { transform: translateY(-4px) scale(1.06); filter: drop-shadow(0 0 18px rgba(56, 189, 248, 1)) drop-shadow(0 0 30px rgba(99, 102, 241, 0.65)); }
+}
+
+@keyframes solarCorona {
+    0% { transform: rotate(0deg) scale(1); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.8)); }
+    50% { transform: rotate(180deg) scale(1.08); filter: drop-shadow(0 0 22px rgba(245, 158, 11, 1)) drop-shadow(0 0 32px rgba(251, 146, 60, 0.75)); }
+    100% { transform: rotate(360deg) scale(1); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.8)); }
 }

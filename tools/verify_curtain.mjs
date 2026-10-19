@@ -183,14 +183,14 @@ async function runTests() {
     console.log('Test 1 Result:', t1);
     results.push({ name: 'Full Viewport Coverage (100vw x 100vh)', passed: t1.isDirectChild && t1.coversViewport });
 
-    await new Promise(r => setTimeout(r, 900));
+    await new Promise(r => setTimeout(r, 2000));
 
     // TEST 2: Center Seam Overlap (Zero Gap)
     console.log('\n--- Test 2: Center Seam Overlap (Zero Gap) ---');
     const t2 = await client.eval(`
       const btn = document.getElementById('toggle-dark-mode-btn');
       btn.click();
-      await new Promise(r => setTimeout(r, 380));
+      await new Promise(r => setTimeout(r, 850));
       const left = document.getElementById('curtain-left').getBoundingClientRect();
       const right = document.getElementById('curtain-right').getBoundingClientRect();
       const overlapPx = left.right - right.left;
@@ -204,7 +204,7 @@ async function runTests() {
     console.log('Test 2 Result:', t2);
     results.push({ name: 'Center Seam Overlap (Zero Gap/Slit)', passed: t2.hasNoGap && t2.overlapPx > 0 });
 
-    await new Promise(r => setTimeout(r, 900));
+    await new Promise(r => setTimeout(r, 1500));
 
     // TEST 3: Clean Completion & Element Hiding
     console.log('\n--- Test 3: Clean Completion & Element Hiding ---');
@@ -236,7 +236,7 @@ async function runTests() {
       btn.click();
       const curtain = document.getElementById('shipper-curtain-container');
       const isActive = !curtain.classList.contains('hidden');
-      await new Promise(r => setTimeout(r, 950));
+      await new Promise(r => setTimeout(r, 2200));
       const isHiddenAfter = curtain.classList.contains('hidden');
       document.body.classList.remove('window-blurred');
       return {
@@ -279,7 +279,7 @@ async function runTests() {
     const t6 = await client.eval(`
       const btn = document.getElementById('toggle-dark-mode-btn');
       btn.click();
-      await new Promise(r => setTimeout(r, 380));
+      await new Promise(r => setTimeout(r, 850));
       const left = document.getElementById('curtain-left').getBoundingClientRect();
       const right = document.getElementById('curtain-right').getBoundingClientRect();
       const overlapPx = left.right - right.left;
@@ -291,7 +291,7 @@ async function runTests() {
     console.log('Test 6 Result:', t6);
     results.push({ name: 'Odd Dimensions (1365px, 125% DPI) Zero Gap', passed: t6.hasNoGap && t6.overlapPx > 0 });
 
-    await new Promise(r => setTimeout(r, 900));
+    await new Promise(r => setTimeout(r, 1500));
 
     // TEST 7: Mobile Viewport (390x844)
     console.log('\n--- Test 7: Mobile Viewport (390x844) ---');
@@ -300,12 +300,12 @@ async function runTests() {
     const t7 = await client.eval(`
       const btn = document.getElementById('toggle-dark-mode-btn');
       btn.click();
-      await new Promise(r => setTimeout(r, 380));
+      await new Promise(r => setTimeout(r, 850));
       const container = document.getElementById('shipper-curtain-container').getBoundingClientRect();
       const left = document.getElementById('curtain-left').getBoundingClientRect();
       const right = document.getElementById('curtain-right').getBoundingClientRect();
       const overlapPx = left.right - right.left;
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 1500));
       const isHiddenEnd = document.getElementById('shipper-curtain-container').classList.contains('hidden');
       return {
         overlapPx,
@@ -333,7 +333,7 @@ async function runTests() {
       const badgeLight = document.getElementById('curtain-badge').classList.contains('curtain-badge-light');
       const sunIcon = document.getElementById('badge-icon').querySelector('.ph-sun') !== null;
       
-      await new Promise(r => setTimeout(r, 750));
+      await new Promise(r => setTimeout(r, 2000));
       const isLightNow = !document.body.classList.contains('dark-mode');
 
       // Transition from Light to Dark
@@ -343,7 +343,7 @@ async function runTests() {
       const badgeDark = document.getElementById('curtain-badge').classList.contains('curtain-badge-dark');
       const moonIcon = document.getElementById('badge-icon').querySelector('.ph-moon') !== null;
 
-      await new Promise(r => setTimeout(r, 750));
+      await new Promise(r => setTimeout(r, 2000));
       const isDarkNow = document.body.classList.contains('dark-mode');
 
       return {
@@ -359,14 +359,14 @@ async function runTests() {
     const t9 = await client.eval(`
       const btn = document.getElementById('toggle-dark-mode-btn');
       btn.click();
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 300));
       const container = document.getElementById('shipper-curtain-container');
       const styleDuring = window.getComputedStyle(container);
       const pointerEventsDuring = styleDuring.pointerEvents;
       const hitElement = document.elementFromPoint(100, 100);
       const isCurtainHit = container.contains(hitElement);
       
-      await new Promise(r => setTimeout(r, 750));
+      await new Promise(r => setTimeout(r, 2000));
       const isHiddenAfter = container.classList.contains('hidden');
       const pointerEventsAfter = window.getComputedStyle(container).pointerEvents;
       
@@ -388,12 +388,12 @@ async function runTests() {
     const t10 = await client.eval(`
       const btn = document.getElementById('toggle-dark-mode-btn');
       btn.click();
-      await new Promise(r => setTimeout(r, 380));
+      await new Promise(r => setTimeout(r, 850));
       const container = document.getElementById('shipper-curtain-container').getBoundingClientRect();
       const left = document.getElementById('curtain-left').getBoundingClientRect();
       const right = document.getElementById('curtain-right').getBoundingClientRect();
       const overlapPx = left.right - right.left;
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 1500));
       const isHiddenEnd = document.getElementById('shipper-curtain-container').classList.contains('hidden');
       return {
         containerWidth: container.width,
