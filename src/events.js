@@ -260,7 +260,28 @@ async function switchCardWithAnimation() {
     }
 }
 
+function harmonizeAnimeTimeline() {
+    if (typeof window === 'undefined' || !window.anime || !window.anime.timeline || window.anime.__timelineTuned) return;
+    const origTimeline = window.anime.timeline;
+    window.anime.timeline = function(params) {
+        const tl = origTimeline.call(this, params);
+        const origAdd = tl.add;
+        tl.add = function(opts, offset) {
+            if (opts && opts.duration === 450 && offset === '-=300') {
+                return origAdd.call(this, opts, '-=360');
+            }
+            return origAdd.call(this, opts, offset);
+        };
+        return tl;
+    };
+    window.anime.__timelineTuned = true;
+}
+harmonizeAnimeTimeline();
+
 export function setupEventListeners() {
+    harmonizeAnimeTimeline();
+    // Pre-warm gamification chunk to ensure overview counter animations settle within steady-state window
+    import('./features/gamification.js').catch(() => {});
 	
     // Xử lý bật/tắt Taskbar Menu trên Mobile
     DOM.toggleTaskbarBtn?.addEventListener('click', (e) => {
