@@ -636,8 +636,12 @@ export function setupEventListeners() {
             rightRem.style.transform = '';
             centerBadge.style.transform = '';
             centerBadge.style.opacity = '';
-            isTransitioning = false;
-            setIsTransitioning(false);
+            // Clean debounce cooldown (160ms) to prevent double-invocation
+            // if rapid clicks happen right around the ~1.9s completion boundary
+            setTimeout(() => {
+                isTransitioning = false;
+                setIsTransitioning(false);
+            }, 160);
         };
 
         const safetyTimeout = setTimeout(cleanup, 4000);

@@ -333,7 +333,7 @@ async function runTests() {
       const badgeLight = document.getElementById('curtain-badge').classList.contains('curtain-badge-light');
       const sunIcon = document.getElementById('badge-icon').querySelector('.ph-sun') !== null;
       
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 2500));
       const isLightNow = !document.body.classList.contains('dark-mode');
 
       // Transition from Light to Dark
@@ -343,7 +343,7 @@ async function runTests() {
       const badgeDark = document.getElementById('curtain-badge').classList.contains('curtain-badge-dark');
       const moonIcon = document.getElementById('badge-icon').querySelector('.ph-moon') !== null;
 
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 2500));
       const isDarkNow = document.body.classList.contains('dark-mode');
 
       return {
@@ -427,6 +427,40 @@ async function runTests() {
     console.log('Test 11 Result:', t11);
     results.push({ name: 'Offscreen Shadow Bleed Clearance & Rest State', passed: t11.isHidden });
 
+    // TEST 12: Minimum Viewport (320x568 - iPhone SE 1st Gen) Seam, Coverage & Cleanup
+    console.log('\n--- Test 12: Minimum Viewport (320x568) Seam & Coverage ---');
+    await client.setViewport(320, 568, true, 2);
+    await new Promise(r => setTimeout(r, 300));
+    const t12 = await client.eval(`
+      const btn = document.getElementById('toggle-dark-mode-btn');
+      btn.click();
+      await new Promise(r => setTimeout(r, 850));
+      const container = document.getElementById('shipper-curtain-container');
+      const containerRect = container.getBoundingClientRect();
+      const left = document.getElementById('curtain-left').getBoundingClientRect();
+      const right = document.getElementById('curtain-right').getBoundingClientRect();
+      const badge = document.getElementById('curtain-badge');
+      const overlapPx = left.right - right.left;
+      const covers320 = Math.abs(containerRect.width - 320) <= 2 && Math.abs(containerRect.height - 568) <= 2;
+      
+      await new Promise(r => setTimeout(r, 1500));
+      const isHiddenEnd = container.classList.contains('hidden');
+      const leftClean = !document.getElementById('curtain-left').classList.contains('curtain-left-closing') && !document.getElementById('curtain-left').classList.contains('curtain-left-opening');
+      const rightClean = !document.getElementById('curtain-right').classList.contains('curtain-right-closing') && !document.getElementById('curtain-right').classList.contains('curtain-right-opening');
+      const badgeClean = !badge.classList.contains('badge-in') && !badge.classList.contains('badge-out');
+
+      return {
+        containerWidth: containerRect.width,
+        containerHeight: containerRect.height,
+        overlapPx,
+        hasNoGap: Math.abs(overlapPx - 24) <= 1,
+        covers320,
+        isCleanEnd: isHiddenEnd && leftClean && rightClean && badgeClean
+      };
+    `);
+    console.log('Test 12 Result:', t12);
+    results.push({ name: 'Minimum Viewport (320x568) 24px Seam, Coverage & Cleanup', passed: t12.hasNoGap && t12.covers320 && t12.isCleanEnd });
+
     console.log('\n=======================================');
     console.log('        TEST SUMMARY RESULTS           ');
     console.log('=======================================');
@@ -441,7 +475,7 @@ async function runTests() {
       console.error('\nSome tests failed!');
       process.exit(1);
     } else {
-      console.log('\nAll 11 automated curtain verification tests PASSED with 100% success!');
+      console.log('\nAll 12 automated curtain verification tests PASSED with 100% success!');
       process.exit(0);
     }
   } finally {

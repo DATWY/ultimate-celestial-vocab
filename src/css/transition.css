@@ -379,7 +379,7 @@ body.boost-mode .shipper-curtain-container {
 }
 
 .curtain-left-opening {
-    animation: slideOutLeft 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slideOutLeft 0.74s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .curtain-right-closing {
@@ -387,7 +387,7 @@ body.boost-mode .shipper-curtain-container {
 }
 
 .curtain-right-opening {
-    animation: slideOutRight 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slideOutRight 0.74s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes popIn {

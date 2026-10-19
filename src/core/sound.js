@@ -53,7 +53,12 @@ function getAudioContext() {
         }
     }
     if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        try {
+            const p = audioCtx.resume();
+            if (p && typeof p.catch === 'function') {
+                p.catch(() => {});
+            }
+        } catch (_) {}
     }
     return audioCtx;
 }
@@ -194,25 +199,68 @@ function playSynthSound(soundName) {
                 osc.start(now);
                 osc.stop(now + 0.08);
                 break;
-            case 'themeEclipse':
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(329.63, now);
-                osc.frequency.exponentialRampToValueAtTime(164.81, now + 0.35);
-                gain.gain.setValueAtTime(0.18, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-                osc.start(now);
-                osc.stop(now + 0.55);
+            case 'themeEclipse': {
+                // Polyphonic Deep Cosmic Nocturne Chord: E3 (164.81Hz) + B3 (246.94Hz) + E4 (329.63Hz)
+                osc.disconnect();
+                gain.disconnect();
+
+                const eclipseFreqs = [164.81, 246.94, 329.63];
+                const filter = ctx.createBiquadFilter ? ctx.createBiquadFilter() : null;
+                if (filter) {
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(850, now);
+                    filter.frequency.exponentialRampToValueAtTime(180, now + 0.7);
+                    filter.connect(ctx.destination);
+                }
+
+                const masterGain = ctx.createGain();
+                masterGain.gain.setValueAtTime(0.22, now);
+                masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+                masterGain.connect(filter || ctx.destination);
+
+                eclipseFreqs.forEach((freq, idx) => {
+                    const chordOsc = ctx.createOscillator();
+                    const voiceGain = ctx.createGain();
+                    chordOsc.type = 'sine';
+                    chordOsc.frequency.setValueAtTime(freq, now);
+                    if (chordOsc.detune) {
+                        chordOsc.detune.setValueAtTime((idx - 1) * 3, now);
+                    }
+                    voiceGain.gain.setValueAtTime(idx === 0 ? 0.45 : 0.28, now);
+                    chordOsc.connect(voiceGain);
+                    voiceGain.connect(masterGain);
+                    chordOsc.start(now);
+                    chordOsc.stop(now + 0.75);
+                });
                 break;
-            case 'themeDawn':
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(440, now);
-                osc.frequency.setValueAtTime(659.25, now + 0.12);
-                osc.frequency.setValueAtTime(880, now + 0.24);
-                gain.gain.setValueAtTime(0.16, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-                osc.start(now);
-                osc.stop(now + 0.6);
+            }
+            case 'themeDawn': {
+                // Polyphonic Sparkling Celestial Triad Chime: C5 (523.25Hz) + E5 (659.25Hz) + G5 (783.99Hz) + C6 (1046.5Hz)
+                osc.disconnect();
+                gain.disconnect();
+
+                const dawnFreqs = [523.25, 659.25, 783.99, 1046.5];
+                const masterGain = ctx.createGain();
+                masterGain.gain.setValueAtTime(0.2, now);
+                masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
+                masterGain.connect(ctx.destination);
+
+                dawnFreqs.forEach((freq, idx) => {
+                    const chimeOsc = ctx.createOscillator();
+                    const voiceGain = ctx.createGain();
+                    chimeOsc.type = idx >= 2 ? 'sine' : 'triangle';
+                    const startTime = now + idx * 0.035;
+                    chimeOsc.frequency.setValueAtTime(freq, startTime);
+                    voiceGain.gain.setValueAtTime(0.0001, now);
+                    voiceGain.gain.setValueAtTime(idx === 3 ? 0.35 : 0.25, startTime);
+                    voiceGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
+                    chimeOsc.connect(voiceGain);
+                    voiceGain.connect(masterGain);
+                    chimeOsc.start(startTime);
+                    chimeOsc.stop(now + 0.85);
+                });
                 break;
+            }
             default:
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(440, now);
