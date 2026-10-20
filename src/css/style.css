@@ -15321,3 +15321,75 @@ body:not(.dark-mode).boost-mode .celestial-stats-dock {
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5) !important;
     }
 }
+
+/* --- VERSION & AUTO-UPDATE STYLES (DATWY.V) --- */
+.version-icon {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.16), rgba(59, 130, 246, 0.16));
+    color: #0891b2;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.io-version-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.version-meta-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.05);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.84rem;
+    color: var(--text-color);
+}
+
+body.dark-mode .version-meta-box {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(51, 65, 85, 0.8);
+    color: #e2e8f0;
+}
+
+.version-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    display: inline-block;
+    animation: versionPulse 2s infinite ease-in-out;
+}
+
+@keyframes versionPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.version-tag-text strong {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--primary-color);
+    letter-spacing: 0.3px;
+    font-weight: 700;
+}
+
+.check-update-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.check-update-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);
+}

@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node tools/generate_version.js && vite build",
     "preview": "vite preview",
-    "train": "node tools/train_fsrs7.js"
+    "train": "node tools/train_fsrs7.js",
+    "version": "node tools/generate_version.js"
   },
   "devDependencies": {
     "vite": "^5.0.0",

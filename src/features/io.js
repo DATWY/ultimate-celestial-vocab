@@ -35,6 +35,11 @@ export function setupIOEventListeners() {
     DOM.saveFsrs7Btn?.addEventListener('click', handleSaveFsrs7);
 
     DOM.clearAllBtn?.addEventListener('click', handleClearAllData);
+
+    // Nút kiểm tra phiên bản & cập nhật thủ công
+    document.getElementById('btn-check-update')?.addEventListener('click', () => {
+        import('../core/versionCheck.js').then(m => m.checkAppVersion({ isManual: true }));
+    });
     DOM.importFile?.addEventListener('change', handleFileSelect);
 
     // Listener cho modal xem trước

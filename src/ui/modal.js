@@ -269,6 +269,8 @@ export function switchHubTab(targetTab = 'overview') {
         import('../features/gamification.js').then(m => m.renderGamificationUI?.({ force: true }));
     } else if (activeTabId === 'badges') {
         import('../features/gamification.js').then(m => (m.renderBadgesTab || m.renderGamificationUI)?.());
+    } else if (activeTabId === 'io') {
+        import('../core/versionCheck.js').then(m => m.displayAppVersion?.());
     }
 }
 

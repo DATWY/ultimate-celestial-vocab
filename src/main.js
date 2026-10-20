@@ -14,6 +14,7 @@ import { evaluateTyping, stripVietnameseDiacritics } from './features/typing.js'
 import { calculateNextSrsState } from './core/srs/index.js';
 import { getDifficultyBias, getStabilityMultiplier } from './core/srs/heuristics.js';
 import { saveAllVocabularyToDB } from './core/idb.js';
+import { checkAppVersion, displayAppVersion } from './core/versionCheck.js';
 
 // --- CHEAT ENGINE & DEV TOOLS (Development Mode Only) ---
 if (import.meta.env.DEV || (typeof window !== 'undefined' && window.__ENABLE_DEV_TOOLS__)) {
@@ -208,6 +209,9 @@ async function initializeApp() {
     // Khởi tạo trước UI Gamification / Rank / XP bar từ dữ liệu IndexedDB local
     import('./features/gamification.js').then(m => m.renderGamificationUI?.({ isBackgroundUpdate: true, force: true }));
 
+    // Kiểm tra phiên bản mới từ server để phát hiện và reset web cập nhật nếu cần
+    checkAppVersion();
+
     // Recover pending sync IDs từ phiên trước (crash/đóng tab đột ngột)
     const { recoverPendingSyncIds, flushSyncQueueBeforeUnload, flushSyncQueue, syncGamificationToFirebase } = await import('./core/sync.js');
     await recoverPendingSyncIds();
@@ -242,6 +246,7 @@ async function initializeApp() {
                 console.log("👀 Tab active trở lại. Đồng bộ dữ liệu nền...");
                 smartSync({ isManual: false });
             }
+            checkAppVersion();
         }
     });
 
