@@ -44,3 +44,4 @@ tmp_audit_verify_fixes/
 .agents/
 tmp_audit_verify_xp/
 tmp_audit_verify_ver/
+tmp_audit_verify_*/

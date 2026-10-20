@@ -903,6 +903,7 @@ export function setupEventListeners() {
         // Nếu đã chấm điểm sai trước đó (đang chờ gõ lại đúng)
         if (stashedCardIndex !== -1) {
             if (result.status === 'perfect' || result.status === 'perfect_fast') {
+                const wasTypo = isTypoRetry;
                 isTypoRetry = false;
                 DOM.cardEnglish?.classList.remove('text-masked', 'hidden');
                 DOM.cardEnglish?.classList.add('revealed');
@@ -911,6 +912,11 @@ export function setupEventListeners() {
                 DOM.typingInput.disabled = true;
                 if (DOM.typingSubmitBtn) DOM.typingSubmitBtn.disabled = true;
                 if (['all', 'tts'].includes(getState().soundMode)) speakText(currentCard.english);
+                
+                // SỬA LỖI KB 3.1: Nếu sửa thành công lỗi typo -> Chốt Rating 2 (Hard) đúng 1 lần duy nhất tại đây
+                if (wasTypo) {
+                    processSrsFeedback(2, false);
+                }
                 
                 setTimeout(() => {
                     stashedCardIndex = -1;
@@ -970,6 +976,7 @@ export function setupEventListeners() {
                 DOM.typingFeedback.className = 'typing-feedback text-warning';
                 DOM.typingInput.classList.add('shake');
                 setTimeout(() => DOM.typingInput.classList.remove('shake'), 400);
+                // SỬA LỖI KB 3.1: Không gọi processSrsFeedback ngay tại đây để tránh double-log khi người dùng gõ lại
             } else {
                 isTypoRetry = false;
                 const hintStr = generateHint(currentCard.english, 1);
@@ -977,10 +984,10 @@ export function setupEventListeners() {
                 DOM.typingFeedback.className = 'typing-feedback text-danger';
                 DOM.typingInput.classList.add('input-danger');
                 DOM.typingInput.value = ''; // Xóa sạch để gõ lại
-            }
 
-            // Ghi nhận điểm (Rating 1 hoặc 2 tùy typo hay sai hẳn)
-            processSrsFeedback(result.rating, false);
+                // Ghi nhận điểm sai (Rating 1) duy nhất 1 lần
+                processSrsFeedback(1, false);
+            }
         } else {
             DOM.cardEnglish?.classList.remove('text-masked', 'hidden');
             DOM.cardEnglish?.classList.add('revealed');

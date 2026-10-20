@@ -133,12 +133,20 @@ export function buildReviewQueue() {
             
         if (topicMatch) {
             // V3.2: Thẻ Mastered (đã thuộc) được tính là ĐẾN HẠN nếu hạn rơi vào bất kỳ lúc nào trong ngày hôm nay.
-            // Điều này giúp Dashboard khớp với Bảng Dự Báo, và người dùng không phải chờ đến đúng giờ/phút.
+            // SỬA LỖI KB 2.1: Nếu đã ôn hôm nay rồi (isReviewedToday = true), tuyệt đối không coi là Đến Hạn trong cùng ngày nữa!
             const endOfDay = new Date(now).setHours(23, 59, 59, 999);
             const isReviewedToday = word.lastReviewDate && getLocalDateString(word.lastReviewDate) === getLocalDateString(now);
-            const isDue = !word.srsDueDate || 
-                word.srsDueDate <= now || 
-                (word.srsStatus === 'Mastered' && !isReviewedToday && word.srsDueDate <= endOfDay);
+            
+            let isDue = false;
+            if (word.srsStatus === 'Mastered') {
+                if (!isReviewedToday) {
+                    isDue = !word.srsDueDate || word.srsDueDate <= endOfDay;
+                }
+            } else if (word.srsStatus === 'Learning') {
+                isDue = !word.srsDueDate || word.srsDueDate <= now;
+            } else {
+                isDue = !word.srsDueDate || word.srsDueDate <= now;
+            }
             
             if (word.srsStatus === 'Learning') {
                 // V3: Phải đợi hết 5/10 phút (delay) mới được nhét lại vào hàng đợi
@@ -209,6 +217,9 @@ export function getNextCardToReview() {
 export function insertCardForLearningStep(cardIndex) {
     let { currentReviewQueue } = getState();
     
+    // SỬA LỖI KB 3.2: Kiểm tra chống chèn trùng lặp thẻ vào hàng đợi
+    if (currentReviewQueue.includes(cardIndex)) return;
+
     // V3: Chỉ chèn lại thẻ Learning, KHÔNG gọi getSmartCramCards()
     // để tránh kéo thêm thẻ Mastered vào và gây "Review Storm"
     const newQueue = [...currentReviewQueue];

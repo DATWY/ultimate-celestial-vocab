@@ -161,9 +161,19 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             nextIntervalDays = Math.max(1.0, nextIntervalDays + fuzzOffset);
         }
 
-        // Graduation to Mastered: Rating 3 (Good) / 4 (Easy) or memory durability >= 3 days with reps >= 2
-        if (rating >= 3 || (newState.stability >= 3.0 && (newState.reps || 0) >= 2)) {
+        // Graduation to Mastered:
+        // - Rating 3 (Good) / 4 (Easy)
+        // - Hoặc thẻ đã Mastered từ trước và nhận Rating 2 (Hard) (vẫn nhớ được từ, không phải Lapse)
+        // - Hoặc độ bền trí nhớ >= 3.0 ngày với reps >= 2
+        const wasMastered = card.srsStatus === 'Mastered';
+        if (rating >= 3 || (wasMastered && rating === 2) || (newState.stability >= 3.0 && (newState.reps || 0) >= 2)) {
             newState.srsStatus = 'Mastered';
+            // GRADUATION & RECALL FLOOR GUARD:
+            // Bất kỳ thẻ nào tốt nghiệp hoặc duy trì Mastered thì chu kỳ tiếp theo BẮT BUỘC tối thiểu 1.0 ngày (sang ngày mai)
+            // Tuyệt đối không cho phép thẻ Mastered có chu kỳ tính bằng phút/giờ trong ngày hôm nay (< 1.0 ngày)
+            if (nextIntervalDays < 1.0) {
+                nextIntervalDays = 1.0;
+            }
         } else {
             newState.srsStatus = 'Learning';
         }
