@@ -335,7 +335,7 @@ function confirmImport() {
             srsDueDate: (parts[7] && parts[7].trim() !== '') ? Number(parts[7].trim()) : null,
             tags: tagsArray, 
             lapses: (parts[9] && parts[9].trim() !== '') ? Number(parts[9].trim()) : 0, 
-            isSuspended: (parts[10] || 'false').trim().toLowerCase() === 'true',
+            isSuspended: false, // Bỏ hoàn toàn chế độ tạm ngưng
             difficulty: (parts[13] && parts[13].trim() !== '') ? Number(parts[13].trim()) : undefined,
             stability: (parts[14] && parts[14].trim() !== '') ? Number(parts[14].trim()) : undefined,
             reps: (parts[15] && parts[15].trim() !== '') ? Number(parts[15].trim()) : 0,
@@ -454,7 +454,7 @@ export function handleExport() {
         const exampleCleaned = (w.example || '').replace(/\n/g, '\\n').replace(/\t/g, ' ');
         const dueDateString = w.srsDueDate ? w.srsDueDate.toString() : '';
         const tagsString = w.tags?.join(',') || '';
-        return [w.english || '', w.vietnamese || '', w.type || '', w.pronunciation || '', exampleCleaned, w.isStarred ? 'true' : 'false', w.srsStatus || 'New', dueDateString, tagsString, w.lapses || 0, w.isSuspended ? 'true' : 'false', w.srsInterval || 0, w.srsEaseFactor || 2.5, w.difficulty ?? '', w.stability ?? '', w.reps || 0, w.learningStep || 0, w.lastReviewDate || '', w.stabilityShort ?? ''].join("\t");
+        return [w.english || '', w.vietnamese || '', w.type || '', w.pronunciation || '', exampleCleaned, w.isStarred ? 'true' : 'false', w.srsStatus || 'New', dueDateString, tagsString, w.lapses || 0, 'false', w.srsInterval || 0, w.srsEaseFactor || 2.5, w.difficulty ?? '', w.stability ?? '', w.reps || 0, w.learningStep || 0, w.lastReviewDate || '', w.stabilityShort ?? ''].join("\t");
     }).join("\n");
     const fileContent = headerString + dataRows;
     const blob = new Blob([fileContent], { type: 'text/tab-separated-values;charset=utf-8' });

@@ -887,7 +887,7 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
     const forecastWords = Array(7).fill(null).map(() => []); // Lưu danh sách từ vựng
     
     vocabulary.forEach(word => {
-        if (!word.isSuspended && !word.isDeleted && word.srsDueDate) {
+        if (!word.isDeleted && word.srsDueDate) {
             const dueDate = new Date(word.srsDueDate);
             dueDate.setHours(0, 0, 0, 0);
             

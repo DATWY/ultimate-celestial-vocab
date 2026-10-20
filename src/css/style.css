@@ -189,7 +189,7 @@ body {
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    contain: layout style;
+    contain: style;
     gap: 40px;
     box-sizing: border-box;
 }
@@ -4286,13 +4286,17 @@ body.dark-mode .typing-hint .hint-label {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
     z-index: 1000;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 15px;
+    padding: max(28px, 4vh) 15px max(20px, 3vh);
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .modal.hidden {
@@ -4302,22 +4306,24 @@ body.dark-mode .typing-hint .hint-label {
 }
 
 .modal-overlay {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(15, 23, 42, 0.45);
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.55);
     z-index: 1;
     cursor: pointer;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 body.dark-mode .modal-overlay {
     background-color: rgba(3, 7, 18, 0.78);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .modal-content {
@@ -5549,8 +5555,9 @@ body {
     position: relative;
     max-width: 1160px !important;
     width: min(94vw, 1160px) !important;
-    height: min(94vh, 820px) !important;
-    max-height: 94vh;
+    height: min(89vh, 800px) !important;
+    max-height: 89vh;
+    margin-top: 14px;
     display: flex;
     flex-direction: column;
     overflow: hidden; /* Fixed header & controls, scrollable body */
@@ -5564,7 +5571,7 @@ body {
 .manage-panel:has(#manage-view-words.active),
 .manage-panel:has(#profile-view-badges.active),
 .manage-panel:has(#manage-view-io.active) {
-    height: min(94vh, 820px) !important;
+    height: min(89vh, 800px) !important;
 }
 
 body:not(.dark-mode) .manage-panel {

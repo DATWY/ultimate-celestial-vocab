@@ -206,11 +206,9 @@ export function displayCard(index, preserveFlipState = false) {
     // Chỉ nhận diện từ CỰC KHÓ (Extremely Hard / Leech):
     // 1. Độ khó FusionSRS cực cao (Difficulty >= 8.5)
     // 2. HOẶC đã từng bị quên từ 3 lần trở lên (lapses >= 3)
-    // 3. HOẶC thẻ từng bị tạm ngưng (isSuspended)
     const isHardWord = isCardLeech(cardData) ||
                        (cardData.difficulty !== undefined && cardData.difficulty >= 8.5) || 
-                       (cardData.lapses !== undefined && cardData.lapses >= 3) || 
-                       !!cardData.isSuspended;
+                       (cardData.lapses !== undefined && cardData.lapses >= 3);
 
     // Cập nhật nội dung thẻ (DOM updates)
     DOM.noCardMessage?.classList.add('hidden');
@@ -420,7 +418,7 @@ export function updateStats() {
     const totalCount = activeVocabulary.length;
     const filterLowerCase = (currentTopicFilter || 'all').toLowerCase();
     const filteredVocab = activeVocabulary.filter(w => 
-        !w.isSuspended && wordMatchesTopic(w, filterLowerCase)
+        wordMatchesTopic(w, filterLowerCase)
     );
     const filteredCount = filteredVocab.length;
     const now = Date.now();
@@ -439,7 +437,7 @@ export function updateStats() {
     // Bổ sung thẻ hiện tại nếu là thẻ Mastered đang ôn tập
     if (currentCardIndex >= 0 && currentCardIndex < vocabulary.length) {
         const cw = vocabulary[currentCardIndex];
-        if (cw && !cw.isDeleted && !cw.isSuspended && wordMatchesTopic(cw, filterLowerCase)) {
+        if (cw && !cw.isDeleted && wordMatchesTopic(cw, filterLowerCase)) {
             if (cw.srsStatus === 'Mastered') {
                 activeDueSet.add(cw.id || currentCardIndex);
             }
@@ -450,7 +448,7 @@ export function updateStats() {
         currentReviewQueue.forEach(idx => {
             if (idx >= 0 && idx < vocabulary.length) {
                 const qw = vocabulary[idx];
-                if (qw && !qw.isDeleted && !qw.isSuspended && wordMatchesTopic(qw, filterLowerCase)) {
+                if (qw && !qw.isDeleted && wordMatchesTopic(qw, filterLowerCase)) {
                     if (qw.srsStatus === 'Mastered') {
                         activeDueSet.add(qw.id || idx);
                     }
@@ -904,7 +902,7 @@ export function updatePanelWordList(resetScroll = true) {
     filteredWordsCache = vocabulary.filter(word => {
         if (word.isDeleted) return false;
         const topicMatch = wordMatchesTopic(word, selectedTopic);
-        const statusMatch = selectedStatus === 'all' || word.srsStatus === selectedStatus || (selectedStatus === 'Suspended' && word.isSuspended);
+        const statusMatch = selectedStatus === 'all' || word.srsStatus === selectedStatus;
         const searchMatch = !searchTerm || isFuzzySearchMatch(searchTerm, word.english, word.vietnamese);
         return topicMatch && statusMatch && searchMatch;
     }).sort((a, b) => a.english.localeCompare(b.english));
@@ -990,9 +988,6 @@ export function updatePanelWordList(resetScroll = true) {
 function createWordCard(word) {
     const cardEl = document.createElement('div');
     cardEl.className = 'word-card';
-    if (word.isSuspended) {
-        cardEl.classList.add('is-suspended');
-    }
     cardEl.classList.add(`status-${(word.srsStatus || 'New').toLowerCase()}`);
 
     // Determine status color
@@ -1001,9 +996,9 @@ function createWordCard(word) {
         'Learning': 'var(--learning-color)',
         'Mastered': 'var(--mastered-color)',
     };
-    const statusColor = word.isSuspended ? 'var(--text-light)' : (statusColors[word.srsStatus] || 'var(--new-color)');
+    const statusColor = statusColors[word.srsStatus] || 'var(--new-color)';
     const statusLabels = { 'New': 'Mới', 'Learning': 'Đang học', 'Mastered': 'Đã thuộc' };
-    const statusLabel = word.isSuspended ? 'Tạm ngưng' : (statusLabels[word.srsStatus] || 'Mới');
+    const statusLabel = statusLabels[word.srsStatus] || 'Mới';
     
     cardEl.style.setProperty('--status-color', statusColor);
 
@@ -1107,22 +1102,6 @@ function createWordCard(word) {
     actionsContainer.appendChild(starBtn);
     actionsContainer.appendChild(editBtn);
 
-    // Nút Kích hoạt lại (nếu bị tạm ngưng)
-    if (word.isSuspended) {
-        const reactivateBtn = document.createElement('button');
-        reactivateBtn.className = 'icon-btn card-action-btn';
-        reactivateBtn.title = 'Kích hoạt lại từ này';
-        reactivateBtn.innerHTML = '<i class="ph-duotone ph-arrow-clockwise"></i>';
-        reactivateBtn.onclick = () => {
-            word.isSuspended = false;
-            word.lapses = 0; // Reset bộ đếm lỗi
-            word.updatedAt = Date.now(); // Quan trọng: đánh dấu thay đổi để sync
-            import('../core/state.js').then(m => m.saveOneWord(word));
-            updatePanelWordList(false); // Cập nhật lại danh sách
-            showPopup(`Đã kích hoạt lại từ "${word.english}".`, 'success');
-        };
-        actionsContainer.appendChild(reactivateBtn);
-    }
 
     actionsContainer.appendChild(deleteBtn);
 

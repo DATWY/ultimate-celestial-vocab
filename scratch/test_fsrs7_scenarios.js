@@ -197,12 +197,12 @@ console.log("✓ Nhóm 7 hoàn tất (4/4 cases pass)");
 // -----------------------------------------------------------------------------
 // NHÓM 8: Quản Lý Thẻ Khó (Leech Detection & Auto-Suspension)
 // -----------------------------------------------------------------------------
-console.log("\n--- NHÓM 8: Cơ Chế Thẻ Khó & Tự Động Tạm Ngưng (Leech) ---");
+console.log("\n--- NHÓM 8: Cơ Chế Thẻ Khó & Đã Bãi Bỏ Tự Động Tạm Ngưng ---");
 const leechCard = { english: 'obstinate', stability: 2.0, stabilityShort: 1.6, difficulty: 8.5, lapses: 7, srsStatus: 'Mastered' };
-// Lapse thứ 8 -> tự động suspend
+// Lapse thứ 8 -> lapses tăng lên 8 nhưng KHÔNG bao giờ bị suspend (bãi bỏ hoàn toàn chế độ tạm ngưng)
 const { newState: suspendedState } = calculateNextSrsState(leechCard, 1, 'en-vi');
 assert(suspendedState.lapses === 8, "Lapses phải tăng lên 8");
-assert(suspendedState.isSuspended === true, "Thẻ 8 lapses phải tự động chuyển sang isSuspended = true");
+assert(suspendedState.isSuspended === false, "Thẻ 8 lapses KHÔNG được phép bị suspended (chế độ tạm ngưng đã bãi bỏ)");
 
 // Thẻ có 2 lapses -> chưa bị suspend
 const normalLapseCard = { english: 'normal', stability: 5.0, stabilityShort: 4.0, difficulty: 6.0, lapses: 1, srsStatus: 'Mastered' };

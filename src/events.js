@@ -197,9 +197,6 @@ function processSrsFeedback(rating, autoAdvance = true) {
         const soundToPlay = (rating === 1) ? 'incorrect' : 'correct';
         playSound(soundToPlay);
 
-        if (updatedCard.isSuspended) {
-            showPopup(`Từ "${updatedCard.english}" bị quên quá nhiều lần và đã được tạm ngưng. Bạn có thể kích hoạt lại trong phần Quản lý.`, 'info');
-        }
 
         const wasLearningInserted = (updatedCard.srsDueDate <= Date.now() + 10000);
         // Nâng cấp: Chèn lại thẻ nếu đang trong giai đoạn ươm mầm (Learning steps)
@@ -493,7 +490,7 @@ export function setupEventListeners() {
         let candidates = [];
         for (let i = 0; i < vocabulary.length; i++) {
             const card = vocabulary[i];
-            if (!card || card.isDeleted || card.isSuspended) continue;
+            if (!card || card.isDeleted) continue;
 
             let matches = false;
             if (activeFilter === 'leech') matches = isCardLeech(card);

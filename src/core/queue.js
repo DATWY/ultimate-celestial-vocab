@@ -54,7 +54,7 @@ export function getPendingLearningCards(vocabulary, filterLowerCase = 'all') {
     const pending = [];
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Learning') continue;
+        if (!word || word.isDeleted || word.srsStatus !== 'Learning') continue;
         const topicMatch = cardMatchesTopic(word, filterLowerCase);
         if (topicMatch) {
             pending.push({ index: i, dueDate: word.srsDueDate || 0 });
@@ -71,7 +71,7 @@ export function getSmartCramCards(vocabulary, filterLowerCase) {
 
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Mastered') continue;
+        if (!word || word.isDeleted || word.srsStatus !== 'Mastered') continue;
 
         const topicMatch = cardMatchesTopic(word, filterLowerCase);
             
@@ -127,7 +127,7 @@ export function buildReviewQueue() {
     
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted || word.isSuspended) continue;
+        if (!word || word.isDeleted) continue;
         
         const topicMatch = cardMatchesTopic(word, filterLowerCase);
             

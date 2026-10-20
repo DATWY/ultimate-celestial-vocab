@@ -40,3 +40,5 @@ ui-debug.log*
 # Scratch & test scripts
 scratch/
 .verify_screens/
+tmp_audit_verify_fixes/
+.agents/

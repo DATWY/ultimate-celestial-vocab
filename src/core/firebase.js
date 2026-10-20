@@ -220,7 +220,7 @@ export function mergeCardFields(local, remote) {
 
         // Flags
         isStarred: typeof flagsWinner.isStarred === 'boolean' ? flagsWinner.isStarred : (local.isStarred || remote.isStarred || false),
-        isSuspended: typeof flagsWinner.isSuspended === 'boolean' ? flagsWinner.isSuspended : (local.isSuspended || remote.isSuspended || false),
+        isSuspended: false, // Chế độ tạm ngưng đã bị hủy bỏ hoàn toàn
         isDeleted: false,
 
         // SRS Atomic State Vector (Bảo toàn 100% logic FSRS-7)

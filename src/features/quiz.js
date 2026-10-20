@@ -57,7 +57,7 @@ function startQuiz() {
     const timeLimitMinutes = parseInt(DOM.quizTimeLimit?.value, 10) || 5;
     const filterLower = (currentTopicFilter || 'all').toLowerCase();
     const potentialQuizVocab = vocabulary.filter(w => {
-        if (!w || w.isDeleted || w.isSuspended) return false;
+        if (!w || w.isDeleted) return false;
         if (filterLower === 'all') return true;
         const tagsArr = Array.isArray(w.tags) ? w.tags : (typeof w.tags === 'string' ? w.tags.split(',') : []);
         return tagsArr.some(t => t && String(t).trim().toLowerCase() === filterLower);

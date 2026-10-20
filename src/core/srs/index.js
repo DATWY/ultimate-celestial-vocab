@@ -91,9 +91,7 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             // Post-lapse short-term cap: s_short is capped at 0.8 * post-lapse long-term S (bounded by S_MIN)
             upd_s_short = Math.max(S_MIN, Math.min(upd_s_short, 0.8 * upd_s_long));
             newState.lapses = (newState.lapses || 0) + 1;
-            if (newState.lapses >= 8) {
-                newState.isSuspended = true;
-            }
+            newState.isSuspended = false; // Đã loại bỏ hoàn toàn chế độ tạm ngưng theo yêu cầu
             // Lapse forgiveness: keep 50% reps rather than resetting to 0
             newState.reps = Math.max(1, Math.ceil((newState.reps || 0) / 2));
         } else if (isRelearningPass) {

@@ -222,7 +222,6 @@ export function isCardLeech(card) {
     if (!card) return false;
     return (card.lapses !== undefined && card.lapses >= 2) ||
            (card.difficulty !== undefined && card.difficulty >= 7.5) ||
-           (card.isSuspended === true) ||
            (card.srsStatus === 'Learning' && (card.reps || 0) >= 3) ||
            (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.1);
 }
@@ -340,6 +339,7 @@ export async function loadVocabulary() {
 
     _allTags = new Set(['all']);
     _vocabulary = [];
+    let hasSuspendedMigration = false;
     
     if (Array.isArray(savedVocab)) {
         savedVocab.forEach(word => {
@@ -362,11 +362,20 @@ export async function loadVocabulary() {
             word.reps = Number(word.reps) || 0;
             word.anchor = Number(word.anchor) || 0;
             word.modality = word.modality || 'en-vi';
-            word.isSuspended = word.isSuspended || false;
+            // Tự động bỏ trạng thái tạm ngưng cho mọi từ vựng trong cơ sở dữ liệu (chế độ tạm ngưng đã bị hủy bỏ hoàn toàn)
+            if (word.isSuspended) {
+                word.isSuspended = false;
+                hasSuspendedMigration = true;
+            } else {
+                word.isSuspended = false;
+            }
             if (!word.id) word.id = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).substring(2, 10));
             _vocabulary.push(word);
             word.tags.forEach(tag => _allTags.add(tag));
         });
+        if (hasSuspendedMigration) {
+            saveAllVocabularyToDB(_vocabulary).catch(console.error);
+        }
     }
 
     // Load Daily Stats
