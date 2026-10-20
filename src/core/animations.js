@@ -501,33 +501,55 @@ export function animateOverviewEntrance(container = document.getElementById('pro
         });
     }
 
-    // 4. Thanh tiến trình XP mọc lên với dải sáng
-    const xpFill = container.querySelector('#profile-xp-fill');
+    // 4. Thanh tiến trình XP mọc lên với dải sáng (Ưu tiên dataset.targetWidth, chống xung đột CSS transition)
+    const xpFill = container.querySelector('#profile-xp-fill') || document.getElementById('profile-xp-fill');
     if (xpFill) {
-        const targetWidth = xpFill.style.width || xpFill.dataset.targetWidth || '0%';
+        const targetWidth = xpFill.dataset.targetWidth || (xpFill.style.width && xpFill.style.width !== '0%' ? xpFill.style.width : '0%');
         xpFill.dataset.targetWidth = targetWidth;
+
+        const prevTransition = xpFill.style.transition;
+        xpFill.style.transition = 'none';
         xpFill.style.width = '0%';
+        void xpFill.offsetWidth;
+
         anime({
             targets: xpFill,
             width: targetWidth,
             duration: 850,
             delay: 180,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+            easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+            complete: () => {
+                if (xpFill) {
+                    xpFill.style.transition = prevTransition || '';
+                    xpFill.style.width = targetWidth;
+                }
+            }
         });
     }
 
     // 5. Ba thước đo vi mô (Micro-meters) của FusionSRS mở rộng
     const meters = container.querySelectorAll('.meter-fill');
     meters.forEach((meter, idx) => {
-        const targetWidth = meter.style.width || meter.dataset.targetWidth || '50%';
+        const targetWidth = meter.dataset.targetWidth || (meter.style.width && meter.style.width !== '0%' ? meter.style.width : '50%');
         meter.dataset.targetWidth = targetWidth;
+
+        const prevTransition = meter.style.transition;
+        meter.style.transition = 'none';
         meter.style.width = '0%';
+        void meter.offsetWidth;
+
         anime({
             targets: meter,
             width: targetWidth,
             duration: 800,
             delay: 200 + idx * 60,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+            easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+            complete: () => {
+                if (meter) {
+                    meter.style.transition = prevTransition || '';
+                    meter.style.width = targetWidth;
+                }
+            }
         });
     });
 

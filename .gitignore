@@ -42,3 +42,4 @@ scratch/
 .verify_screens/
 tmp_audit_verify_fixes/
 .agents/
+tmp_audit_verify_xp/

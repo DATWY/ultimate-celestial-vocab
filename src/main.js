@@ -205,6 +205,9 @@ async function initializeApp() {
     displayCard(firstCardIndex);
     console.log("App Initialized Successfully.");
 
+    // Khởi tạo trước UI Gamification / Rank / XP bar từ dữ liệu IndexedDB local
+    import('./features/gamification.js').then(m => m.renderGamificationUI?.({ isBackgroundUpdate: true, force: true }));
+
     // Recover pending sync IDs từ phiên trước (crash/đóng tab đột ngột)
     const { recoverPendingSyncIds, flushSyncQueueBeforeUnload, flushSyncQueue, syncGamificationToFirebase } = await import('./core/sync.js');
     await recoverPendingSyncIds();

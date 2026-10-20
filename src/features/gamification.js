@@ -39,9 +39,11 @@ export function renderGamificationUI(options = {}) {
 
     const state = getState();
     const gamification = state.gamification || {};
-    const { userXP = 0, currentLevel = 1, currentStreak = 0, activityHeatmap = {}, unlockedBadges = [] } = gamification;
+    const { userXP = 0, currentLevel: rawLevel = 1, currentStreak = 0, activityHeatmap = {}, unlockedBadges = [] } = gamification;
 
-    // Tính toán Rank
+    // Tính toán Level & Rank an toàn, chống lệch pha dữ liệu
+    const calculatedLevel = Math.floor(Math.sqrt((userXP || 0) / 100)) + 1;
+    const currentLevel = Math.max(rawLevel || 1, calculatedLevel);
     const rankInfo = getRankInfo(currentLevel);
     
     // Áp dụng Style Rank cho Profile Card & Render SVG Emblem
@@ -75,16 +77,20 @@ export function renderGamificationUI(options = {}) {
     // XP Calculation
     const xpForCurrentLevel = Math.pow(currentLevel - 1, 2) * 100;
     const xpForNextLevel = Math.pow(currentLevel, 2) * 100;
-    const xpInCurrentLevel = userXP - xpForCurrentLevel;
-    const xpNeededTotalForCurrentLevel = xpForNextLevel - xpForCurrentLevel;
+    const xpInCurrentLevel = Math.max(0, userXP - xpForCurrentLevel);
+    const xpNeededTotalForCurrentLevel = Math.max(1, xpForNextLevel - xpForCurrentLevel);
     
     let progressPercent = (xpInCurrentLevel / xpNeededTotalForCurrentLevel) * 100;
     progressPercent = Math.max(0, Math.min(100, progressPercent)); // Clamping
 
-    if (DOM.profileXpFill) {
-        const pct = `${progressPercent.toFixed(1)}%`;
-        DOM.profileXpFill.dataset.targetWidth = pct;
-        if (isBackgroundUpdate) DOM.profileXpFill.style.width = pct;
+    const xpFillEl = DOM.profileXpFill || document.getElementById('profile-xp-fill');
+    if (xpFillEl) {
+        // Nếu user có điểm XP trong cấp độ này nhưng tỷ lệ quá nhỏ (< 2%), hiển thị tối thiểu 2% để thanh bar không bị tàng hình
+        const displayPercent = (xpInCurrentLevel > 0 && progressPercent < 2) ? 2 : progressPercent;
+        const pct = `${displayPercent.toFixed(1)}%`;
+        xpFillEl.dataset.targetWidth = pct;
+        // Luôn gán style.width trực tiếp để đảm bảo hiển thị tức thì, không bị trống
+        xpFillEl.style.width = pct;
     }
     if (DOM.profileXpNeeded) animateNumber(DOM.profileXpNeeded, xpForNextLevel - userXP, numDuration, { format: true });
 
@@ -122,7 +128,7 @@ export function renderGamificationUI(options = {}) {
     if (elRetentionMeter) {
         const pct = `${Math.min(100, Math.max(0, retentionRateNum)).toFixed(1)}%`;
         elRetentionMeter.dataset.targetWidth = pct;
-        if (isBackgroundUpdate) elRetentionMeter.style.width = pct;
+        elRetentionMeter.style.width = pct;
     }
 
     const elStabilityMeter = document.getElementById('profile-stability-meter');
@@ -130,7 +136,7 @@ export function renderGamificationUI(options = {}) {
         // Map 0 - 30 days to 0 - 100% with a minimum 12% for visibility
         const stabPct = `${Math.min(100, Math.max(12, (avgStabilityNum / 30) * 100)).toFixed(1)}%`;
         elStabilityMeter.dataset.targetWidth = stabPct;
-        if (isBackgroundUpdate) elStabilityMeter.style.width = stabPct;
+        elStabilityMeter.style.width = stabPct;
     }
 
     const elReviewsMeter = document.getElementById('profile-reviews-meter');
@@ -138,7 +144,7 @@ export function renderGamificationUI(options = {}) {
         // Progressive scale up to 10k reviews
         const reviewsPct = `${(totalReviews <= 0 ? 15 : Math.min(100, Math.max(18, (Math.log10(Math.max(1, totalReviews)) / 4) * 100))).toFixed(1)}%`;
         elReviewsMeter.dataset.targetWidth = reviewsPct;
-        if (isBackgroundUpdate) elReviewsMeter.style.width = reviewsPct;
+        elReviewsMeter.style.width = reviewsPct;
     }
 
     if (elRetentionSub) {
@@ -1010,8 +1016,11 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
     }
 }
 
-// Logic kiểm tra Huy hiệu tự động
+// Logic kiểm tra Huy hiệu tự động & Cập nhật thanh XP / Rank ngầm
 document.getElementById('app-container')?.addEventListener('gamification:update', () => {
+    // Luôn cập nhật thanh XP và Rank trong nền khi có sự kiện thay đổi điểm
+    renderGamificationUI({ isBackgroundUpdate: true });
+
     const state = getState();
     const gamification = state.gamification || {};
     const { userXP = 0, currentStreak = 0, totalReviews = 0, consecutiveCorrect = 0, speedsterAchieved = false } = gamification;
