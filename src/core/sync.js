@@ -1,189 +1,113 @@
-import { doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { db, getCalibratedNow, getDeviceId } from './firebase.js';
+import { doc, setDoc } from "firebase/firestore";
+import { db, getCalibratedNow, getDeviceId, writeMergedCards, mergeCardFields, syncProgressToFirebase, syncUserSettings } from './firebase.js';
+import { saveWordToDB, getPendingCardIds, getPendingWriteSnapshot, acknowledgePendingWrites } from './idb.js';
+import { announceSyncStatus } from './sync-status.js';
 
-const VOCAB_COLLECTION = "celestial_vocab_sync";
-const USER_SYNC_COLLECTION = "celestial_user_sync";
-
-// --- Sync Queue: Thu thập card IDs đã thay đổi, flush theo batch ---
-let _syncQueue = new Set();
+const USER_SYNC_COLLECTION = 'celestial_user_sync';
+const _syncQueue = new Map();
+let _generation = 0;
 let _syncTimer = null;
-const BATCH_WINDOW_MS = 90000; // 90 giây (1.5 phút)
+let _flushPromise = null;
+let _retryDelay = 2000;
+const BATCH_WINDOW_MS = 15000;
+const DIRTY_THRESHOLD = 30;
 
-// --- Dirty tracking: Đếm số lần thay đổi chưa sync ---
-let _dirtyCount = 0;
-const DIRTY_THRESHOLD = 30; // Flush nếu có >= 30 thay đổi thẻ
-
-export function getDirtyCount() { return _dirtyCount; }
+export function getDirtyCount() { return _syncQueue.size; }
 export function getSyncQueueSize() { return _syncQueue.size; }
 
-/**
- * Queue 1 card để sync lên Firebase.
- * Tự động flush sau 30s hoặc khi đạt dirty threshold.
- */
-export async function syncCardToFirebase(card) {
-    if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
-    
-    _syncQueue.add(card.id);
-    _dirtyCount++;
-    
-    // Reset timer
-    if (_syncTimer) clearTimeout(_syncTimer);
-    
-    // Flush ngay nếu quá nhiều thay đổi (user đang review nhanh)
-    if (_dirtyCount >= DIRTY_THRESHOLD) {
-        flushSyncQueue();
-        return;
-    }
-    
-    _syncTimer = setTimeout(flushSyncQueue, BATCH_WINDOW_MS);
-}
-
-let _isFlushing = false;
-
-/**
- * Flush tất cả card trong queue lên Firebase.
- * Trả về danh sách IDs đã flush thành công (để smartSync biết tránh push lại).
- */
-export async function flushSyncQueue() {
-    if (_syncQueue.size === 0) return [];
-    if (sessionStorage.getItem('CHEAT_MODE') === 'true') return [];
-
-    if (_isFlushing) {
-        if (!_syncTimer) {
-            _syncTimer = setTimeout(flushSyncQueue, 1000);
-        }
-        return [];
-    }
-    _isFlushing = true;
-
-    if (_syncTimer) {
-        clearTimeout(_syncTimer);
-        _syncTimer = null;
-    }
-
-    // BUG-02 FIX: Snapshot queue nhưng KHÔNG clear ngay.
-    // Chỉ xóa từng batch sau khi commit thành công.
-    const idsToSync = Array.from(_syncQueue);
-
+function persistPendingIds() {
+    announceSyncStatus({ pending: _syncQueue.size });
     try {
-        const m = await import('./state.js');
-        
-        const BATCH_LIMIT = 500;
-        const flushedIds = [];
-
-        for (let i = 0; i < idsToSync.length; i += BATCH_LIMIT) {
-            const chunk = idsToSync.slice(i, i + BATCH_LIMIT);
-            const batch = writeBatch(db);
-            
-            for (const id of chunk) {
-                // BUG-09 FIX: O(1) lookup thay vì vocabulary.find()
-                const card = m.getVocabById(id);
-                if (card) {
-                    const cleanData = JSON.parse(JSON.stringify(card));
-                    cleanData.updatedAt = card.updatedAt || getCalibratedNow();
-                    cleanData._lastModifiedBy = getDeviceId();
-                    const cardRef = doc(db, VOCAB_COLLECTION, id);
-                    batch.set(cardRef, cleanData, { merge: true });
-                    flushedIds.push(id);
-                }
-            }
-            await batch.commit();
-
-            // CHAOS-01 FIX: Xóa IDs đã commit thành công khỏi queue ngay sau mỗi batch
-            for (const id of chunk) {
-                _syncQueue.delete(id);
-            }
-        }
-        
-        // BUG-02 FIX: Reset dirty count chỉ sau khi commit thành công hoàn toàn
-        _dirtyCount = Math.max(0, _dirtyCount - flushedIds.length);
-        
-        console.log(`☁️ Batch flush: ${flushedIds.length} thẻ → Firebase.`);
-        return flushedIds;
-    } catch(e) {
-        console.warn("Lỗi flush batch. Các thẻ chưa commit vẫn nằm trong queue.", e);
-        // BUG-02/CHAOS-01 FIX: Không cần re-add vì chỉ xóa sau mỗi batch thành công
-        return [];
-    } finally {
-        _isFlushing = false;
-        if (_syncQueue.size > 0) {
-            setTimeout(flushSyncQueue, 500);
-        }
-    }
+        localStorage.setItem('pendingSyncIds', JSON.stringify([..._syncQueue.keys()]));
+    } catch (error) { announceSyncStatus({ phase: 'storage-error' }); console.warn('Không thể lưu hàng chờ đồng bộ.', error); }
 }
 
-/**
- * Flush an toàn trước khi đóng tab.
- * Lưu pending IDs vào sessionStorage để recover khi mở lại.
- */
+export function syncCardToFirebase(card) {
+    if (!card?.id || sessionStorage.getItem('CHEAT_MODE') === 'true') return;
+    _syncQueue.set(card.id, ++_generation);
+    persistPendingIds();
+    if (_syncTimer) clearTimeout(_syncTimer);
+    if (_syncQueue.size >= DIRTY_THRESHOLD) void flushSyncQueue();
+    else _syncTimer = setTimeout(flushSyncQueue, BATCH_WINDOW_MS);
+}
+
+export async function flushSyncQueue() {
+    if (_flushPromise) return _flushPromise;
+    if (sessionStorage.getItem('CHEAT_MODE') === 'true') return [];
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return [];
+    clearTimeout(_syncTimer);
+    _syncTimer = null;
+    const job = async () => {
+        const state = await import('./state.js');
+        for (const id of await getPendingCardIds()) if (!_syncQueue.has(id)) _syncQueue.set(id, ++_generation);
+        const entries = [..._syncQueue.entries()];
+        const flushed = [];
+        try {
+            for (let i = 0; i < entries.length; i += 100) {
+                const chunk = entries.slice(i, i + 100);
+                const records = await getPendingWriteSnapshot(chunk.map(([id]) => id));
+                const cards = records.map(record => record.card).filter(Boolean);
+                const committed = await writeMergedCards(cards);
+                for (const card of committed) {
+                    const current = state.getVocabById(card.id);
+                    if (current) {
+                        const merged = mergeCardFields(current, card);
+                        state.updateCardInVocabulary(card.id, merged);
+                        const stored = await saveWordToDB(merged, { markDirty: false });
+                        if (stored) state.updateCardInVocabulary(card.id, mergeCardFields(state.getVocabById(card.id), stored));
+                    }
+                }
+                const acknowledged = new Set(await acknowledgePendingWrites(records));
+                for (const [id, generation] of chunk) {
+                    // A newer edit made during the request must remain queued.
+                    if (_syncQueue.get(id) === generation && acknowledged.has(id)) {
+                        _syncQueue.delete(id);
+                        flushed.push(id);
+                    }
+                }
+                persistPendingIds();
+            }
+            _retryDelay = 2000;
+            return flushed;
+        } catch (error) {
+            _retryDelay = Math.min(60000, _retryDelay * 2);
+            console.warn('Chưa đồng bộ được; dữ liệu vẫn được giữ trên máy và trong hàng chờ.', error);
+            return flushed;
+        } finally {
+            if (_syncQueue.size) _syncTimer = setTimeout(flushSyncQueue, _retryDelay);
+        }
+    };
+    _flushPromise = job();
+    try { return await _flushPromise; }
+    finally { _flushPromise = null; }
+}
+
 export function flushSyncQueueBeforeUnload() {
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
-
-    // Flush ngay Gamification, DailyStats và Logs khi chuẩn bị đóng tab
-    syncGamificationToFirebase();
-
-    if (_syncQueue.size === 0) return;
-
-    try {
-        const pendingIds = Array.from(_syncQueue);
-        sessionStorage.setItem('pendingSyncIds', JSON.stringify(pendingIds));
-        console.log(`💾 Đã lưu ${pendingIds.length} thẻ chưa sync vào sessionStorage.`);
-    } catch(e) {
-        console.warn("Không thể lưu pending sync IDs:", e);
-    }
-
-    // Cố gắng flush thẻ (có thể thành công nếu browser cho phép)
-    flushSyncQueue();
+    persistPendingIds();
+    void syncGamificationToFirebase();
+    void flushSyncQueue();
 }
 
-/**
- * Recover pending sync IDs từ phiên trước (crash/đóng tab đột ngột).
- */
 export async function recoverPendingSyncIds() {
+    if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
     try {
-        const pendingJson = sessionStorage.getItem('pendingSyncIds');
-        if (pendingJson) {
-            const pendingIds = JSON.parse(pendingJson);
-            if (Array.isArray(pendingIds) && pendingIds.length > 0) {
-                pendingIds.forEach(id => _syncQueue.add(id));
-                sessionStorage.removeItem('pendingSyncIds');
-                console.log(`🔄 Recovered ${pendingIds.length} pending sync IDs.`);
-                // Flush sau 5s (chờ app init xong)
-                if (_syncTimer) clearTimeout(_syncTimer);
-                _syncTimer = setTimeout(flushSyncQueue, 5000);
-            }
+        const persisted = JSON.parse(localStorage.getItem('pendingSyncIds') || '[]');
+        const legacy = JSON.parse(sessionStorage.getItem('pendingSyncIds') || '[]');
+        for (const id of new Set([...persisted, ...legacy, ...await getPendingCardIds()])) {
+            if (typeof id === 'string') _syncQueue.set(id, ++_generation);
         }
-    } catch(e) {
-        console.warn("Lỗi recover pending sync:", e);
-    }
+        sessionStorage.removeItem('pendingSyncIds');
+        persistPendingIds();
+        if (_syncQueue.size) _syncTimer = setTimeout(flushSyncQueue, 5000);
+    } catch (error) { console.warn('Không thể khôi phục hàng chờ đồng bộ.', error); }
 }
 
 // ===== SYNC FUNCTIONS CHO SETTINGS / GAMIFICATION =====
 
 export async function syncUserSettingsToFirebase() {
-    import('./state.js').then(async (m) => {
-        const { userRecallParams, userLapseParams, userFsrs7Params, userFsrs7TrainedAt } = m.getState();
-        try {
-            const docRef = doc(db, USER_SYNC_COLLECTION, 'settings');
-            const now = userFsrs7TrainedAt || getCalibratedNow();
-            await setDoc(docRef, {
-                userRecallParams: userRecallParams || null,
-                userLapseParams: userLapseParams || null,
-                userFsrs7Params: userFsrs7Params || null,
-                userFsrs7TrainedAt: now,
-                trainedAt: now,
-                version: '7.0',
-                source: 'personal',
-                _lastModifiedBy: getDeviceId()
-            }, { merge: true });
-            const { saveSettingToDB } = await import('./idb.js');
-            await saveSettingToDB('userFsrs7TrainedAt', now);
-            await saveSettingToDB('userParamsTrainedAt', now);
-            console.log("☁️ Đã đồng bộ thông số cá nhân hoá FSRS-7 lên Firebase.");
-        } catch (e) {
-            console.error("Lỗi đồng bộ thông số:", e);
-        }
-    });
+    try { await syncUserSettings(); }
+    catch (error) { console.warn('Thông số đã lưu trên máy và sẽ được đồng bộ lại khi có mạng.', error); }
 }
 
 let _gamificationSyncTimer = null;
@@ -191,48 +115,15 @@ const GAMIFICATION_SYNC_DEBOUNCE_MS = 60000; // 60 giây (1 phút debounce, trá
 
 export function queueGamificationSync() {
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
-    if (_gamificationSyncTimer) clearTimeout(_gamificationSyncTimer);
+    if (_gamificationSyncTimer) return;
     _gamificationSyncTimer = setTimeout(syncGamificationToFirebase, GAMIFICATION_SYNC_DEBOUNCE_MS); 
 }
 
 export async function syncGamificationToFirebase() {
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
-    if (_gamificationSyncTimer) {
-        clearTimeout(_gamificationSyncTimer);
-        _gamificationSyncTimer = null;
-    }
-    import('./state.js').then(async (m) => {
-        const gamification = m.getState().gamification;
-        const reviewLogs = m.getState().reviewLogs;
-        const dailyStats = m.getState().dailyStats;
-        
-        try {
-            if (gamification) {
-                const gamificationRef = doc(db, USER_SYNC_COLLECTION, 'gamification');
-                const cleanGamification = { ...gamification, _lastModifiedBy: getDeviceId() };
-                await setDoc(gamificationRef, cleanGamification, { merge: true });
-                console.log("☁️ Đã đồng bộ Gamification lên Firebase.");
-            }
-
-            if (dailyStats) {
-                const statsRef = doc(db, USER_SYNC_COLLECTION, 'dailyStats');
-                const cleanDailyStats = { ...dailyStats, _lastModifiedBy: getDeviceId() };
-                await setDoc(statsRef, cleanDailyStats, { merge: true });
-                console.log("☁️ Đã đồng bộ Daily Stats lên Firebase.");
-            }
-            
-            if (reviewLogs && reviewLogs.logs) {
-                const logsRef = doc(db, USER_SYNC_COLLECTION, 'reviewLogs');
-                const firestoreLogs = {
-                    dict: reviewLogs.dict,
-                    logs: (reviewLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log)),
-                    _lastModifiedBy: getDeviceId()
-                };
-                await setDoc(logsRef, firestoreLogs);
-                console.log(`☁️ Đã đồng bộ ${reviewLogs.logs.length} bản ghi học tập lên Firebase.`);
-            }
-        } catch (e) {
-            console.error("Lỗi đồng bộ Gamification hoặc Logs:", e);
-        }
-    });
+    clearTimeout(_gamificationSyncTimer);
+    _gamificationSyncTimer = null;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    try { await syncProgressToFirebase(); }
+    catch (error) { console.warn('Chưa đồng bộ được thống kê; bản lưu trên máy được giữ nguyên.', error); queueGamificationSync(); }
 }

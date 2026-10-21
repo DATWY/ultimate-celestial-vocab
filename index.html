@@ -14,13 +14,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Nạp Anime.js từ CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js"></script>
 </head>
 
-<body>
+<body class="focus-study">
     <canvas id="celestial-canvas"></canvas>
     <div id="app-container">
         <!-- === HEADER === -->
@@ -60,7 +56,7 @@
                             </div>
                             <div class="custom-topic-search-wrap">
                                 <i class="ph-bold ph-magnifying-glass search-icon"></i>
-                                <input type="text" id="custom-topic-search" class="custom-topic-search" placeholder="Tìm chủ đề..." autocomplete="off">
+                                <input type="text" id="custom-topic-search" aria-label="Tìm chủ đề" class="custom-topic-search" placeholder="Tìm chủ đề..." autocomplete="off">
                             </div>
                             <div id="custom-topic-options" class="custom-topic-options">
                                 <!-- Populated dynamically -->
@@ -124,7 +120,7 @@
                         </div>
                         <button id="toggle-typing-mode-btn" class="hidden-typing-btn" style="display:none !important;" aria-hidden="true"></button>
                     </div>
-                    <button id="toggle-boost-mode-btn" class="icon-btn" title="Chế độ Tăng Tốc (Boost Mode: 0% GPU & Pin)" aria-label="Chế độ Tăng Tốc">
+                    <button id="toggle-boost-mode-btn" class="icon-btn" title="Chế độ Tăng Tốc (Giảm hiệu ứng nền)" aria-label="Chế độ Tăng Tốc">
                         <i class="ph-duotone ph-lightning"></i>
                         <span class="btn-label">Tăng Tốc (Boost)</span>
                     </button>
@@ -203,7 +199,7 @@
 
 
             <div id="controls-area" class="hidden">
-                <button id="reveal-btn"><i class="ph-duotone ph-arrows-clockwise"></i> Lật thẻ (F)</button>
+                <button id="reveal-btn"><i class="ph-duotone ph-arrows-clockwise"></i> Xem nghĩa <kbd class="desktop-key-hint">F</kbd></button>
                 <div id="srs-feedback-buttons" class="hidden srs-feedback-grid">
                     <button class="srs-btn srs-btn-again" data-rating="1" title="Quên (1)">
                         <div class="srs-btn-label-group">
@@ -247,7 +243,7 @@
                         <i class="ph-duotone ph-compass"></i>
                     </div>
                     <h2 class="onboarding-title">Đài Quan Sát Tri Thức Sẵn Sàng</h2>
-                    <p class="onboarding-subtitle">Kho từ vựng của bạn chưa có dữ liệu. Bắt đầu ngay hôm nay để kích hoạt động cơ trí nhớ FSRS-7 và hành trình thăng hạng Học giả.</p>
+                    <p class="onboarding-subtitle">Bắt đầu với một từ bạn muốn nhớ. Mỗi lần ôn, lịch học sẽ điều chỉnh theo câu trả lời của bạn.</p>
                     
                     <div class="onboarding-actions-grid">
                         <button id="btn-empty-add-word" class="onboarding-cta-card cta-primary" type="button">
@@ -271,7 +267,7 @@
                         <span class="onboarding-pill"><i class="ph-fill ph-sparkle"></i> 1. Từ Mới</span>
                         <span class="onboarding-pill"><i class="ph-fill ph-lightning"></i> 2. Ôn Ngắn Hạn</span>
                         <span class="onboarding-pill"><i class="ph-fill ph-check-circle"></i> 3. Đã Thuộc</span>
-                        <span class="onboarding-pill"><i class="ph-fill ph-brain"></i> 4. Trí Nhớ Vĩnh Cửu</span>
+                        <span class="onboarding-pill"><i class="ph-fill ph-brain"></i> 4. Ôn Đúng Lúc</span>
                     </div>
                 </div>
 
@@ -460,12 +456,12 @@
             </div>
             <div class="quiz-question-area hidden">
                 <p class="quiz-prompt">Nghĩa của từ sau là gì?</p>
-                <h3 id="quiz-vietnamese-prompt">Meaning</h3><input type="text" id="quiz-answer-input"
+                <h3 id="quiz-vietnamese-prompt">Meaning</h3><input type="text" id="quiz-answer-input" aria-label="Nhập từ tiếng Anh"
                     placeholder="Gõ từ tiếng Anh...">
                 <p id="quiz-feedback" class="quiz-feedback" aria-live="polite"></p>
             </div>
             <div class="quiz-controls hidden"><button id="skip-quiz-btn" class="text-link-btn"><i
-                        class="ph-duotone ph-skip-forward"></i> Bỏ qua (Enter)</button></div>
+                        class="ph-duotone ph-skip-forward"></i> Bỏ qua</button></div>
             <div id="quiz-results-area" class="quiz-results-luxury hidden">
                 <div class="results-header">
                     <div class="results-badge-icon"><i class="ph-fill ph-trophy"></i></div>
@@ -647,13 +643,13 @@
                     <!-- Row 2: Full-Width Modern Segmented Tabs Bar -->
                     <nav class="manage-nav-tabs" role="tablist" aria-label="Bộ chọn giao diện trung tâm điều khiển">
                         <button id="tab-profile-overview" class="manage-nav-tab active" role="tab" aria-selected="true" tabindex="0" data-tab="overview">
-                            <i class="ph-bold ph-chart-pie-slice"></i> <span>Tổng Quan &amp; Trí Nhớ</span>
+                            <i class="ph-bold ph-chart-pie-slice"></i> <span>Tổng quan</span>
                         </button>
                         <button id="tab-vocab-list" class="manage-nav-tab" role="tab" aria-selected="false" tabindex="-1" data-tab="words">
                             <i class="ph-bold ph-cards"></i> <span>Từ Vựng</span>
                         </button>
                         <button id="tab-data-io" class="manage-nav-tab" role="tab" aria-selected="false" tabindex="-1" data-tab="io">
-                            <i class="ph-bold ph-database"></i> <span>Dữ Liệu &amp; Sao Lưu</span>
+                            <i class="ph-bold ph-database"></i> <span>Dữ liệu</span>
                         </button>
                         <button id="tab-profile-badges" class="manage-nav-tab" role="tab" aria-selected="false" tabindex="-1" data-tab="badges">
                             <i class="ph-bold ph-trophy"></i> <span>Huy Hiệu</span>
@@ -792,7 +788,7 @@
                         <div class="search-bar-wrapper">
                             <i class="ph-duotone ph-magnifying-glass search-icon"></i>
                             <input type="search" id="manage-search-input" placeholder="Tìm từ vựng, phiên âm, ví dụ..."
-                                aria-label="Tìm kiếm từ vựng">
+                                aria-label="Tìm kiếm từ vựng" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
                         </div>
                         <div class="filter-chips">
                             <select id="panel-topic-filter" aria-label="Lọc theo chủ đề">
@@ -858,7 +854,7 @@
                             </div>
 
                             <div id="import-text-panel" class="import-panel hidden">
-                                <textarea id="import-text-area" class="io-textarea-clean" placeholder="Dán nội dung TSV tại đây (English [tab] Vietnamese [tab] Type...)"></textarea>
+                                <textarea id="import-text-area" aria-label="Danh sách từ vựng cần nhập" class="io-textarea-clean" placeholder="Dán nội dung TSV tại đây (English [tab] Vietnamese [tab] Type...)"></textarea>
                                 <button id="import-text-btn" class="primary-btn io-submit-btn"><i class="ph-bold ph-sparkle"></i> Phân Tích &amp; Nạp Dữ Liệu</button>
                             </div>
                         </div>
@@ -898,10 +894,10 @@
                                 <div class="io-danger-box">
                                     <div class="danger-info-text">
                                         <span class="danger-title"><i class="ph-bold ph-warning-octagon"></i> Khu Vực Nguy Hiểm</span>
-                                        <span class="danger-sub">Xóa vĩnh viễn toàn bộ từ vựng cục bộ. Không thể hoàn tác.</span>
+                                        <span class="danger-sub">Xóa toàn bộ từ vựng trên máy và trên Cloud sau khi đồng bộ. Không thể hoàn tác trong ứng dụng.</span>
                                     </div>
                                     <button id="clear-all-btn" class="danger-btn io-action-btn clear-btn">
-                                        <i class="ph-bold ph-trash"></i> Xóa Toàn Bộ Dữ Liệu
+                                        <i class="ph-bold ph-trash"></i> Xóa toàn bộ từ vựng
                                     </button>
                                 </div>
                             </div>
@@ -955,9 +951,11 @@
                                 id="import-stats-new">0</strong></li>
                         <li><i class="ph-duotone ph-skip-forward-circle"></i> Từ trùng lặp sẽ bỏ qua: <strong
                                 id="import-stats-skipped">0</strong></li>
+                        <li><i class="ph-duotone ph-pencil-simple"></i> Từ được bổ sung nội dung: <strong id="import-stats-updated">0</strong></li>
                         <li><i class="ph-duotone ph-warning-circle"></i> Dòng lỗi/không hợp lệ: <strong
                                 id="import-stats-errors">0</strong></li>
                     </ul>
+                    <p id="import-error-details" class="import-errors" role="status"></p>
                 </div>
                 <h4>Xem trước một vài dòng đầu tiên:</h4>
                 <div id="import-preview-table-container">
@@ -984,7 +982,7 @@
                     </div>
                     <div>
                         <h3 id="fsrs7-modal-title" style="margin: 0; font-size: 1.25rem;">Cấu Hình Tham Số FSRS-7</h3>
-                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-light, #888);">Tối ưu hóa độ bền trí nhớ theo thuật toán Dual-Stability Finished</p>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-light, #888);">Điều chỉnh lịch ôn theo lịch sử học của bạn</p>
                     </div>
                 </div>
 
@@ -997,6 +995,11 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 16px;">
+                    <div class="optimizer-action-card">
+                        <div><strong>Cá nhân hóa từ lịch sử học</strong><p>Cần ít nhất 400 lượt ôn. Chỉ áp dụng khi sai số giảm trên phần lịch sử dành riêng để kiểm tra.</p></div>
+                        <button type="button" id="run-optimizer-btn" class="primary-btn"><i class="ph-bold ph-brain"></i> Tối ưu trên máy</button>
+                        <p id="optimizer-feedback" role="status" aria-live="polite"></p>
+                    </div>
                     <label for="fsrs7-params-input" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem;">
                         Dán 34 tham số FSRS-7 (dấu phẩy hoặc mảng JSON):
                     </label>

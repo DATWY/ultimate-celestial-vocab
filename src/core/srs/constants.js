@@ -38,6 +38,19 @@ export const FACTOR = 19 / 81;
 export const DECAY = -0.5;
 export const LEARNING_STEPS = 2;
 
+export const FSRS7_PARAM_BOUNDS = [
+    ...Array.from({ length: 4 }, () => [0.01, 100]), [1, 10], [0.01, 5], [0.01, 10],
+    [0.01, 10], [0, 2], [0.01, 10], [0.01, 10], [0, 2], [0.01, 10], [0.01, 1], [1, 5],
+    [0.01, 10], [0, 2], [0.01, 10], [0.01, 10], [0, 2], [0.01, 10], [0.01, 1], [1, 5],
+    [0.01, 0.95], [0.01, 0.95], [0.01, 0.99], [0.01, 0.99], [0.01, 5], [0.01, 5],
+    [0, 2], [0, 2], [0, 2], [0, 2], [0, 2]
+];
+
+export function validFsrs7Params(params) {
+    return Array.isArray(params) && params.length === 34 && params.every((value, i) =>
+        Number.isFinite(value) && value >= FSRS7_PARAM_BOUNDS[i][0] && value <= FSRS7_PARAM_BOUNDS[i][1]);
+}
+
 /**
  * Parses and validates a 34-parameter FSRS-7 array or string representation.
  */
@@ -71,8 +84,9 @@ export function parseAndValidateFsrs7Params(rawText) {
         if (typeof val !== 'number' || isNaN(val) || !isFinite(val)) {
             return { valid: false, error: `Tham số thứ ${i + 1} (${val}) không phải là số hợp lệ` };
         }
-        if (i < 7 && val <= 0) {
-            return { valid: false, error: `Tham số thứ ${i + 1} (${val}) phải là số dương lớn hơn 0` };
+        const [min, max] = FSRS7_PARAM_BOUNDS[i];
+        if (val < min || val > max) {
+            return { valid: false, error: `Tham số thứ ${i + 1} phải trong khoảng ${min}–${max}` };
         }
     }
 

@@ -1,5 +1,6 @@
+import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
-import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter } from '../core/state.js';
+import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter, ensureDailyStats } from '../core/state.js';
 import { playSound, preloadAudio } from '../core/sound.js';
 import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards } from '../core/queue.js';
 import { openAddEditModal, showConfirmation, showPopup, closeModal, showToast } from './modal.js';
@@ -7,6 +8,7 @@ import { setBoostMode, updateCanvasTheme } from './celestial-canvas.js';
 import { animateFlip, animateNumber } from '../core/animations.js';
 import { isFuzzySearchMatch } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
+import { nextRevision } from '../core/card-merge.js';
 
 export function launchVictoryConfetti() {
     if (getState().isBoostMode) return;
@@ -165,7 +167,7 @@ export function displayCard(index, preserveFlipState = false) {
                 }
             } else {
                 if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "ĐỈNH CAO THIÊN HÀ!";
-                if (DOM.victoryTagline) DOM.victoryTagline.textContent = "Toàn bộ kho từ vựng hôm nay và ngày mai đều đã hoàn thành 100%!";
+                if (DOM.victoryTagline) DOM.victoryTagline.textContent = "Bạn đã hoàn thành hàng đợi hiện tại. Hãy quay lại khi có lịch ôn mới.";
                 if (DOM.noCardText) DOM.noCardText.textContent = "Không còn thẻ nào cần ôn tập trước hạn. Hãy tận hưởng một ngày nghỉ ngơi thư giãn trọn vẹn!";
                 DOM.smartCrammingActions?.classList.add('hidden');
                 if (DOM.finalDayRestState) DOM.finalDayRestState.classList.remove('hidden');
@@ -318,6 +320,10 @@ export async function flipCard() {
 }
 
 function toggleFlashcardControlButtons(showSRSAndNext) {
+    const front = DOM.flashcard?.querySelector('.card-front');
+    const back = DOM.flashcard?.querySelector('.card-back');
+    if (front) { front.setAttribute('aria-hidden', String(showSRSAndNext)); front.inert = showSRSAndNext; }
+    if (back) { back.setAttribute('aria-hidden', String(!showSRSAndNext)); back.inert = !showSRSAndNext; }
     const { vocabulary, currentCardIndex } = getState();
     const currentCard = vocabulary[currentCardIndex];
     const isTypingCard = shouldCardUseTyping(currentCard);
@@ -414,6 +420,8 @@ function wordMatchesTopic(word, filterLowerCase) {
 export function updateStats() {
     if (!DOM.statsArea) return;
     const { vocabulary, currentTopicFilter } = getState();
+    const todayStats = ensureDailyStats();
+    // study-session-bar removed; these elements no longer exist in DOM
     const activeVocabulary = vocabulary.filter(w => !w.isDeleted);
     const totalCount = activeVocabulary.length;
     const filterLowerCase = (currentTopicFilter || 'all').toLowerCase();
@@ -467,8 +475,8 @@ export function updateStats() {
     // 2. Mastered & not due (Long-term retained)
     // 3. Learning & not due (In-progress review)
     // 4. New (Unseen cards)
-    const masteredNonDue = filteredVocab.filter(w => w.srsStatus === 'Mastered' && (!w.srsDueDate || w.srsDueDate > endOfDay)).length;
-    const learningNonDue = filteredVocab.filter(w => w.srsStatus === 'Learning' && (!w.srsDueDate || w.srsDueDate > now)).length;
+    const masteredNonDue = filteredVocab.filter(w => w.srsStatus === 'Mastered' && !activeDueSet.has(w.id)).length;
+    const learningNonDue = filteredVocab.filter(w => w.srsStatus === 'Learning' && !activeDueSet.has(w.id)).length;
 
     animateNumber(DOM.statTotal, totalCount);
     animateNumber(DOM.statFiltered, filteredCount);
@@ -502,10 +510,10 @@ export function updateStats() {
     if (ringLearning) ringLearning.setAttribute('stroke-dasharray', `${pLearningTotal}, 100`);
 
     // Segmented Progress Bar percentages (Sum = 100%)
-    const pBarMastered = Math.round((masteredNonDue / baseCount) * 100);
-    const pBarDue = Math.round((dueCount / baseCount) * 100);
-    const pBarLearning = learningNonDue > 0 ? Math.max(2, Math.round((learningNonDue / baseCount) * 100)) : 0;
-    const pBarNew = Math.max(0, 100 - pBarMastered - pBarDue - pBarLearning);
+    const pBarMastered = masteredNonDue / baseCount * 100;
+    const pBarDue = dueCount / baseCount * 100;
+    const pBarLearning = learningNonDue / baseCount * 100;
+    const pBarNew = newCount / baseCount * 100;
 
     const barMastered = document.getElementById('bar-mastered');
     const barDue = document.getElementById('bar-due');
@@ -834,15 +842,15 @@ export function applyBoostMode(isBoost, showToastNotification = false) {
         }
         btn.setAttribute('aria-pressed', isBoost ? 'true' : 'false');
         btn.title = isBoost 
-            ? 'Chế độ Tăng Tốc đang BẬT (0% GPU, siêu mượt, tiết kiệm pin)' 
-            : 'Bật Chế độ Tăng Tốc (Boost Mode: 0% GPU & Pin)';
+            ? 'Chế độ Tăng Tốc đang BẬT (giảm hiệu ứng nền)'
+            : 'Bật Chế độ Tăng Tốc (Giảm hiệu ứng, tiết kiệm tài nguyên)';
     }
 
     setBoostMode(isBoost);
 
     if (showToastNotification) {
         if (isBoost) {
-            showToast('Chế Độ Tăng Tốc ⚡', 'Đã bật Boost Mode: 0% GPU, siêu mượt và tiết kiệm pin tối đa!', 'ph-lightning');
+            showToast('Chế Độ Tăng Tốc ⚡', 'Đã bật Boost Mode: Giảm chuyển động và hiệu ứng nền để tập trung học.', 'ph-lightning');
         } else {
             showToast('Hiệu Ứng Thiên Hà ✨', 'Đã khôi phục giao diện sao trời đầy đủ.', 'ph-sparkle');
         }
@@ -1027,7 +1035,7 @@ function createWordCard(word) {
                 <div class="word-card-header-right">
                     ${srsMetricPill}
                     <span class="word-card-srs-badge">${statusLabel}</span>
-                    <input type="checkbox" class="word-card-checkbox" data-id="${word.id}" aria-label="Chọn từ ${safeEnglish}">
+                    <input type="checkbox" class="word-card-checkbox" data-id="${escapeHTML(word.id)}" aria-label="Chọn từ ${safeEnglish}">
                 </div>
             </div>
             <div class="word-card-body">
@@ -1060,12 +1068,15 @@ function createWordCard(word) {
     starBtn.innerHTML = `<i class="${word.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
     starBtn.onclick = (e) => {
         e.stopPropagation();
-        word.isStarred = !word.isStarred;
-        word.updatedAt = Date.now();
-        import('../core/state.js').then(m => m.saveOneWord(word));
-        starBtn.className = `icon-btn card-action-btn star-btn-card ${word.isStarred ? 'starred' : ''}`;
-        starBtn.innerHTML = `<i class="${word.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
-        starBtn.title = word.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
+        const current = getState().vocabulary.find(card => card.id === word.id && !card.isDeleted);
+        if (!current) return;
+        current.isStarred = !current.isStarred;
+        current.flagsUpdatedAt = nextRevision(current, 'flagsUpdatedAt');
+        current.updatedAt = Math.max(Date.now(), current.updatedAt || 0, current.flagsUpdatedAt);
+        import('../core/state.js').then(m => m.saveOneWord(current));
+        starBtn.className = `icon-btn card-action-btn star-btn-card ${current.isStarred ? 'starred' : ''}`;
+        starBtn.innerHTML = `<i class="${current.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
+        starBtn.title = current.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
     };
 
     // Nút Sửa

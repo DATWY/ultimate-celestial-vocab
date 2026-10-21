@@ -1,3 +1,4 @@
+import anime from 'animejs/lib/anime.es.js';
 // src/ui/waveform.js — Audio Waveform Visualizer
 
 let waveAnim = null;
@@ -9,18 +10,18 @@ export function triggerAudioWaveformAnimation() {
 
     if (ttsBtn) ttsBtn.classList.add('is-playing');
 
-    if (window.anime) {
+    if (anime) {
         if (waveAnim) waveAnim.pause();
 
-        waveAnim = window.anime({
+        waveAnim = anime({
             targets: '.waveform-bar',
-            scaleY: () => window.anime.random(0.2, 1.0),
+            scaleY: () => anime.random(0.2, 1.0),
             duration: 170,
             direction: 'alternate',
             loop: 8,
             easing: 'easeInOutQuad',
             complete: () => {
-                window.anime({
+                anime({
                     targets: '.waveform-bar',
                     scaleY: 0.22,
                     duration: 220,

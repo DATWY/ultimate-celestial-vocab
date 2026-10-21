@@ -5,6 +5,8 @@ import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton } fr
 import { initDifficulty, nextDifficulty } from './difficulty.js';
 import { nextStability } from './stability.js';
 import { getDifficultyBias, getStabilityMultiplier } from './heuristics.js';
+import { validFsrs7Params } from './constants.js';
+import { nextRevision } from '../card-merge.js';
 
 /**
  * Calculates the next SRS state using the canonical Dual-Stability FSRS-7 algorithm.
@@ -16,32 +18,33 @@ import { getDifficultyBias, getStabilityMultiplier } from './heuristics.js';
  * @param {number} anchorStrength - Optional mnemonic anchor [0, 1]
  * @returns {{ newState: Object, log: Object|null }}
  */
-export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorStrength = 0, customWeights = null, isSimulation = false) {
-    const now = Date.now();
-    const newState = { ...card };
+export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorStrength = 0, customWeights = null, isSimulation = false, options = {}) {
+    if (![1, 2, 3, 4].includes(rating)) throw new RangeError('Rating must be an integer from 1 to 4');
+    const now = Number.isFinite(options.now) ? options.now : Date.now();
+    const newState = { ...card, contentUpdatedAt: card.contentUpdatedAt ?? card.updatedAt ?? 0 };
 
     // 1. Read custom trained weights if available
     let w = DEFAULT_FSRS7_PARAMS;
-    if (Array.isArray(customWeights) && customWeights.length === 34 && customWeights.every(n => typeof n === 'number' && !isNaN(n))) {
+    if (validFsrs7Params(customWeights)) {
         w = customWeights;
-    } else if (typeof window !== 'undefined' && Array.isArray(window.__USER_FSRS7_PARAMS__) && window.__USER_FSRS7_PARAMS__.length === 34) {
+    } else if (typeof window !== 'undefined' && validFsrs7Params(window.__USER_FSRS7_PARAMS__)) {
         w = window.__USER_FSRS7_PARAMS__;
     }
 
     // 2. Backward compatibility & Soft Rolling Migration from SM-2 / FSRS-4.5
-    if (newState.difficulty === undefined) {
+    if (!Number.isFinite(newState.difficulty)) {
         newState.difficulty = newState.srsEaseFactor ? Math.max(D_MIN, Math.min(D_MAX, 11 - (newState.srsEaseFactor * 2))) : 5.0;
     }
-    if (newState.stability === undefined) {
+    if (!Number.isFinite(newState.stability) || newState.stability <= 0) {
         newState.stability = Math.max(S_MIN, newState.srsInterval || 1.0);
     }
-    if (newState.stabilityShort === undefined) {
+    if (!Number.isFinite(newState.stabilityShort) || newState.stabilityShort <= 0) {
         // In FSRS-7, short-term S defaults to 0.8 * initial long-term S
         newState.stabilityShort = Math.max(S_MIN, 0.8 * newState.stability);
     }
 
     newState.lapses = newState.lapses || 0;
-    newState.anchor = anchorStrength || 0;
+    newState.anchor = Number.isFinite(anchorStrength) ? Math.min(1, Math.max(0, anchorStrength)) : 0;
     newState.modality = modality;
     newState.srsStatus = newState.srsStatus || 'New';
 
@@ -146,7 +149,7 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         nextIntervalDays = 0;
         newState.srsStatus = 'Learning';
     } else {
-        nextIntervalDays = nextIntervalNewton(effectiveLongS, effectiveShortS, newState.difficulty, DESIRED_RETENTION, w);
+        nextIntervalDays = options.memoryOnly ? 0 : nextIntervalNewton(effectiveLongS, effectiveShortS, newState.difficulty, DESIRED_RETENTION, w);
 
         // Chốt chặn an toàn (Fail-safe): Thẻ mới tinh lần đầu tiên tối đa 21 ngày (tránh bấm nhầm Easy bị đẩy đi 4 tháng)
         const isInitialReview = !card.reps || card.reps <= 1 || card.srsStatus === 'New';
@@ -155,7 +158,7 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         }
 
         // Fuzzing for intervals >= 2.5 days to distribute review load
-        if (nextIntervalDays >= 2.5) {
+        if (nextIntervalDays >= 2.5 && !isSimulation) {
             const fuzzRange = nextIntervalDays * FUZZ_PERCENTAGE;
             const fuzzOffset = (Math.random() * 2 - 1) * fuzzRange;
             nextIntervalDays = Math.max(1.0, nextIntervalDays + fuzzOffset);
@@ -183,10 +186,12 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
     newState.srsInterval = nextIntervalDays;
     newState.srsDueDate = nextDueDate;
     newState.updatedAt = now;
+    newState.srsUpdatedAt = nextRevision(card, 'srsUpdatedAt', now);
+    newState.updatedAt = Math.max(now, newState.srsUpdatedAt, card.updatedAt || 0);
 
     // 8. Log review (captures short-term and long-term reviews for FSRS-7 optimizer)
     let rLog = null;
-    if (actualDaysElapsed > 0 || (newState.reps && newState.reps > 1)) {
+    {
         rLog = {
             cardId: card.id,
             rating: rating,

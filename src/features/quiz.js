@@ -5,8 +5,9 @@ import { playSound } from '../core/sound.js';
 import { calculateNextSrsState } from '../core/srs/index.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 import { displayCard, launchVictoryConfetti } from '../ui/render.js';
-import { saveVocabulary, saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent } from '../core/state.js';
+import { saveVocabulary, saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent, saveGamification, addReviewLog, clearLastReviewSnapshot, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone } from '../core/state.js';
 import { animateNumber } from '../core/animations.js';
+import { superNormalize, stripVietnameseDiacritics } from './typing.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from '../ui/celestial-canvas.js';
 
@@ -22,6 +23,28 @@ let quizIsReviewing = false;
 let currentReviewIndex = -1;
 let quizRealStartTime = 0;
 let quizSessionXP = 0;
+let quizAdvanceTimer = null;
+let quizSessionId = 0;
+let quizAnswerSettled = false;
+let quizDeadline = 0;
+let quizOriginalTotal = 0;
+let quizOriginalDuration = 0;
+
+function resetQuizFlow() {
+    clearTimeout(quizAdvanceTimer);
+    clearInterval(quizIntervalId);
+    quizAdvanceTimer = null;
+    quizSessionId++;
+    quizAnswerSettled = false;
+}
+
+function lockQuizAnswer() {
+    if (!quizInProgress || quizAnswerSettled) return false;
+    quizAnswerSettled = true;
+    if (DOM.quizAnswerInput) DOM.quizAnswerInput.disabled = true;
+    if (DOM.skipQuizBtn) DOM.skipQuizBtn.disabled = true;
+    return true;
+}
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -31,6 +54,8 @@ function shuffleArray(array) {
 }
 
 export function showQuizSetup() {
+    resetQuizFlow();
+    clearLastReviewSnapshot();
     if (!DOM.quizArea) return;
     suspendCelestialCanvas();
     DOM.mainFlashcardView?.classList.add('hidden');
@@ -86,12 +111,16 @@ function startQuiz() {
         showPopup("Không có từ nào phù hợp để bắt đầu kiểm tra. Hãy thử học thêm hoặc đổi bộ lọc.", "info");
         return;
     }
+    resetQuizFlow();
     quizInProgress = true;
+    quizOriginalTotal = quizQuestions.length;
+    quizOriginalDuration = 0;
     currentQuizQuestionIndex = 0;
     quizScore = 0;
     quizIncorrect = 0;
     quizSessionXP = 0;
-    quizTimeLeft = timeLimitMinutes * 60;
+    quizTimeLeft = Math.max(1, Math.min(180, timeLimitMinutes)) * 60;
+    quizDeadline = Date.now() + quizTimeLeft * 1000;
     quizRealStartTime = Date.now();
     DOM.quizSetupArea?.classList.add('hidden');
     DOM.quizHeader?.classList.remove('hidden');
@@ -110,6 +139,8 @@ function displayQuizQuestion() {
         finishQuiz();
         return;
     }
+    quizAnswerSettled = false;
+    if (DOM.skipQuizBtn) DOM.skipQuizBtn.disabled = false;
     const word = quizQuestions[currentQuizQuestionIndex];
     if (!word) { goToNextQuizQuestion(); return; }
     if (DOM.quizVietnamesePrompt) DOM.quizVietnamesePrompt.textContent = word.vietnamese;
@@ -126,16 +157,16 @@ function displayQuizQuestion() {
 }
 
 function checkQuizAnswer() {
-    if (!quizInProgress) return;
+    if (!quizInProgress || quizAnswerSettled || !DOM.quizAnswerInput.value.trim()) return;
     
     // Nâng cấp: Chuẩn hóa chuỗi (bỏ khoảng trắng thừa, dấu câu cơ bản)
-    const normalize = str => str.trim().toLowerCase().replace(/[.,!?;:]/g, '');
+    const normalize = str => stripVietnameseDiacritics(superNormalize(str));
     
     const userAnswer = normalize(DOM.quizAnswerInput.value);
     const currentWord = quizQuestions[currentQuizQuestionIndex];
     if (!currentWord) { goToNextQuizQuestion(); return; }
     
-    DOM.quizAnswerInput.disabled = true;
+    if (!lockQuizAnswer()) return;
     const correctAnswer = normalize(currentWord.english);
     
     if (userAnswer === correctAnswer) {
@@ -163,6 +194,7 @@ function checkQuizAnswer() {
             }
             
             recordQuizAnswer(true);
+            applyQuizReview(currentWord, 3);
         }
         DOM.quizFeedback.textContent = "Đúng!";
         DOM.quizFeedback.className = 'quiz-feedback correct';
@@ -172,20 +204,11 @@ function checkQuizAnswer() {
             quizIncorrect++;
             recordQuizAnswer(false);
             quizIncorrectWordsInfo.push(currentWord);
-            const { vocabulary } = getState();
-            const originalIndex = vocabulary.findIndex(v => v.id === currentWord.id);
-            if (originalIndex > -1) {
-                const { newState: updatedCard, log } = calculateNextSrsState(vocabulary[originalIndex], 1, 'quiz', 0, getState().userFsrs7Params);
-                vocabulary[originalIndex] = updatedCard;
-                saveOneWord(updatedCard);
-                if (log) {
-                    import('../core/state.js').then(s => s.addReviewLog(log));
-                }
-            }
+            applyQuizReview(currentWord, 1);
         } else {
             quizQuestions.push(currentWord);
         }
-        DOM.quizFeedback.innerHTML = `Sai! Đáp án đúng: <strong>${currentWord.english}</strong>`;
+        DOM.quizFeedback.innerHTML = `Sai! Đáp án đúng: <strong>${escapeHTML(currentWord.english)}</strong>`;
         DOM.quizFeedback.className = 'quiz-feedback incorrect';
         playSound('incorrect');
     }
@@ -193,89 +216,78 @@ function checkQuizAnswer() {
     goToNextQuizQuestion();
 }
 
+function applyQuizReview(word, rating) {
+    const { vocabulary } = getState();
+    const index = vocabulary.findIndex(card => card.id === word.id && !card.isDeleted);
+    if (index < 0) return;
+    const current = vocabulary[index];
+    if (current.srsStatus === 'New') incrementNewCardsDone();
+    else if (current.srsStatus === 'Learning') incrementLearningCardsDone();
+    else if (current.srsDueDate && current.srsDueDate <= new Date().setHours(23,59,59,999)) incrementDueCardsDone();
+    const { newState, log } = calculateNextSrsState(current, rating, 'quiz', 0, getState().userFsrs7Params);
+    vocabulary[index] = newState;
+    void saveOneWord(newState);
+    if (log) void addReviewLog(log);
+}
 function skipQuizQuestion() {
-    if (!quizInProgress) return;
+    if (!quizInProgress || quizAnswerSettled) return;
     const currentWord = quizQuestions[currentQuizQuestionIndex];
     if (!currentWord) { goToNextQuizQuestion(); return; }
     
-    DOM.quizAnswerInput.disabled = true;
+    if (!lockQuizAnswer()) return;
     if (!quizIsReviewing) {
         quizIncorrect++;
+        recordQuizAnswer(false);
         quizIncorrectWordsInfo.push(currentWord);
         
-        const { vocabulary } = getState();
-        const originalIndex = vocabulary.findIndex(v => v.id === currentWord.id);
-        if (originalIndex > -1) {
-            const { newState: updatedCard, log } = calculateNextSrsState(vocabulary[originalIndex], 1, 'quiz', 0, getState().userFsrs7Params);
-            vocabulary[originalIndex] = updatedCard;
-            saveOneWord(updatedCard);
-            if (log) {
-                import('../core/state.js').then(s => s.addReviewLog(log));
-            }
-        }
+        applyQuizReview(currentWord, 1);
     } else {
         quizQuestions.push(currentWord);
     }
     
-    DOM.quizFeedback.innerHTML = `Đã bỏ qua! Đáp án đúng: <strong>${currentWord.english}</strong>`;
+    DOM.quizFeedback.innerHTML = `Đã bỏ qua! Đáp án đúng: <strong>${escapeHTML(currentWord.english)}</strong>`;
     
     updateQuizProgress();
     goToNextQuizQuestion();
 }
 
 function goToNextQuizQuestion() {
-    setTimeout(() => {
+    clearTimeout(quizAdvanceTimer);
+    const session = quizSessionId;
+    const question = currentQuizQuestionIndex;
+    quizAdvanceTimer = setTimeout(() => {
+        quizAdvanceTimer = null;
+        if (!quizInProgress || session !== quizSessionId || question !== currentQuizQuestionIndex) return;
         currentQuizQuestionIndex++;
         displayQuizQuestion();
     }, 1200);
 }
 
 function finishQuiz(isSilent = false) {
-    if (!quizInProgress && !isSilent) return;
+    if (!quizInProgress) return;
     quizInProgress = false;
-    clearInterval(quizIntervalId);
+    resetQuizFlow();
     
-    const totalQuestions = quizQuestions.length;
-    const timeTaken = (Date.now() - quizRealStartTime) / 1000;
-    const avgTime = totalQuestions > 0 ? (timeTaken / totalQuestions).toFixed(1) : '0.0';
+    const totalQuestions = quizOriginalTotal;
+    if (!quizIsReviewing) quizOriginalDuration = (Date.now() - quizRealStartTime) / 1000;
+    const timeTaken = quizOriginalDuration;
+    const answered = quizScore + quizIncorrect;
+    const avgTime = answered > 0 ? (timeTaken / answered).toFixed(1) : '0.0';
 
-    if (quizScore > 0 && totalQuestions >= 10) {
-        if (parseFloat(avgTime) < 2) {
-            import('../core/state.js').then(s => {
-                const state = s.getState();
-                if (!state.gamification) state.gamification = {};
-                state.gamification.speedsterAchieved = true;
-                s.saveGamification();
-                document.getElementById('app-container')?.dispatchEvent(new CustomEvent('gamification:update'));
-            });
+    if (!quizIsReviewing && answered > 0) {
+        const state = getState();
+        const stats = state.gamification.stats ||= {};
+        const perfect = totalQuestions >= 10 && quizScore === totalQuestions;
+        stats.perfectQuizStreak = perfect ? (stats.perfectQuizStreak || 0) + 1 : 0;
+        if (perfect) {
+            trackEvent('perfectQuizzes');
+            if (state.isTypingMode) trackEvent('typingPerfectQuizzes');
         }
-        
-        // Track Immortal Badge & Telepath Badge: 100% correct, >= 10 questions, not reviewing incorrect
-        if (!quizIsReviewing) {
-            import('../core/state.js').then(s => {
-                const state = s.getState();
-                if (!state.gamification) state.gamification = {};
-                if (!state.gamification.stats) state.gamification.stats = {};
-                
-                if (quizIncorrect === 0 && quizScore > 0) {
-                    trackEvent('perfectQuizzes');
-                    if (state.isTypingMode) {
-                        trackEvent('typingPerfectQuizzes');
-                    }
-                    state.gamification.stats.perfectQuizStreak = (state.gamification.stats.perfectQuizStreak || 0) + 1;
-                } else {
-                    state.gamification.stats.perfectQuizStreak = 0;
-                }
-                
-                if (quizScore === 0 && quizIncorrect > 0) {
-                    trackEvent('quizZeroScore');
-                }
-                
-                s.saveGamification();
-            });
-        }
+        if (quizScore === 0) trackEvent('quizZeroScore');
+        if (answered === totalQuestions && totalQuestions >= 10 && Number(avgTime) < 2) state.gamification.speedsterAchieved = true;
+        void saveGamification();
     }
-    
+
     if (isSilent) return;
     DOM.quizHeader?.classList.add('hidden');
     DOM.quizQuestionArea?.classList.add('hidden');
@@ -405,7 +417,7 @@ function startQuizTimer() {
     clearInterval(quizIntervalId);
     updateQuizTimerDisplay();
     quizIntervalId = setInterval(() => {
-        quizTimeLeft--;
+        quizTimeLeft = Math.max(0, Math.ceil((quizDeadline - Date.now()) / 1000));
         updateQuizTimerDisplay();
         if (quizTimeLeft <= 0) {
             showPopup("Hết giờ!", "info");
@@ -423,6 +435,7 @@ function updateQuizTimerDisplay() {
 
 function startReviewIncorrect() {
     if (quizIncorrectWordsInfo.length === 0) return;
+    resetQuizFlow();
     quizQuestions = [...quizIncorrectWordsInfo];
     quizIncorrectWordsInfo = [];
     quizIsReviewing = true;

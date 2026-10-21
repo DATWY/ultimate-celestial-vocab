@@ -1,3 +1,12 @@
+import { compressLogs as compressReviewLogs, mergeReviewLogs as mergeLogSnapshots } from './review-log-merge.js';
+import { saveReviewLogsToDB } from './idb.js';
+import { rolloverDailyStats } from './daily-stats.js';
+import { normalizeCard, mergeCardFields, nextRevision } from './card-merge.js';
+import { initializeProgress, captureProgress, mergeProgress } from './progress-merge.js';
+import { validFsrs7Params } from './srs/constants.js';
+import { saveProgressToDB } from './idb.js';
+import { announceSyncStatus } from './sync-status.js';
+import { isIsolatedStorage } from './idb.js';
 import { showPopup, showToast } from '../ui/modal.js';
 import { updateStats } from '../ui/render.js';
 import { initAppDB, getAllVocabularyFromDB, saveAllVocabularyToDB, saveWordToDB, getSettingFromDB, saveSettingToDB } from './idb.js';
@@ -120,6 +129,27 @@ let _userRecallParams = null;
 let _userLapseParams = null;
 let _userFsrs7Params = null;
 let _userFsrs7TrainedAt = null;
+const progressActor = crypto.randomUUID();
+function skipPersistence() {
+    return _isPreviewMode || (sessionStorage.getItem('CHEAT_MODE') === 'true' && !isIsolatedStorage);
+}
+
+export function prepareProgress(kind) {
+    if (kind === 'daily') rolloverDailyStats(_dailyStats, getLocalDateString());
+    return captureProgress(kind === 'daily' ? _dailyStats : _gamification, kind, progressActor);
+}
+
+export function acceptProgress(remote, kind) {
+    const merged = mergeProgress(prepareProgress(kind), remote, kind, kind === 'daily' ? getLocalDateString() : null);
+    if (kind === 'daily') _dailyStats = merged;
+    else {
+        _gamification = merged;
+        const streak = calculateStreakFromHeatmap(merged.activityHeatmap);
+        merged.currentStreak = streak.currentStreak;
+        merged.longestStreak = Math.max(merged.longestStreak || 0, streak.longestStreak);
+    }
+    return merged;
+}
 
 export const getState = () => ({
     vocabulary: _vocabulary,
@@ -289,8 +319,10 @@ export async function saveVocabulary(skipSync = false) {
         const vocabToSave = _vocabulary.map(w => ({ ...w, srsDueDate: w.srsDueDate || null }));
         
         // Lưu toàn bộ vào IndexedDB (chỉ dùng cho bulk operations: import, full sync)
-        await saveAllVocabularyToDB(vocabToSave);
-        await saveSettingToDB('dailyStats', _dailyStats);
+        const stored = await saveAllVocabularyToDB(vocabToSave, { markDirty: !skipSync });
+        const current = new Map(_vocabulary.map(card => [card.id, card]));
+        setVocabulary(stored.map(card => mergeCardFields(current.get(card.id) || card, card)));
+        await saveDailyStats();
         
         updateStats();
     } catch (e) {
@@ -305,14 +337,20 @@ export async function saveVocabulary(skipSync = false) {
  * Giảm I/O từ O(n) xuống O(1) so với saveVocabulary().
  */
 export async function saveOneWord(word) {
-    if (_isPreviewMode || sessionStorage.getItem('CHEAT_MODE') === 'true') return;
+    if (skipPersistence()) return;
     try {
-        await saveWordToDB({ ...word, srsDueDate: word.srsDueDate || null });
+        const stored = await saveWordToDB({ ...word, srsDueDate: word.srsDueDate || null });
+        const merged = mergeCardFields(getVocabById(word.id) || word, stored);
+        updateCardInVocabulary(word.id, merged);
         updateStats();
         // Queue sync lên Cloud (batch 30s)
-        syncCardToFirebase(word);
+        syncCardToFirebase(merged);
+        return merged;
     } catch (e) {
         console.error("SaveOneWord error:", e);
+        announceSyncStatus({ phase: 'storage-error' });
+        showToast('Chưa lưu được', 'Thiết bị chưa lưu được lượt học này. Hãy xuất dữ liệu trước khi đóng trang.', 'ph-warning');
+        return null;
     }
 }
 
@@ -323,7 +361,7 @@ export async function loadVocabulary() {
     let savedVocab = await getAllVocabularyFromDB();
     
     // Nếu IDB trống, thử migrate từ localStorage sang IDB
-    if (savedVocab.length === 0) {
+    if (!isIsolatedStorage && savedVocab.length === 0) {
         const oldVocabStr = localStorage.getItem('celestialVocab');
         if (oldVocabStr) {
             try {
@@ -370,7 +408,7 @@ export async function loadVocabulary() {
                 word.isSuspended = false;
             }
             if (!word.id) word.id = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).substring(2, 10));
-            _vocabulary.push(word);
+            _vocabulary.push(normalizeCard(word));
             word.tags.forEach(tag => _allTags.add(tag));
         });
         if (hasSuspendedMigration) {
@@ -380,7 +418,7 @@ export async function loadVocabulary() {
 
     // Load Daily Stats
     let parsedStats = await getSettingFromDB('dailyStats');
-    if (!parsedStats) {
+    if (!isIsolatedStorage && !parsedStats) {
         const oldStatsStr = localStorage.getItem('celestialDailyStats');
         if (oldStatsStr) {
             try {
@@ -391,50 +429,16 @@ export async function loadVocabulary() {
         }
     }
 
-    if (parsedStats) {
-        try {
-            const todayStr = getLocalDateString();
-            if (parsedStats.lastDate === todayStr) {
-                _dailyStats = parsedStats;
-            } else {
-                // New day: save yesterday's retention to history if available
-                if (parsedStats.todayTotal && parsedStats.todayTotal > 0) {
-                    parsedStats.retentionHistory = parsedStats.retentionHistory || [];
-                    parsedStats.retentionHistory.push({
-                        date: parsedStats.lastDate,
-                        correct: parsedStats.todayCorrect || 0,
-                        total: parsedStats.todayTotal || 0
-                    });
-                    // Keep only last 3 days
-                    if (parsedStats.retentionHistory.length > 3) {
-                        parsedStats.retentionHistory.shift();
-                    }
-                }
-                
-                // Reset for today
-                _dailyStats = {
-                    newCardsDoneToday: 0,
-                    dueDoneToday: 0,
-                    learningDoneToday: 0,
-                    retentionHistory: parsedStats.retentionHistory || [],
-                    lastDate: todayStr,
-                    todayCorrect: 0,
-                    todayTotal: 0,
-                    currentLimit: parsedStats.currentLimit
-                };
-                await saveSettingToDB('dailyStats', _dailyStats);
-            }
-        } catch (e) {
-            console.error("Parse stats error:", e);
-        }
-    }
-
+    _dailyStats = initializeProgress(parsedStats || _dailyStats, 'daily');
+    ensureDailyStats();
     // Load Gamification Stats
     let savedGamification = await getSettingFromDB('gamification');
     if (savedGamification) {
         _gamification = { ..._gamification, ...savedGamification };
+        initializeProgress(_gamification, 'gamification');
         checkStreakStatusOnLoad(); // Check streak status on load (reset UI if missed days, do not grant streak without study)
     }
+    initializeProgress(_gamification, 'gamification');
 
 
 
@@ -442,7 +446,7 @@ export async function loadVocabulary() {
     if (Array.isArray(rawLogs)) {
         console.log("Migrating reviewLogs to compressed format...");
         _reviewLogs = compressLogs(rawLogs);
-        await saveSettingToDB('reviewLogs', _reviewLogs);
+        await persistReviewLogs();
     } else {
         _reviewLogs = rawLogs;
         if (!_reviewLogs.dict) _reviewLogs = { dict: [], logs: [] };
@@ -454,64 +458,17 @@ export async function loadVocabulary() {
     _userFsrs7TrainedAt = await getSettingFromDB('userFsrs7TrainedAt') || null;
     if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = _userFsrs7Params;
 
-    // ===== V3 ONE-TIME MIGRATION =====
-    const v3Done = await getSettingFromDB('v3MigrationDone');
-    if (!v3Done) {
-        console.log("[V3 Migration] Bắt đầu migration...");
-        let healedCount = 0;
 
-        // 1. Chữa lành thẻ Mastered có Stability <= 0.1 (bị phạt quá nặng bởi postLapseStability cũ)
-        _vocabulary.forEach(word => {
-            if (word.srsStatus === 'Mastered' && word.stability !== undefined && word.stability <= 0.1) {
-                // Recalculate S dựa trên reps và difficulty hiện tại
-                const reps = word.reps || 1;
-                const d = word.difficulty || 5;
-                // Công thức ước lượng: S = max(1, reps * (11 - d) / 5)
-                const newS = Math.max(1, reps * (11 - d) / 5);
-                word.stability = newS;
-                word.srsInterval = Math.max(1, Math.round(newS));
-                word.srsDueDate = Date.now() + word.srsInterval * 86400000;
-                word.updatedAt = Date.now();
-                healedCount++;
-            }
-        });
-        if (healedCount > 0) {
-            console.log(`[V3 Migration] Đã chữa lành ${healedCount} thẻ có Stability = 0.1`);
-            await saveAllVocabularyToDB(_vocabulary.map(w => ({ ...w, srsDueDate: w.srsDueDate || null })));
-            import('./sync.js').then(async syncModule => {
-                _vocabulary.forEach(word => {
-                    if (word.srsStatus === 'Mastered' && word.stability > 0.1) {
-                        syncModule.syncCardToFirebase(word);
-                    }
-                });
-                await syncModule.flushSyncQueue();
-            });
-        }
-
-        // 2. Lọc bỏ noise entries trong reviewLogs (t < 0.25 ngày = 6 giờ)
-        if (_reviewLogs && _reviewLogs.logs && _reviewLogs.logs.length > 0) {
-            const beforeCount = _reviewLogs.logs.length;
-            _reviewLogs.logs = _reviewLogs.logs.filter(log => {
-                const t = log[2]; // [dictIndex, rating, t, timestamp]
-                return t >= 0.25;
-            });
-            const removed = beforeCount - _reviewLogs.logs.length;
-            if (removed > 0) {
-                console.log(`[V3 Migration] Đã lọc bỏ ${removed}/${beforeCount} noise entries (t < 6h) trong reviewLogs`);
-                await saveSettingToDB('reviewLogs', _reviewLogs);
-            }
-        }
-
-        await saveSettingToDB('v3MigrationDone', Date.now());
-        console.log("[V3 Migration] Hoàn tất!");
-    }
-    // ===== END V3 MIGRATION =====
 
     console.log(`Loaded: ${_vocabulary.length} words from IDB.`);
     _rebuildVocabIndex();
     updateStats();
 }
 
+async function persistReviewLogs() {
+    const saved = await saveReviewLogsToDB(structuredClone(_reviewLogs));
+    _reviewLogs = mergeLogSnapshots(_reviewLogs, saved);
+}
 export async function addReviewLog(log) {
     let dictIndex = _reviewLogs.dict.indexOf(log.cardId);
     if (dictIndex === -1) {
@@ -519,104 +476,43 @@ export async function addReviewLog(log) {
         _reviewLogs.dict.push(log.cardId);
     }
     
-    _reviewLogs.logs.push([dictIndex, log.rating, log.t, Date.now(), log.modality === 'typing' ? 1 : 0]);
+    _reviewLogs.logs.push([dictIndex, log.rating, log.t, log.reviewTime || Date.now(), log.modality === 'typing' ? 1 : 0, log.id || crypto.randomUUID()]);
     
     if (_reviewLogs.logs.length > 10000) {
         _reviewLogs.logs = _reviewLogs.logs.slice(_reviewLogs.logs.length - 10000);
     }
-    await saveSettingToDB('reviewLogs', _reviewLogs);
+    await persistReviewLogs();
+    if (_reviewLogs.logs.length >= 400 && _reviewLogs.logs.length % 200 === 0) {
+        import('./srs/worker-manager.js').then(module => module.checkAndRunOptimizer()).catch(console.warn);
+    }
 }
 
+export async function removeReviewLog(id) {
+    if (!id) return;
+    _reviewLogs.logs = _reviewLogs.logs.filter(log => log[5] !== id);
+    _reviewLogs.deletedIds = [...new Set([...(_reviewLogs.deletedIds || []), id])];
+    await persistReviewLogs();
+}
+
+// Compatibility for dev tools; review Undo always removes by its exact ID.
 export async function popLastReviewLog() {
-    if (_reviewLogs && _reviewLogs.logs && _reviewLogs.logs.length > 0) {
-        const removed = _reviewLogs.logs.pop();
-        await saveSettingToDB('reviewLogs', _reviewLogs);
-        return removed;
-    }
+    const last = _reviewLogs.logs.at(-1);
+    if (last?.[5]) return removeReviewLog(last[5]);
     return null;
 }
 
 export async function clearReviewLogs() {
-    _reviewLogs = { dict: [], logs: [] };
-    await saveSettingToDB('reviewLogs', _reviewLogs);
+    const normalized = mergeLogSnapshots(_reviewLogs, null);
+    _reviewLogs = { dict: [], logs: [], deletedIds: [...new Set([...normalized.deletedIds, ...normalized.logs.map(row => row[5])])] };
+    await persistReviewLogs();
 }
 
 export function compressLogs(rawArray) {
-    const dict = [];
-    const dictMap = new Map();
-    const logs = [];
-    for (let i = 0; i < rawArray.length; i++) {
-        const log = rawArray[i];
-        if (!log || !log.cardId) continue;
-        let dictIndex = dictMap.get(log.cardId);
-        if (dictIndex === undefined) {
-            dictIndex = dict.length;
-            dictMap.set(log.cardId, dictIndex);
-            dict.push(log.cardId);
-        }
-        logs.push([
-            dictIndex,
-            log.rating,
-            log.t,
-            log.ts || (Date.now() - 1000000 + i),
-            log.isTyping || log.modality === 'typing' ? 1 : 0
-        ]);
-    }
-    return { dict, logs };
+    return compressReviewLogs(rawArray);
 }
 
 export function mergeReviewLogs(remoteLogs, localLogs) {
-    if (!remoteLogs || !remoteLogs.logs || remoteLogs.logs.length === 0) return localLogs || { dict: [], logs: [] };
-    if (!localLogs || !localLogs.logs || localLogs.logs.length === 0) return remoteLogs || { dict: [], logs: [] };
-
-    const extractRaw = (compressed) => {
-        if (!compressed || !compressed.dict || !Array.isArray(compressed.logs)) return [];
-        return compressed.logs.map((log, idx) => {
-            const cardId = compressed.dict[log[0]];
-            if (!cardId) return null;
-            return {
-                cardId,
-                rating: log[1],
-                t: log[2],
-                ts: log[3] || (Date.now() - 1000000 + idx),
-                isTyping: log[4] === 1
-            };
-        }).filter(Boolean);
-    };
-
-    const rawRemote = extractRaw(remoteLogs);
-    const rawLocal = extractRaw(localLogs);
-
-    const combined = [...rawRemote, ...rawLocal].sort((a, b) => a.ts - b.ts);
-
-    const uniqueLogs = [];
-    const lastSeenByCard = new Map(); // cardId -> last log object
-
-    for (const log of combined) {
-        if (!log || !log.cardId) continue;
-        const lastLog = lastSeenByCard.get(log.cardId);
-
-        // Boundary-free sliding window deduplication (3000ms):
-        // Phát hiện chính xác bản ghi trùng lặp từ sync đa thiết bị mà không bị lỗi biên bucket.
-        const isDuplicate = lastLog && (
-            (lastLog.ts === log.ts) ||
-            (
-                lastLog.rating === log.rating &&
-                Math.abs((lastLog.t || 0) - (log.t || 0)) < 0.0001 &&
-                Math.abs((log.ts || 0) - (lastLog.ts || 0)) <= 3000
-            )
-        );
-
-        if (isDuplicate) {
-            continue;
-        }
-
-        lastSeenByCard.set(log.cardId, log);
-        uniqueLogs.push(log);
-    }
-
-    const finalRawLogs = uniqueLogs.slice(-10000);
-    return compressLogs(finalRawLogs);
+    return mergeLogSnapshots(remoteLogs, localLogs);
 }
 
 export function setReviewLogs(logs) {
@@ -634,16 +530,16 @@ export async function setUserSrsParams(recall, lapse) {
 export async function setUserFsrs7Params(params34, trainedAtTimestamp = null) {
     if (params34 === null) {
         _userFsrs7Params = null;
-        _userFsrs7TrainedAt = null;
+        _userFsrs7TrainedAt = trainedAtTimestamp ?? Math.max(Date.now(), (_userFsrs7TrainedAt || 0) + 1);
         if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = null;
         await saveSettingToDB('userFsrs7Params', null);
-        await saveSettingToDB('userFsrs7TrainedAt', null);
-        await saveSettingToDB('userParamsTrainedAt', null);
+        await saveSettingToDB('userFsrs7TrainedAt', _userFsrs7TrainedAt);
+        await saveSettingToDB('userParamsTrainedAt', _userFsrs7TrainedAt);
         return { success: true, reset: true };
     }
-    if (Array.isArray(params34) && params34.length === 34 && params34.every(n => typeof n === 'number' && !isNaN(n) && isFinite(n))) {
+    if (validFsrs7Params(params34)) {
         _userFsrs7Params = params34;
-        _userFsrs7TrainedAt = trainedAtTimestamp || Date.now();
+        _userFsrs7TrainedAt = trainedAtTimestamp ?? Math.max(Date.now(), (_userFsrs7TrainedAt || 0) + 1);
         if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = _userFsrs7Params;
         await saveSettingToDB('userFsrs7Params', params34);
         await saveSettingToDB('userFsrs7TrainedAt', _userFsrs7TrainedAt);
@@ -668,7 +564,8 @@ export function exportReviewLogsAsJson() {
                 rating: log[1],
                 t: log[2],
                 ts: log[3] || (Date.now() - 1000000 + idx),
-                isTyping: log[4] === 1
+                isTyping: log[4] === 1,
+                id: log[5]
             };
         });
     } else if (Array.isArray(_reviewLogs)) {
@@ -701,44 +598,34 @@ export function exportReviewLogsAsJson() {
     return { success: true, count: rawList.length };
 }
 
+export function ensureDailyStats() {
+    const previous = _dailyStats.lastDate;
+    rolloverDailyStats(_dailyStats, getLocalDateString());
+    if (previous !== _dailyStats.lastDate) void saveDailyStats();
+    return _dailyStats;
+}
+
 export function incrementNewCardsDone() {
+    ensureDailyStats();
     _dailyStats.newCardsDoneToday += 1;
-    saveSettingToDB('dailyStats', _dailyStats).catch(() => {});
+    void saveDailyStats();
 }
 export function incrementDueCardsDone() {
+    ensureDailyStats();
     _dailyStats.dueDoneToday = (_dailyStats.dueDoneToday || 0) + 1;
-    saveSettingToDB('dailyStats', _dailyStats).catch(() => {});
+    void saveDailyStats();
 }
 export function incrementLearningCardsDone() {
+    ensureDailyStats();
     _dailyStats.learningDoneToday = (_dailyStats.learningDoneToday || 0) + 1;
-    saveSettingToDB('dailyStats', _dailyStats).catch(() => {});
+    void saveDailyStats();
 }
 
 export function recordReviewResult(isCorrect) {
     checkAndUpdateStreak(); // Đảm bảo cập nhật streak kể cả khi user treo tab sang ngày mới
     
-    // CHAOS-02 FIX: Kiểm tra và reset daily stats nếu đã sang ngày mới giữa phiên học
-    const todayStr = getLocalDateString();
-    if (_dailyStats.lastDate && _dailyStats.lastDate !== todayStr) {
-        // Lưu lịch sử retention của ngày cũ trước khi reset
-        if (_dailyStats.todayTotal && _dailyStats.todayTotal > 0) {
-            _dailyStats.retentionHistory = _dailyStats.retentionHistory || [];
-            _dailyStats.retentionHistory.push({
-                date: _dailyStats.lastDate,
-                correct: _dailyStats.todayCorrect || 0,
-                total: _dailyStats.todayTotal || 0
-            });
-            if (_dailyStats.retentionHistory.length > 3) {
-                _dailyStats.retentionHistory.shift();
-            }
-        }
-        // Reset cho ngày mới
-        _dailyStats.newCardsDoneToday = 0;
-        _dailyStats.todayCorrect = 0;
-        _dailyStats.todayTotal = 0;
-        _dailyStats.lastDate = todayStr;
-    }
-    
+    ensureDailyStats();
+
     _dailyStats.todayTotal = (_dailyStats.todayTotal || 0) + 1;
     if (isCorrect) {
         _dailyStats.todayCorrect = (_dailyStats.todayCorrect || 0) + 1;
@@ -759,32 +646,16 @@ export function recordReviewResult(isCorrect) {
     }
     _gamification.totalReviews = (_gamification.totalReviews || 0) + 1;
     // Dùng incremental save thay vì saveVocabulary()
-    saveSettingToDB('dailyStats', _dailyStats).catch(() => {});
+    void saveDailyStats();
     saveGamification();
 }
 
 export function recordQuizAnswer(isCorrect) {
-    logActivity(); // Đảm bảo làm quiz cũng ghi nhận vào Heatmap và đồng bộ streak
-    if (!_gamification.stats) _gamification.stats = {};
-    
-    if (isCorrect) {
-        _gamification.consecutiveCorrect = (_gamification.consecutiveCorrect || 0) + 1;
-        _gamification.stats.quizCorrectStreak = (_gamification.stats.quizCorrectStreak || 0) + 1;
-        
-        if (_gamification.consecutiveCorrect > 0 && _gamification.consecutiveCorrect % 10 === 0) {
-            showToast('Chuỗi Combo Đỉnh Cao', `🔥 Đỉnh quá! Trả lời đúng liên tiếp: ${_gamification.consecutiveCorrect}`, 'ph-fire');
-        }
-    } else {
-        // Option 3 Combo Degradation
-        let currentCombo = _gamification.consecutiveCorrect || 0;
-        if (currentCombo >= 30) {
-            _gamification.consecutiveCorrect = 10;
-        } else {
-            _gamification.consecutiveCorrect = 0;
-        }
-        _gamification.stats.quizCorrectStreak = 0;
-    }
-    saveGamification();
+    recordReviewResult(isCorrect);
+    logActivity();
+    _gamification.stats ||= {};
+    _gamification.stats.quizCorrectStreak = isCorrect ? (_gamification.stats.quizCorrectStreak || 0) + 1 : 0;
+    void saveGamification();
 }
 
 export function toggleStarOnCurrentCard() {
@@ -792,28 +663,35 @@ export function toggleStarOnCurrentCard() {
     const card = _vocabulary[_currentCardIndex];
     card.isStarred = !card.isStarred;
 	card.updatedAt = Date.now();
+    card.flagsUpdatedAt = nextRevision(card, 'flagsUpdatedAt');
+    card.updatedAt = Math.max(card.updatedAt, card.flagsUpdatedAt);
     // Incremental save + sync thay vì ghi toàn bộ vocabulary
     saveOneWord(card);
     return card.isStarred;
 }
 
 export async function saveGamification() {
-    if (_isPreviewMode || sessionStorage.getItem('CHEAT_MODE') === 'true') return;
+    if (skipPersistence()) return;
+    prepareProgress('gamification');
     try {
-        await saveSettingToDB('gamification', _gamification);
+        const saved = await saveProgressToDB('gamification', structuredClone(_gamification), 'gamification');
+        acceptProgress(saved, 'gamification');
         import('./sync.js').then(m => m.queueGamificationSync());
-    } catch(e) {}
+    } catch(e) { announceSyncStatus({ phase: 'storage-error' }); console.error('Không lưu được tiến độ học:', e); }
 }
 
 export async function saveDailyStats() {
-    if (_isPreviewMode || sessionStorage.getItem('CHEAT_MODE') === 'true') return;
+    if (skipPersistence()) return;
+    prepareProgress('daily');
     try {
-        await saveSettingToDB('dailyStats', _dailyStats);
-    } catch(e) {}
+        const saved = await saveProgressToDB('dailyStats', structuredClone(_dailyStats), 'daily');
+        acceptProgress(saved, 'daily');
+        import('./sync.js').then(m => m.queueGamificationSync());
+    } catch(e) { announceSyncStatus({ phase: 'storage-error' }); console.error('Không lưu được thống kê ngày:', e); }
 }
 
 export function addXP(amount, floatText = null) {
-    if (amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0) return;
     const oldLevel = _gamification.currentLevel || 1;
     _gamification.userXP += amount;
     _gamification.currentLevel = Math.floor(Math.sqrt(_gamification.userXP / 100)) + 1;
@@ -850,7 +728,7 @@ export async function revertGamificationAfterUndo(snapshot) {
     _gamification.consecutiveCorrect = snapshot.comboBefore || 0;
     
     // 4. Trừ Heatmap của ngày hôm nay
-    const today = getLocalDateString();
+    const today = getLocalDateString(snapshot.timestamp);
     if (_gamification.activityHeatmap && _gamification.activityHeatmap[today]) {
         _gamification.activityHeatmap[today] = Math.max(0, _gamification.activityHeatmap[today] - 1);
         if (_gamification.activityHeatmap[today] === 0) {
@@ -860,7 +738,8 @@ export async function revertGamificationAfterUndo(snapshot) {
     syncStreakFromHeatmap();
     
     // 5. Khôi phục Daily Stats
-    if (_dailyStats) {
+    ensureDailyStats();
+    if (_dailyStats.lastDate === today) {
         if (_dailyStats.todayTotal > 0) _dailyStats.todayTotal -= 1;
         if (snapshot.isCorrect && _dailyStats.todayCorrect > 0) _dailyStats.todayCorrect -= 1;
         if (snapshot.wasNewCard && snapshot.isCorrect && _dailyStats.newCardsDoneToday > 0) {
@@ -868,6 +747,12 @@ export async function revertGamificationAfterUndo(snapshot) {
         }
     }
     
+    if (_dailyStats.lastDate === today && snapshot.isCorrect) {
+        const key = snapshot.previousCard?.srsStatus === 'Learning' ? 'learningDoneToday'
+            : snapshot.countedDue ? 'dueDoneToday' : null;
+        if (key) _dailyStats[key] = Math.max(0, (_dailyStats[key] || 0) - 1);
+    }
+
     // 6. Trừ bớt event stats nếu có
     if (_gamification.stats) {
         if (snapshot.rating === 4 && _gamification.stats.easyPresses > 0) _gamification.stats.easyPresses -= 1;
@@ -889,19 +774,6 @@ export async function setXP(targetXP) {
     _gamification.currentLevel = Math.floor(Math.sqrt(xp / 100)) + 1;
     await saveGamification();
     
-    // Đẩy thẳng lên Cloud nếu có kết nối Firebase
-    try {
-        const { db, USER_SYNC_COLLECTION } = await import('./firebase.js');
-        if (db && USER_SYNC_COLLECTION) {
-            const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            const gamificationRef = doc(db, USER_SYNC_COLLECTION, "gamification");
-            await setDoc(gamificationRef, JSON.parse(JSON.stringify(_gamification)));
-            console.log("☁️ Đã ghi đè XP mới lên Cloud!");
-        }
-    } catch (e) {
-        console.log("Lưu cục bộ thành công.");
-    }
-
     const event = new CustomEvent('gamification:update');
     document.getElementById('app-container')?.dispatchEvent(event);
     console.log(`✨ XP đã được set thành ${xp} (Level ${_gamification.currentLevel})`);
@@ -992,7 +864,7 @@ export function checkAndApplyStreakFreeze(todayStr = getLocalDateString()) {
         }
 
         _gamification.activityHeatmap[yesterdayStr] = 1;
-        _gamification.streakFreezeCount = 0;
+        _gamification.streakFreezeCount = Math.max(0, _gamification.streakFreezeCount - 1);
         _gamification.lastStreakFreezeDate = yesterdayStr;
         _gamification.frozenDates = _gamification.frozenDates || [];
         if (!_gamification.frozenDates.includes(yesterdayStr)) {
@@ -1276,6 +1148,7 @@ export function trackEvent(eventName, amount = 1) {
 }
 
 export async function seedIsolatedDemoVocabulary() {
+    if (!isIsolatedStorage) throw new Error('Dữ liệu demo chỉ được dùng trong kho kiểm thử riêng.');
     sessionStorage.setItem('CHEAT_MODE', 'true');
     sessionStorage.setItem('ISOLATED_TEST_MODE', 'true');
     const mockCards = [

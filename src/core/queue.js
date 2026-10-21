@@ -1,4 +1,4 @@
-import { getState, setReviewQueue } from './state.js';
+import { getState, setReviewQueue, ensureDailyStats } from './state.js';
 import { getLocalDateString } from './utils/date.js';
 
 const INTERLEAVE_OFFSET = 5;
@@ -15,10 +15,11 @@ function shuffleArray(array) {
     }
 }
 
-export function computeDailyNewLimit(dailyStats) {
+export function computeDailyNewLimit(dailyStats, today = getLocalDateString()) {
     if (!dailyStats) return MAX_NEW_PER_DAY_INITIAL;
     
     let limit = dailyStats.currentLimit || MAX_NEW_PER_DAY_INITIAL;
+    if (dailyStats.limitAdjustedDate === today) return Math.max(5, Math.min(limit, MAX_ABSOLUTE_NEW));
 
     if (dailyStats.retentionHistory && dailyStats.retentionHistory.length > 0) {
         const recent = dailyStats.retentionHistory.slice(-3);
@@ -108,6 +109,7 @@ export function getSmartCramCards(vocabulary, filterLowerCase) {
 }
 
 export function buildReviewQueue() {
+    ensureDailyStats();
     const state = getState();
     const vocabulary = state.vocabulary;
     const dailyStats = state.dailyStats || { newCardsDoneToday: 0 }; 
@@ -117,7 +119,8 @@ export function buildReviewQueue() {
     
     const dailyLimit = computeDailyNewLimit(dailyStats);
     // BUG-06 FIX: Ghi nhận limit đã tính vào state để giữ memory qua các session
-    if (dailyStats.currentLimit !== dailyLimit) {
+    if (dailyStats.currentLimit !== dailyLimit || dailyStats.limitAdjustedDate !== getLocalDateString()) {
+        dailyStats.limitAdjustedDate = getLocalDateString();
         dailyStats.currentLimit = dailyLimit;
         import('./state.js').then(m => m.saveDailyStats());
     }

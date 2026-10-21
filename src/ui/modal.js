@@ -1,3 +1,6 @@
+import { nextRevision } from '../core/card-merge.js';
+import { saveWordToDB } from '../core/idb.js';
+import { setReviewQueue, trackEvent } from '../core/state.js';
 
 import { DOM } from './elements.js';
 import { getState, saveVocabulary, setVocabulary, setAllTags, saveOneWord } from '../core/state.js';
@@ -11,27 +14,74 @@ import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from './celestial-canvas.js';
 
 let confirmCallback = null;
+const modalStack = [];
+const modalOpeners = new WeakMap();
+const modalGenerations = new WeakMap();
+const focusableSelector = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+function topModal() {
+    return modalStack.filter(modal => !modal.classList.contains('hidden')).at(-1);
+}
+
+function modalFocusable(modal) {
+    return [...modal.querySelectorAll(focusableSelector)].filter(element =>
+        !element.closest('.hidden, [hidden], [inert]') && element.getClientRects().length);
+}
+
+document.addEventListener('keydown', event => {
+    const modal = topModal();
+    if (!modal) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void closeModal(modal);
+    } else if (event.key === 'Tab') {
+        const items = modalFocusable(modal);
+        const first = items[0], last = items.at(-1);
+        if (!first) { event.preventDefault(); modal.focus(); return; }
+        if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+            event.preventDefault(); first.focus();
+        }
+    }
+}, true);
 
 export function openModal(modalElement) {
     if (!modalElement) return;
+    if (modalElement.classList.contains('hidden')) modalOpeners.set(modalElement, document.activeElement);
+    const existing = modalStack.indexOf(modalElement);
+    if (existing >= 0) modalStack.splice(existing, 1);
+    modalStack.push(modalElement);
+    modalGenerations.set(modalElement, (modalGenerations.get(modalElement) || 0) + 1);
+    modalElement.setAttribute('tabindex', '-1');
     document.body.classList.add('modal-active');
     suspendCelestialCanvas();
     modalElement.classList.remove('hidden');
     animateModalOpen(modalElement);
     setTimeout(() => {
-        const focusable = modalElement.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusable) focusable.focus();
+        if (topModal() !== modalElement) return;
+        (modalFocusable(modalElement)[0] || modalElement).focus();
     }, 50);
 }
 
 export async function closeModal(modalElement) {
     if (!modalElement || modalElement.classList.contains('hidden')) return;
+    const generation = modalGenerations.get(modalElement);
     try {
         await animateModalClose(modalElement);
     } catch (e) {
         console.warn('Error during animateModalClose:', e);
     } finally {
+        if (generation !== modalGenerations.get(modalElement)) return;
         modalElement.classList.add('hidden');
+        const position = modalStack.indexOf(modalElement);
+        if (position >= 0) modalStack.splice(position, 1);
+        const opener = modalOpeners.get(modalElement);
+        const activeModal = topModal();
+        if (opener?.isConnected && !opener.closest('.hidden') && (!activeModal || activeModal.contains(opener))) {
+            opener.focus({ preventScroll: true });
+        } else if (activeModal) (modalFocusable(activeModal)[0] || activeModal).focus();
         if (document.querySelectorAll('.modal:not(.hidden)').length === 0) {
             document.body.classList.remove('modal-active');
             resumeCelestialCanvas();
@@ -125,71 +175,50 @@ export function openAddEditModal(isEditing = false, wordData = null) {
 
 export function handleAddEditSubmit(event) {
     event.preventDefault();
-    const { vocabulary, allTags, currentCardIndex } = getState();
-    const isEditing = !!DOM.editWordId.value;
-    const wordId = isEditing ? DOM.editWordId.value : (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).substring(2, 10)));
-    const englishInput = DOM.inputEnglish.value.trim();
-    const rawVietnamese = DOM.inputVietnamese.value.trim();
-    if (!englishInput || !rawVietnamese) {
-        showPopup("Từ tiếng Anh và nghĩa tiếng Việt không được để trống.", "warning");
-        return;
-    }
-    const vietnameseInput = cleanAndDeduplicateVietnamese(rawVietnamese);
-    const tagsArray = DOM.inputTags.value.trim() ? DOM.inputTags.value.split(',').map(t => t.trim()).filter(Boolean) : [];
-    let tagsHaveChanged = false;
-    tagsArray.forEach(tag => {
-        if (!allTags.has(tag)) {
-            allTags.add(tag);
-            tagsHaveChanged = true;
-        }
-    });
-    const wordData = {
-        id: wordId,
-        english: englishInput,
-        vietnamese: vietnameseInput,
-        type: DOM.inputType.value.trim() || '',
-        pronunciation: DOM.inputPronunciation.value.trim() || '',
-        tags: tagsArray,
-        example: DOM.inputExample.value.trim() || '',
-		updatedAt: Date.now()
+    const button = document.getElementById('save-word-btn');
+    if (button?.disabled) return;
+    const id = DOM.editWordId.value || crypto.randomUUID();
+    const editing = !!DOM.editWordId.value;
+    const english = DOM.inputEnglish.value.trim(), vietnamese = cleanAndDeduplicateVietnamese(DOM.inputVietnamese.value.trim());
+    if (!english || !vietnamese) { showPopup('Từ tiếng Anh và nghĩa tiếng Việt không được để trống.', 'warning'); return; }
+    const previous = getState().vocabulary.find(card => card.id === id && !card.isDeleted);
+    if (editing && !previous) { showPopup('Thẻ đã bị xóa hoặc thay đổi. Hãy mở lại từ kho từ vựng.', 'warning'); return; }
+    const word = { ...(previous || { isStarred: false, srsStatus: 'New', srsInterval: 0, srsDueDate: null, lapses: 0, reps: 0 }),
+        id, english, vietnamese, type: DOM.inputType.value.trim(), pronunciation: DOM.inputPronunciation.value.trim(),
+        example: DOM.inputExample.value.trim(), tags: [...new Set(DOM.inputTags.value.split(',').map(tag => tag.trim()).filter(Boolean))] };
+    word.contentUpdatedAt = nextRevision(previous, 'contentUpdatedAt');
+    word.updatedAt = Math.max(Date.now(), previous?.updatedAt || 0, word.contentUpdatedAt);
+    const commit = async () => {
+        if (button) button.disabled = true;
+        try {
+            const saved = await saveWordToDB(word);
+            const { vocabulary, currentCardIndex } = getState();
+            const currentId = vocabulary[currentCardIndex]?.id;
+            const index = vocabulary.findIndex(card => card.id === id);
+            const next = [...vocabulary];
+            if (index < 0) next.push(saved); else next[index] = saved;
+            setVocabulary(next);
+            setAllTags(new Set(['all', ...next.filter(card => !card.isDeleted).flatMap(card => card.tags || [])]));
+            syncCardToFirebase(saved);
+            if (!editing) trackEvent('manualWordsAdded');
+            populateTopicFilters(true); buildReviewQueue(); updatePanelWordList();
+            const activeIndex = next.findIndex(card => card.id === currentId && !card.isDeleted);
+            if (activeIndex >= 0) { setReviewQueue(getState().currentReviewQueue.filter(i => i !== activeIndex)); displayCard(activeIndex); }
+            else displayCard(getNextCardToReview());
+            await closeModal(DOM.addEditModal);
+            showToast(editing ? 'Đã lưu thay đổi' : 'Đã thêm từ mới', english, 'ph-check-circle');
+            playSound('complete');
+        } catch (error) {
+            console.error('Không lưu được từ vựng:', error);
+            showPopup('Chưa lưu được từ vựng. Nội dung vẫn được giữ trong biểu mẫu để bạn thử lại.', 'error');
+        } finally { if (button) button.disabled = false; }
     };
-    const existingIndex = vocabulary.findIndex(w => w.id === wordId);
-    if (existingIndex > -1) {
-        const oldWord = vocabulary[existingIndex];
-        const updatedWord = { ...oldWord, ...wordData };
-        vocabulary[existingIndex] = updatedWord;
-        syncCardToFirebase(updatedWord);
-        showPopup("Đã cập nhật từ vựng thành công!", "success");
-        if (existingIndex === currentCardIndex) {
-            displayCard(currentCardIndex);
-        }
-    } else {
-        const duplicateExists = vocabulary.some(w => w.english.toLowerCase() === englishInput.toLowerCase());
-        if (duplicateExists) {
-            showConfirmation(`Từ "${englishInput}" đã có trong từ điển. Bạn vẫn muốn thêm?`, () => {
-                const fullWordData = { ...wordData, isStarred: false, srsStatus: 'New', srsInterval: 0, srsEaseFactor: 2.5, srsDueDate: null, lapses: 0, isSuspended: false };
-                addNewWord(fullWordData);
-                syncCardToFirebase(fullWordData);
-                saveAndRefreshUI(tagsHaveChanged);
-                closeModal(DOM.addEditModal);
-            });
-            return;
-        } else {
-            const fullWordData = { ...wordData, isStarred: false, srsStatus: 'New', srsInterval: 0, srsEaseFactor: 2.5, srsDueDate: null, lapses: 0, isSuspended: false };
-            addNewWord(fullWordData);
-            syncCardToFirebase(fullWordData);
-        }
-    }
-    saveAndRefreshUI(tagsHaveChanged);
-    closeModal(DOM.addEditModal);
+    if (!editing && getState().vocabulary.some(card => !card.isDeleted && card.english.toLowerCase() === english.toLowerCase())) {
+        showConfirmation(`Từ "${english}" đã có. Bạn muốn thêm một nghĩa hoặc từ loại khác?`, commit);
+    } else void commit();
 }
 
-function addNewWord(wordData) {
-    const { vocabulary } = getState();
-    vocabulary.push(wordData);
-    setVocabulary(vocabulary);
-    showPopup("Đã thêm từ mới thành công!", "success");
-}
+
 
 export function cancelEdit() {
     closeModal(DOM.addEditModal);
@@ -228,8 +257,11 @@ export function switchHubTab(targetTab = 'overview') {
             t.tabEl.classList.toggle('active', isActive);
             t.tabEl.setAttribute('aria-selected', isActive ? 'true' : 'false');
             t.tabEl.setAttribute('tabindex', isActive ? '0' : '-1');
+            if (t.paneEl) t.tabEl.setAttribute('aria-controls', t.paneEl.id);
         }
         if (t.paneEl) {
+            t.paneEl.setAttribute('role', 'tabpanel');
+            if (t.tabEl) t.paneEl.setAttribute('aria-labelledby', t.tabEl.id);
             t.paneEl.classList.toggle('active', isActive);
             t.paneEl.classList.toggle('hidden', !isActive);
         }
@@ -340,8 +372,8 @@ export function showToast(title, message = '', iconClass = 'ph-trophy') {
             <i class="${resolvedIconClass}"></i>
         </div>
         <div class="toast-content">
-            <div class="toast-title">${title}</div>
-            ${message ? `<div class="toast-message">${message}</div>` : ''}
+            <div class="toast-title">${escapeHTML(title)}</div>
+            ${message ? `<div class="toast-message">${escapeHTML(message)}</div>` : ''}
         </div>
     `;
 
@@ -413,7 +445,7 @@ export function renderDedupPairs() {
             <div class="internal-alert-header">
                 <div class="internal-alert-title">
                     <i class="ph-bold ph-magic-wand"></i>
-                    <span>Có <strong>${internalDups.length} thẻ bị lặp nghĩa nội bộ</strong> (như: <em>${internalDups[0].card.english}</em>)</span>
+                    <span>Có <strong>${internalDups.length} thẻ bị lặp nghĩa nội bộ</strong> (như: <em>${escapeHTML(internalDups[0].card.english)}</em>)</span>
                 </div>
                 <button id="clean-internal-meanings-btn" class="clean-internal-btn" title="Làm sạch nghĩa tiếng Việt cho toàn bộ ${internalDups.length} thẻ này">
                     <i class="ph-bold ph-sparkle"></i> Làm sạch tất cả nghĩa lặp
@@ -422,11 +454,11 @@ export function renderDedupPairs() {
             <div class="internal-items-preview">
                 ${internalDups.slice(0, 4).map(item => `
                     <div class="internal-dup-item">
-                        <span class="internal-dup-word"><strong>${item.card.english}</strong> <span class="card-sub-tag">${item.card.type || 'N/A'}</span></span>
+                        <span class="internal-dup-word"><strong>${escapeHTML(item.card.english)}</strong> <span class="card-sub-tag">${escapeHTML(item.card.type || 'N/A')}</span></span>
                         <div class="internal-dup-diff">
-                            <span class="meaning-old" title="Nghĩa cũ">${item.originalMeaning}</span>
+                            <span class="meaning-old" title="Nghĩa cũ">${escapeHTML(item.originalMeaning)}</span>
                             <i class="ph-bold ph-arrow-right"></i>
-                            <span class="meaning-new" title="Nghĩa chuẩn sau khi làm sạch">${item.cleanedMeaning}</span>
+                            <span class="meaning-new" title="Nghĩa chuẩn sau khi làm sạch">${escapeHTML(item.cleanedMeaning)}</span>
                         </div>
                     </div>
                 `).join('')}
@@ -531,7 +563,7 @@ export function executeCleanAllInternalMeanings() {
             const updated = {
                 ...currentVocab[targetIndex],
                 vietnamese: cleanedMeaning,
-                updatedAt: Date.now()
+                updatedAt: Date.now(), contentUpdatedAt: Date.now()
             };
             currentVocab[targetIndex] = updated;
             modifiedWords.push(updated);
@@ -554,7 +586,7 @@ export function executeMergeSingle(cardA, cardB) {
 
     const newVocab = vocabulary.map(w => {
         if (w.id === mergedCard.id) return mergedCard;
-        if (w.id === deletedCardId) return { ...w, isDeleted: true, updatedAt: Date.now() };
+        if (w.id === deletedCardId) return { ...w, isDeleted: true, updatedAt: Date.now(), contentUpdatedAt: Date.now() };
         return w;
     });
 
@@ -592,7 +624,7 @@ export function executeMergeAll() {
                 const { mergedCard, deletedCardId } = mergeDuplicateCards(cardA, cardB);
                 currentVocab = currentVocab.map(w => {
                     if (w.id === mergedCard.id) return mergedCard;
-                    if (w.id === deletedCardId) return { ...w, isDeleted: true, updatedAt: Date.now() };
+                    if (w.id === deletedCardId) return { ...w, isDeleted: true, updatedAt: Date.now(), contentUpdatedAt: Date.now() };
                     return w;
                 });
                 mergedCount++;
@@ -611,7 +643,7 @@ export function executeMergeAll() {
                 const updated = {
                     ...currentVocab[targetIndex],
                     vietnamese: cleanedMeaning,
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(), contentUpdatedAt: Date.now()
                 };
                 currentVocab[targetIndex] = updated;
                 modifiedWords.push(updated);
@@ -636,10 +668,10 @@ export function openFsrs7ConfigModal() {
 
     if (DOM.fsrs7CurrentStatus) {
         if (userFsrs7Params && Array.isArray(userFsrs7Params) && userFsrs7Params.length === 34) {
-            DOM.fsrs7CurrentStatus.textContent = "Đang dùng: Bộ Cá Nhân Hóa (34 params)";
+            DOM.fsrs7CurrentStatus.textContent = "Đang dùng: Bộ cá nhân hóa (34 tham số)";
             DOM.fsrs7CurrentStatus.style.color = "#a855f7";
         } else {
-            DOM.fsrs7CurrentStatus.textContent = "Đang dùng: Bộ Mặc Định Chuẩn Lab (34 params)";
+            DOM.fsrs7CurrentStatus.textContent = "Đang dùng: Bộ mặc định (34 tham số)";
             DOM.fsrs7CurrentStatus.style.color = "#10b981";
         }
     }

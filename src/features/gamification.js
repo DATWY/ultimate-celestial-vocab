@@ -1236,6 +1236,7 @@ document.getElementById('app-container')?.addEventListener('gamification:xp_adde
 });
 
 // Debug / Test Utils for Gamification (SAFE - không lưu, không sync Firebase)
+if (import.meta.env.DEV && new URLSearchParams(location.search).get('audit') === '1') {
 window.__testGamification = {
     _backup: null,
     
@@ -1397,3 +1398,5 @@ window.__testGamification = {
     }
 };
 
+
+}

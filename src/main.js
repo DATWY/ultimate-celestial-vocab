@@ -2,97 +2,22 @@
 import './css/tokens/celestial-v5.css';
 import './css/style.css';
 import './css/transition.css';
-import { loadVocabulary, getState, addXP, setXP, saveGamification, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
+import './css/study-polish.css';
+import { loadVocabulary, getState, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
 import { initializeSound, startBackgroundAudioPreload } from './core/sound.js';
 import { displayCard, flipCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting, applyBoostMode } from './ui/render.js';
 import { setupEventListeners } from './events.js';
 import { smartSync } from './core/firebase.js';
-import { openManageModal, openAddEditModal, openDedupModal, openModal } from './ui/modal.js';
+import { openManageModal, openAddEditModal, openDedupModal, openModal, showPopup } from './ui/modal.js';
 import { showQuizSetup } from './features/quiz.js';
 import { evaluateTyping, stripVietnameseDiacritics } from './features/typing.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { getDifficultyBias, getStabilityMultiplier } from './core/srs/heuristics.js';
-import { saveAllVocabularyToDB } from './core/idb.js';
+import { clearVocabularyDB } from './core/idb.js';
 import { checkAppVersion, displayAppVersion } from './core/versionCheck.js';
 
-// --- CHEAT ENGINE & DEV TOOLS (Development Mode Only) ---
-if (import.meta.env.DEV || (typeof window !== 'undefined' && window.__ENABLE_DEV_TOOLS__)) {
-window.cheat = {
-    addXP: (amount) => {
-        sessionStorage.setItem('CHEAT_MODE', 'true');
-        addXP(amount);
-        console.log(`✨ Đã buff ${amount} XP! Mở Profile để xem rank mới.`);
-    },
-    setXP: async (amount) => {
-        sessionStorage.setItem('CHEAT_MODE', 'true');
-        await setXP(amount);
-        console.log(`✨ Đã set XP thành ${amount}!`);
-    },
-    setStreak: (days) => {
-        sessionStorage.setItem('CHEAT_MODE', 'true');
-        const state = getState();
-        state.gamification.currentStreak = days;
-        saveGamification();
-        document.getElementById('app-container')?.dispatchEvent(new CustomEvent('gamification:update'));
-        console.log(`🔥 Streak đã được set thành ${days} ngày.`);
-    },
-    setReviews: (count) => {
-        sessionStorage.setItem('CHEAT_MODE', 'true');
-        const state = getState();
-        state.gamification.totalReviews = count;
-        saveGamification();
-        document.getElementById('app-container')?.dispatchEvent(new CustomEvent('gamification:update'));
-        console.log(`🗂 Total Reviews đã được set thành ${count}.`);
-    },
-    resetAll: async () => {
-        console.log("Đang tiến hành Reset dữ liệu...");
-        // Xóa trên Local State (IndexedDB)
-        const state = getState();
-        state.gamification = {
-            userXP: 0, currentLevel: 1, currentStreak: 0, longestStreak: 0, consecutiveCorrect: 0, totalReviews: 0, unlockedBadges: [], lastStudyDate: null
-        };
-        saveGamification(); // Ghi đè IndexedDB
-        
-        // Xóa trên Cloud (Firebase)
-        try {
-            const { db } = await import('./core/firebase.js');
-            const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await setDoc(doc(db, "celestial_user_sync", "gamification"), state.gamification);
-            console.log("✅ Đã xóa dữ liệu Gamification trên Cloud!");
-        } catch (error) {
-            console.error("Lỗi khi xóa Cloud:", error);
-        }
-        
-        sessionStorage.removeItem('CHEAT_MODE');
-        console.log("✅ Đã xóa Local. Đang tải lại trang...");
-        setTimeout(() => location.reload(), 1000);
-    },
-    resetSrs: async () => {
-        const { setUserSrsParams, clearReviewLogs } = await import('./core/state.js');
-        await setUserSrsParams(null, null);
-        await clearReviewLogs();
-        // Sync lên Firebase
-        try {
-            const { db } = await import('./core/firebase.js');
-            const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await setDoc(doc(db, "celestial_user_sync", "reviewLogs"), { dict: [], logs: [] });
-            await setDoc(doc(db, "celestial_user_sync", "settings"), {
-                userRecallParams: null,
-                userLapseParams: null,
-                trainedAt: Date.now(),
-                version: '1.0',
-                source: 'personal'
-            });
-        } catch(e) { console.error(e); }
-        console.log("✅ Đã reset toàn bộ:");
-        console.log("   • Review Logs: Xóa sạch (local + Cloud)");
-        console.log("   • Optimizer Params: Về mặc định (local + Cloud)");
-        console.log("   → Optimizer sẽ tự train lại khi đủ 400+ reviews.");
-    }
-};
-}
-
+if (import.meta.env.DEV && new URLSearchParams(location.search).get('audit') === '1') {
 // Sample Vocabulary Seeder for Isolated Testing & First-Run Exploration
 window.loadIsolatedSampleVocabulary = async function() {
     await seedIsolatedDemoVocabulary();
@@ -108,7 +33,7 @@ window.__celestialAudit = {
     seed: window.loadIsolatedSampleVocabulary,
     clear: async () => {
         setVocabulary([]);
-        await saveAllVocabularyToDB([]);
+        await clearVocabularyDB();
         displayCard(null);
     },
     flipCard: async () => {
@@ -158,6 +83,8 @@ window.__celestialAudit = {
     }
 };
 
+}
+
 import { initCelestialCanvas, isMobileDevice } from './ui/celestial-canvas.js';
 
 async function initializeApp() {
@@ -165,11 +92,16 @@ async function initializeApp() {
     initializeSound();
 
     const urlParams = new URLSearchParams(window.location.search);
+    const auditMode = import.meta.env.DEV && urlParams.get('audit') === '1';
+    if (auditMode) {
+        sessionStorage.setItem('CHEAT_MODE', 'true');
+        sessionStorage.setItem('ISOLATED_TEST_MODE', 'true');
+    }
     const themeParam = urlParams.get('theme');
     const savedDark = localStorage.getItem('celestialDarkMode');
     const systemPrefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialDarkMode = themeParam 
-        ? (themeParam === 'dark') 
+    const initialDarkMode = themeParam
+        ? (themeParam === 'dark')
         : (savedDark !== null ? savedDark === 'true' : (systemPrefersDark !== false));
     applyDarkMode(initialDarkMode);
 
@@ -182,7 +114,7 @@ async function initializeApp() {
     const hashBoost = typeof window !== 'undefined' && window.location.hash.toLowerCase() === '#boost';
     const pathBoost = typeof window !== 'undefined' && window.location.pathname.toLowerCase().endsWith('/boost');
     const savedBoost = localStorage.getItem('celestialBoostMode');
-    
+
     let initialBoostMode = false;
     if (boostParam !== null || hashBoost || pathBoost) {
         initialBoostMode = (boostParam === '1' || boostParam === 'true' || boostParam === '' || hashBoost || pathBoost);
@@ -197,6 +129,7 @@ async function initializeApp() {
     initCelestialCanvas();
 
     await loadVocabulary();
+    if (auditMode && !getState().vocabulary.length) await seedIsolatedDemoVocabulary();
     populateTopicFilters();
     updateCustomTypingUI();
     buildReviewQueue();
@@ -204,6 +137,7 @@ async function initializeApp() {
 
     const firstCardIndex = getNextCardToReview();
     displayCard(firstCardIndex);
+    document.body.classList.add('app-ready');
     console.log("App Initialized Successfully.");
 
     // Khởi tạo trước UI Gamification / Rank / XP bar từ dữ liệu IndexedDB local
@@ -233,7 +167,7 @@ async function initializeApp() {
     // Khi user quay lại tab: pull dữ liệu mới từ Cloud (cooldown 5 phút)
     let _lastVisibilitySync = 0;
     const VISIBILITY_SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 phút cooldown (tránh spam khi alt-tab nhanh)
-    
+
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             // User rời tab → flush ngầm dữ liệu để thiết bị khác nhận được
@@ -263,48 +197,18 @@ async function initializeApp() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', initializeApp);
+// Keep storage problems visible without adding a status panel to the study screen.
+let lastStorageIssue = null;
+document.addEventListener('sync:status', ({ detail }) => {
+    if (!['storage-error', 'storage-blocked'].includes(detail.phase)) { lastStorageIssue = null; return; }
+    if (lastStorageIssue === detail.phase) return;
+    lastStorageIssue = detail.phase;
+    showPopup(detail.phase === 'storage-blocked'
+        ? 'Hãy đóng các tab bản cũ để hoàn tất cập nhật dữ liệu.'
+        : 'Chưa lưu được trên máy. Hãy xuất dữ liệu để giữ bản sao.', 'warning');
+});
 
-// --- CÁC LỆNH ẨN DEVTOOLS CHO OPTIMIZER ---
-
-window.checkOptimizerStatus = async function() {
-    const { getSettingFromDB } = await import('./core/idb.js');
-    const status = await getSettingFromDB('lastOptimizationStatus');
-    if (!status) {
-        console.log("Chưa có dữ liệu về lần chạy optimizer nào trước đây.");
-        return;
-    }
-    console.log("📊 Trạng thái lần chạy Optimizer gần nhất:", status);
-    if (status.improved) {
-        console.log("✅ Thành công: Bộ thông số mới đã được áp dụng vì có sai số thấp hơn.");
-    } else {
-        console.log("❌ Không áp dụng: Bộ thông số mặc định tốt hơn hoặc bằng bộ thông số mới.");
-    }
-};
-
-window.forceRunOptimizer = async function() {
-    const { getState } = await import('./core/state.js');
-    const { runOptimizer } = await import('./core/srs/worker-manager.js');
-    const { reviewLogs } = getState();
-    const logsLen = reviewLogs && (reviewLogs.logs ? reviewLogs.logs.length : reviewLogs.length);
-    if (!logsLen || logsLen < 1) {
-        console.warn("Không có đủ dữ liệu review logs để chạy optimizer.");
-        return;
-    }
-    console.log(`🚀 Bắt đầu ép chạy Optimizer với ${logsLen} bản ghi...`);
-    runOptimizer(reviewLogs, 0);
-};
-
-window.testFusionOptimizer = async function() {
-    const { runOptimizer } = await import('./core/srs/worker-manager.js');
-    console.log("🛠 Đang tạo 500 logs giả lập để test Optimizer...");
-    const mockLogs = [];
-    for(let i=0; i<500; i++) {
-        mockLogs.push({
-            cardId: 'card_' + Math.floor(i/5),
-            rating: Math.floor(Math.random() * 4) + 1,
-            t: Math.floor(Math.random() * 5) + 1
-        });
-    }
-    runOptimizer(mockLogs, 0);
-};
+document.addEventListener('DOMContentLoaded', () => initializeApp().catch(error => {
+    console.error('Không mở được ứng dụng:', error);
+    showPopup('Chưa mở được dữ liệu. Hãy tải lại trang hoặc đóng các tab bản cũ.', 'error');
+}));

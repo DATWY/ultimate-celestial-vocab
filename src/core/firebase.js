@@ -1,8 +1,16 @@
+import { saveReviewLogsToDB } from './idb.js';
+import { mergeLearningSettings } from './settings-merge.js';
+import { announceSyncStatus } from './sync-status.js';
+import { saveProgressToDB } from './idb.js';
+import { mergeProgress } from './progress-merge.js';
+import { prepareProgress, acceptProgress } from './state.js';
 // src/core/firebase.js — Smart Sync v2
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, writeBatch, doc, query, where, getDoc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+import { initializeApp } from "firebase/app";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, writeBatch, doc, query, where, getDoc, setDoc, onSnapshot, serverTimestamp, runTransaction, Timestamp } from "firebase/firestore";
+import { mergeCardFields, isSrsEqual, normalizeCard, toMillis } from './card-merge.js';
+export { mergeCardFields, isSrsEqual, toMillis } from './card-merge.js';
+import { getStorage } from "firebase/storage";
 import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode, calculateStreakFromHeatmap } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
 import { updateStats, updatePanelWordList, displayCard, populateTopicFilters } from '../ui/render.js';
@@ -82,211 +90,26 @@ export function getDeviceId() {
 
 // ===== HELPERS =====
 
-/**
- * Chuyển đổi updatedAt từ nhiều format (Firestore Timestamp, number, Date) về milliseconds.
- * Tự động cân chỉnh _serverTimeOffset nếu có dữ liệu từ Cloud.
- */
-export function toMillis(val) {
-    if (!val) return 0;
-    let millis = 0;
-    if (typeof val === 'number') millis = val;
-    else if (typeof val.toMillis === 'function') millis = val.toMillis();
-    else if (val instanceof Date) millis = val.getTime();
-    else if (typeof val.seconds === 'number') millis = val.seconds * 1000 + (val.nanoseconds || 0) / 1e6;
-
-    if (millis > 0) {
-        updateServerTimeOffset(millis);
+/** Read and merge within the same transaction; retries never mutate local state. */
+export async function writeMergedCards(cards) {
+    const snapshot = cards.map(card => JSON.parse(JSON.stringify(normalizeCard(card))));
+    const committed = [];
+    for (let i = 0; i < snapshot.length; i += 100) {
+        const chunk = snapshot.slice(i, i + 100);
+        const merged = await runTransaction(db, async transaction => {
+            const refs = chunk.map(card => doc(db, VOCAB_COLLECTION, card.id));
+            const remote = await Promise.all(refs.map(ref => transaction.get(ref)));
+            return chunk.map((card, index) => {
+                const result = mergeCardFields(card, remote[index].exists() ? remote[index].data() : null);
+                if (!remote[index].exists() || !isSrsEqual(result, remote[index].data())) {
+                    transaction.set(refs[index], { ...result, syncedAt: serverTimestamp(), _lastModifiedBy: getDeviceId() });
+                }
+                return result;
+            });
+        });
+        committed.push(...merged);
     }
-    return millis;
-}
-
-/**
- * True Field-Level SRS-Aware Merge: Hợp nhất 2 phiên bản của cùng 1 thẻ từ vựng
- * từ 2 thiết bị khác nhau một cách toàn diện và chính xác tuyệt đối.
- * 
- * Chia thành 4 Vectors độc lập:
- * 1. Tombstone Vector (Trạng thái xóa):
- *    - isDeleted = true thắng nếu thời điểm xóa >= thời điểm cập nhật còn lại.
- *    - Nếu một bên xóa nhưng bên kia có sửa đổi mới hơn sau thời điểm xóa -> phục hồi thẻ (resurrect).
- * 
- * 2. SRS Memory Vector (Bộ trạng thái trí nhớ Spaced Repetition):
- *    - srsStatus, srsDueDate, srsInterval, stability, stabilityShort, difficulty,
- *      reps, lapses, lastReviewDate, consecutiveCorrect
- *    - Nguyên tắc: Lấy TOÀN BỘ vector SRS từ phiên bản có lượt review gần nhất (lastReviewDate mới hơn,
- *      hoặc số reps cao hơn nếu hòa). Giữ nguyên tính toàn vẹn toán học của thuật toán FSRS-7.
- * 
- * 3. Content Vector (Dữ liệu từ vựng con người biên soạn):
- *    - english, vietnamese, phonetic, type, example, exampleMeaning, notes,
- *      synonyms, antonyms, collocations, audio
- *    - Lấy từ phiên bản có nội dung đầy đủ hơn hoặc có updatedAt mới hơn.
- * 
- * 4. Tags & Flags Vector:
- *    - tags: Hợp nhất Set Union (không bao giờ làm mất tag thêm từ thiết bị khác).
- *    - isStarred, isSuspended: Lấy từ phiên bản cập nhật gần nhất.
- */
-export function mergeCardFields(local, remote) {
-    if (!local) return remote;
-    if (!remote) return local;
-
-    const localTime = toMillis(local.updatedAt) || 0;
-    const remoteTime = toMillis(remote.updatedAt) || 0;
-    const maxUpdatedTime = Math.max(localTime, remoteTime, getCalibratedNow());
-
-    // --- VECTOR 1: TOMBSTONE (DELETION) ---
-    const localDeleted = !!local.isDeleted;
-    const remoteDeleted = !!remote.isDeleted;
-
-    if (localDeleted !== remoteDeleted) {
-        if (remoteDeleted) {
-            // Remote xóa: nếu local không có sửa đổi nào mới hơn remoteTime, remote xóa thắng
-            if (remoteTime >= localTime) {
-                return { ...remote, isDeleted: true, updatedAt: maxUpdatedTime };
-            }
-        } else {
-            // Local xóa: nếu remote không có sửa đổi nào mới hơn localTime, local xóa thắng
-            if (localTime >= remoteTime) {
-                return { ...local, isDeleted: true, updatedAt: maxUpdatedTime };
-            }
-        }
-    } else if (localDeleted && remoteDeleted) {
-        return { ...local, ...remote, isDeleted: true, updatedAt: maxUpdatedTime };
-    }
-
-    // --- VECTOR 2: SRS MEMORY STATE ---
-    const localReviewTime = toMillis(local.lastReviewDate) || 0;
-    const remoteReviewTime = toMillis(remote.lastReviewDate) || 0;
-    const localReps = Number(local.reps) || 0;
-    const remoteReps = Number(remote.reps) || 0;
-
-    let srsWinner = local;
-    if (remoteReviewTime > localReviewTime) {
-        srsWinner = remote;
-    } else if (localReviewTime > remoteReviewTime) {
-        srsWinner = local;
-    } else {
-        // Cùng thời gian review (hoặc cả 2 đều chưa review):
-        if (remoteReps > localReps) {
-            srsWinner = remote;
-        } else if (localReps > remoteReps) {
-            srsWinner = local;
-        } else {
-            // Nếu cả 2 đều chưa review, ưu tiên thẻ có trạng thái đã học
-            const localIsNew = !local.srsStatus || local.srsStatus === 'New';
-            const remoteIsNew = !remote.srsStatus || remote.srsStatus === 'New';
-            if (localIsNew && !remoteIsNew) srsWinner = remote;
-            else if (!localIsNew && remoteIsNew) srsWinner = local;
-            else srsWinner = remoteTime > localTime ? remote : local;
-        }
-    }
-
-    // --- VECTOR 3: CONTENT EDITORIAL DATA ---
-    const contentWinner = remoteTime > localTime ? remote : local;
-    const contentFallback = contentWinner === remote ? local : remote;
-
-    const pickNonEmpty = (key) => {
-        const val1 = contentWinner[key];
-        const val2 = contentFallback[key];
-        if (val1 !== undefined && val1 !== null && val1 !== '') return val1;
-        return val2 !== undefined && val2 !== null ? val2 : val1;
-    };
-
-    // --- VECTOR 4: TAGS UNION ---
-    const localTags = Array.isArray(local.tags) ? local.tags : [];
-    const remoteTags = Array.isArray(remote.tags) ? remote.tags : [];
-    const mergedTags = Array.from(new Set([...localTags, ...remoteTags]))
-        .map(t => typeof t === 'string' ? t.trim() : String(t))
-        .filter(t => t.length > 0 && t.toLowerCase() !== 'all');
-
-    // --- VECTOR 5: FLAGS ---
-    const flagsWinner = remoteTime > localTime ? remote : local;
-
-    return {
-        id: local.id || remote.id,
-        english: pickNonEmpty('english') || local.english || remote.english,
-        vietnamese: pickNonEmpty('vietnamese') || local.vietnamese || remote.vietnamese,
-        phonetic: pickNonEmpty('phonetic') || '',
-        type: pickNonEmpty('type') || local.type || remote.type || '',
-        example: pickNonEmpty('example') || '',
-        exampleMeaning: pickNonEmpty('exampleMeaning') || pickNonEmpty('exampleVi') || '',
-        exampleVi: pickNonEmpty('exampleVi') || pickNonEmpty('exampleMeaning') || '',
-        notes: pickNonEmpty('notes') || '',
-        synonyms: pickNonEmpty('synonyms') || [],
-        antonyms: pickNonEmpty('antonyms') || [],
-        collocations: pickNonEmpty('collocations') || [],
-        audio: pickNonEmpty('audio') || '',
-        
-        // Tags union
-        tags: mergedTags,
-
-        // Flags
-        isStarred: typeof flagsWinner.isStarred === 'boolean' ? flagsWinner.isStarred : (local.isStarred || remote.isStarred || false),
-        isSuspended: false, // Chế độ tạm ngưng đã bị hủy bỏ hoàn toàn
-        isDeleted: false,
-
-        // SRS Atomic State Vector (Bảo toàn 100% logic FSRS-7)
-        srsStatus: srsWinner.srsStatus || 'New',
-        srsDueDate: srsWinner.srsDueDate ? toMillis(srsWinner.srsDueDate) : null,
-        srsInterval: srsWinner.srsInterval !== undefined ? srsWinner.srsInterval : 0,
-        stability: srsWinner.stability !== undefined ? srsWinner.stability : 0,
-        stabilityShort: srsWinner.stabilityShort !== undefined ? srsWinner.stabilityShort : (srsWinner.stability || 0),
-        difficulty: srsWinner.difficulty !== undefined ? srsWinner.difficulty : 0,
-        reps: Number(srsWinner.reps) || 0,
-        lapses: Number(srsWinner.lapses) || 0,
-        lastReviewDate: srsWinner.lastReviewDate ? toMillis(srsWinner.lastReviewDate) : null,
-        consecutiveCorrect: srsWinner.consecutiveCorrect !== undefined ? srsWinner.consecutiveCorrect : 0,
-
-        // Convergence Timestamp & Origin
-        updatedAt: maxUpdatedTime,
-        _lastModifiedBy: getDeviceId()
-    };
-}
-
-// ===== SMART SYNC v3 =====
-
-/**
- * So sánh toàn diện 2 card objects.
- * Kiểm tra cả SRS metrics, nội dung, cờ, và danh sách tags.
- * Trả về true nếu 2 object hoàn toàn tương đương về dữ liệu người dùng.
- */
-export function isSrsEqual(a, b) {
-    if (!a || !b) return a === b;
-    if (a === b) return true;
-
-    // So sánh các trường SRS và trạng thái
-    if (
-        a.stability !== b.stability ||
-        a.stabilityShort !== b.stabilityShort ||
-        a.difficulty !== b.difficulty ||
-        a.srsInterval !== b.srsInterval ||
-        a.srsDueDate !== b.srsDueDate ||
-        a.srsStatus !== b.srsStatus ||
-        a.reps !== b.reps ||
-        a.lapses !== b.lapses ||
-        a.lastReviewDate !== b.lastReviewDate ||
-        a.consecutiveCorrect !== b.consecutiveCorrect ||
-        a.isDeleted !== b.isDeleted ||
-        a.isStarred !== b.isStarred ||
-        a.isSuspended !== b.isSuspended ||
-        a.english !== b.english ||
-        a.vietnamese !== b.vietnamese ||
-        a.phonetic !== b.phonetic ||
-        a.type !== b.type ||
-        a.example !== b.example ||
-        (a.exampleMeaning || a.exampleVi || '') !== (b.exampleMeaning || b.exampleVi || '') ||
-        (a.notes || '') !== (b.notes || '')
-    ) {
-        return false;
-    }
-
-    // So sánh mảng tags
-    const aTags = Array.isArray(a.tags) ? a.tags : [];
-    const bTags = Array.isArray(b.tags) ? b.tags : [];
-    if (aTags.length !== bTags.length) return false;
-    for (let i = 0; i < aTags.length; i++) {
-        if (aTags[i] !== bTags[i]) return false;
-    }
-
-    return true;
+    return committed;
 }
 
 let _lastLocalWriteTimestamp = 0;
@@ -321,7 +144,8 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         const stateModule = await import('./state.js');
         const vocabulary = stateModule.getState().vocabulary || [];
         // CHÚ Ý: Tuyệt đối không dùng lastSyncTime làm lastPullTime vì nó là Date.now() local, sẽ làm miss data từ các thiết bị khác!
-        let lastPullTime = forceFullPull ? 0 : (await getSettingFromDB('lastPullTime') || 0);
+        const protocol = await getSettingFromDB('syncProtocol');
+        let lastPullTime = forceFullPull || isManual || protocol !== 2 ? 0 : (await getSettingFromDB('lastPullTime') || 0);
         
         // Bắt buộc Full Pull nếu local chưa có từ vựng nào (thiết bị mới)
         if (!vocabulary || vocabulary.length === 0) {
@@ -343,7 +167,7 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         let q;
         if (lastPullTime > 0) {
             const bufferedPullTime = Math.max(0, lastPullTime - PULL_SAFETY_BUFFER_MS);
-            q = query(collection(db, VOCAB_COLLECTION), where("updatedAt", ">", bufferedPullTime));
+            q = query(collection(db, VOCAB_COLLECTION), where("syncedAt", ">", Timestamp.fromMillis(bufferedPullTime)));
         } else {
             q = collection(db, VOCAB_COLLECTION);
         }
@@ -351,17 +175,17 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         const querySnapshot = await getDocs(q);
         
         let maxPullTime = lastPullTime;
-        let needsLocalUpdate = false;
+        let needsLocalUpdate = flushedIds.size > 0;
         const pulledIds = new Set();
         const convergedCardsToPush = [];
         const myDeviceId = getDeviceId();
         
         querySnapshot.forEach(docSnap => {
-            const remote = docSnap.data();
-            if (!remote.id) remote.id = docSnap.id;
+            const remote = normalizeCard(docSnap.data());
+            remote.id = docSnap.id;
             const remoteTime = toMillis(remote.updatedAt);
             
-            if (remoteTime > maxPullTime) maxPullTime = remoteTime;
+            maxPullTime = Math.max(maxPullTime, toMillis(remote.syncedAt));
             
             // Normalize timestamps
             remote.updatedAt = remoteTime;
@@ -421,7 +245,7 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             if (!card || !card.id) continue;
             const cardTime = toMillis(card.updatedAt);
             
-            if (cardTime > lastPullTime && !flushedIds.has(card.id) && !pulledIds.has(card.id)) {
+            if (!flushedIds.has(card.id) && !pulledIds.has(card.id)) {
                 if (!cardsToPushMap.has(card.id)) {
                     cardsToPushMap.set(card.id, card);
                 }
@@ -433,20 +257,12 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         if (cardsToPush.length > 0) {
             console.log(`☁️ Push ${cardsToPush.length} thẻ (${convergedCardsToPush.length} thẻ hội tụ) lên Cloud...`);
             
-            const BATCH_LIMIT = 500;
-            for (let i = 0; i < cardsToPush.length; i += BATCH_LIMIT) {
-                const batch = writeBatch(db);
-                const chunk = cardsToPush.slice(i, i + BATCH_LIMIT);
-                
-                for (const card of chunk) {
-                    const cleanData = JSON.parse(JSON.stringify(card));
-                    cleanData._lastModifiedBy = myDeviceId;
-                    const cardRef = doc(db, VOCAB_COLLECTION, card.id);
-                    batch.set(cardRef, cleanData, { merge: true });
-                }
-                
-                await batch.commit();
+            const committedCards = await writeMergedCards(cardsToPush);
+            for (const committed of committedCards) {
+                const current = stateModule.getVocabById(committed.id);
+                if (current) stateModule.updateCardInVocabulary(committed.id, mergeCardFields(current, committed));
             }
+            needsLocalUpdate = true;
             _lastLocalWriteTimestamp = Date.now();
             console.log(`☁️ Đã push thành công ${cardsToPush.length} thẻ.`);
         }
@@ -454,10 +270,8 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         // ============================================================
         // PHASE 3: Đồng bộ Gamification & Stats & Settings & Logs
         // ============================================================
-        const gamificationChanged = await syncGamification();
-        const statsChanged = await syncDailyStats();
+        const { gamificationChanged = false, statsChanged = false } = await syncProgressToFirebase() || {};
         await syncUserSettings();
-        await syncReviewLogs();
 
         // ============================================================
         // PHASE 4: Cập nhật UI & Lưu timestamps
@@ -541,9 +355,8 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         }
 
         // Lưu lastPullTime = max timestamp từ Cloud
-        if (maxPullTime > lastPullTime) {
-            await saveSettingToDB('lastPullTime', maxPullTime);
-        }
+        await saveSettingToDB('lastPullTime', maxPullTime);
+        await saveSettingToDB('syncProtocol', 2);
         await saveSettingToDB('lastSyncTime', Date.now());
 
         setSyncUIState('success');
@@ -569,288 +382,115 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
 
 // ===== PHASE 3 HELPERS: Tách nhỏ để dễ đọc và maintain =====
 
+function mergeGamification(localGamification, remoteGamification) {
+    const result = mergeProgress(localGamification, remoteGamification, 'gamification');
+    const streak = calculateStreakFromHeatmap(result.activityHeatmap);
+    result.currentStreak = streak.currentStreak;
+    result.longestStreak = Math.max(result.longestStreak || 0, streak.longestStreak);
+    return result;
+}
+
 async function syncGamification() {
-    const gamificationRef = doc(db, USER_SYNC_COLLECTION, "gamification");
-    const remoteGamificationSnap = await getDoc(gamificationRef);
-    const remoteGamification = remoteGamificationSnap.exists() ? remoteGamificationSnap.data() : null;
-    const localGamification = getState().gamification || {};
-    
-    let mergedGamification = { ...localGamification };
-    if (remoteGamification) {
-        // Monotonic counters: lấy max
-        mergedGamification.userXP = Math.max(localGamification.userXP || 0, remoteGamification.userXP || 0);
-        mergedGamification.currentLevel = Math.max(localGamification.currentLevel || 1, remoteGamification.currentLevel || 1);
-        mergedGamification.currentStreak = Math.max(localGamification.currentStreak || 0, remoteGamification.currentStreak || 0);
-        mergedGamification.totalReviews = Math.max(localGamification.totalReviews || 0, remoteGamification.totalReviews || 0);
-        mergedGamification.consecutiveCorrect = localGamification.consecutiveCorrect ?? remoteGamification.consecutiveCorrect ?? 0;
-        mergedGamification.longestStreak = Math.max(localGamification.longestStreak || 0, remoteGamification.longestStreak || 0);
-        
-        // Merge arrays: union
-        const unlockedSet = new Set([...(localGamification.unlockedBadges || []), ...(remoteGamification.unlockedBadges || [])]);
-        mergedGamification.unlockedBadges = Array.from(unlockedSet);
-        
-        // Merge Streak Freeze & Recovery fields
-        mergedGamification.streakFreezeCount = Math.max(localGamification.streakFreezeCount || 0, remoteGamification.streakFreezeCount || 0);
-        mergedGamification.frozenDates = Array.from(new Set([...(localGamification.frozenDates || []), ...(remoteGamification.frozenDates || [])]));
-        mergedGamification.recoveredDates = Array.from(new Set([...(localGamification.recoveredDates || []), ...(remoteGamification.recoveredDates || [])]));
-        if (remoteGamification.lastStreakFreezeDate && (!localGamification.lastStreakFreezeDate || remoteGamification.lastStreakFreezeDate > localGamification.lastStreakFreezeDate)) {
-            mergedGamification.lastStreakFreezeDate = remoteGamification.lastStreakFreezeDate;
-        }
-        
-        // Merge heatmap: max per day
-        const localHeatmap = localGamification.activityHeatmap || {};
-        const remoteHeatmap = remoteGamification.activityHeatmap || {};
-        const mergedHeatmap = { ...remoteHeatmap };
-        for (const key in localHeatmap) {
-            mergedHeatmap[key] = Math.max(localHeatmap[key] || 0, remoteHeatmap[key] || 0);
-        }
-        mergedGamification.activityHeatmap = mergedHeatmap;
-        
-        // Tự động tính toán lại currentStreak và longestStreak từ mergedHeatmap chuẩn xác
-        const { currentStreak: recalculatedStreak, longestStreak: recalculatedLongest } = calculateStreakFromHeatmap(mergedHeatmap);
-        mergedGamification.currentStreak = Math.max(mergedGamification.currentStreak || 0, recalculatedStreak);
-        mergedGamification.longestStreak = Math.max(mergedGamification.longestStreak || 0, recalculatedLongest);
-        
-        // Merge lastStudyDate: lấy ngày mới nhất
-        if (remoteGamification.lastStudyDate && (!localGamification.lastStudyDate || remoteGamification.lastStudyDate > localGamification.lastStudyDate)) {
-            mergedGamification.lastStudyDate = remoteGamification.lastStudyDate;
-        }
+    if (isPreviewMode()) return false;
+    const local = JSON.parse(JSON.stringify(prepareProgress('gamification')));
+    const ref = doc(db, USER_SYNC_COLLECTION, 'gamification');
+    const merged = await runTransaction(db, async transaction => {
+        const snap = await transaction.get(ref);
+        const result = mergeGamification(local, snap.exists() ? snap.data() : null);
+        transaction.set(ref, JSON.parse(JSON.stringify(result)));
+        return result;
+    });
+    const before = JSON.stringify(getState().gamification);
+    const current = acceptProgress(merged, 'gamification');
+    acceptProgress(await saveProgressToDB('gamification', current, 'gamification'), 'gamification');
+    return before !== JSON.stringify(current);
+}
 
-        // Merge stats object: max cho mỗi field số
-        if (remoteGamification.stats) {
-            mergedGamification.stats = mergedGamification.stats || {};
-            for (const key in remoteGamification.stats) {
-                const localVal = mergedGamification.stats[key];
-                const remoteVal = remoteGamification.stats[key];
-                if (typeof remoteVal === 'number' && typeof localVal === 'number') {
-                    mergedGamification.stats[key] = Math.max(localVal, remoteVal);
-                } else if (typeof remoteVal === 'string' && typeof localVal === 'string') {
-                    // String dates: lấy mới nhất
-                    mergedGamification.stats[key] = remoteVal > localVal ? remoteVal : localVal;
-                } else if (localVal === undefined || localVal === null) {
-                    mergedGamification.stats[key] = remoteVal;
-                }
-            }
-        }
-    }
-    
-    const { isPreviewMode } = await import('./state.js');
-    if (isPreviewMode()) {
-        console.log("⚠️ Đang ở chế độ Preview, bỏ qua đồng bộ Gamification xuống local UI.");
-        return false;
-    }
-
-    const localBeforeJson = JSON.stringify(localGamification);
-    const mergedJson = JSON.stringify(mergedGamification);
-    const hasLocalChanged = localBeforeJson !== mergedJson;
-
-    if (hasLocalChanged) {
-        setGamification(mergedGamification);
-        await saveSettingToDB('gamification', mergedGamification);
-    }
-    const cleanGamification = JSON.parse(JSON.stringify(mergedGamification));
-    const compareA = { ...cleanGamification };
-    delete compareA._lastModifiedBy;
-    const compareB = remoteGamification ? { ...remoteGamification } : null;
-    if (compareB) delete compareB._lastModifiedBy;
-
-    if (!compareB || JSON.stringify(compareA) !== JSON.stringify(compareB)) {
-        cleanGamification._lastModifiedBy = getDeviceId();
-        await setDoc(gamificationRef, cleanGamification);
-        _lastLocalWriteTimestamp = Date.now();
-    }
-
-    return hasLocalChanged;
+function mergeDailyStats(localStats, remoteStats) {
+    return mergeProgress(localStats, remoteStats, 'daily', localStats.lastDate);
 }
 
 async function syncDailyStats() {
-    const statsRef = doc(db, USER_SYNC_COLLECTION, "dailyStats");
-    const remoteStatsSnap = await getDoc(statsRef);
-    const remoteStats = remoteStatsSnap.exists() ? remoteStatsSnap.data() : null;
-    const localStats = getState().dailyStats || {};
-    
-    let mergedStats = { ...localStats };
-    if (remoteStats) {
-        const localDate = localStats.lastDate || "";
-        const remoteDate = remoteStats.lastDate || "";
-        
-        if (remoteDate === localDate) {
-            // Cùng ngày: lấy max
-            mergedStats.newCardsDoneToday = Math.max(localStats.newCardsDoneToday || 0, remoteStats.newCardsDoneToday || 0);
-            mergedStats.todayCorrect = Math.max(localStats.todayCorrect || 0, remoteStats.todayCorrect || 0);
-            mergedStats.todayTotal = Math.max(localStats.todayTotal || 0, remoteStats.todayTotal || 0);
-        } else if (remoteDate > localDate) {
-            // Remote mới hơn: dùng remote stats
-            mergedStats.newCardsDoneToday = remoteStats.newCardsDoneToday || 0;
-            mergedStats.todayCorrect = remoteStats.todayCorrect || 0;
-            mergedStats.todayTotal = remoteStats.todayTotal || 0;
-            mergedStats.lastDate = remoteDate;
-        }
-        
-        // Merge retentionHistory: union by date, giữ max total
-        const localHistory = localStats.retentionHistory || [];
-        const remoteHistory = remoteStats.retentionHistory || [];
-        const historyMap = new Map();
-        for (const entry of [...remoteHistory, ...localHistory]) {
-            if (entry && entry.date) {
-                const existing = historyMap.get(entry.date);
-                if (!existing || (entry.total || 0) > (existing.total || 0)) {
-                    historyMap.set(entry.date, entry);
-                }
-            }
-        }
-        mergedStats.retentionHistory = Array.from(historyMap.values())
-            .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-            .slice(-3);
-        
-        // Preserve currentLimit
-        mergedStats.currentLimit = mergedStats.currentLimit || remoteStats.currentLimit;
-    }
-    
-    const localStatsBeforeJson = JSON.stringify(localStats);
-    const mergedStatsJson = JSON.stringify(mergedStats);
-    const hasStatsChanged = localStatsBeforeJson !== mergedStatsJson;
-
-    if (hasStatsChanged) {
-        setDailyStats(mergedStats);
-        await saveSettingToDB('dailyStats', mergedStats);
-    }
-    const cleanStats = JSON.parse(JSON.stringify(mergedStats));
-    const compareA = { ...cleanStats };
-    delete compareA._lastModifiedBy;
-    const compareB = remoteStats ? { ...remoteStats } : null;
-    if (compareB) delete compareB._lastModifiedBy;
-
-    if (!compareB || JSON.stringify(compareA) !== JSON.stringify(compareB)) {
-        cleanStats._lastModifiedBy = getDeviceId();
-        await setDoc(statsRef, cleanStats);
-        _lastLocalWriteTimestamp = Date.now();
-    }
-
-    return hasStatsChanged;
+    if (isPreviewMode()) return false;
+    const local = JSON.parse(JSON.stringify(prepareProgress('daily')));
+    const ref = doc(db, USER_SYNC_COLLECTION, 'dailyStats');
+    const merged = await runTransaction(db, async transaction => {
+        const snap = await transaction.get(ref);
+        const result = mergeDailyStats(local, snap.exists() ? snap.data() : null);
+        transaction.set(ref, JSON.parse(JSON.stringify(result)));
+        return result;
+    });
+    const before = JSON.stringify(getState().dailyStats);
+    const current = acceptProgress(merged, 'daily');
+    acceptProgress(await saveProgressToDB('dailyStats', current, 'daily'), 'daily');
+    return before !== JSON.stringify(current);
 }
 
-async function syncUserSettings() {
-    const { isPreviewMode } = await import('./state.js');
-    if (isPreviewMode()) return;
-
-    const m = await import('./state.js');
-    const { userRecallParams, userLapseParams, userFsrs7Params, userFsrs7TrainedAt } = m.getState();
-    const settingsRef = doc(db, USER_SYNC_COLLECTION, "settings");
-    
-    // Đọc timestamp local (ưu tiên userFsrs7TrainedAt, fallback userParamsTrainedAt)
-    const localFsrs7Time = (await getSettingFromDB('userFsrs7TrainedAt')) || userFsrs7TrainedAt || 0;
-    const localLegacyTime = (await getSettingFromDB('userParamsTrainedAt')) || 0;
-    const localTrainedAt = Math.max(localFsrs7Time, localLegacyTime);
-
-    try {
-        const remoteSettingsSnap = await getDoc(settingsRef);
-        if (remoteSettingsSnap.exists()) {
-            const remoteSettings = remoteSettingsSnap.data();
-            const remoteTrainedAt = Math.max(remoteSettings.trainedAt || 0, remoteSettings.userFsrs7TrainedAt || 0);
-
-            if (remoteTrainedAt > localTrainedAt) {
-                // Remote mới hơn -> Kéo từ Cloud về máy
-                if (remoteSettings.userRecallParams || remoteSettings.userLapseParams) {
-                    m.setUserSrsParams(remoteSettings.userRecallParams || null, remoteSettings.userLapseParams || null);
-                }
-                if (remoteSettings.userFsrs7Params && Array.isArray(remoteSettings.userFsrs7Params) && remoteSettings.userFsrs7Params.length === 34) {
-                    await m.setUserFsrs7Params(remoteSettings.userFsrs7Params, remoteTrainedAt);
-                    
-                    // Cập nhật ngay UI nếu modal đang mở
-                    if (DOM.fsrs7CurrentStatus) {
-                        DOM.fsrs7CurrentStatus.textContent = "Đang dùng: Bộ Cá Nhân Hóa (34 params)";
-                        DOM.fsrs7CurrentStatus.style.color = "#a855f7";
-                    }
-                    if (DOM.fsrs7TrainedTime) {
-                        DOM.fsrs7TrainedTime.textContent = `Cập nhật: ${new Date(remoteTrainedAt).toLocaleString('vi-VN')}`;
-                    }
-                    if (DOM.fsrs7ParamsInput) {
-                        DOM.fsrs7ParamsInput.value = JSON.stringify(remoteSettings.userFsrs7Params, null, 2);
-                    }
-                }
-                await saveSettingToDB('userFsrs7TrainedAt', remoteTrainedAt);
-                await saveSettingToDB('userParamsTrainedAt', remoteTrainedAt);
-                console.log("☁️ Đã tải bộ thông số cá nhân hoá FSRS-7 từ Firebase về máy.");
-            } else if (localTrainedAt > remoteTrainedAt && userFsrs7Params && Array.isArray(userFsrs7Params) && userFsrs7Params.length === 34) {
-                // Local mới hơn -> Đẩy từ máy lên Cloud
-                await setDoc(settingsRef, {
-                    userRecallParams: userRecallParams || null,
-                    userLapseParams: userLapseParams || null,
-                    userFsrs7Params: userFsrs7Params,
-                    userFsrs7TrainedAt: localTrainedAt,
-                    trainedAt: localTrainedAt,
-                    version: '7.0',
-                    source: 'personal',
-                    _lastModifiedBy: getDeviceId()
-                }, { merge: true });
-                console.log("☁️ Đã đồng bộ bộ thông số cá nhân hoá FSRS-7 từ máy lên Firebase.");
-            }
-        } else if (userFsrs7Params && Array.isArray(userFsrs7Params) && userFsrs7Params.length === 34) {
-            // Chưa có tài liệu settings trên Cloud -> Khởi tạo
-            const now = localTrainedAt || Date.now();
-            await setDoc(settingsRef, {
-                userRecallParams: userRecallParams || null,
-                userLapseParams: userLapseParams || null,
-                userFsrs7Params: userFsrs7Params,
-                userFsrs7TrainedAt: now,
-                trainedAt: now,
-                version: '7.0',
-                source: 'personal',
-                _lastModifiedBy: getDeviceId()
-            }, { merge: true });
-            console.log("☁️ Khởi tạo bộ thông số FSRS-7 cá nhân hoá lên Firebase.");
-        }
-    } catch (err) {
-        console.warn("Lỗi kiểm tra/đồng bộ userSettings:", err);
+export async function syncUserSettings() {
+    if (isPreviewMode() || sessionStorage.getItem('CHEAT_MODE') === 'true' || !navigator.onLine) return;
+    const state = await import('./state.js');
+    const current = state.getState();
+    const local = { userFsrs7Params: current.userFsrs7Params || null,
+        userFsrs7TrainedAt: current.userFsrs7TrainedAt || 0, trainedAt: current.userFsrs7TrainedAt || 0 };
+    const ref = doc(db, USER_SYNC_COLLECTION, 'settings');
+    const merged = await runTransaction(db, async transaction => {
+        const snap = await transaction.get(ref);
+        const result = mergeLearningSettings(local, snap.exists() ? snap.data() : null);
+        if (result.trainedAt) transaction.set(ref, { ...result, version: '7.0', _lastModifiedBy: getDeviceId() });
+        return result;
+    });
+    // A manual change made during this request is kept for the next sync.
+    if (state.getState().userFsrs7TrainedAt !== current.userFsrs7TrainedAt) return;
+    if (merged.trainedAt > local.trainedAt) {
+        await state.setUserFsrs7Params(merged.userFsrs7Params, merged.trainedAt);
+        document.dispatchEvent(new CustomEvent('learning-settings:updated'));
     }
 }
 
 async function syncReviewLogs() {
-    const reviewLogsRef = doc(db, USER_SYNC_COLLECTION, "reviewLogs");
-    const remoteLogsSnap = await getDoc(reviewLogsRef);
-    const localLogs = getState().reviewLogs || { dict: [], logs: [] };
-    
-    if (remoteLogsSnap.exists()) {
-        const remoteLogsRaw = remoteLogsSnap.data();
-        const remoteLogs = {
-            dict: remoteLogsRaw.dict || [],
-            logs: (remoteLogsRaw.logs || []).map(str => typeof str === 'string' ? str.split(',').map(Number) : str)
-        };
-        
-        const m = await import('./state.js');
-        const mergedLogs = m.mergeReviewLogs(remoteLogs, localLogs);
-        m.setReviewLogs(mergedLogs);
-        await saveSettingToDB('reviewLogs', mergedLogs);
-        
-        const firestoreLogs = {
-            dict: mergedLogs.dict,
-            logs: (mergedLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log))
-        };
-        const compareA = JSON.stringify(firestoreLogs);
-        const compareB = remoteLogsRaw ? JSON.stringify({ dict: remoteLogsRaw.dict || [], logs: remoteLogsRaw.logs || [] }) : null;
-        if (compareA !== compareB) {
-            firestoreLogs._lastModifiedBy = getDeviceId();
-            await setDoc(reviewLogsRef, firestoreLogs);
-            _lastLocalWriteTimestamp = Date.now();
-            console.log(`☁️ Đã hợp nhất ${mergedLogs.logs.length} bản ghi học tập.`);
-        }
-    } else if (localLogs && localLogs.logs && localLogs.logs.length > 0) {
-        const firestoreLogs = {
-            dict: localLogs.dict,
-            logs: (localLogs.logs || []).map(log => typeof log === 'string' ? log : Array.isArray(log) ? log.join(',') : String(log)),
-            _lastModifiedBy: getDeviceId()
-        };
-        await setDoc(reviewLogsRef, firestoreLogs);
-        _lastLocalWriteTimestamp = Date.now();
-        console.log(`☁️ Đã đẩy ${localLogs.logs.length} bản ghi lên Cloud lần đầu.`);
-    }
+    if (isPreviewMode()) return;
+    const state = await import('./state.js');
+    const local = JSON.parse(JSON.stringify(getState().reviewLogs || { dict: [], logs: [] }));
+    const ref = doc(db, USER_SYNC_COLLECTION, 'reviewLogs');
+    const merged = await runTransaction(db, async transaction => {
+        const snap = await transaction.get(ref);
+        const raw = snap.exists() ? snap.data() : { dict: [], logs: [] };
+        const remote = { ...raw, logs: (raw.logs || []).map(row => {
+            if (Array.isArray(row)) return row;
+            if (row.startsWith('[')) return JSON.parse(row);
+            return row.split(',').map((part, index) => index < 5 ? Number(part) : part);
+        }) };
+        const result = state.mergeReviewLogs(remote, local);
+        transaction.set(ref, { ...result, logs: result.logs.map(row => JSON.stringify(row)) });
+        return result;
+    });
+    // Include reviews and Undo tombstones created while the request was in flight.
+    const current = state.mergeReviewLogs(merged, getState().reviewLogs);
+    state.setReviewLogs(current);
+    const saved = await saveReviewLogsToDB(current);
+    state.setReviewLogs(state.mergeReviewLogs(state.getState().reviewLogs, saved));
+}
+
+let _progressSyncPromise = null;
+export async function syncProgressToFirebase() {
+    if (_progressSyncPromise) return _progressSyncPromise;
+    if (isPreviewMode() || sessionStorage.getItem('CHEAT_MODE') === 'true') return;
+    _progressSyncPromise = (async () => {
+        const gamificationChanged = await syncGamification();
+        const statsChanged = await syncDailyStats();
+        await syncReviewLogs();
+        return { gamificationChanged, statsChanged };
+    })();
+    try { return await _progressSyncPromise; }
+    finally { _progressSyncPromise = null; }
 }
 
 // ===== SYNC UI STATE =====
 
 function setSyncUIState(state) {
+    announceSyncStatus({ phase: state });
     if (!DOM.manualSyncBtn) return;
+    DOM.manualSyncBtn.setAttribute('aria-busy', String(state === 'syncing'));
     const icon = DOM.manualSyncBtn.querySelector('i');
     
     switch (state) {

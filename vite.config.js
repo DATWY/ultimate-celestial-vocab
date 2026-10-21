@@ -144,7 +144,7 @@ export default defineConfig({
   },
   server: {
     fs: {
-      strict: false
+      strict: true
     }
   }
 });

@@ -1,0 +1,109 @@
+{
+  "scope": "Functions extracted unchanged except explicit dependency mocks; no live cloud or browser test.",
+  "probes": [
+    {
+      "name": "Daily limit changes repeatedly with unchanged retention history",
+      "reproduced": true,
+      "detail": [
+        20,
+        25,
+        30,
+        35,
+        40
+      ]
+    },
+    {
+      "name": "Cloud merge loses pronunciation and comparison ignores it",
+      "reproduced": true,
+      "detail": {
+        "comparisonSaysEqual": true,
+        "mergedHasPronunciation": false
+      }
+    },
+    {
+      "name": "Cloud merge resurrects removed tags and intentionally cleared examples",
+      "reproduced": true,
+      "detail": {
+        "tags": [
+          "old"
+        ],
+        "example": "old example"
+      }
+    },
+    {
+      "name": "Later review on a stale copy overwrites a content correction",
+      "reproduced": true,
+      "detail": {
+        "editedAt": 100,
+        "reviewedAt": 200,
+        "resultingMeaning": "old meaning"
+      }
+    },
+    {
+      "name": "Converting a future due date corrupts server clock calibration",
+      "reproduced": true,
+      "detail": {
+        "clockShiftDays": 30
+      }
+    },
+    {
+      "name": "Card edit during a pending flush is removed from the dirty queue",
+      "reproduced": true,
+      "detail": {
+        "sent": "old",
+        "current": "new",
+        "pendingQueueSize": 0
+      }
+    },
+    {
+      "name": "Flush overwrites newer remote SRS before any field merge runs",
+      "reproduced": true,
+      "detail": {
+        "remoteStabilityBefore": 20,
+        "remoteStabilityAfter": 2,
+        "remoteReviewDateAfter": 100
+      }
+    },
+    {
+      "name": "Repeated Skip counts one quiz question multiple times",
+      "reproduced": true,
+      "detail": {
+        "incorrect": 3,
+        "index": 0,
+        "pendingAdvanceTimers": 3
+      }
+    },
+    {
+      "name": "A previous quiz advance timer skips a question in a new session",
+      "reproduced": true,
+      "detail": {
+        "newSessionIndexAfterOldTimer": 1
+      }
+    },
+    {
+      "name": "Quiz feedback renders imported English as raw HTML",
+      "reproduced": true,
+      "detail": {
+        "htmlSink": "Đã bỏ qua! Đáp án đúng: <strong><b data-audit=\"inert\">cat</b></strong>",
+        "payload": "inert markup; no script executed"
+      }
+    },
+    {
+      "name": "Undo after a first New review can pop an unrelated historical log",
+      "reproduced": true,
+      "detail": {
+        "newReviewCreatedLog": false,
+        "unrelatedHistoricalLogsRemaining": 0
+      }
+    },
+    {
+      "name": "Midnight rollover retains yesterday due and learning counts",
+      "reproduced": true,
+      "detail": {
+        "date": "2026-10-20",
+        "staleDue": 8,
+        "staleLearning": 3
+      }
+    }
+  ]
+}

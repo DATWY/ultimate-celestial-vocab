@@ -30,6 +30,8 @@ dist-ssr
 
 # FSRS-7 User Training Artifacts
 fsrs7_params_latest.*
+backups/
+reports/**/preview-server.pid
 
 # Firebase cache and logs
 .firebase/

@@ -1,7 +1,7 @@
 // --- START OF FILE sound.js (FINAL & CORRECT ARCHITECTURE: DATA URL + SYNTH FALLBACK) ---
 
 import { getState } from './state.js';
-import { showPopup } from '../ui/modal.js';
+import { showToast } from '../ui/modal.js';
 import { openDB } from 'idb';
 
 // === CẤU HÌNH ===
@@ -627,9 +627,9 @@ export async function startBackgroundAudioPreload(vocabulary) {
         console.log(`✅ Hoàn tất lượt tải: ${successCount} thành công, ${failCount} thất bại, ${_rateLimitStats.rejections} lần bị rate-limit.`);
 
         if (isAborted) {
-            showPopup(`Đã tải được ${successCount}/${batchTotal} audio. Tạm dừng do API rate-limit, các từ còn lại (${batchTotal - successCount}) sẽ tiếp tục tải ở lượt sau!`, "warning");
+            showToast('Âm thanh ngoại tuyến', `Đã chuẩn bị ${successCount}/${batchTotal} từ. Phần còn lại sẽ được tải ở lượt sau.`, 'ph-speaker-high');
         } else if (successCount > 0) {
-            showPopup(`Đã tải xong toàn bộ ${successCount} audio vào bộ nhớ offline!`, "success");
+            showToast('Sẵn sàng nghe ngoại tuyến', `Đã chuẩn bị âm thanh cho ${successCount} từ.`, 'ph-speaker-high');
         }
     } catch (error) {
         console.error("Lỗi Background Preloader:", error);

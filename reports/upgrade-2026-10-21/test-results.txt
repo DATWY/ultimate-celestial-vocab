@@ -1,0 +1,64 @@
+
+> ultimate-celestial-vocab@0.0.0 test
+> node --test tests/*.test.mjs
+
+✔ TSV round trip preserves tabs, quotes, line breaks, optional content and SRS (5.3242ms)
+✔ no-header data whose word contains English is not mistaken for a header (0.3096ms)
+✔ reordered headers, BOM and CRLF are accepted (0.2628ms)
+✔ invalid state, NaN, negative and fractional counters are rejected by row (0.4985ms)
+✔ malformed quoted input fails before any mutation (0.4881ms)
+✔ a later duplicate enriches a pending new row without an undefined card ID (1.8351ms)
+✔ import enrichment keeps review progress and never mutates preview source (0.63ms)
+✔ parameter validation rejects destructive values throughout all 34 weights (2.185ms)
+✔ first reviews are logged, and simulated schedules are deterministic (1.697ms)
+✔ training replay uses timestamps, typing flags, deleted IDs and actual scheduler state (1.4675ms)
+✔ a new default reset wins over older personalized settings in both merge orders (0.2741ms)
+✔ new revisions and Undo advance even when the previous device clock was ahead (0.2196ms)
+✔ legacy boolean strings and invalid memory fields are normalized safely (0.4571ms)
+✔ the full optimizer evaluates a separate chronological holdout and gates replacement (22.8324ms)
+✔ two offline sessions add their distinct work; repeated sync is idempotent (40.0763ms)
+✔ Undo after upload stays undone against stale cloud snapshots (0.7171ms)
+✔ spending XP and consuming a freeze survive reconnect and out-of-order messages (0.5837ms)
+✔ capturing an incoming merge never records remote work as local work (0.5386ms)
+✔ a removed heatmap date is recorded as a signed change (0.3523ms)
+✔ daily counts add across sessions and remain correct after midnight (2.6529ms)
+✔ resettable stats follow their latest revision instead of their largest value (0.3956ms)
+✔ all permutations of three offline branches converge (1.0615ms)
+✔ a remote device clock ahead cannot move the active daily dashboard into the future (0.3005ms)
+✔ timestamp conversion is pure, including future due dates (1.0524ms)
+✔ a content edit and a remote review both survive merge (0.9157ms)
+✔ pronunciation edits are compared and preserved; legacy phonetic is migrated (0.5206ms)
+✔ clearing a field and removing tags persist across repeated sync (1.161ms)
+✔ merge converges, is idempotent, and does not invent timestamps (0.4838ms)
+✔ a later review cannot resurrect a deleted ID (0.2574ms)
+✔ Undo restores only review state and publishes a new SRS revision (0.3404ms)
+✔ SRS reviews preserve editorial revision, including an explicit zero (1.7008ms)
+✔ daily limit changes at most once per day in either direction (2.1949ms)
+✔ midnight resets all counters exactly once and preserves retention history (0.327ms)
+✔ rapid Skip grades and penalizes exactly once (3.3313ms)
+✔ old callbacks cannot advance a restarted quiz (1.8746ms)
+✔ both wrong-answer and Skip feedback escape imported markup (3.2313ms)
+✔ a blank answer is not penalized and British/American spelling is consistent (2.013ms)
+✔ ending a quiz early never awards a perfect quiz; finalization is idempotent (1.8909ms)
+✔ Undo decrements the appropriate daily category and does not subtract from a new day (3.3912ms)
+✔ nested modal focus returns to its opener and Tab stays inside the top modal (2.913ms)
+✔ Undo without a log ID keeps unrelated history; removed logs stay removed after merge (4.3757ms)
+✔ distinct review event IDs are preserved even within the old deduplication window (0.288ms)
+✔ transaction merges against the remote revision from the successful retry (9.7571ms)
+✔ a newer edit during flush stays queued and the next flush sends it (8.961ms)
+✔ failed/offline writes keep durable pending IDs (2.5204ms)
+✔ concurrent local writes retain one tab’s edit and another tab’s review (9.8063ms)
+✔ acknowledging an older request cannot delete a newer durable outbox entry (3.3708ms)
+✔ cloud readback does not mark a card dirty or clear a pending edit (1.3668ms)
+✔ bulk import and tombstones are persisted atomically with their outbox (1.1337ms)
+✔ two offline tabs cannot overwrite each other’s progress in shared IndexedDB (1.9775ms)
+✔ local review history merges additions and exact Undo across tabs (2.7361ms)
+✔ a late second tab acknowledgement cannot clear an edit created after the first acknowledgement (1.4867ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 52
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 754.2636

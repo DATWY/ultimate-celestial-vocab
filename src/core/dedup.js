@@ -1,4 +1,5 @@
 // src/core/dedup.js
+import { nextRevision } from './card-merge.js';
 // Next-Gen Intelligent Deduplication & Semantic Matching Engine v5.0 (Fuzzy & Morphological)
 
 const VI_STOPWORDS = new Set([
@@ -667,7 +668,9 @@ export function mergeDuplicateCards(cardA, cardB) {
         pronunciation: mergedPron,
         tags: Array.from(tagSet),
         isStarred: primary.isStarred || secondary.isStarred,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        contentUpdatedAt: nextRevision({ contentUpdatedAt: Math.max(primary.contentUpdatedAt || primary.updatedAt || 0, secondary.contentUpdatedAt || secondary.updatedAt || 0) }, 'contentUpdatedAt'),
+        flagsUpdatedAt: nextRevision({ flagsUpdatedAt: Math.max(primary.flagsUpdatedAt || primary.updatedAt || 0, secondary.flagsUpdatedAt || secondary.updatedAt || 0) }, 'flagsUpdatedAt')
     };
 
     return {

@@ -1,3 +1,4 @@
+import anime from 'animejs/lib/anime.es.js';
 
 import { getState } from './state.js';
 
@@ -6,12 +7,18 @@ import { getState } from './state.js';
 const DEFAULT_DURATION = 400;
 const EASE_OUT_EXPO = 'easeOutExpo';
 const EASE_IN_OUT_SINE = 'easeInOutSine';
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export async function animateFlip(cardElement) {
     if (!cardElement) return;
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
     const currentRotation = typeof anime !== 'undefined' && anime.get ? anime.get(cardElement, 'rotateY', 'deg') : 0;
     cardElement.style.pointerEvents = 'none';
+    if (reducedMotion()) {
+        anime.set(cardElement, { rotateY: `${parseFloat(currentRotation) + 180}deg` });
+        cardElement.style.pointerEvents = 'auto';
+        return;
+    }
     if (isBoost) {
         if (typeof anime !== 'undefined') {
             await anime({
@@ -37,7 +44,7 @@ let lastExitDirection = -1; // -1 for left, 1 for right
 export async function animateCardOut(cardElement) {
     if (!cardElement) return;
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
-    if (isBoost) return;
+    if (isBoost || reducedMotion()) return;
     lastExitDirection = Math.random() > 0.5 ? 1 : -1;
     const targetX = lastExitDirection * 150;
     const targetRot = lastExitDirection * 15;
@@ -54,7 +61,7 @@ export async function animateCardOut(cardElement) {
 export async function animateCardIn(cardElement) {
     if (!cardElement) return;
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
-    if (isBoost) {
+    if (isBoost || reducedMotion()) {
         if (typeof anime !== 'undefined') {
             anime.set(cardElement, {
                 translateX: '0%',
@@ -86,6 +93,7 @@ export async function animateCardIn(cardElement) {
 export function animateModalOpen(modalElement) {
     const overlay = modalElement.querySelector('.modal-overlay');
     const content = modalElement.querySelector('.modal-content');
+    if (reducedMotion()) { anime.set([overlay, content], { opacity: 1, translateY: 0, scale: 1 }); return; }
     
     // Overlay fade in
     anime({
@@ -128,6 +136,7 @@ export function animateModalOpen(modalElement) {
 export async function animateModalClose(modalElement) {
     const overlay = modalElement.querySelector('.modal-overlay');
     const content = modalElement.querySelector('.modal-content');
+    if (reducedMotion()) { anime.set([overlay, content], { opacity: 0 }); return; }
     await Promise.all([
         anime({
             targets: overlay,
@@ -147,6 +156,7 @@ export async function animateModalClose(modalElement) {
 }
 
 export function animatePulse(element) {
+    if (reducedMotion()) return;
     anime({
         targets: element,
         scale: [
@@ -161,6 +171,7 @@ export function animatePulse(element) {
  * @param {HTMLElement} element - Phần tử cần animate.
  */
 export function animateShake(element) {
+    if (reducedMotion()) return;
     anime({
         targets: element,
         translateX: [
@@ -209,7 +220,7 @@ export function animateNumber(element, endValue, duration = 1600, options = fals
     };
 
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
-    if (isBoost) {
+    if (isBoost || reducedMotion()) {
         element.textContent = formatVal(endValue);
         return;
     }

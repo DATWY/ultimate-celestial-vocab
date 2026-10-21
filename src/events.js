@@ -1,7 +1,10 @@
+import anime from 'animejs/lib/anime.es.js';
+import { escapeHTML } from './core/utils/sanitize.js';
+import { restoreCardReview } from './core/card-merge.js';
 // src/events.js
 
 import { DOM } from './ui/elements.js';
-import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, popLastReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
+import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
@@ -74,16 +77,23 @@ export async function undoLastReview() {
     setIsTransitioning(true);
     try {
         const { vocabulary, currentReviewQueue, currentCardIndex } = getState();
-        const targetIndex = snapshot.cardIndex;
+        const targetIndex = vocabulary.findIndex(card => card.id === snapshot.cardId);
         
         // 1. Khôi phục thẻ cũ vào vocabulary & IndexedDB
         if (targetIndex >= 0 && targetIndex < vocabulary.length && snapshot.previousCard) {
-            vocabulary[targetIndex] = snapshot.previousCard;
-            await saveOneWord(snapshot.previousCard);
+            if (vocabulary[targetIndex].isDeleted || (vocabulary[targetIndex].srsUpdatedAt || 0) > snapshot.reviewedSrsUpdatedAt) {
+                clearLastReviewSnapshot();
+                updateUndoButtonState();
+                showToast('Thẻ đã thay đổi', 'Thẻ này đã có lượt học mới trên thiết bị khác. Hãy ôn theo trạng thái mới nhất.', 'ph-info');
+                return;
+            }
+            const restored = restoreCardReview(vocabulary[targetIndex], snapshot.previousCard);
+            vocabulary[targetIndex] = restored;
+            await saveOneWord(restored);
         }
         
         // 2. Rút log ra khỏi reviewLogs để Optimizer không bị sai lệch
-        await popLastReviewLog();
+        await removeReviewLog(snapshot.reviewLogId);
         
         // 3. Hoàn tác Gamification, XP, Combo, Heatmap, Daily Stats
         await revertGamificationAfterUndo(snapshot);
@@ -140,9 +150,8 @@ function processSrsFeedback(rating, autoAdvance = true) {
         
         const modality = shouldCardUseTyping(currentCard) ? 'typing' : 'en-vi';
         const { newState: updatedCard, log } = calculateNextSrsState(currentCard, rating, modality, 0, getState().userFsrs7Params);
-        if (log) {
-            import('./core/state.js').then(s => s.addReviewLog(log));
-        }
+        const reviewLogId = log ? crypto.randomUUID() : null;
+        if (log) void addReviewLog({ ...log, id: reviewLogId });
 
         // Record stats & Gamification
         if (isNewCard && rating > 1) { 
@@ -208,6 +217,9 @@ function processSrsFeedback(rating, autoAdvance = true) {
         // Lưu Snapshot để hỗ trợ tính năng Hoàn Tác (Undo)
         setLastReviewSnapshot({
             cardId: currentCard.id,
+            reviewLogId,
+            reviewedSrsUpdatedAt: updatedCard.srsUpdatedAt,
+            countedDue: previousCard.srsStatus === 'Mastered' && !!previousCard.srsDueDate && previousCard.srsDueDate <= new Date().setHours(23, 59, 59, 999),
             cardIndex: currentCardIndex,
             previousCard: previousCard,
             rating: rating,
@@ -258,9 +270,9 @@ async function switchCardWithAnimation() {
 }
 
 function harmonizeAnimeTimeline() {
-    if (typeof window === 'undefined' || !window.anime || !window.anime.timeline || window.anime.__timelineTuned) return;
-    const origTimeline = window.anime.timeline;
-    window.anime.timeline = function(params) {
+    if (typeof window === 'undefined' || !anime || !anime.timeline || anime.__timelineTuned) return;
+    const origTimeline = anime.timeline;
+    anime.timeline = function(params) {
         const tl = origTimeline.call(this, params);
         const origAdd = tl.add;
         tl.add = function(opts, offset) {
@@ -271,7 +283,7 @@ function harmonizeAnimeTimeline() {
         };
         return tl;
     };
-    window.anime.__timelineTuned = true;
+    anime.__timelineTuned = true;
 }
 harmonizeAnimeTimeline();
 
@@ -398,6 +410,7 @@ export function setupEventListeners() {
     const btnEmptyAdd = document.getElementById('btn-empty-add-word');
     const btnEmptyImport = document.getElementById('btn-empty-import');
     const btnEmptySample = document.getElementById('btn-empty-sample');
+    if (btnEmptySample && !(import.meta.env.DEV && new URLSearchParams(location.search).get('audit') === '1')) btnEmptySample.classList.add('hidden');
 
     btnEmptyAdd?.addEventListener('click', () => {
         openAddEditModal(false);
@@ -931,7 +944,7 @@ export function setupEventListeners() {
                 processSrsFeedback(1, false);
 
                 const hintStr = generateHint(currentCard.english, 1);
-                DOM.typingFeedback.innerHTML = `Vẫn chưa chính xác! Đã tính điểm sai (Again). <br>Gợi ý: <strong>${hintStr}</strong> <br><small style="color:var(--text-color);opacity:0.8;">(Bạn còn 2 lần thử)</small>`;
+                DOM.typingFeedback.innerHTML = `Vẫn chưa chính xác! Đã tính điểm sai (Again). <br>Gợi ý: <strong>${escapeHTML(hintStr)}</strong> <br><small style="color:var(--text-color);opacity:0.8;">(Bạn còn 2 lần thử)</small>`;
                 DOM.typingFeedback.className = 'typing-feedback text-danger';
                 DOM.typingInput.classList.add('input-danger');
                 DOM.typingInput.classList.add('shake');
@@ -945,18 +958,18 @@ export function setupEventListeners() {
                 
                 if (typingRetryCount === 2) {
                     const hintStr = generateHint(currentCard.english, 2);
-                    DOM.typingFeedback.innerHTML = `Vẫn sai! Gợi ý: <strong>${hintStr}</strong> <br><small style="color:var(--text-color);opacity:0.8;">(Bạn còn 1 lần thử)</small>`;
+                    DOM.typingFeedback.innerHTML = `Vẫn sai! Gợi ý: <strong>${escapeHTML(hintStr)}</strong> <br><small style="color:var(--text-color);opacity:0.8;">(Bạn còn 1 lần thử)</small>`;
                     DOM.typingFeedback.className = 'typing-feedback text-danger';
                 } else if (typingRetryCount === 3) {
                     DOM.cardEnglish?.classList.remove('text-masked', 'hidden');
                     DOM.cardEnglish?.classList.add('revealed');
-                    DOM.typingFeedback.innerHTML = `Đáp án đúng là: <strong>${currentCard.english}</strong> <span class="phonetic">${currentCard.pronunciation || ''}</span> <br><small style="color:var(--text-color);opacity:0.8;">(Hãy chép lại đáp án đúng để tiếp tục)</small>`;
+                    DOM.typingFeedback.innerHTML = `Đáp án đúng là: <strong>${escapeHTML(currentCard.english)}</strong> <span class="phonetic">${escapeHTML(currentCard.pronunciation || '')}</span> <br><small style="color:var(--text-color);opacity:0.8;">(Hãy chép lại đáp án đúng để tiếp tục)</small>`;
                     DOM.typingFeedback.className = 'typing-feedback text-warning';
                 } else {
                     // typingRetryCount > 3: Đã lộ đáp án nhưng gõ lại vẫn chưa đúng -> Bắt buộc chép lại đúng 100% mới cho chuyển thẻ
                     DOM.cardEnglish?.classList.remove('text-masked', 'hidden');
                     DOM.cardEnglish?.classList.add('revealed');
-                    DOM.typingFeedback.innerHTML = `Vẫn chưa chính xác! Hãy chép lại đúng đáp án: <strong>${currentCard.english}</strong>`;
+                    DOM.typingFeedback.innerHTML = `Vẫn chưa chính xác! Hãy chép lại đúng đáp án: <strong>${escapeHTML(currentCard.english)}</strong>`;
                     DOM.typingFeedback.className = 'typing-feedback text-danger';
                 }
             }
@@ -980,7 +993,7 @@ export function setupEventListeners() {
             } else {
                 isTypoRetry = false;
                 const hintStr = generateHint(currentCard.english, 1);
-                DOM.typingFeedback.innerHTML = `Sai rồi! Gợi ý: <strong>${hintStr}</strong> <br><small style="color:var(--text-color);opacity:0.8;">(Bạn còn 2 lần thử)</small>`;
+                DOM.typingFeedback.innerHTML = `Sai rồi! Gợi ý: <strong>${escapeHTML(hintStr)}</strong> <br><small style="color:var(--text-color);opacity:0.8;">(Bạn còn 2 lần thử)</small>`;
                 DOM.typingFeedback.className = 'typing-feedback text-danger';
                 DOM.typingInput.classList.add('input-danger');
                 DOM.typingInput.value = ''; // Xóa sạch để gõ lại
@@ -1189,21 +1202,8 @@ async function handleBulkDelete() {
         setVocabulary(updated);
         saveVocabulary(true); // skipSync — tự batch write bên dưới
 
-        // Batch write lên Firebase ngay lập tức
-        try {
-            const { db } = await import('./core/firebase.js');
-            const { writeBatch, doc } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
-            const LIMIT = 500;
-            const ids = Array.from(idsToDelete);
-            for (let i = 0; i < ids.length; i += LIMIT) {
-                const batch = writeBatch(db);
-                ids.slice(i, i + LIMIT).forEach(id => {
-                    batch.set(doc(db, 'celestial_vocab_sync', id), { isDeleted: true, updatedAt: now }, { merge: true });
-                });
-                await batch.commit();
-            }
-        } catch (e) {
-            console.warn('Bulk delete Firebase offline, sẽ sync sau:', e.message);
+        for (const card of updated) {
+            if (idsToDelete.has(card.id)) await saveOneWord(card);
         }
 
         buildReviewQueue();
