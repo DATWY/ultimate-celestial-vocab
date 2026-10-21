@@ -1416,9 +1416,9 @@ body:not(.dark-mode) .topic-trigger-badge {
     width: 300px;
     max-width: 350px;
     z-index: 1050;
-    background: rgba(15, 10, 32, 0.95);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(15, 10, 32, 0.97);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1px solid rgba(168, 85, 247, 0.38);
     border-radius: 14px;
     box-shadow: 
@@ -1668,12 +1668,12 @@ body:not(.dark-mode) .custom-topic-item.active {
     font-size: 0.8rem;
     font-weight: 550;
     cursor: pointer;
-    background: rgba(30, 41, 59, 0.7);
+    background: rgba(30, 41, 59, 0.88);
     color: #f1f5f9;
     border: 1px solid rgba(168, 85, 247, 0.28);
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     outline: none;
     user-select: none;
@@ -1684,6 +1684,8 @@ body:not(.dark-mode) .custom-typing-trigger {
     color: #334155 !important;
     border: 1px solid rgba(203, 213, 225, 0.7) !important;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
 body:not(.dark-mode) .custom-typing-trigger .typing-trigger-icon {
@@ -1781,15 +1783,15 @@ body:not(.dark-mode) .custom-typing-trigger.is-typing-active .typing-trigger-ico
     right: 0;
     width: 360px;
     max-width: 90vw;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.97);
     border: 1px solid rgba(168, 85, 247, 0.35);
     border-radius: 16px;
     box-shadow: 
         0 16px 48px rgba(0, 0, 0, 0.6),
         0 0 24px rgba(168, 85, 247, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     z-index: 1200;
     padding: 12px;
     display: flex;
@@ -2966,9 +2968,9 @@ body:has(#no-card-message:not(.hidden)) #controls-area {
 .celestial-victory-card {
     width: 100%;
     max-width: 720px;
-    background: radial-gradient(circle at 50% 0%, rgba(30, 27, 75, 0.9), rgba(15, 23, 42, 0.88) 75%);
-    backdrop-filter: blur(14px) saturate(150%);
-    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    background: radial-gradient(circle at 50% 0%, rgba(30, 27, 75, 0.96), rgba(15, 23, 42, 0.95) 75%);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1.5px solid rgba(255, 255, 255, 0.2);
     border-radius: 36px;
     padding: 44px 38px 38px 38px;
@@ -2983,9 +2985,9 @@ body:has(#no-card-message:not(.hidden)) #controls-area {
 }
 
 body:not(.dark-mode) .celestial-victory-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 250, 252, 0.94) 100%);
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 250, 252, 0.98) 100%);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1.5px solid rgba(255, 255, 255, 0.95);
     box-shadow: 0 25px 65px -10px rgba(99, 102, 241, 0.15), 
                 0 10px 30px -5px rgba(245, 158, 11, 0.12),
@@ -3265,18 +3267,46 @@ body:not(.dark-mode) .victory-col-hero {
 
 .victory-halo-spin {
     position: absolute;
-    inset: -12px;
+    inset: -20px;
     border-radius: 50%;
-    background: conic-gradient(from 0deg, #f59e0b, #ec4899, #8b5cf6, #06b6d4, #10b981, #f59e0b);
+    background: conic-gradient(from 0deg, 
+        rgba(245, 158, 11, 0.35) 0%, 
+        rgba(245, 158, 11, 0.2) 8%,
+        rgba(236, 72, 153, 0.35) 17%, 
+        rgba(236, 72, 153, 0.2) 25%,
+        rgba(139, 92, 246, 0.35) 33%, 
+        rgba(139, 92, 246, 0.2) 42%,
+        rgba(6, 182, 212, 0.35) 50%, 
+        rgba(6, 182, 212, 0.2) 58%,
+        rgba(16, 185, 129, 0.35) 67%, 
+        rgba(16, 185, 129, 0.2) 75%,
+        rgba(245, 158, 11, 0.35) 83%,
+        rgba(245, 158, 11, 0.2) 100%
+    );
     animation: spinHalo 7s linear infinite;
-    filter: blur(8px);
+    filter: none !important;
+    -webkit-filter: none !important;
     opacity: 0.95;
 }
 
 body:not(.dark-mode) .victory-halo-spin {
-    background: conic-gradient(from 0deg, #f59e0b, #ec4899, #8b5cf6, #3b82f6, #10b981, #f59e0b);
+    background: conic-gradient(from 0deg, 
+        rgba(245, 158, 11, 0.25) 0%, 
+        rgba(245, 158, 11, 0.12) 8%,
+        rgba(236, 72, 153, 0.25) 17%, 
+        rgba(236, 72, 153, 0.12) 25%,
+        rgba(139, 92, 246, 0.25) 33%, 
+        rgba(139, 92, 246, 0.12) 42%,
+        rgba(59, 130, 246, 0.25) 50%, 
+        rgba(59, 130, 246, 0.12) 58%,
+        rgba(16, 185, 129, 0.25) 67%, 
+        rgba(16, 185, 129, 0.12) 75%,
+        rgba(245, 158, 11, 0.25) 83%,
+        rgba(245, 158, 11, 0.12) 100%
+    );
     opacity: 0.55;
-    filter: blur(10px);
+    filter: none !important;
+    -webkit-filter: none !important;
 }
 
 @keyframes spinHalo {
@@ -4313,17 +4343,17 @@ body.dark-mode .typing-hint .hint-label {
     bottom: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(15, 23, 42, 0.55);
+    background-color: rgba(15, 23, 42, 0.65);
     z-index: 1;
     cursor: pointer;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
 body.dark-mode .modal-overlay {
-    background-color: rgba(3, 7, 18, 0.78);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(3, 7, 18, 0.82);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
 .modal-content {
@@ -4340,8 +4370,8 @@ body.dark-mode .modal-overlay {
     width: 100%;
     max-width: 550px;
     overflow-y: auto;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     will-change: transform, opacity;
     transform: translateZ(0);
 }
@@ -5545,11 +5575,11 @@ body {
 #manage-modal .manage-panel,
 .modal-large .modal-content.manage-panel,
 .manage-panel {
-    background: rgba(13, 17, 28, 0.88);
+    background: rgba(13, 17, 28, 0.96);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 22px !important;
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 1px 0 rgba(255, 255, 255, 0.12) inset;
     padding: 18px 24px 20px !important;
     position: relative;
@@ -5577,8 +5607,8 @@ body {
 body:not(.dark-mode) .manage-panel {
     background: rgba(255, 255, 255, 0.94) !important;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%) !important;
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1px solid rgba(226, 232, 240, 0.95) !important;
     box-shadow: 0 30px 70px -15px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.9) inset, 0 2px 6px rgba(15, 23, 42, 0.04) !important;
     color: #0f172a !important;
@@ -6868,8 +6898,8 @@ body.dark-mode .word-card.is-suspended {
     background: var(--card-bg);
     border: 1.5px solid var(--border-color);
     border-radius: 22px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 35px hsla(var(--primary-hue), 50%, 50%, 0.12);
     padding: 16px 22px 20px !important;
     position: relative;
@@ -11027,9 +11057,9 @@ body:not(.dark-mode) #fsrs7-params-input:focus {
         position: absolute;
         top: calc(100% + 8px);
         right: 0;
-        background: rgba(15, 23, 42, 0.94);
-        backdrop-filter: blur(24px) saturate(140%);
-        -webkit-backdrop-filter: blur(24px) saturate(140%);
+        background: rgba(15, 23, 42, 0.97);
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
         flex-direction: column;
         align-items: stretch;
         padding: 12px;
@@ -11519,12 +11549,13 @@ body.dark-mode .badge-item[data-tier="divine"] p {
 }
 
 .level-card.rank-bronze .bronze-emblem {
+    filter: drop-shadow(0 0 18px rgba(245, 176, 65, 0.85));
     animation: bronzeEmberPulse 3s ease-in-out infinite alternate;
 }
 
 @keyframes bronzeEmberPulse {
-    0% { filter: drop-shadow(0 0 4px rgba(205, 127, 50, 0.4)); }
-    100% { filter: drop-shadow(0 0 18px rgba(245, 176, 65, 0.85)); }
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 /* --- SILVER RANK (BẠC) --- */
@@ -11562,12 +11593,13 @@ body.dark-mode .badge-item[data-tier="divine"] p {
 }
 
 .level-card.rank-silver .silver-emblem {
+    filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.9));
     animation: silverShimmer 2.5s ease-in-out infinite alternate;
 }
 
 @keyframes silverShimmer {
-    0% { filter: drop-shadow(0 0 4px rgba(207, 216, 220, 0.4)); }
-    100% { filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.9)); }
+    0% { opacity: 0.45; }
+    100% { opacity: 1; }
 }
 
 /* --- GOLD RANK (VÀNG ROYAL) --- */
@@ -11596,12 +11628,13 @@ body.dark-mode .badge-item[data-tier="divine"] p {
 }
 
 .level-card.rank-gold .gold-emblem {
+    filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.95));
     animation: goldGlowPulse 2s ease-in-out infinite alternate;
 }
 
 @keyframes goldGlowPulse {
-    0% { filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.5)); }
-    100% { filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.95)); }
+    0% { opacity: 0.55; }
+    100% { opacity: 1; }
 }
 
 /* --- PLATINUM RANK (BẠCH KIM NEBULA) --- */
@@ -11630,12 +11663,13 @@ body.dark-mode .badge-item[data-tier="divine"] p {
 }
 
 .level-card.rank-platinum .platinum-emblem {
+    filter: drop-shadow(0 0 24px rgba(179, 136, 255, 0.95));
     animation: platFloat 3s ease-in-out infinite alternate;
 }
 
 @keyframes platFloat {
-    0% { transform: translateY(0); filter: drop-shadow(0 0 8px rgba(128, 222, 234, 0.6)); }
-    100% { transform: translateY(-5px); filter: drop-shadow(0 0 24px rgba(179, 136, 255, 0.95)); }
+    0% { transform: translateY(0); opacity: 0.6; }
+    100% { transform: translateY(-5px); opacity: 1; }
 }
 
 /* --- DIAMOND RANK (KIM CƯƠNG PRISMATIC) --- */
@@ -11684,21 +11718,23 @@ body.dark-mode .badge-item[data-tier="divine"] p {
 
 .level-card.rank-diamond .diamond-star-glint {
     transform-origin: 50px 50px;
+    filter: drop-shadow(0 0 10px #FFF);
     animation: starGlintPulse 1.5s ease-in-out infinite alternate;
 }
 
 @keyframes starGlintPulse {
     0% { transform: scale(0.8); opacity: 0.7; }
-    100% { transform: scale(1.3); opacity: 1; filter: drop-shadow(0 0 10px #FFF); }
+    100% { transform: scale(1.3); opacity: 1; }
 }
 
 .level-card.rank-diamond .diamond-emblem {
+    filter: drop-shadow(0 0 28px rgba(124, 77, 255, 0.95)) drop-shadow(0 0 14px rgba(255, 255, 255, 0.8));
     animation: diamondCrystalFloat 2.5s ease-in-out infinite alternate;
 }
 
 @keyframes diamondCrystalFloat {
-    0% { filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.7)); }
-    100% { filter: drop-shadow(0 0 28px rgba(124, 77, 255, 0.95)) drop-shadow(0 0 14px rgba(255, 255, 255, 0.8)); }
+    0% { opacity: 0.55; }
+    100% { opacity: 1; }
 }
 
 /* --- DARK MODE RANK TEXT HIGH CONTRAST --- */
@@ -11943,7 +11979,7 @@ body:not(.dark-mode) .toast-message {
     bottom: -5px;
     border-radius: inherit;
     background: inherit;
-    filter: blur(8px);
+    filter: blur(15px);
     opacity: 0.7;
     z-index: -1;
     animation: mythicAura 2s infinite alternate;
@@ -11951,13 +11987,11 @@ body:not(.dark-mode) .toast-message {
 
 @keyframes mythicAura {
     0% {
-        filter: blur(8px);
         opacity: 0.7;
         transform: scale(1);
     }
 
     100% {
-        filter: blur(15px);
         opacity: 1;
         transform: scale(1.1);
     }
@@ -13003,9 +13037,9 @@ body:not(.dark-mode) .dedup-btn:hover {
     flex-direction: column !important;
     padding: 24px 28px !important;
     border-radius: 24px !important;
-    background: rgba(15, 23, 42, 0.85) !important;
-    backdrop-filter: blur(14px) saturate(150%);
-    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
