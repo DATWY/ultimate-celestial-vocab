@@ -2,459 +2,452 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-4.3.0-8a2be2.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-DATWY.V2.261021-8a2be2.svg?style=for-the-badge)
 ![FSRS-7 Engine](https://img.shields.io/badge/SRS%20Engine-FSRS--7%20(34%20Params)-blueviolet.svg?style=for-the-badge)
-![Multi-Device Sync](https://img.shields.io/badge/Sync-Vector%20Disentangled-cyan.svg?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-52%2F52%20PASS-brightgreen.svg?style=for-the-badge)
+![Multi-Device Sync](https://img.shields.io/badge/Sync-4--Vector%20Outbox-cyan.svg?style=for-the-badge)
 ![PWA Ready](https://img.shields.io/badge/PWA-Offline--First-orange.svg?style=for-the-badge)
-![Accessibility](https://img.shields.io/badge/A11y-WCAG%202.1%20AA%20(100%25)-success.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
 
 <br/>
 
-**Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới kết hợp thuật toán lặp lại ngắt quãng FSRS-7 (34 tham số), Heuristics ngôn ngữ học, Bộ đồng bộ đa thiết bị 4-Vector và Hệ sinh thái Offline-First PWA.**
+**Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới — kết hợp thuật toán FSRS-7 (34 tham số), Heuristics ngôn ngữ học, đồng bộ đa thiết bị 4-Vector Outbox và hệ sinh thái Offline-First PWA.**
 
- [📖 Xem Tài Liệu Thiết Kế Kỹ Thuật](DESIGN_DOC.md) • [📊 Xem Dữ Liệu Benchmark](#benchmark)
+🌐 **[[hidden]](https://[hidden])** &nbsp;•&nbsp; [📖 Tài Liệu Kỹ Thuật](#8-kiến-trúc-hệ-thống--cấu-trúc-mã-nguồn) &nbsp;•&nbsp; [📊 Benchmark](#6-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
 
 <br/>
 
 ![Ultimate Celestial Vocab Hero Artwork](docs/screenshots/project_thumbnail.webp)
-
-<br/>
-
-![Ultimate Celestial Vocab Dashboard](docs/screenshots/app_dashboard.webp)
 
 </div>
 
 ---
 
 ## 📑 Mục Lục
-- [1. Giới Thiệu & Tầm Nhìn Sản Phẩm](#1-gioi-thieu--tam-nhin-san-pham)
-- [2. Trải Nghiệm Người Dùng & Các Tính Năng Đỉnh Cao](#2-trai-nghiem-nguoi-dung--cac-tinh-nang-dinh-cao)
-  - [2.1. Không Gian Học Tập Trực Quan & Sóng Âm Thanh Động](#21-khong-gian-hoc-tap-truc-quan--song-am-thanh-dong)
-  - [2.2. Trung Tâm Quản Lý Từ Vựng & Quét Trùng Lặp Thông Minh](#22-trung-tam-quan-ly-tu-vung--quet-trung-lap-thong-minh)
-  - [2.3. Bảng Điều Khiển Hồ Sơ & Thống Kê Vi Mô FusionSRS](#23-bang-dieu-khien-ho-so--thong-ke-vi-mo-fusionsrs)
-  - [2.4. Chế Độ Dark Mode Đẳng Cấp Phi Thuyền Thiên Hà](#24-che-do-dark-mode-dang-cap-phi-thuyen-thien-ha)
-- [3. Cơ Sở Khoa Học & Thuật Toán Trí Nhớ FSRS-7](#3-co-so-khoa-hoc--thuat-toan-tri-nho-fsrs-7)
-  - [3.1. Mô hình DSR (Difficulty - Stability - Retrievability)](#31-mo-hinh-dsr-difficulty---stability---retrievability)
-  - [3.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)](#32-kien-truc-tri-nho-kep-dual-track-stability)
-  - [3.3. Động Học Độ Khó & Hội Tụ Trung Bình (Mean Reversion)](#33-dong-hoc-do-kho--hoi-tu-trung-binh-mean-reversion)
-  - [3.4. Ba Đột Phá Độc Quyền Của Celestial Vocab](#34-ba-dot-pha-doc-quyen-cua-celestial-vocab)
-- [4. Động Cơ Đồng Bộ Đa Thiết Bị Hai Chiều (4-Vector Sync Engine)](#4-dong-co-dong-bo-da-thiet-bi-hai-chieu-4-vector-sync-engine)
-- [5. Bộ Tối Ưu Hóa Tham Số Ngoại Tuyến (Offline Optimizer)](#5-bo-toi-uu-hoa-tham-so-ngoai-tuyen-offline-optimizer)
-  - [5.1. Chiến Lược Tiến Hóa (1+λ)-ES](#51-chien-luoc-tien-hoa-1λ-es)
-  - [5.2. Kiểm Định Ngoại Suất Tương Lai (TimeSeriesSplit)](#52-kiem-dinh-ngoai-suat-tuong-lai-timeseriessplit)
-- [6. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)](#6-bang-chung--du-lieu-thuc-nghiem-benchmark)
-- [7. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click](#7-huong-dan-su-dung--huan-luyen-1-click)
-- [8. Kiến Trúc Hệ Thống & Cấu Trúc Mã Nguồn](#8-kien-truc-he-thong--cau-truc-ma-nguon)
-- [9. Hướng Dẫn Cài Đặt & Phát Triển Cục Bộ](#9-huong-dan-cai-dat--phat-trien-cuc-bo)
-- [10. Giấy Phép & Tác Giả](#10-giay-phep--tac-gia)
+- [1. Giới Thiệu & Tầm Nhìn Sản Phẩm](#1-giới-thiệu--tầm-nhìn-sản-phẩm)
+- [2. Tính Năng Nổi Bật](#2-tính-năng-nổi-bật)
+  - [2.1. Không Gian Học Tập Zen Tối Giản](#21-không-gian-học-tập-zen-tối-giản)
+  - [2.2. Trung Tâm Điều Khiển (Celestial Hub)](#22-trung-tâm-điều-khiển-celestial-hub)
+  - [2.3. Hệ Thống Đồng Bộ 4-Vector Outbox](#23-hệ-thống-đồng-bộ-4-vector-outbox)
+  - [2.4. Chế Độ Dark / Light Mode](#24-chế-độ-dark--light-mode)
+- [3. Cơ Sở Khoa Học & Thuật Toán FSRS-7](#3-cơ-sở-khoa-học--thuật-toán-fsrs-7)
+  - [3.1. Mô hình DSR (Difficulty - Stability - Retrievability)](#31-mô-hình-dsr)
+  - [3.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)](#32-kiến-trúc-trí-nhớ-kép)
+  - [3.3. Động Học Độ Khó & Mean Reversion](#33-động-học-độ-khó--mean-reversion)
+  - [3.4. Ba Đột Phá Độc Quyền](#34-ba-đột-phá-độc-quyền)
+- [4. Động Cơ Đồng Bộ 4-Vector Outbox](#4-động-cơ-đồng-bộ-4-vector-outbox)
+- [5. Bộ Tối Ưu Hóa Ngoại Tuyến (Offline Optimizer)](#5-bộ-tối-ưu-hóa-ngoại-tuyến)
+- [6. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)](#6-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
+- [7. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click](#7-hướng-dẫn-sử-dụng--huấn-luyện-1-click)
+- [8. Kiến Trúc Hệ Thống & Cấu Trúc Mã Nguồn](#8-kiến-trúc-hệ-thống--cấu-trúc-mã-nguồn)
+- [9. Hướng Dẫn Cài Đặt & Phát Triển Cục Bộ](#9-hướng-dẫn-cài-đặt--phát-triển-cục-bộ)
+- [10. Changelog](#10-changelog)
+- [11. Giấy Phép & Tác Giả](#11-giấy-phép--tác-giả)
 
 ---
 
 ## 1. Giới Thiệu & Tầm Nhìn Sản Phẩm
 
-Hầu hết các phần mềm học từ vựng truyền thống hiện nay (Anki cổ điển, Quizlet, SuperMemo SM-2) đều gặp phải các giới hạn sinh học và kỹ thuật cố hữu:
-1. **"Ease Hell" (Địa ngục độ dễ):** Khi người học lỡ bấm nút *Hard* hoặc *Again*, hệ số Ease Factor bị trừ vĩnh viễn, khiến thẻ bài bị lặp lại dày đặc quá mức gây chán nản.
-2. **Đồng nhất hóa não bộ:** Giả định rằng mọi bộ não đều quên theo cùng một tốc độ và mọi từ vựng đều có độ khó khởi điểm như nhau.
-3. **Thiếu sự phân hóa phản xạ:** Không phân biệt được giữa việc nhìn nhận mặt chữ thụ động (Flashcard flip) với việc kích hoạt hồi tưởng chủ động bằng cách gõ phím chính xác (Active Typing Recall).
-4. **Xung đột đồng bộ đa thiết bị:** Đè bẹp dữ liệu khi học trên cả máy tính lẫn điện thoại, làm mất tiến độ ghi nhớ SRS.
+Hầu hết các phần mềm học từ vựng truyền thống gặp phải các giới hạn cố hữu:
+1. **"Ease Hell":** Bấm nhầm *Hard* một lần → Ease Factor bị trừ vĩnh viễn → thẻ lặp quá dày đặc.
+2. **Đồng nhất hóa não bộ:** Giả định mọi bộ não đều quên với cùng tốc độ.
+3. **Thiếu phân hóa phản xạ:** Không phân biệt lật thẻ thụ động vs. gõ chính xác chủ động.
+4. **Xung đột đồng bộ đa thiết bị:** Last-Write-Wins xóa mất tiến độ SRS khi học cả PC lẫn điện thoại.
 
-**Ultimate Celestial Vocab** được kiến tạo như một ứng dụng web lũy tiến (PWA) cao cấp giải quyết triệt để các rào cản trên:
-- **Lõi FSRS-7 (Free Spaced Repetition Scheduler - Thế hệ 7):** Mô hình toán học chính xác nhất hiện nay với 34 tham số sinh học độc bản.
-- **Linguistic Heuristics v2:** Bộ máy phân tích âm tiết, cấu trúc cụm từ và hình thái ngôn ngữ để tính toán độ khó xuất phát điểm $D_0$ khách quan ngay từ khi người học chưa chạm vào thẻ.
-- **Động cơ đồng bộ 4 Vector độc lập:** Triệt tiêu hoàn toàn xung đột dữ liệu giữa PC, Laptop và Smartphone.
-- **Trải nghiệm thẩm mỹ vũ trụ (Celestial Aesthetics):** Giao diện kính mờ Glassmorphism, hệ thống bảng đo vi mô HUD, hoạt ảnh hạt canvas không gian và bảng màu Light Mode chuẩn WCAG 2.1 AA.
+**Ultimate Celestial Vocab** giải quyết triệt để các rào cản này:
+
+- **FSRS-7 Dual-Track:** Mô hình toán học chính xác nhất với 34 tham số sinh học cá nhân hóa.
+- **Linguistic Heuristics v2:** Tính độ khó xuất phát điểm $D_0$ từ cấu trúc âm tiết, hình thái ngôn ngữ — giải quyết hoàn toàn Cold-Start Problem.
+- **4-Vector Outbox Sync:** Tách riêng 4 vector (Content / SRS / Star / Tombstone) + IndexedDB Outbox → zero data loss khi offline rồi kết nối lại.
+- **Zen Flashcard UX:** Giao diện tối giản, tập trung tuyệt đối vào từ vựng — không widget xao nhãng.
 
 ---
 
-## 2. Trải Nghiệm Người Dùng & Các Tính Năng Đỉnh Cao
+## 2. Tính Năng Nổi Bật
 
-### 2.1. Không Gian Học Tập Trực Quan & Sóng Âm Thanh Động
-
-Ứng dụng kết hợp giữa hồi tưởng thị giác, thính giác (Web Audio API TTS) và vận động cơ tay (Active Typing):
+### 2.1. Không Gian Học Tập Zen Tối Giản
 
 <div align="center">
 
-| Mặt Trước (Từ Vựng, Phiên Âm IPA & Sóng Âm) | Mặt Sau (Định Nghĩa, Ngữ Cảnh & 4 Mức Đánh Giá SRS) |
+| Mặt Trước (Active Recall) | Mặt Sau (4 Mức Đánh Giá SRS) |
 | :---: | :---: |
 | <img src="docs/screenshots/card_study_front.webp" width="480" alt="Mặt trước thẻ flashcard"/> | <img src="docs/screenshots/card_study_back.webp" width="480" alt="Mặt sau thẻ flashcard"/> |
 
-*Giao diện học từ vựng trực quan với hoạt ảnh sóng âm thanh khi phát âm, hỗ trợ phím tắt bàn phím (`Space` lật thẻ, `1, 2, 3, 4` đánh giá SRS).*
-
 </div>
+
+- **Thẻ Flashcard trung tâm màn hình** — không dải sidebar, không widget mục tiêu xao nhãng.
+- **Chế Độ Gõ Phím (Active Recall Typing):** Gõ đúng chính tả → Stability $\times 1.25$ (Active Motor Recall sâu hơn 25% so với lật thẻ).
+- **Sóng âm động (Web Audio API):** Phát âm TTS chuẩn với animation waveform khi nghe.
+- **Huy hiệu 🔥 Cực Khó:** Hiển thị tự động khi từ có độ khó cao hoặc từng bị quên nhiều lần.
+- **Dock Thống Kê nhỏ gọn:** Chip "Đã thuộc / Cần ôn / Đang học" + thanh tiến độ phân màu ở cuối trang.
+- **Phím tắt bàn phím:** `F` lật thẻ, `1/2/3/4` đánh giá SRS, `P` phát âm, `S` đánh sao, `Ctrl+Z` Undo.
 
 ---
 
-### 2.2. Trung Tâm Quản Lý Từ Vựng & Quét Trùng Lặp Thông Minh
-
-Trung tâm Quản lý Từ vựng v4.3 được thiết kế theo triết lý tối giản đa tầng:
+### 2.2. Trung Tâm Điều Khiển (Celestial Hub)
 
 <div align="center">
 
-| Tab Danh Sách Từ Vựng (Bảng Màu Pastel Tươi Sáng) | Tab Dữ Liệu & Sao Lưu (Single-Layer Bento Grid) |
+| Tab Tổng Quan & Trí Nhớ | Tab Từ Vựng |
 | :---: | :---: |
-| <img src="docs/screenshots/manage_modal_words.webp" width="480" alt="Danh Sách Từ Vựng"/> | <img src="docs/screenshots/manage_modal_io.webp" width="480" alt="Dữ Liệu & Sao Lưu"/> |
+| <img src="docs/screenshots/manage_modal_words.webp" width="480" alt="Tổng Quan FusionSRS"/> | <img src="docs/screenshots/manage_modal_io.webp" width="480" alt="Danh Sách Từ Vựng"/> |
 
 </div>
 
-- **Thẻ từ vựng Pastel tràn đầy sức sống:** Huy hiệu trạng thái SRS màu tươi tắn (Mới `#0284c7`, Đang học `#d97706`, Đã thuộc `#16a34a`), dải gradient phát sáng 6px, chip phiên âm bạc hà và chip từ loại định danh gọn gàng.
-- **Bộ Quét Trùng Lặp Radar (`ph-scan`):** Công cụ dò tìm và hợp nhất thông minh từ vựng trùng lặp theo cơ chế **bảo toàn tiến độ FSRS-7 cao nhất**, triệt tiêu rủi ro mất công sức học tập.
-- **Bố cục siêu tinh gọn (Ultra-Compact Header):** Gom toàn bộ thanh điều khiển và điều hướng chỉ trong 2 hàng thanh thoát, cuộn vô tận mượt mà qua `IntersectionObserver`.
-- **Nhập/Xuất chuẩn hóa TSV & JSON:** Kéo thả tệp dữ liệu, sao lưu an toàn kho từ vựng và trích xuất Review Logs phục vụ tái huấn luyện mô hình.
+4 tab được tổ chức gọn theo triết lý **"Mở ra là thấy ngay điều cần nhất"** (mặc định mở tab Tổng Quan):
+
+| Tab | Nội Dung |
+|---|---|
+| 📊 **Tổng Quan & Trí Nhớ** | Bento Grid HUD: Level/XP, Streak, FusionSRS 3 chỉ số vàng, Forecast 7 ngày, Heatmap lịch 12×7 |
+| 📚 **Từ Vựng** | Lưới thẻ từ vựng, tìm kiếm, lọc chủ đề/trạng thái, thêm/sửa/xóa, Radar Dedup |
+| 💾 **Dữ Liệu** | Nhập TSV/JSON (hỗ trợ quotes đa dòng, BOM, header lộn xộn), Xuất Review Logs, cấu hình 34 tham số FSRS-7 + Optimizer on-device |
+| 🏆 **Huy Hiệu** | Bộ sưu tập huy hiệu thành tựu mở khóa theo streak & độ khó |
+
+**Heatmap nâng cấp:** 12 cột (12 tuần) × 7 hàng (Thứ 2 → CN) + nhãn Thứ/Tháng + thang màu ░▒▓█.  
+**Topic display:** Dấu gạch dưới `_` tự động thay bằng dấu cách trong UI (dữ liệu gốc giữ nguyên).
 
 ---
 
-### 2.3. Bảng Điều Khiển Hồ Sơ & Thống Kê Vi Mô FusionSRS
+### 2.3. Hệ Thống Đồng Bộ 4-Vector Outbox
 
-Bảng điều khiển học tập v4.2 phân tách các tầng thông tin với độ tương phản sắc sảo:
+Kiến trúc **Local-First / Offline-First** đảm bảo không bao giờ mất dữ liệu:
+
+- **Outbox Store (IndexedDB v2):** Mọi thao tác viết được ghi vào Outbox trước → commit cục bộ an toàn → đồng bộ Firestore khi có mạng.
+- **4 Vector độc lập:** Nếu PC sửa nghĩa từ và Mobile đang ôn tập cùng lúc → cả hai thao tác đều được bảo tồn.
+- **Multi-tab safe:** 2 tab mở cùng lúc → merge bằng IndexedDB transaction, không ghi đè.
+- **Chống Clock Skew:** Cửa sổ an toàn cho đồng hồ thiết bị lệch nhau.
+
+---
+
+### 2.4. Chế Độ Dark / Light Mode
 
 <div align="center">
 
-<img src="docs/screenshots/profile_modal.webp" width="850" alt="Hồ Sơ & Thống Kê FusionSRS"/>
+<img src="docs/screenshots/dark_mode_showcase.webp" width="850" alt="Dark Mode — Obsidian Celestial"/>
 
-*Bảng điều khiển Hồ Sơ & Thống Kê: Cấp độ học giả mạ bạc kim loại, chuỗi ngày học rực lửa, biểu đồ dự báo ôn tập 7 ngày, ma trận nhiệt thiên hà và cụm vi đo HUD FusionSRS.*
-
-</div>
-
-- **Hệ Vi Đo Trí Nhớ Chuẩn HUD (Telemetry Micro-Meters):** Theo dõi thời gian thực 3 chỉ số vàng:
-  - **Mức Độ Thuộc Bài (% Retention):** Đo lường xác suất nhớ lại trung bình toàn bộ kho từ vựng.
-  - **Thời Gian Nhớ Tự Nhiên (Stability S):** Chu kỳ ổn định của trí nhớ dài hạn (tính bằng ngày).
-  - **Tổng Số Lần Đã Ôn Tập (Total Reviews):** Đo lường khối lượng kiến thức đã tích lũy.
-- **Cấp Bậc Học Giả & Hệ Thống Huy Hiệu:** 5 cấp bậc danh hiệu (Đồng, Bạc, Vàng, Bạch Kim, Kim Cương) cùng bộ sưu tập huy hiệu thành tựu mở khóa theo chuỗi ngày học và độ khó từ vựng.
-- **Biểu Đồ Nhiệt Thiên Hà (Activity Heatmap):** Bảng màu ngọc bích đa sắc thể hiện mật độ ôn tập liên tục 60 ngày.
-
----
-
-### 2.4. Chế Độ Dark Mode Đẳng Cấp Phi Thuyền Thiên Hà
-
-<div align="center">
-
-<img src="docs/screenshots/dark_mode_showcase.webp" width="850" alt="Chế độ Dark Mode"/>
-
-*Giao diện nền sao Obsidian với ánh sáng huỳnh quang neon tím dịu mắt, tối ưu hoàn hảo cho các phiên học đêm dài.*
+*Dark Mode: Nền Obsidian với ánh sáng huỳnh quang neon tím — tối ưu cho phiên học đêm. Light Mode: Porcelain Glass với tông Lavender/Slate tinh tế.*
 
 </div>
 
 ---
 
-## 3. Cơ Sở Khoa Học & Thuật Toán Trí Nhớ FSRS-7
+## 3. Cơ Sở Khoa Học & Thuật Toán FSRS-7
 
-<a id="dsr-model"></a>
-### 3.1. Mô hình DSR (Difficulty - Stability - Retrievability)
-Trí nhớ con người đối với một thông tin được mô hình hóa bởi 3 biến trạng thái cốt lõi:
-- **Độ khó ($D \in [1, 10]$):** Thước đo độ phức tạp vốn có của từ vựng đối với não bộ người học.
-- **Độ bền ($S > 0$ tính bằng ngày):** Thời gian cần thiết để xác suất nhớ của từ vựng giảm từ $100\%$ xuống còn $90\%$.
-- **Khả năng gợi nhớ ($R \in [0, 1]$):** Xác suất người học có thể nhớ lại thành công từ vựng đó tại thời điểm $t$ ngày sau lần ôn gần nhất.
+### 3.1. Mô hình DSR
 
-Đường cong lãng quên tuân theo hàm lũy thừa tổng quát (Power-Law Forgetting Curve):
+Trí nhớ được mô hình hóa bởi 3 biến trạng thái:
+- **Độ khó ($D \in [1, 10]$):** Phức tạp vốn có của từ vựng đối với não bộ.
+- **Độ bền ($S > 0$ ngày):** Thời gian để xác suất nhớ giảm từ $100\%$ xuống $90\%$.
+- **Khả năng gợi nhớ ($R \in [0, 1]$):** Xác suất nhớ lại thành công tại thời điểm $t$.
+
+Đường cong lãng quên (Power-Law Forgetting Curve):
 
 $$R(t, S) = \left(1 + F \cdot \frac{t}{S}\right)^{-w_0}$$
 
-Trong đó:
-- Hệ số phân rã $F = \frac{19}{81} \approx 0.2345679$.
-- $w_0$ là tham số mũ suy giảm trí nhớ (mặc định $\approx 0.1443$).
-- Khi thời gian trôi qua đúng bằng độ bền ($t = S$), ta luôn có:
-
-$$R(S, S) = \left(1 + \frac{19}{81}\right)^{-0.1443} = 0.90 \quad (90\%)$$
+Với $F = \frac{19}{81} \approx 0.2346$, $w_0 \approx 0.1443$. Khi $t = S$ thì $R = 90\%$ — đây là thời điểm tối ưu để ôn tập.
 
 ---
 
-<a id="dual-track"></a>
-### 3.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)
-Không giống như các thuật toán đời cũ chỉ theo dõi một con số Interval duy nhất, FSRS-7 chia tách độ bền trí nhớ thành hai quỹ đạo song song:
+### 3.2. Kiến Trúc Trí Nhớ Kép
 
 ```mermaid
 graph TD
     A[Lượt Ôn Tập] --> B{Khoảng cách thời gian t}
-    B -- "t < 1 ngày (Trong cùng ngày)" --> C[Quỹ đạo Ngắn hạn: S_short]
-    B -- "t >= 1 ngày (Qua ngày mới)" --> D[Quỹ đạo Dài hạn: S_long]
-    C --> E[Cập nhật vi mô: Phục vụ phiên học cấp tốc]
-    D --> F[Cập nhật vĩ mô: Giãn cách tuần/tháng/năm]
-    E --> G[Tổng Hợp Stability Hiệu Dụng S]
-    F --> G
+    B -- "t < 1 ngày" --> C["S_short — Trí nhớ làm việc"]
+    B -- "t ≥ 1 ngày" --> D["S_long — Trí nhớ dài hạn"]
+    C --> G[Stability Hiệu Dụng S]
+    D --> G
 ```
 
-1. **$S_{\text{short}}$ (Short-term Stability):**
-   * Theo dõi trí nhớ làm việc (Working Memory) trong các khoảng cách ngắn (vài phút đến dưới 1 ngày).
-   * Đảm bảo các từ vựng mới học không bị giãn cách quá xa ngay trong phiên học đầu tiên.
-2. **$S_{\text{long}}$ (Long-term Stability):**
-   * Đo lường vết nhớ dài hạn (Long-term Potentiation) qua các ngày, tuần, tháng.
-   * Được tính toán dựa trên độ khó $D$, độ bền hiện tại $S$, khả năng hồi tưởng $R$ và đánh giá của người học qua công thức tăng trưởng phi tuyến:
+- **$S_{\text{short}}$:** Theo dõi working memory trong phiên học cấp tốc (cramming).
+- **$S_{\text{long}}$:** Tăng trưởng theo công thức phi tuyến phụ thuộc $D$, $S$, $R$ và đánh giá người học:
 
-$$S_{\text{new}} = S \cdot \left(e^{w_8} \cdot (11 - D) \cdot S^{-w_9} \cdot \left(e^{w_{10} \cdot (1 - R)} - 1\right) \cdot \text{Multiplier}(\text{Grade}) + 1\right)$$
+$$S_{\text{new}} = S \cdot \left(e^{w_8} \cdot (11 - D) \cdot S^{-w_9} \cdot \left(e^{w_{10}(1-R)} - 1\right) \cdot \text{Multiplier}(\text{Grade}) + 1\right)$$
 
 ---
 
-<a id="mean-reversion"></a>
-### 3.3. Động Học Độ Khó & Hội Tụ Trung Bình (Mean Reversion)
-Độ khó $D$ không cố định mà biến thiên linh hoạt theo từng phản hồi của người học (Again = 1, Hard = 2, Good = 3, Easy = 4):
+### 3.3. Động Học Độ Khó & Mean Reversion
 
 $$\Delta D = -w_6 \cdot (\text{Grade} - 3)$$
 
-Sau đó, độ khó được kéo về giá trị cân bằng sinh học $D_0$ (Mean Reversion) để chống hiện tượng thẻ bài bị kẹt vĩnh viễn ở trạng thái siêu khó:
+$$D_{\text{next}} = w_5 \cdot D_0 + (1 - w_5) \cdot \text{clamp}(D + \Delta D,\ 1,\ 10)$$
 
-$$D_{\text{next}} = w_5 \cdot D_0 + (1 - w_5) \cdot \text{clamp}(D + \Delta D, 1, 10)$$
-
----
-
-<a id="dot-pha"></a>
-### 3.4. Ba Đột Phá Độc Quyền Của Celestial Vocab
-
-| Tính Năng | Cơ Chế Toán Học | Lợi Ích Thực Tiễn |
-| :--- | :--- | :--- |
-| **1. Linguistic Bias Parity** | $D_{\text{start}} = w_4 + \text{getDifficultyBias}(\text{word})$ | Khắc phục hoàn toàn hiện tượng Cold-Start. Các từ đa âm tiết, dài hoặc mang cấu trúc phức tạp tự động nhận độ khó xuất phát $D_0$ cao hơn, ngăn ngừa tình trạng quá tải. |
-| **2. Typing Modality Bonus** | $S_{\text{long}} \leftarrow S_{\text{long}} \times 1.25$ khi gõ đúng | Phản ánh chính xác tâm lý học nhận thức: Gõ đúng chính tả (Active Motor Recall) kích hoạt liên kết nơ-ron sâu hơn $25\%$ so với chỉ lật xem flashcard thông thường. |
-| **3. Chốt Chặn An Toàn Đầu Tiên** | $\text{Interval}_{\text{init}} \le 21\text{ ngày}$ | Triệt tiêu hoàn toàn rủi ro người học vô tình bấm nhầm nút **"Easy"** trên thẻ mới tinh làm từ vựng trôi mất 4 tháng mà không được củng cố. |
+Mean Reversion về $D_0$ ngăn thẻ bị kẹt vĩnh viễn ở trạng thái siêu khó.
 
 ---
 
-## 4. Động Cơ Đồng Bộ Đa Thiết Bị Hai Chiều (4-Vector Sync Engine)
+### 3.4. Ba Đột Phá Độc Quyền
 
-Để phục vụ người học luân chuyển linh hoạt giữa máy tính bàn, laptop và điện thoại thông minh, ứng dụng triển khai kiến trúc đồng bộ dữ liệu phi đối xứng giải quyết triệt để xung đột:
+| Tính Năng | Cơ Chế | Lợi Ích |
+|:---|:---|:---|
+| **Linguistic Bias Parity** | $D_{\text{start}} = w_4 + \text{getDifficultyBias}(\text{word})$ | Giải quyết Cold-Start: từ đa âm tiết tự động nhận $D_0$ cao hơn |
+| **Typing Modality Bonus** | $S_{\text{long}} \leftarrow S_{\text{long}} \times 1.25$ khi gõ đúng | Phản ánh Motor Recall sâu hơn 25% so với lật thẻ thụ động |
+| **Chốt Chặn Graduation Floor** | $\text{Interval}_{\text{init}} \geq 1\ \text{ngày};\ \text{Interval}_{\text{init}} \leq 21\ \text{ngày}$ | Tránh từ bị cắt khỏi queue; tránh nhấn Easy làm thẻ biến mất 4 tháng |
+
+---
+
+## 4. Động Cơ Đồng Bộ 4-Vector Outbox
 
 ```mermaid
 graph LR
-    subgraph "Local Device (IndexedDB)"
-        L_SRS[Vector SRS: stability, reps, lastReviewDate]
-        L_Content[Vector Content: vietnamese, example]
-        L_Tombstone[Vector Tombstone: isDeleted]
-        L_Tags[Vector Tags: topics, categories]
+    subgraph "Local — IndexedDB v2"
+        OutboxStore["Outbox Store\n(durable pending ops)"]
+        CardStore["Cards Store\n(4 vectors)"]
     end
 
-    subgraph "Smart Sync Merger Engine"
-        Merge[Bộ Hòa Giải 4-Vector Phân Lập]
-        ClockBuffer[Cửa Sổ An Toàn Clock Skew 3 Phút]
-        EchoSuppress[Bộ Chặn Loopback Device Fingerprint]
-        ConvQueue[Hàng Đợi Hội Tụ Đẩy Ngược Cloud]
+    subgraph "Sync Engine"
+        Merger["4-Vector Merger\ncontent / srs / star / tombstone"]
+        ClockBuf["Clock-Skew Buffer\n±3 phút"]
+        EchoSup["Loopback Suppression\ndeviceId fingerprint"]
     end
 
-    subgraph "Cloud Firestore"
-        R_Card[Bản Ghi Thẻ Từ Vựng Phân Tán]
+    subgraph "Cloud — Firestore"
+        RemoteCard["Bản ghi thẻ phân tán"]
     end
 
-    L_SRS & L_Content & L_Tombstone & L_Tags --> Merge
-    R_Card --> Merge
-    Merge --> ClockBuffer --> EchoSuppress --> ConvQueue --> R_Card
+    CardStore --> Merger
+    RemoteCard --> Merger
+    Merger --> ClockBuf --> EchoSup --> OutboxStore --> RemoteCard
 ```
 
-### Các trụ cột kỹ thuật của Động cơ Sync:
-1. **Phân lập 4 Vector độc lập (Disentangled Vector Merge):** Nếu người dùng sửa nghĩa từ vựng trên PC nhưng ôn tập thẻ trên Mobile, hệ thống bảo tồn nguyên vẹn cả nghĩa mới trên PC lẫn tiến độ FSRS-7 mới nhất từ Mobile thay vì ghi đè thô bạo kiểu Last-Write-Wins.
-2. **Cửa sổ an toàn 3 phút chống lệch đồng hồ (Clock Skew Window):** Bù trừ chênh lệch múi giờ và độ trôi đồng hồ phần cứng giữa các thiết bị ngoại tuyến.
-3. **Chặn phản xạ vòng lặp (Loopback Echo Suppression):** Mỗi thiết bị gắn một `deviceId` định danh; khi Cloud snapshot trả về sự kiện do chính thiết bị đó phát ra, luồng xử lý tự động bỏ qua để tiết kiệm băng thông và tài nguyên CPU.
-4. **Hội tụ dữ liệu chủ động (Convergence Push Queue):** Bất kỳ thẻ nào sau khi merge tại máy trạm có dữ liệu phong phú hơn phiên bản Cloud sẽ được đẩy ngược lên Firestore để các thiết bị còn lại tự động đồng quy về trạng thái chuẩn nhất.
+**Các trụ cột kỹ thuật:**
+1. **Phân lập 4 Vector:** PC sửa nghĩa + Mobile ôn tập cùng lúc → cả hai đều được bảo toàn.
+2. **Outbox bền vững (Durable Outbox):** Ghi nhận giao dịch chờ trong IndexedDB; retry tự động khi mạng phục hồi; pending ID không bao giờ bị xóa nhầm bởi response cũ.
+3. **Multi-tab safe:** Mỗi write dùng IndexedDB transaction; 2 tab cùng mở không thể ghi đè nhau.
+4. **Chống Clock Skew & Echo:** Cửa sổ 3 phút bù trừ đồng hồ lệch; `deviceId` fingerprint chặn loopback event của chính mình.
 
 ---
 
-## 5. Bộ Tối Ưu Hóa Tham Số Ngoại Tuyến (Offline Optimizer)
+## 5. Bộ Tối Ưu Hóa Ngoại Tuyến
 
-Nằm trong thư mục [tools/train_fsrs7.js](file:///c:/Users/ASUS/Desktop/CODING/test%20v3/ultimate-celestial-vocab%20-%20vipper%201/tools/train_fsrs7.js), công cụ huấn luyện cá nhân hóa hoạt động hoàn toàn độc lập với các ưu điểm vượt trội:
-- **Zero-Dependency:** Chỉ sử dụng module gốc của Node.js (`fs`, `path`, `os`, `child_process`).
-- **Tương thích toàn diện:** Tích hợp sẵn `train_fsrs7.bat` hỗ trợ kéo-thả (Drag & Drop) và tự động nhận diện file log trong thư mục `Downloads`.
-- **Tự động sao chép Clipboard:** Đưa ngay 34 tham số đã tối ưu vào bộ nhớ đệm máy tính để người dùng dán vào Web (`Ctrl + V`).
+Nằm trong [`tools/train_fsrs7.js`](tools/train_fsrs7.js) — chạy hoàn toàn trên máy, không cần API:
 
-<a id="thuat-toan-es"></a>
-### 5.1. Chiến Lược Tiến Hóa (1+λ)-ES
-Để tối ưu hóa không gian 34 chiều phi lồi (non-convex), bộ optimizer áp dụng thuật toán **Evolutionary Strategy** kết hợp phân phối đột biến Cauchy:
-- **Cá thể cha (Parent Vector):** Khởi tạo từ bộ tham số chuẩn mặc định $W_{\text{base}} \in \mathbb{R}^{34}$.
-- **Quần thể con (Offspring $\lambda = 30$):** Mỗi thế hệ sinh ra 30 đột biến bằng phân phối đuôi dài Cauchy:
+- **Zero-Dependency:** Chỉ dùng Node.js built-in (`fs`, `path`, `os`).
+- **On-device button:** Nút "Tối ưu trên máy" ngay trong modal Dữ Liệu — không cần mở terminal.
+- **Holdout validation:** 80% train / 20% test theo thứ tự thời gian → chỉ áp dụng nếu test loss giảm đủ ngưỡng.
+
+### Chiến Lược Tiến Hóa (1+λ)-ES
 
 $$W_{\text{child}}^{(i)} = W_{\text{parent}} + \sigma \cdot \boldsymbol{\eta}_i, \quad \boldsymbol{\eta}_i \sim \text{Cauchy}(0, \mathbf{I})$$
 
-- **Hàm mục tiêu (Loss Function):** Cực tiểu hóa sai số Binary Cross-Entropy (BCE) giữa xác suất dự đoán $P_i$ và kết quả nhớ thực tế $Y_i \in \{0, 1\}$, có kèm điều chuẩn $L_2$ để chống học vẹt:
-
-$$\mathcal{L}(W) = -\frac{1}{N} \sum_{i=1}^N \left[ Y_i \ln(P_i) + (1 - Y_i) \ln(1 - P_i) \right] + \lambda_{\text{reg}} \sum_{j=1}^{34} (W_j - W_{\text{base}, j})^2$$
+$$\mathcal{L}(W) = -\frac{1}{N}\sum_{i=1}^N \left[Y_i\ln P_i + (1-Y_i)\ln(1-P_i)\right] + \lambda_{\text{reg}}\sum_{j=1}^{34}(W_j - W_{\text{base},j})^2$$
 
 ---
 
-<a id="timeseriessplit"></a>
-### 5.2. Kiểm Định Ngoại Suất Tương Lai (TimeSeriesSplit)
-Để đảm bảo bộ tham số tìm được không bị Overfitting (học thuộc lòng dữ liệu quá khứ), bộ optimizer triển khai phương pháp phân tách chuỗi thời gian:
-1. Sắp xếp toàn bộ dữ liệu lịch sử theo thứ tự thời gian tăng dần từ quá khứ đến hiện tại.
-2. Dùng **$80\%$ dữ liệu đầu tiên** (quá khứ) làm tập huấn luyện.
-3. Giữ lại **$20\%$ dữ liệu gần nhất** (tương lai) làm tập kiểm thử ngoại suất (Out-of-Sample Test).
-4. Nếu sai số BCE trên tập tương lai giảm đi so với mô hình mặc định, mô hình đạt chứng chỉ tổng quát hóa an toàn.
-
----
-
-<a id="benchmark"></a>
 ## 6. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)
 
-Dữ liệu được kiểm định trực tiếp trên tập log học tập thực tế của người dùng:
-- **Tổng số lượt ôn tập:** $4.046$ lượt.
-- **Số lượng thẻ ôn lặp lại $\ge 2$ lần:** $668$ thẻ.
-- **Khoảng thời gian ghi nhận:** 73.5 ngày liên tục.
+Kiểm định trực tiếp trên log học thực tế ($4{,}046$ lượt, $668$ thẻ, $73.5$ ngày):
 
 ```
 ================================================================================
-                           KẾT QUẢ TỐI ƯU HOÁ FSRS-7                            
+                       KẾT QUẢ TỐI ƯU HOÁ FSRS-7
 ================================================================================
-📉 Sai số gốc (Baseline Loss):        0.30443
-🏆 Sai số tối ưu (Optimized Loss):    0.29050
-📈 Cải thiện tổng thể (In-Sample):    +4.58%
+📉 Baseline Loss:          0.30443
+🏆 Optimized Loss:         0.29050
+📈 In-Sample Improvement:  +4.58%
 
---- KIỂM ĐỊNH NGOẠI SUẤT TƯƠNG LAI (TimeSeriesSplit: 80% Train / 20% Test) ---
-⏱️ Mốc thời gian chia tách:           701 lượt ôn tương lai
-📊 Sai số kiểm thử gốc (Baseline):    0.34333
-🎯 Sai số kiểm thử tối ưu (User):     0.33450
-🚀 Cải thiện Out-of-Sample:           +2.57% (Mô hình tổng quát hóa tốt, không học vẹt)
+--- Holdout (80% Train / 20% Future Test) ---
+📊 Baseline Test Loss:     0.34333
+🎯 Optimized Test Loss:    0.33450
+🚀 Out-of-Sample:          +2.57% (không học vẹt)
 ```
 
-### Bảng Hiệu Chuẩn Xác Suất Trí Nhớ (Calibration Table)
-Bảng hiệu chuẩn đo đạc mức độ trùng khớp giữa xác suất mô hình dự đoán ($P$) và tỷ lệ thực tế người học bấm nhớ được ($Y=1$):
+### Bảng Hiệu Chuẩn Xác Suất Trí Nhớ
 
-| Phân Nhóm Xác Suất | Số Lượt Ôn Tập | $P$ Dự Đoán | Thực Tế Nhớ | Độ Lệch ($\Delta$) | Đánh Giá |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| **Dưới 70%** | 76 | 58.4% | 59.3% | **-0.9%** | Tuyệt hảo |
-| **70% - 80%** | 158 | 75.5% | 75.9% | **-0.4%** | Cực kỳ sát thực tế |
-| **80% - 85%** | 237 | 82.4% | 87.3% | **-4.8%** | Tốt |
-| **85% - 90%** | 610 | 87.7% | 87.2% | **+0.5%** | Khớp gần như tuyệt đối |
-| **90% - 95%** | 1.157 | 92.9% | 93.2% | **-0.4%** | Khớp hoàn hảo |
-| **95% - 100%** | 1.146 | 97.3% | 96.4% | **+0.9%** | Khớp hoàn hảo |
+| Phân Nhóm | Số Lượt | $P$ Dự Đoán | Thực Tế Nhớ | Sai Lệch |
+|:---|:---:|:---:|:---:|:---:|
+| < 70% | 76 | 58.4% | 59.3% | -0.9% ✅ |
+| 70–80% | 158 | 75.5% | 75.9% | -0.4% ✅ |
+| 80–85% | 237 | 82.4% | 87.3% | -4.8% 🟡 |
+| 85–90% | 610 | 87.7% | 87.2% | +0.5% ✅ |
+| 90–95% | 1,157 | 92.9% | 93.2% | -0.4% ✅ |
+| 95–100% | 1,146 | 97.3% | 96.4% | +0.9% ✅ |
 
-> **Chỉ số sai số toàn dải:** $\text{RMSE}_{\text{bins}} = \mathbf{2.07\%}$.  
-> Con số này chứng minh thuật toán FSRS-7 đã mô phỏng chính xác đường cong lãng quên sinh học của người học với sai số trung bình chỉ khoảng $2\%$.
+> **RMSE hiệu chuẩn toàn dải: 2.07%** — mô phỏng đường cong quên sinh học với sai số trung bình chỉ 2%.
 
 ---
 
 ## 7. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click
 
-Chỉ với 3 bước đơn giản, bạn có thể biến mô hình FSRS-7 thành trợ lý học tập độc bản cho riêng mình:
-
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Bạn (Người Học)
-    participant Web as Web App (Celestial Vocab)
-    participant Trainer as train_fsrs7.bat (Máy tính)
-    participant Cloud as Firebase Firestore
+    actor User as Người Học
+    participant Web as Celestial Vocab
+    participant Opt as Optimizer (on-device)
+    participant Cloud as Firebase
 
-    User->>Web: Bấm "Xuất Review Logs FSRS-7 (.json)"
-    Web-->>User: Tải về celestial_review_logs_YYYY-MM-DD.json
-    User->>Trainer: Nhấp đúp mở train_fsrs7.bat
-    Note over Trainer: Tự quét Downloads, chạy 100 thế hệ ES,<br/>đánh giá TimeSeriesSplit & copy Clipboard
-    Trainer-->>User: Đã sao chép 34 số vào Clipboard!
-    User->>Web: Mở "Cấu hình 34 tham số FSRS-7" -> Bấm Ctrl+V -> Lưu
-    Web->>Cloud: Tự động đồng bộ sang Điện thoại & Tablet
+    User->>Web: Bấm "Xuất Review Logs (.json)"
+    Web-->>User: celestial_review_logs_YYYY-MM-DD.json
+    User->>Web: Mở Trung Tâm → Tab Dữ Liệu → "Tối ưu trên máy"
+    Web->>Opt: Chạy (1+λ)-ES 100 thế hệ + holdout validation
+    Opt-->>Web: 34 tham số mới (chỉ áp dụng nếu test loss giảm)
+    Web->>Cloud: Đồng bộ cấu hình sang tất cả thiết bị
 ```
 
-1. **Bước 1 — Xuất dữ liệu:** Vào mục **Quản lý từ vựng** $\to$ Tab **"Dữ Liệu & Sao Lưu"** $\to$ Bấm **"Xuất Review Logs FSRS-7 (.json)"**.
-2. **Bước 2 — Chạy tối ưu hóa:** Nhấp đúp vào file `train_fsrs7.bat` trên máy tính. Script sẽ tự động quét tệp log mới nhất, chạy 100 thế hệ tối ưu và tự động sao chép 34 số vào bộ nhớ đệm Clipboard.
-3. **Bước 3 — Nạp vào ứng dụng:** Bấm nút **"Cấu Hình 34 Tham Số FSRS-7"** $\to$ Nhấn `Ctrl + V` $\to$ Bấm **"Lưu & Áp Dụng"**.
-
-<div align="center">
-
-<img src="docs/screenshots/fsrs7_config_modal.webp" width="600" alt="Modal Cấu hình FSRS-7"/>
-
-*Hộp thoại cấu hình 34 tham số FSRS-7 tích hợp bộ xác thực thời gian thực và nút khôi phục về cấu hình chuẩn.*
-
-</div>
+1. **Xuất log:** Trung Tâm Điều Khiển → Tab **Dữ Liệu** → **"Xuất Review Logs FSRS-7 (.json)"**.
+2. **Tối ưu:** Bấm **"Tối ưu trên máy"** (hoặc kéo file vào `train_fsrs7.bat` trên Windows).
+3. **Nạp:** Kết quả tự điền vào ô tham số → **"Lưu & Áp Dụng"** → đồng bộ tự động.
 
 ---
 
 ## 8. Kiến Trúc Hệ Thống & Cấu Trúc Mã Nguồn
 
+**Tech Stack:** Vanilla JS ES Modules · Vite 5 · Pure CSS · IndexedDB (idb) · Firebase Firestore · Anime.js · HTML5 Canvas · Web Audio API · Phosphor Icons · Lexend Font · PWA/Workbox
+
 ```
 ultimate-celestial-vocab/
-├── .env.example                # Khung mẫu cấu hình biến môi trường Firebase
-├── index.html                  # Giao diện chính SPA & Các Modal Điều Khiển
-├── package.json                # Cấu hình dự án Vite + PWA Plugin
-├── run_trainer.bat             # Shortcut khởi chạy bộ huấn luyện FSRS-7
-├── train_fsrs7.bat             # Trình chạy tối ưu hóa tự động trên Windows
-├── docs/
-│   └── screenshots/            # Kho lưu trữ ảnh chụp màn hình nén WebP siêu nhẹ
+├── index.html                      # SPA shell + tất cả modal
+├── package.json                    # Vite + PWA plugin
+├── vite.config.js
+├── src/
+│   ├── main.js                     # Entry point, khởi tạo app
+│   ├── events.js                   # Toàn bộ event listeners
+│   ├── core/
+│   │   ├── state.js                # State management tập trung
+│   │   ├── idb.js                  # IndexedDB v2 (outbox + cards + stats)
+│   │   ├── firebase.js             # Firestore connection + Smart Sync
+│   │   ├── sync.js                 # 4-Vector Merger Engine
+│   │   ├── sync-status.js          # Trạng thái kết nối UI
+│   │   ├── queue.js                # Review queue scheduler
+│   │   ├── sound.js                # Web Audio API + TTS
+│   │   ├── dedup.js                # Radar Semantic Dedup
+│   │   ├── daily-stats.js          # Thống kê ngày / midnight rollover
+│   │   ├── card-merge.js           # Merge logic 4-vector
+│   │   ├── progress-merge.js       # XP / gamification merge
+│   │   ├── review-log-merge.js     # Review history merge + Undo
+│   │   ├── settings-merge.js       # FSRS params merge
+│   │   ├── import-plan.js          # TSV import planner
+│   │   ├── tabular.js              # TSV parser (quotes, BOM, reorder)
+│   │   ├── animations.js           # Modal & UI animations
+│   │   └── srs/
+│   │       ├── index.js            # FSRS-7 main scheduler
+│   │       ├── constants.js        # 34 params + validators
+│   │       ├── training.js         # On-device optimizer
+│   │       └── worker-manager.js   # Web Worker bridge
+│   ├── features/
+│   │   ├── gamification.js         # XP, level, streak
+│   │   ├── badges.js               # Achievement system
+│   │   ├── quiz.js                 # Quiz mode (XSS-safe)
+│   │   ├── typing.js               # Active Typing Recall
+│   │   ├── io.js                   # Import/Export
+│   │   └── streakRecovery.js       # Streak freeze mechanic
+│   ├── ui/
+│   │   ├── render.js               # Thẻ từ, danh sách, biểu đồ, HUD
+│   │   ├── modal.js                # Hub tabs, modal lifecycle
+│   │   ├── elements.js             # DOM refs cache
+│   │   ├── celestial-canvas.js     # Particle canvas (idle-aware)
+│   │   └── waveform.js             # Audio waveform animation
+│   └── css/
+│       ├── style.css               # Design system chính
+│       ├── transition.css          # Page transitions
+│       └── study-polish.css        # Zen flashcard refinements
+├── tests/                          # 52 unit/integration tests (Node.js built-in)
+│   ├── import-and-srs.test.mjs
+│   ├── progress.test.mjs
+│   ├── reliability.test.mjs
+│   └── storage.test.mjs
 ├── tools/
-│   └── train_fsrs7.js          # Lõi tối ưu hóa (1+λ)-ES, TimeSeriesSplit, Calibration
-├── scratch/                    # Bộ kịch bản kiểm thử thuật toán & hòa giải Sync
-│   ├── test_fsrs7_scenarios.js # 179 kịch bản ma trận kiểm thử FSRS-7
-│   ├── test_fsrs7_validation.js# Bộ kiểm thử xác thực cấu hình 34 số
-│   └── test_sync_merger.mjs    # Bộ kiểm thử đối kháng hòa giải đồng bộ đa thiết bị
-└── src/
-    ├── core/                   # Tầng nghiệp vụ lõi & thuật toán
-    │   ├── animations.js       # Quản lý hoạt ảnh giao diện & modal
-    │   ├── firebase.js         # Kết nối Firestore, Storage & Smart Sync
-    │   ├── idb.js              # Tầng lưu trữ IndexedDB cục bộ (Offline-First)
-    │   ├── queue.js            # Quản lý hàng đợi ôn tập thông minh
-    │   ├── sound.js            # Engine phát âm thanh Web Audio API & TTS
-    │   ├── state.js            # Quản lý trạng thái ứng dụng tập trung
-    │   ├── sync.js             # Thuật toán hòa giải 4-Vector đồng bộ phân tán
-    │   └── srs/                # Hệ sinh thái thuật toán FSRS-7
-    │       ├── constants.js    # 34 tham số chuẩn, giới hạn biên & validator
-    │       ├── difficulty.js   # Động học biến thiên độ khó D
-    │       ├── forgetting.js   # Mô hình đường cong lãng quên R(t, S)
-    │       ├── heuristics.js   # Bộ phân tích độ khó ngôn ngữ học v2
-    │       ├── index.js        # Điều phối chính & chốt chặn 21 ngày
-    │       └── stability.js    # Động học độ bền trí nhớ S (ngắn hạn & dài hạn)
-    ├── features/               # Các module tính năng mở rộng
-    │   ├── badges.js           # Hệ thống huy hiệu & danh hiệu học giả
-    │   ├── gamification.js     # Điểm kinh nghiệm XP, cấp độ, chuỗi ngày streak
-    │   ├── io.js               # Nhập/xuất dữ liệu JSON/TSV, cấu hình tham số
-    │   ├── quiz.js             # Chế độ kiểm tra trắc nghiệm & tự luận
-    │   └── typing.js           # Trình bắt phím gõ chính tả (Active Typing Modality)
-    └── ui/                     # Giao diện người dùng
-        ├── celestial-canvas.js # Hiệu ứng hạt nền không gian vũ trụ
-        ├── elements.js         # Bộ đệm tham chiếu DOM elements
-        ├── modal.js            # Điều khiển đóng/mở popup, hộp thoại cài đặt
-        ├── render.js           # Render thẻ từ, danh sách từ vựng, biểu đồ & HUD
-        └── waveform.js         # Hoạt ảnh sóng âm thanh khi phát âm
+│   └── train_fsrs7.js              # (1+λ)-ES optimizer + TimeSeriesSplit
+├── reports/
+│   ├── strict-audit-2026-10-20/    # Audit report (GPT-6.1 independent review)
+│   └── upgrade-2026-10-21/         # Upgrade report + test results
+└── public/
+    ├── version.json                # Build version (DATWY.V2.yymmdd.hh)
+    └── manifest.webmanifest        # PWA manifest
 ```
 
 ---
 
 ## 9. Hướng Dẫn Cài Đặt & Phát Triển Cục Bộ
 
-### Yêu cầu hệ thống
-- **Node.js:** Phiên bản `18.0.0` trở lên (Đã kiểm thử trên Node.js `v26.1.0`).
-- **Trình duyệt:** Google Chrome, Edge, Firefox hoặc Safari phiên bản mới nhất hỗ trợ Web Audio API và IndexedDB.
+### Yêu cầu
+- **Node.js** ≥ 18.0 (tested on v26.1.0)
+- **Trình duyệt:** Chrome / Edge / Firefox / Safari mới nhất
 
-### Các bước cài đặt
+### Bước cài đặt
 
-1. **Clone repository:**
-   ```bash
-   git clone https://github.com/DATWY/ultimate-celestial-vocab.git
-   cd ultimate-celestial-vocab
-   ```
+```bash
+# 1. Clone
+git clone https://github.com/DATWY/ultimate-celestial-vocab.git
+cd ultimate-celestial-vocab
 
-2. **Cài đặt dependencies:**
-   ```bash
-   npm install
-   ```
+# 2. Cài dependencies
+npm install
 
-3. **Cấu hình môi trường:**
-   ```bash
-   cp .env.example .env
-   ```
-   Điền thông số Firebase project của bạn vào file `.env`.
+# 3. Cấu hình Firebase
+cp .env.example .env
+# → Điền thông số Firebase project vào .env
 
-4. **Khởi chạy Development Server:**
-   ```bash
-   npm run dev
-   ```
-   Truy cập vào địa chỉ `http://localhost:5173`.
+# 4. Dev server
+npm run dev
+# → http://localhost:5173
 
-5. **Chạy kiểm thử thuật toán FSRS-7 & Bộ Đồng Bộ:**
-   ```bash
-   # Chạy 179 kịch bản ma trận kiểm thử FSRS-7
-   node scratch/test_fsrs7_scenarios.js
+# 5. Chạy 52 tests
+npm test
 
-   # Chạy kiểm thử đối kháng bộ hòa giải đồng bộ đa thiết bị
-   node scratch/test_sync_merger.mjs
-   ```
+# 6. Build production
+npm run build
 
-6. **Đóng gói & Xuất bản Production:**
-   ```bash
-   npm run build
-   firebase deploy --only hosting -m "Production release"
-   ```
+# 7. Deploy Firebase
+firebase deploy --only hosting
+```
+
+### Chạy kiểm thử thuật toán riêng lẻ
+
+```bash
+# 179 kịch bản FSRS-7
+node scratch/test_fsrs7_scenarios.js
+
+# 5 kịch bản chống lặp từ
+node scratch/test_anti_loop_unit.js
+```
 
 ---
 
-## 10. Giấy Phép & Tác Giả
+## 10. Changelog
 
-Dự án được nghiên cứu, phát triển và duy trì bởi **[DATWY](https://github.com/DATWY)**.  
-Phát hành theo giấy phép **MIT License**. Bạn hoàn toàn có quyền sử dụng, sửa đổi và phân phối lại cho mục đích nghiên cứu hoặc thương mại.
+### DATWY.V2.261021 (2026-10-21) — Data Integrity + UI Cleanup
+
+**Core — Data Layer (audit độc lập GPT-6.1, 52/52 tests PASS):**
+- ✅ IndexedDB v2 Outbox Store — durable offline writes, retry an toàn
+- ✅ 4-Vector Firestore sync (content / srs / star / tombstone) với transaction
+- ✅ Multi-tab safe — 2 tab mở cùng lúc không ghi đè nhau
+- ✅ Midnight rollover fix — đổi ngày không bị reset sai
+- ✅ Clock-skew resistant revisions — đồng hồ thiết bị lệch không làm hỏng thứ tự
+- ✅ XSS-safe quiz feedback — escape tất cả HTML output
+- ✅ TSV importer nâng cấp — quoted fields, BOM, reordered headers, enrichment
+- ✅ On-device FSRS-7 optimizer — holdout validation, chỉ áp dụng khi test loss giảm
+- ✅ Quiz idempotent finalization — không chấm điểm 2 lần, không race condition
+
+**UI/UX:**
+- ✅ Xóa study-session-bar "KHÔNG GIAN HỌC" — giao diện Zen thuần túy
+- ✅ Heatmap 12×7 chuẩn lịch + weekday/month labels + legend ░▒▓█
+- ✅ Topic names: `_` → space trong UI (dữ liệu gốc giữ nguyên)
+- ✅ Rating buttons: cải thiện tương phản màu ở Light Mode
+- ✅ Search box focus ring: clean glow ôm khít, không double border
+- ✅ Autocomplete pollution fix — tắt browser history dropdown ô tìm kiếm
+- ✅ Canvas idle-aware: tạm dừng RAF khi idle 3s / modal mở / tab ẩn nền
+- ✅ Celestial Hub: mặc định mở tab Tổng Quan, loại bỏ tab "Who I Am"
+
+### v4.3.0 và trước đó
+- Giao diện Celestial Glassmorphism ban đầu
+- FSRS-7 Dual-Track Stability
+- Hệ thống Gamification (XP, Level, Streak, Badges)
+- Quiz Mode, Active Typing Recall
+- Radar Semantic Dedup
+
+---
+
+## 11. Giấy Phép & Tác Giả
+
+Dự án được nghiên cứu và phát triển bởi **[DATWY](https://github.com/DATWY)**.  
+Phát hành theo giấy phép **MIT License**.
 
 <div align="center">
 
-⭐ **Nếu bạn thấy dự án hữu ích cho hành trình học ngoại ngữ của mình, hãy tặng một ngôi sao (Star) trên GitHub nhé!** ⭐
+⭐ **Nếu dự án hữu ích, hãy tặng một Star trên GitHub!** ⭐
+
+[🌐 Live App](https://[hidden]) &nbsp;•&nbsp; [🐛 Issues](https://github.com/DATWY/ultimate-celestial-vocab/issues) &nbsp;•&nbsp; [📦 Releases](https://github.com/DATWY/ultimate-celestial-vocab/releases)
 
 </div>
