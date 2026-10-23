@@ -409,7 +409,7 @@ export async function preloadAudio(text) {
 
 // ─── BACKGROUND AUDIO PRELOADER ───────────────────────────────────────────
 let isPreloadingAll = false;
-const INITIAL_CONCURRENCY = 4; // Tải song song 4 luồng đồng thời
+const INITIAL_CONCURRENCY = 1000; // Tải song song 1000 luồng đồng thời theo yêu cầu người dùng
 const BASE_SLOT_DELAY_MS = 100; // 0.1s (100ms) nghỉ giữa các slot tải audio
 const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 2000;
