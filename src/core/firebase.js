@@ -96,8 +96,19 @@ export async function writeMergedCards(cards) {
 }
 
 let _lastLocalWriteTimestamp = 0;
+let _quotaExhaustedUntil = 0;
 
 export async function smartSync({ forceFullPull = false, isManual = false } = {}) {
+    // --- CIRCUIT BREAKER QUOTA PROTECTION ---
+    if (Date.now() < _quotaExhaustedUntil) {
+        const remainingMinutes = Math.ceil((_quotaExhaustedUntil - Date.now()) / 60000);
+        console.warn(`⏳ [Circuit Breaker] Quota Firebase tạm dừng. Chế độ offline còn ${remainingMinutes} phút.`);
+        if (isManual) {
+            showToast("Hạn mức Cloud tạm dừng", "Hạn mức Firebase hôm nay đã đạt giới hạn. Ứng dụng đang hoạt động 100% offline an toàn trên máy bạn!", "ph-warning-circle");
+        }
+        return;
+    }
+
     // --- MUTEX ---
     if (_isSyncing) {
         console.log("🔄 smartSync đã đang chạy. Đánh dấu pending...");
@@ -173,6 +184,7 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             
             // Normalize timestamps
             remote.updatedAt = remoteTime;
+            remote.syncedAt = remoteSyncedTime || Date.now();
             if (remote.srsDueDate) remote.srsDueDate = toMillis(remote.srsDueDate);
             if (remote.lastReviewDate) remote.lastReviewDate = toMillis(remote.lastReviewDate);
             
@@ -232,6 +244,9 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         // 2. Thêm các thẻ local mới tạo/import chưa từng sync lên Cloud bao giờ (!card.syncedAt)
         for (const card of vocabulary) {
             if (!card || !card.id) continue;
+            // Thẻ vừa pull từ Cloud trong lần sync này thì chắc chắn đã có trên Cloud!
+            if (pulledIds.has(card.id)) continue;
+
             // Chỉ push thẻ chưa từng được sync lên Cloud bao giờ
             // Thẻ đã sync rồi nếu có sửa thì đã nằm trong flushedIds (qua outbox)
             if (!card.syncedAt && !flushedIds.has(card.id)) {
@@ -242,6 +257,13 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         }
         
         const cardsToPush = Array.from(cardsToPushMap.values());
+
+        // QUOTA SHIELD: Nếu số thẻ cần push bất thường (> 50 thẻ) trong background sync,
+        // chặn lại để không bao giờ vô tình quét sạch quota 20k writes!
+        if (cardsToPush.length > 50 && !isManual) {
+            console.warn(`🛡️ [Quota Shield] Phát hiện ${cardsToPush.length} thẻ cần push trong background. Chặn push hàng loạt để bảo vệ Firebase Quota.`);
+            cardsToPush.length = 0;
+        }
 
         if (cardsToPush.length > 0) {
             console.log(`☁️ Push ${cardsToPush.length} thẻ (${convergedCardsToPush.length} thẻ hội tụ) lên Cloud...`);
@@ -364,22 +386,26 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         syncStreakFromHeatmap({ allowFreeze: true });
 
         setSyncUIState('success');
-        if (cardsToPush.length > 0 || gamificationChanged || statsChanged) {
-            sendSyncBeacon('all');
-        }
         if (isManual) {
             showToast("Đồng bộ thành công", "Dữ liệu đã được đồng bộ an toàn với Cloud.", "ph-cloud-check");
         }
     } catch (error) {
         console.error("Lỗi đồng bộ Firebase:", error);
+        if (error.code === 'resource-exhausted' || (error.message && error.message.includes('Quota exceeded'))) {
+            _quotaExhaustedUntil = Date.now() + 60 * 60 * 1000; // Ngắt 1 tiếng, chuyển sang 100% offline
+            setSyncUIState('offline');
+            console.warn("⛔ [Circuit Breaker] Đã kích hoạt ngắt kết nối 1 giờ do chạm trần Quota Firebase Spark.");
+        }
         if (isManual) {
             let msg = error.message || "Vui lòng kiểm tra kết nối mạng.";
             if (error.code === 'resource-exhausted' || (error.message && error.message.includes('Quota exceeded'))) {
-                msg = "Hạn mức Firebase miễn phí hôm nay đã đạt giới hạn (tự động hồi phục lúc 14:00). Bạn vẫn học bình thường 100% offline trên máy!";
+                msg = "Hạn mức Firebase hôm nay đã đạt giới hạn (tự động hồi phục lúc 14:00). Bạn vẫn học bình thường 100% offline an toàn trên máy!";
             }
             showToast("Lỗi đồng bộ", msg, "ph-warning-circle");
         }
-        setSyncUIState('error');
+        if (!_quotaExhaustedUntil) {
+            setSyncUIState('error');
+        }
     } finally {
         _isSyncing = false;
         
@@ -582,67 +608,16 @@ export function setupOnlineOfflineListeners() {
     }
 }
 
-// ===== REAL-TIME MULTI-DEVICE SIGNALING BEACON =====
-const BEACON_DOC = "sync_beacon";
-let _beaconDebounceTimer = null;
-
-export function sendSyncBeacon(type = 'all') {
-    if (isPreviewMode() || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('CHEAT_MODE') === 'true')) return;
-    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-
-    clearTimeout(_beaconDebounceTimer);
-    _beaconDebounceTimer = setTimeout(async () => {
-        try {
-            const beaconRef = doc(db, USER_SYNC_COLLECTION, BEACON_DOC);
-            await setDoc(beaconRef, {
-                dev: getDeviceId(),
-                ts: serverTimestamp(),
-                type,
-                v: 4
-            }, { merge: true });
-            console.log(`📡 [Sync Beacon] Đã phát tín hiệu realtime (${type}) từ ${getDeviceId().substring(0, 8)}`);
-        } catch (err) {
-            console.warn("⚠️ Không thể phát sync beacon:", err);
-        }
-    }, 1500);
+// ===== QUOTA-SAFE MULTI-DEVICE CONTROLS =====
+export function sendSyncBeacon() {
+    // No-op: Tuyệt đối không phát beacon realtime qua Firestore để bảo vệ 100% hạn mức Spark (20k writes/ngày)
 }
 
-let _beaconUnsubscribe = null;
-let _remoteBeaconSyncDebounce = null;
-
 export function setupRealtimeSyncListener() {
-    import('./tab-bus.js').then(({ onLeaderElected, broadcastRemoteSynced }) => {
-        onLeaderElected(() => {
-            if (_beaconUnsubscribe) return;
-            if (isPreviewMode() || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('CHEAT_MODE') === 'true')) return;
-
-            try {
-                const beaconRef = doc(db, USER_SYNC_COLLECTION, BEACON_DOC);
-                _beaconUnsubscribe = onSnapshot(beaconRef, (snapshot) => {
-                    if (!snapshot.exists()) return;
-                    const data = snapshot.data();
-                    if (!data) return;
-
-                    // 1. Anti-echo filter: bỏ qua hoàn toàn các ghi chép xuất phát từ chính máy này
-                    const myDevId = getDeviceId();
-                    if (data.dev === myDevId) return;
-
-                    console.log(`🔔 [Sync Beacon] Nhận tín hiệu đồng bộ từ thiết bị ${data.dev ? data.dev.substring(0, 8) : 'remote'}.`);
-
-                    // 2. Kích hoạt pull đồng bộ thông minh (debounced 1.2s)
-                    clearTimeout(_remoteBeaconSyncDebounce);
-                    _remoteBeaconSyncDebounce = setTimeout(async () => {
-                        console.log("⚡ [Realtime Beacon] Kích hoạt pull đồng bộ thông minh...");
-                        await smartSync({ isManual: false });
-                        broadcastRemoteSynced({ fromRemoteDevice: data.dev, timestamp: Date.now() });
-                    }, 1200);
-                }, (error) => {
-                    console.warn("⚠️ [Sync Beacon] Lỗi snapshot beacon:", error);
-                });
-                console.log("📡 [Sync Beacon] Đã kích hoạt Real-time Beacon Listener trên Leader Tab.");
-            } catch (e) {
-                console.warn("⚠️ [Sync Beacon] Không thể kích hoạt listener:", e);
-            }
-        });
-    });
+    // Tắt vĩnh viễn onSnapshot listener qua Firestore để loại trừ 100% nguy cơ loopback / ping-pong storm
+    // Hệ thống sử dụng mô hình đồng bộ an toàn:
+    // 1. Cross-Tab Bus (<2ms tức thời không tốn Firestore qua BroadcastChannel)
+    // 2. Kéo dữ liệu khi user mở/quay lại tab (visibilitychange với cooldown an toàn)
+    // 3. Đẩy dữ liệu khi hoàn tất lượt ôn tập hoặc ấn đồng bộ thủ công
+    console.log("🛡️ [Quota Guard] Đã kích hoạt chế độ bảo vệ Quota Spark. Realtime onSnapshot tắt hoàn toàn.");
 }
