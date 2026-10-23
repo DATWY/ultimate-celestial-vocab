@@ -11,7 +11,7 @@ import { initializeFirestore, getFirestore, persistentLocalCache, persistentMult
 import { mergeCardFields, isSrsEqual, normalizeCard, toMillis } from './card-merge.js';
 export { mergeCardFields, isSrsEqual, toMillis } from './card-merge.js';
 import { getStorage } from "firebase/storage";
-import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode, calculateStreakFromHeatmap } from './state.js';
+import { getState, setVocabulary, saveVocabulary, setGamification, saveGamification, setDailyStats, saveDailyStats, setAllTags, isPreviewMode, calculateStreakFromHeatmap, reconcileStreakFreeze, setInitialSyncDone, syncStreakFromHeatmap, getLocalDateString } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
 import { updateStats, updatePanelWordList, displayCard, populateTopicFilters } from '../ui/render.js';
 import { renderGamificationUI } from '../features/gamification.js';
@@ -359,6 +359,9 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         await saveSettingToDB('syncProtocol', 2);
         await saveSettingToDB('lastSyncTime', Date.now());
 
+        setInitialSyncDone(true);
+        syncStreakFromHeatmap({ allowFreeze: true });
+
         setSyncUIState('success');
         if (isManual) {
             showToast("Đồng bộ thành công", "Dữ liệu đã được đồng bộ an toàn với Cloud.", "ph-cloud-check");
@@ -384,7 +387,13 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
 
 function mergeGamification(localGamification, remoteGamification) {
     const result = mergeProgress(localGamification, remoteGamification, 'gamification');
-    const streak = calculateStreakFromHeatmap(result.activityHeatmap);
+    reconcileStreakFreeze(result);
+    const streak = calculateStreakFromHeatmap(
+        result.activityHeatmap,
+        getLocalDateString(),
+        result.frozenDates,
+        result.recoveredDates
+    );
     result.currentStreak = streak.currentStreak;
     result.longestStreak = Math.max(result.longestStreak || 0, streak.longestStreak);
     return result;

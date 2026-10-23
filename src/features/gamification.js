@@ -1,6 +1,6 @@
 // src/features/gamification.js
 import { DOM } from '../ui/elements.js';
-import { getState, unlockBadge, trackEvent } from '../core/state.js';
+import { getState, unlockBadge, trackEvent, MIN_STREAK_DAILY_REVIEWS, isDayStreakQualified } from '../core/state.js';
 import { openModal, showPopup, openManageModal, switchHubTab } from '../ui/modal.js';
 import { getLocalDateString } from '../core/utils/date.js';
 
@@ -204,11 +204,17 @@ export function renderGamificationUI(options = {}) {
     if (streakCard) {
         const streakText = streakCard.querySelector('.streak-text');
         streakCard.classList.remove('streak-frozen', 'streak-extinguished');
+        const todayStr = getLocalDateString();
+        const todayCount = (activityHeatmap && activityHeatmap[todayStr]) || 0;
+        const isQualified = isDayStreakQualified(activityHeatmap, todayStr, gamification.frozenDates, gamification.recoveredDates);
+
         if (currentStreak === 0) {
             streakCard.classList.add('streak-extinguished');
             if (streakText) streakText.textContent = "Chuỗi đã tắt";
+        } else if (isQualified) {
+            if (streakText) streakText.textContent = "Đã nối chuỗi hôm nay 🔥";
         } else {
-            if (streakText) streakText.textContent = "Chuỗi kiên trì";
+            if (streakText) streakText.textContent = `Hôm nay: ${todayCount}/${MIN_STREAK_DAILY_REVIEWS} thẻ`;
         }
         import('./streakRecovery.js').then(m => m.updateStreakControlsUI(streakCard));
     }
@@ -705,6 +711,8 @@ function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
     if (!DOM.activityHeatmap) return;
     DOM.activityHeatmap.innerHTML = ''; // Clear old
 
+    const gamification = getState().gamification || {};
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = getLocalDateString(today);
@@ -823,7 +831,15 @@ function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
                     cell.classList.add('future-cell');
                     cell.title = `${entry.dateStr} (${entry.dayName}): Chưa tới`;
                 } else {
-                    cell.title = `${entry.dateStr} (${entry.dayName}): ${entry.count} lần học`;
+                    let titleNote = '';
+                    if (gamification.frozenDates?.includes(entry.dateStr)) {
+                        cell.classList.add('frozen-cell');
+                        titleNote = ' ❄️ (Bảo vệ bởi Khiên Băng)';
+                    } else if (gamification.recoveredDates?.includes(entry.dateStr)) {
+                        cell.classList.add('recovered-cell');
+                        titleNote = ' 🔥 (Tái Sinh Phượng Hoàng)';
+                    }
+                    cell.title = `${entry.dateStr} (${entry.dayName}): ${entry.count} lần học${titleNote}`;
                     if (entry.isToday) cell.classList.add('today-cell');
 
                     // Basic levels

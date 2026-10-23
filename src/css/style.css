@@ -8040,6 +8040,18 @@ body:not(.dark-mode) .heatmap-month-weekday-label {
     box-shadow: none !important;
 }
 
+.heatmap-cell.frozen-cell {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.5), rgba(14, 165, 233, 0.7)) !important;
+    border: 1px solid #38bdf8 !important;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+.heatmap-cell.recovered-cell {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.5), rgba(234, 88, 12, 0.7)) !important;
+    border: 1px solid #f97316 !important;
+    box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
+}
+
 /* Light mode heatmap levels */
 body:not(.dark-mode) .heatmap-month-label,
 body:not(.dark-mode) .heatmap-weekday-label,

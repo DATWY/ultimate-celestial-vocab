@@ -11,6 +11,7 @@ import { showPopup, showToast } from '../ui/modal.js';
 import { updateStats } from '../ui/render.js';
 import { initAppDB, getAllVocabularyFromDB, saveAllVocabularyToDB, saveWordToDB, getSettingFromDB, saveSettingToDB } from './idb.js';
 import { getLocalDateString, getOffsetDateString } from './utils/date.js';
+export { getLocalDateString, getOffsetDateString } from './utils/date.js';
 
 import { syncCardToFirebase } from './sync.js';
 
@@ -47,6 +48,17 @@ if (typeof localStorage !== 'undefined') {
 let _currentTopicFilter = 'all';
 let _isPreviewMode = false;
 let _isTransitioning = false;
+export const MIN_STREAK_DAILY_REVIEWS = 10;
+export const STREAK_LEGACY_CUTOFF_DATE = '2026-10-23';
+
+let _initialSyncDone = false;
+export function setInitialSyncDone(done = true) {
+    _initialSyncDone = Boolean(done);
+}
+export function isInitialSyncDone() {
+    return _initialSyncDone;
+}
+
 let _lastReviewSnapshot = null;
 let _dailyStats = {
     newCardsDoneToday: 0,
@@ -144,7 +156,13 @@ export function acceptProgress(remote, kind) {
     if (kind === 'daily') _dailyStats = merged;
     else {
         _gamification = merged;
-        const streak = calculateStreakFromHeatmap(merged.activityHeatmap);
+        reconcileStreakFreeze(_gamification);
+        const streak = calculateStreakFromHeatmap(
+            _gamification.activityHeatmap,
+            getLocalDateString(),
+            _gamification.frozenDates,
+            _gamification.recoveredDates
+        );
         merged.currentStreak = streak.currentStreak;
         merged.longestStreak = Math.max(merged.longestStreak || 0, streak.longestStreak);
     }
@@ -781,50 +799,104 @@ export async function setXP(targetXP) {
 
 
 
-export function calculateStreakFromHeatmap(activityHeatmap = {}, todayStr = getLocalDateString()) {
+export function isDayStreakQualified(activityHeatmap = {}, dateStr, frozenDates = _gamification?.frozenDates, recoveredDates = _gamification?.recoveredDates) {
+    if (!dateStr) return false;
+    if (frozenDates && frozenDates.includes(dateStr)) return true;
+    if (recoveredDates && recoveredDates.includes(dateStr)) return true;
+
+    const count = (activityHeatmap && activityHeatmap[dateStr]) || 0;
+    if (dateStr < STREAK_LEGACY_CUTOFF_DATE) {
+        return count > 0;
+    }
+    return count >= MIN_STREAK_DAILY_REVIEWS;
+}
+
+export function reconcileStreakFreeze(g = _gamification) {
+    if (!g) return false;
+    let refunded = false;
+    const heatmap = g.activityHeatmap || {};
+    const frozen = Array.isArray(g.frozenDates) ? [...g.frozenDates] : [];
+
+    const falseFrozenDates = [];
+    for (const d of frozen) {
+        const count = heatmap[d] || 0;
+        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (d < STREAK_LEGACY_CUTOFF_DATE && count > 1);
+        if (hasRealStudy) {
+            falseFrozenDates.push(d);
+        }
+    }
+
+    if (g.lastStreakFreezeDate) {
+        const count = heatmap[g.lastStreakFreezeDate] || 0;
+        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (g.lastStreakFreezeDate < STREAK_LEGACY_CUTOFF_DATE && count > 1);
+        if (hasRealStudy && !falseFrozenDates.includes(g.lastStreakFreezeDate)) {
+            falseFrozenDates.push(g.lastStreakFreezeDate);
+        }
+    }
+
+    if (falseFrozenDates.length > 0) {
+        console.log(`🛡️ Hoàn trả ${falseFrozenDates.length} Khiên Băng do phát hiện đã học (${falseFrozenDates.join(', ')})!`);
+        g.frozenDates = frozen.filter(d => !falseFrozenDates.includes(d));
+        if (falseFrozenDates.includes(g.lastStreakFreezeDate)) {
+            g.lastStreakFreezeDate = "";
+        }
+        g.streakFreezeCount = Math.min(1, (g.streakFreezeCount || 0) + falseFrozenDates.length);
+        refunded = true;
+    }
+
+    return refunded;
+}
+
+export function calculateStreakFromHeatmap(
+    activityHeatmap = {},
+    todayStr = getLocalDateString(),
+    frozenDates = _gamification?.frozenDates,
+    recoveredDates = _gamification?.recoveredDates
+) {
     if (!activityHeatmap || typeof activityHeatmap !== 'object') {
         return { currentStreak: 0, longestStreak: 0 };
     }
 
-    const hasStudiedToday = (activityHeatmap[todayStr] || 0) > 0;
+    const isTodayQualified = isDayStreakQualified(activityHeatmap, todayStr, frozenDates, recoveredDates);
     const yesterdayStr = getOffsetDateString(todayStr, -1);
-    const hasStudiedYesterday = (activityHeatmap[yesterdayStr] || 0) > 0;
+    const isYesterdayQualified = isDayStreakQualified(activityHeatmap, yesterdayStr, frozenDates, recoveredDates);
 
     let currentStreak = 0;
     let checkDateStr = null;
 
-    if (hasStudiedToday) {
-        // Hôm nay đã học -> Bắt đầu đếm từ hôm nay và đếm lùi về trước
+    if (isTodayQualified) {
         currentStreak = 1;
         checkDateStr = yesterdayStr;
-    } else if (hasStudiedYesterday) {
-        // Hôm nay chưa học nhưng hôm qua CÓ học -> Chuỗi vẫn đang được duy trì!
+    } else if (isYesterdayQualified) {
         currentStreak = 1;
         checkDateStr = getOffsetDateString(yesterdayStr, -1);
     } else {
-        // Cả hôm nay và hôm qua đều không học -> Chuỗi đã đứt
         currentStreak = 0;
         checkDateStr = null;
     }
 
-    // Đếm lùi liên tiếp các ngày trước đó có hoạt động ôn tập
     if (checkDateStr) {
-        while ((activityHeatmap[checkDateStr] || 0) > 0) {
+        while (isDayStreakQualified(activityHeatmap, checkDateStr, frozenDates, recoveredDates)) {
             currentStreak += 1;
             checkDateStr = getOffsetDateString(checkDateStr, -1);
         }
     }
 
-    // Tính toán kỷ lục all-time longest streak từ toàn bộ lịch sử Heatmap
-    const activeDates = Object.keys(activityHeatmap)
-        .filter(d => (activityHeatmap[d] || 0) > 0)
-        .sort(); // Chuỗi YYYY-MM-DD sort tự nhiên theo thứ tự thời gian
+    const allCandidateDates = new Set([
+        ...Object.keys(activityHeatmap),
+        ...(frozenDates || []),
+        ...(recoveredDates || [])
+    ]);
+
+    const qualifiedDates = [...allCandidateDates]
+        .filter(d => isDayStreakQualified(activityHeatmap, d, frozenDates, recoveredDates))
+        .sort();
 
     let longestStreak = 0;
     let tempStreak = 0;
     let prevDateStr = null;
 
-    for (const dateStr of activeDates) {
+    for (const dateStr of qualifiedDates) {
         if (!prevDateStr) {
             tempStreak = 1;
         } else {
@@ -853,23 +925,22 @@ export function checkAndApplyStreakFreeze(todayStr = getLocalDateString()) {
     const yesterdayStr = getOffsetDateString(todayStr, -1);
     const dayBeforeYesterdayStr = getOffsetDateString(todayStr, -2);
 
-    const hasStudiedYesterday = (_gamification.activityHeatmap[yesterdayStr] || 0) > 0;
-    const hasStudiedDayBefore = (_gamification.activityHeatmap[dayBeforeYesterdayStr] || 0) > 0;
+    const hasStudiedYesterday = isDayStreakQualified(_gamification.activityHeatmap, yesterdayStr, _gamification.frozenDates, _gamification.recoveredDates);
+    const hasStudiedDayBefore = isDayStreakQualified(_gamification.activityHeatmap, dayBeforeYesterdayStr, _gamification.frozenDates, _gamification.recoveredDates);
 
-    // Nếu hôm qua chưa học và hôm kia có học -> kích hoạt khiên cứu ngày hôm qua
+    // Nếu hôm qua chưa đạt điều kiện và hôm kia có đạt điều kiện -> kích hoạt khiên cứu ngày hôm qua
     if (!hasStudiedYesterday && hasStudiedDayBefore) {
         if (_gamification.lastStreakFreezeDate === dayBeforeYesterdayStr) {
             console.log("⚠️ Khiên Băng không thể kích hoạt 2 ngày liên tiếp.");
             return false;
         }
 
-        _gamification.activityHeatmap[yesterdayStr] = 1;
-        _gamification.streakFreezeCount = Math.max(0, _gamification.streakFreezeCount - 1);
-        _gamification.lastStreakFreezeDate = yesterdayStr;
         _gamification.frozenDates = _gamification.frozenDates || [];
         if (!_gamification.frozenDates.includes(yesterdayStr)) {
             _gamification.frozenDates.push(yesterdayStr);
         }
+        _gamification.streakFreezeCount = Math.max(0, _gamification.streakFreezeCount - 1);
+        _gamification.lastStreakFreezeDate = yesterdayStr;
 
         console.log(`❄️ Khiên Băng đã kích hoạt bảo vệ ngày ${yesterdayStr}!`);
         showToast('Khiên Băng Kích Hoạt ❄️', `Kết giới băng giá đã bảo vệ chuỗi của bạn cho ngày ${yesterdayStr}!`, 'ph-snowflake');
@@ -909,21 +980,21 @@ export function getStreakRecoveryStatus(todayStr = getLocalDateString()) {
     if (!_gamification.activityHeatmap) return { canRecover: false, reason: "Chưa có dữ liệu hoạt động" };
 
     const heatmap = _gamification.activityHeatmap;
-    const currentStreak = calculateStreakFromHeatmap(heatmap, todayStr);
+    const frozen = _gamification.frozenDates;
+    const recovered = _gamification.recoveredDates;
+    const currentStreak = calculateStreakFromHeatmap(heatmap, todayStr, frozen, recovered).currentStreak;
 
     // Nếu người dùng đang duy trì chuỗi tốt từ 2 ngày trở lên -> Chuỗi đang hoạt động bình thường, không hiển thị cứu chuỗi
     if (currentStreak >= 2) {
         return { canRecover: false, reason: "Chuỗi học đang duy trì tốt, không có ngày gián đoạn cần cứu." };
     }
 
-    // Xác định ngày bắt đầu quét vùng gián đoạn:
-    // 1. Nếu hôm nay đã học nhưng hôm qua không học (chuỗi = 1 vừa bắt đầu lại) -> gap bắt đầu từ hôm qua (-1)
-    // 2. Nếu hôm nay chưa học và hôm qua có học (chuỗi = 1, chưa học hôm nay) -> gap bắt đầu từ hôm kia (-2)
-    // 3. Cả hôm nay và hôm qua đều chưa học (chuỗi = 0) -> gap bắt đầu từ hôm qua (-1)
     let gapStartOffset = -1;
-    if ((heatmap[todayStr] || 0) > 0 && (heatmap[getOffsetDateString(todayStr, -1)] || 0) === 0) {
+    const isTodayQ = isDayStreakQualified(heatmap, todayStr, frozen, recovered);
+    const isYestQ = isDayStreakQualified(heatmap, getOffsetDateString(todayStr, -1), frozen, recovered);
+    if (isTodayQ && !isYestQ) {
         gapStartOffset = -1;
-    } else if ((heatmap[todayStr] || 0) === 0 && (heatmap[getOffsetDateString(todayStr, -1)] || 0) > 0) {
+    } else if (!isTodayQ && isYestQ) {
         gapStartOffset = -2;
     } else {
         gapStartOffset = -1;
@@ -933,7 +1004,7 @@ export function getStreakRecoveryStatus(todayStr = getLocalDateString()) {
     const missedDates = [];
     let gapOffset = gapStartOffset;
 
-    while (gapOffset >= -7 && (heatmap[getOffsetDateString(todayStr, gapOffset)] || 0) === 0) {
+    while (gapOffset >= -7 && !isDayStreakQualified(heatmap, getOffsetDateString(todayStr, gapOffset), frozen, recovered)) {
         missedDates.push(getOffsetDateString(todayStr, gapOffset));
         gapOffset--;
     }
@@ -944,7 +1015,7 @@ export function getStreakRecoveryStatus(todayStr = getLocalDateString()) {
     }
 
     // Nếu đã quét hết 7 ngày mà ngày thứ -8 vẫn là 0 (gap kéo dài quá 7 ngày)
-    if (gapOffset < -7 && (heatmap[getOffsetDateString(todayStr, gapOffset)] || 0) === 0) {
+    if (gapOffset < -7 && !isDayStreakQualified(heatmap, getOffsetDateString(todayStr, gapOffset), frozen, recovered)) {
         return {
             canRecover: false,
             reason: "Thời gian gián đoạn đã vượt quá 1 tuần (7 ngày). Chuỗi lửa đã hóa thành tro tàn cổ đại."
@@ -954,7 +1025,7 @@ export function getStreakRecoveryStatus(todayStr = getLocalDateString()) {
     // 3. Quét chuỗi học ngay trước vùng gián đoạn
     let priorStreak = 0;
     let priorOffset = gapOffset;
-    while ((heatmap[getOffsetDateString(todayStr, priorOffset)] || 0) > 0) {
+    while (isDayStreakQualified(heatmap, getOffsetDateString(todayStr, priorOffset), frozen, recovered)) {
         priorStreak++;
         priorOffset--;
     }
@@ -1029,23 +1100,34 @@ export function completeStreakRecovery(missedDates) {
     };
 }
 
-export function syncStreakFromHeatmap() {
+export function syncStreakFromHeatmap(options = {}) {
     const today = getLocalDateString();
     if (!_gamification.activityHeatmap) {
         _gamification.activityHeatmap = {};
     }
 
-    // Tự động kích hoạt Khiên Băng nếu đủ điều kiện cứu ngày hôm qua
-    checkAndApplyStreakFreeze(today);
+    // Hoàn trả Khiên Băng nếu phát hiện đã học nhưng bị trừ nhầm trước khi đồng bộ
+    reconcileStreakFreeze(_gamification);
 
-    const { currentStreak, longestStreak } = calculateStreakFromHeatmap(_gamification.activityHeatmap, today);
+    // Tự động kích hoạt Khiên Băng nếu đủ điều kiện cứu ngày hôm qua (chỉ khi được phép)
+    const allowFreeze = options.allowFreeze ?? (typeof navigator === 'undefined' || !navigator.onLine || _initialSyncDone);
+    if (allowFreeze) {
+        checkAndApplyStreakFreeze(today);
+    }
+
+    const { currentStreak, longestStreak } = calculateStreakFromHeatmap(
+        _gamification.activityHeatmap,
+        today,
+        _gamification.frozenDates,
+        _gamification.recoveredDates
+    );
     _gamification.currentStreak = currentStreak;
     _gamification.longestStreak = Math.max(_gamification.longestStreak || 0, longestStreak);
-    if ((_gamification.activityHeatmap[today] || 0) > 0) {
+    if (isDayStreakQualified(_gamification.activityHeatmap, today, _gamification.frozenDates, _gamification.recoveredDates)) {
         _gamification.lastStudyDate = today;
     } else {
         const activeDates = Object.keys(_gamification.activityHeatmap)
-            .filter(d => (_gamification.activityHeatmap[d] || 0) > 0)
+            .filter(d => isDayStreakQualified(_gamification.activityHeatmap, d, _gamification.frozenDates, _gamification.recoveredDates))
             .sort();
         if (activeDates.length > 0) {
             _gamification.lastStudyDate = activeDates[activeDates.length - 1];
@@ -1066,11 +1148,17 @@ export function logActivity() {
         _gamification.activityHeatmap[today] = 0;
     }
     _gamification.activityHeatmap[today] += 1;
+    const currentTodayCount = _gamification.activityHeatmap[today];
+    if (currentTodayCount === MIN_STREAK_DAILY_REVIEWS) {
+        showToast('Nối Chuỗi Thành Công! 🔥', `Tuyệt vời! Bạn đã hoàn thành ${MIN_STREAK_DAILY_REVIEWS} lượt ôn tập hôm nay để bảo toàn chuỗi tinh tú!`, 'ph-fire');
+    }
     syncStreakFromHeatmap();
 }
 
 export function checkStreakStatusOnLoad() {
-    syncStreakFromHeatmap();
+    // Không trừ khiên sớm khi vừa mở web nếu thiết bị đang online (chờ sync Firestore hoàn tất)
+    const canApplyFreeze = typeof navigator === 'undefined' || !navigator.onLine || _initialSyncDone;
+    syncStreakFromHeatmap({ allowFreeze: canApplyFreeze });
 }
 
 export function checkAndUpdateStreak() {

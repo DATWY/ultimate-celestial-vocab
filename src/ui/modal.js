@@ -28,7 +28,8 @@ function modalFocusable(modal) {
         !element.closest('.hidden, [hidden], [inert]') && element.getClientRects().length);
 }
 
-document.addEventListener('keydown', event => {
+if (typeof document !== 'undefined') {
+    document.addEventListener('keydown', event => {
     const modal = topModal();
     if (!modal) return;
     if (event.key === 'Escape') {
@@ -45,7 +46,8 @@ document.addEventListener('keydown', event => {
             event.preventDefault(); first.focus();
         }
     }
-}, true);
+    }, true);
+}
 
 export function openModal(modalElement) {
     if (!modalElement) return;

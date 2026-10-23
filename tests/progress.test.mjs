@@ -95,3 +95,35 @@ test('a remote device clock ahead cannot move the active daily dashboard into th
     const merged = mergeProgress(local, remote, 'daily', '2026-10-21');
     assert.equal(merged.lastDate, '2026-10-21'); assert.equal(merged.todayTotal, 3);
 });
+
+test('reconciling a false freeze refunds the shield and neutralizes phone debit delta', () => {
+    const phone = initializeProgress({ userXP: 1000, totalReviews: 50, streakFreezeCount: 1, activityHeatmap: { '2026-10-21': 20 } }, 'gamification');
+    // Phone mistakenly consumes freeze before syncing yesterday's reviews
+    phone.streakFreezeCount = 0;
+    phone.frozenDates = ['2026-10-22'];
+    phone.activityHeatmap['2026-10-22'] = 1;
+    save(phone, 'Phone');
+    assert.equal(phone._progressV1.actors.Phone.delta['["streakFreezeCount"]'], -1);
+
+    // Cloud already had 13 reviews for yesterday
+    const cloud = initializeProgress({ userXP: 1000, totalReviews: 63, streakFreezeCount: 1, activityHeatmap: { '2026-10-21': 20, '2026-10-22': 13 } }, 'gamification');
+    save(cloud, 'Cloud');
+
+    const merged = mergeProgress(phone, cloud, 'gamification');
+    assert.equal(merged.streakFreezeCount, 0); // Before reconcile, sum is 0 due to phone's -1 delta
+
+    // Reconcile: yesterday had >= 10 reviews (14 reviews in merged)
+    const isFalseFreeze = (merged.activityHeatmap['2026-10-22'] || 0) >= 10;
+    assert.equal(isFalseFreeze, true);
+    merged.streakFreezeCount = Math.min(1, merged.streakFreezeCount + 1);
+    merged.frozenDates = [];
+    save(merged, 'Phone');
+
+    // Phone delta is now 0 (neutralized)
+    assert.equal(merged._progressV1.actors.Phone.delta['["streakFreezeCount"]'], 0);
+    assert.equal(merged.streakFreezeCount, 1);
+
+    // Syncing to PC retains shield = 1
+    const pc = mergeProgress(cloud, merged, 'gamification');
+    assert.equal(pc.streakFreezeCount, 1);
+});

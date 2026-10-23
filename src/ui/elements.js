@@ -1,5 +1,5 @@
 
-const getEl = (id) => document.getElementById(id);
+const getEl = (id) => typeof document !== 'undefined' ? document.getElementById(id) : null;
 
 export const DOM = {
 	toggleTaskbarBtn: getEl('toggle-taskbar-btn'),
@@ -70,7 +70,7 @@ export const DOM = {
     controlsArea: getEl('controls-area'),
     revealBtn: getEl('reveal-btn'),
     srsFeedbackButtons: getEl('srs-feedback-buttons'),
-    srsBtns: document.querySelectorAll('.srs-btn'),
+    srsBtns: typeof document !== 'undefined' ? document.querySelectorAll('.srs-btn') : [],
     typingArea: getEl('typing-area'),
     typingInput: getEl('typing-input'),
     typingSubmitBtn: getEl('typing-submit-btn'),
@@ -175,7 +175,7 @@ export const DOM = {
     victoryStreakVal: getEl('victory-streak-val'),
     victoryMasteredVal: getEl('victory-mastered-val'),
     victoryCramVal: getEl('victory-cram-val'),
-    victoryContextBanner: document.querySelector('.victory-context-banner'),
+    victoryContextBanner: typeof document !== 'undefined' ? document.querySelector('.victory-context-banner') : null,
     finalDayRestState: getEl('final-day-rest-state'),
     btnReopenCram: getEl('btn-reopen-cram'),
     victoryConfettiCanvas: getEl('victory-confetti-canvas'),
