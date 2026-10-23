@@ -145,7 +145,7 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         const vocabulary = stateModule.getState().vocabulary || [];
         // CHÚ Ý: Tuyệt đối không dùng lastSyncTime làm lastPullTime vì nó là Date.now() local, sẽ làm miss data từ các thiết bị khác!
         const protocol = await getSettingFromDB('syncProtocol');
-        let lastPullTime = forceFullPull || isManual || protocol !== 2 ? 0 : (await getSettingFromDB('lastPullTime') || 0);
+        let lastPullTime = forceFullPull || protocol !== 2 ? 0 : (await getSettingFromDB('lastPullTime') || 0);
         
         // Bắt buộc Full Pull nếu local chưa có từ vựng nào (thiết bị mới)
         if (!vocabulary || vocabulary.length === 0) {
@@ -240,12 +240,12 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             }
         }
 
-        // 2. Thêm các thẻ local mới sửa/tạo mà chưa sync
+        // 2. Thêm các thẻ local mới tạo/import chưa từng sync lên Cloud bao giờ (!card.syncedAt)
         for (const card of vocabulary) {
             if (!card || !card.id) continue;
-            const cardTime = toMillis(card.updatedAt);
-            
-            if (!flushedIds.has(card.id) && !pulledIds.has(card.id)) {
+            // Chỉ push thẻ chưa từng được sync lên Cloud bao giờ
+            // Thẻ đã sync rồi nếu có sửa thì đã nằm trong flushedIds (qua outbox)
+            if (!card.syncedAt && !flushedIds.has(card.id)) {
                 if (!cardsToPushMap.has(card.id)) {
                     cardsToPushMap.set(card.id, card);
                 }
@@ -369,7 +369,11 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
     } catch (error) {
         console.error("Lỗi đồng bộ Firebase:", error);
         if (isManual) {
-            showToast("Lỗi đồng bộ", error.message || "Vui lòng kiểm tra kết nối mạng.", "ph-warning-circle");
+            let msg = error.message || "Vui lòng kiểm tra kết nối mạng.";
+            if (error.code === 'resource-exhausted' || (error.message && error.message.includes('Quota exceeded'))) {
+                msg = "Hạn mức Firebase miễn phí hôm nay đã đạt giới hạn (tự động hồi phục lúc 14:00). Bạn vẫn học bình thường 100% offline trên máy!";
+            }
+            showToast("Lỗi đồng bộ", msg, "ph-warning-circle");
         }
         setSyncUIState('error');
     } finally {

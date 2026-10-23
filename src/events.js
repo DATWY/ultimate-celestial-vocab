@@ -1137,9 +1137,10 @@ export function setupEventListeners() {
 
     // Global Keyboard
     document.addEventListener('keydown', handleGlobalShortcuts);
-	DOM.manualSyncBtn?.addEventListener('click', () => {
+	DOM.manualSyncBtn?.addEventListener('click', (e) => {
         trackEvent('syncSpamCount');
-        smartSync({ forceFullPull: true, isManual: true });
+        const forceFull = Boolean(e?.altKey || e?.shiftKey);
+        smartSync({ forceFullPull: forceFull, isManual: true });
     });
 }
 
