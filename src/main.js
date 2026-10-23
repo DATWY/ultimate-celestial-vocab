@@ -150,9 +150,14 @@ async function initializeApp() {
     const { recoverPendingSyncIds, flushSyncQueueBeforeUnload, flushSyncQueue, syncGamificationToFirebase } = await import('./core/sync.js');
     await recoverPendingSyncIds();
 
-    // Setup online/offline detection (Real-time listener đã tắt)
-    const { setupOnlineOfflineListeners } = await import('./core/firebase.js');
+    // Khởi tạo Bus đồng bộ đa tab (<2ms) & Bầu chọn Leader Tab
+    const { initTabBus } = await import('./core/tab-bus.js');
+    initTabBus();
+
+    // Setup online/offline detection & Real-time Cloud Beacon listener
+    const { setupOnlineOfflineListeners, setupRealtimeSyncListener } = await import('./core/firebase.js');
     setupOnlineOfflineListeners();
+    setupRealtimeSyncListener();
 
     // Đồng bộ lần đầu sau 2 giây (chờ DOM ổn định)
 	setTimeout(() => {

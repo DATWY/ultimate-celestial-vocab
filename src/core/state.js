@@ -1,4 +1,5 @@
 import { compressLogs as compressReviewLogs, mergeReviewLogs as mergeLogSnapshots } from './review-log-merge.js';
+import { getDeviceId } from './device.js';
 import { saveReviewLogsToDB } from './idb.js';
 import { rolloverDailyStats } from './daily-stats.js';
 import { normalizeCard, mergeCardFields, nextRevision } from './card-merge.js';
@@ -141,7 +142,7 @@ let _userRecallParams = null;
 let _userLapseParams = null;
 let _userFsrs7Params = null;
 let _userFsrs7TrainedAt = null;
-const progressActor = crypto.randomUUID();
+const progressActor = getDeviceId();
 function skipPersistence() {
     return _isPreviewMode || (sessionStorage.getItem('CHEAT_MODE') === 'true' && !isIsolatedStorage);
 }
@@ -363,6 +364,7 @@ export async function saveOneWord(word) {
         updateStats();
         // Queue sync lên Cloud (batch 30s)
         syncCardToFirebase(merged);
+        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastCardUpdated?.(merged));
         return merged;
     } catch (e) {
         console.error("SaveOneWord error:", e);
@@ -695,6 +697,7 @@ export async function saveGamification() {
         const saved = await saveProgressToDB('gamification', structuredClone(_gamification), 'gamification');
         acceptProgress(saved, 'gamification');
         import('./sync.js').then(m => m.queueGamificationSync());
+        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastProgressUpdated?.(_gamification, _dailyStats));
     } catch(e) { announceSyncStatus({ phase: 'storage-error' }); console.error('Không lưu được tiến độ học:', e); }
 }
 
@@ -705,6 +708,7 @@ export async function saveDailyStats() {
         const saved = await saveProgressToDB('dailyStats', structuredClone(_dailyStats), 'daily');
         acceptProgress(saved, 'daily');
         import('./sync.js').then(m => m.queueGamificationSync());
+        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastProgressUpdated?.(_gamification, _dailyStats));
     } catch(e) { announceSyncStatus({ phase: 'storage-error' }); console.error('Không lưu được thống kê ngày:', e); }
 }
 

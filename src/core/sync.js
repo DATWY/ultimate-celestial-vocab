@@ -1,5 +1,5 @@
 import { doc, setDoc } from "firebase/firestore";
-import { db, getCalibratedNow, getDeviceId, writeMergedCards, mergeCardFields, syncProgressToFirebase, syncUserSettings } from './firebase.js';
+import { db, getCalibratedNow, getDeviceId, writeMergedCards, mergeCardFields, syncProgressToFirebase, syncUserSettings, sendSyncBeacon } from './firebase.js';
 import { saveWordToDB, getPendingCardIds, getPendingWriteSnapshot, acknowledgePendingWrites } from './idb.js';
 import { announceSyncStatus } from './sync-status.js';
 
@@ -68,6 +68,9 @@ export async function flushSyncQueue() {
                 persistPendingIds();
             }
             _retryDelay = 2000;
+            if (flushed.length > 0 && typeof sendSyncBeacon === 'function') {
+                sendSyncBeacon('vocab');
+            }
             return flushed;
         } catch (error) {
             _retryDelay = Math.min(60000, _retryDelay * 2);
@@ -124,6 +127,9 @@ export async function syncGamificationToFirebase() {
     clearTimeout(_gamificationSyncTimer);
     _gamificationSyncTimer = null;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-    try { await syncProgressToFirebase(); }
+    try {
+        await syncProgressToFirebase();
+        if (typeof sendSyncBeacon === 'function') sendSyncBeacon('progress');
+    }
     catch (error) { console.warn('Chưa đồng bộ được thống kê; bản lưu trên máy được giữ nguyên.', error); queueGamificationSync(); }
 }

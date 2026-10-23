@@ -68,25 +68,8 @@ export function getCalibratedNow() {
 }
 
 // ===== DEVICE FINGERPRINT & ANTI-ECHO =====
-let _cachedDeviceId = null;
-export function getDeviceId() {
-    if (_cachedDeviceId) return _cachedDeviceId;
-    try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-            let id = localStorage.getItem('celestial_device_id');
-            if (!id) {
-                id = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
-                localStorage.setItem('celestial_device_id', id);
-            }
-            _cachedDeviceId = id;
-            return _cachedDeviceId;
-        }
-    } catch (e) {
-        // Fallback if localStorage is restricted
-    }
-    _cachedDeviceId = 'temp_dev_' + Math.random().toString(36).substring(2, 8);
-    return _cachedDeviceId;
-}
+export { getDeviceId } from './device.js';
+import { getDeviceId } from './device.js';
 
 // ===== HELPERS =====
 
@@ -161,9 +144,9 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         const flushedIds = new Set(await syncModule.flushSyncQueue());
         
         // ============================================================
-        // PHASE 1: PULL — Tải dữ liệu mới từ Cloud về (với safety buffer 3 phút)
+        // PHASE 1: PULL — Tải dữ liệu mới từ Cloud về (với safety buffer 10 giây)
         // ============================================================
-        const PULL_SAFETY_BUFFER_MS = 180000; // 3 phút overlap phòng lệch đồng hồ giữa các máy
+        const PULL_SAFETY_BUFFER_MS = 10000; // 10 giây overlap phòng trễ mạng nhẹ
         let q;
         if (lastPullTime > 0) {
             const bufferedPullTime = Math.max(0, lastPullTime - PULL_SAFETY_BUFFER_MS);
@@ -185,7 +168,8 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             remote.id = docSnap.id;
             const remoteTime = toMillis(remote.updatedAt);
             
-            maxPullTime = Math.max(maxPullTime, toMillis(remote.syncedAt));
+            const remoteSyncedTime = toMillis(remote.syncedAt);
+            maxPullTime = Math.max(maxPullTime, remoteSyncedTime);
             
             // Normalize timestamps
             remote.updatedAt = remoteTime;
@@ -193,6 +177,11 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             if (remote.lastReviewDate) remote.lastReviewDate = toMillis(remote.lastReviewDate);
             
             pulledIds.add(remote.id);
+
+            // Bỏ qua loopback/echo nếu thẻ do chính máy này vừa ghi và remote chưa có sửa đổi nào mới hơn
+            if (remote._lastModifiedBy === myDeviceId && remoteSyncedTime <= _lastLocalWriteTimestamp) {
+                return;
+            }
             
             const localIndex = stateModule.getVocabIndexById(remote.id);
             
@@ -305,7 +294,19 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
             // Rebuild review queue để nạp tất cả các thẻ mới hoặc thẻ đến hạn từ Cloud
             buildReviewQueue();
 
-            if (isCurrentCardValid) {
+            const typingInput = typeof document !== 'undefined' ? document.getElementById('typing-input') : null;
+            const isUserActivelyTyping = typingInput && (document.activeElement === typingInput || typingInput.value.length > 0);
+            const isCardFlipped = state.isFlipped;
+            const isActivelyStudying = isCurrentCardValid && (isUserActivelyTyping || isCardFlipped || state.isTransitioning);
+
+            if (isActivelyStudying) {
+                // Thẻ hiện tại đang được người dùng thao tác học (gõ phím hoặc lật xem mặt sau):
+                // Lưu ngầm vào bộ nhớ/IDB và loại trừ khỏi queue mới, KHÔNG gọi displayCard() gây giật/mất focus.
+                const queueAfterRebuild = stateModule.getState().currentReviewQueue;
+                const filteredQueue = queueAfterRebuild.filter(idx => idx !== currentCardIndex);
+                stateModule.setReviewQueue(filteredQueue);
+                console.log(`🧘 [Non-Disruptive Study] Đang học thẻ (index ${currentCardIndex}). Dữ liệu thẻ đã cập nhật ngầm, không làm gián đoạn màn hình học.`);
+            } else if (isCurrentCardValid) {
                 // Thẻ hiện tại vẫn tồn tại và hợp lệ:
                 // Re-render ngay lập tức để ghi đè mọi sửa đổi từ Cloud (nghĩa, ví dụ, trạng thái SRS...),
                 // đồng thời giữ nguyên góc lật nếu người dùng đang xem mặt sau.
@@ -363,6 +364,9 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         syncStreakFromHeatmap({ allowFreeze: true });
 
         setSyncUIState('success');
+        if (cardsToPush.length > 0 || gamificationChanged || statsChanged) {
+            sendSyncBeacon('all');
+        }
         if (isManual) {
             showToast("Đồng bộ thành công", "Dữ liệu đã được đồng bộ an toàn với Cloud.", "ph-cloud-check");
         }
@@ -474,7 +478,15 @@ async function syncReviewLogs() {
             return row.split(',').map((part, index) => index < 5 ? Number(part) : part);
         }) };
         const result = state.mergeReviewLogs(remote, local);
-        transaction.set(ref, { ...result, logs: result.logs.map(row => JSON.stringify(row)) });
+        // Constrain Cloud payload to the most recent 3,000 logs (<240 KB),
+        // perfectly aligning with the FSRS-7 optimizer training window and preventing 1 MiB Firestore document crash.
+        const cloudLogs = result.logs.slice(-3000);
+        const cloudDeletedIds = (result.deletedIds || []).slice(-500);
+        transaction.set(ref, {
+            dict: result.dict,
+            logs: cloudLogs.map(row => JSON.stringify(row)),
+            deletedIds: cloudDeletedIds
+        });
         return result;
     });
     // Include reviews and Undo tombstones created while the request was in flight.
@@ -570,18 +582,67 @@ export function setupOnlineOfflineListeners() {
     }
 }
 
-// ===== REAL-TIME MULTI-DEVICE LISTENERS =====
+// ===== REAL-TIME MULTI-DEVICE SIGNALING BEACON =====
+const BEACON_DOC = "sync_beacon";
+let _beaconDebounceTimer = null;
 
-let _realtimeUnsubscribers = [];
+export function sendSyncBeacon(type = 'all') {
+    if (isPreviewMode() || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('CHEAT_MODE') === 'true')) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
+    clearTimeout(_beaconDebounceTimer);
+    _beaconDebounceTimer = setTimeout(async () => {
+        try {
+            const beaconRef = doc(db, USER_SYNC_COLLECTION, BEACON_DOC);
+            await setDoc(beaconRef, {
+                dev: getDeviceId(),
+                ts: serverTimestamp(),
+                type,
+                v: 4
+            }, { merge: true });
+            console.log(`📡 [Sync Beacon] Đã phát tín hiệu realtime (${type}) từ ${getDeviceId().substring(0, 8)}`);
+        } catch (err) {
+            console.warn("⚠️ Không thể phát sync beacon:", err);
+        }
+    }, 1500);
+}
+
+let _beaconUnsubscribe = null;
+let _remoteBeaconSyncDebounce = null;
 
 export function setupRealtimeSyncListener() {
-    // Đã tắt Real-time onSnapshot listener theo yêu cầu người dùng (không bắt buộc realtime).
-    // Giúp loại bỏ hoàn toàn tình trạng loop sync liên tục và spam khi đang học thẻ.
-    if (_realtimeUnsubscribers.length > 0) {
-        _realtimeUnsubscribers.forEach(unsub => {
-            try { if (typeof unsub === 'function') unsub(); } catch (e) {}
+    import('./tab-bus.js').then(({ onLeaderElected, broadcastRemoteSynced }) => {
+        onLeaderElected(() => {
+            if (_beaconUnsubscribe) return;
+            if (isPreviewMode() || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('CHEAT_MODE') === 'true')) return;
+
+            try {
+                const beaconRef = doc(db, USER_SYNC_COLLECTION, BEACON_DOC);
+                _beaconUnsubscribe = onSnapshot(beaconRef, (snapshot) => {
+                    if (!snapshot.exists()) return;
+                    const data = snapshot.data();
+                    if (!data) return;
+
+                    // 1. Anti-echo filter: bỏ qua hoàn toàn các ghi chép xuất phát từ chính máy này
+                    const myDevId = getDeviceId();
+                    if (data.dev === myDevId) return;
+
+                    console.log(`🔔 [Sync Beacon] Nhận tín hiệu đồng bộ từ thiết bị ${data.dev ? data.dev.substring(0, 8) : 'remote'}.`);
+
+                    // 2. Kích hoạt pull đồng bộ thông minh (debounced 1.2s)
+                    clearTimeout(_remoteBeaconSyncDebounce);
+                    _remoteBeaconSyncDebounce = setTimeout(async () => {
+                        console.log("⚡ [Realtime Beacon] Kích hoạt pull đồng bộ thông minh...");
+                        await smartSync({ isManual: false });
+                        broadcastRemoteSynced({ fromRemoteDevice: data.dev, timestamp: Date.now() });
+                    }, 1200);
+                }, (error) => {
+                    console.warn("⚠️ [Sync Beacon] Lỗi snapshot beacon:", error);
+                });
+                console.log("📡 [Sync Beacon] Đã kích hoạt Real-time Beacon Listener trên Leader Tab.");
+            } catch (e) {
+                console.warn("⚠️ [Sync Beacon] Không thể kích hoạt listener:", e);
+            }
         });
-        _realtimeUnsubscribers = [];
-    }
-    console.log("ℹ️ Real-time Firestore onSnapshot listener đã tắt theo cấu hình (không bắt buộc realtime).");
+    });
 }
