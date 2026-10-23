@@ -157,7 +157,7 @@ export function acceptProgress(remote, kind) {
     if (kind === 'daily') _dailyStats = merged;
     else {
         _gamification = merged;
-        reconcileStreakFreeze(_gamification);
+        const refunded = reconcileStreakFreeze(_gamification);
         const streak = calculateStreakFromHeatmap(
             _gamification.activityHeatmap,
             getLocalDateString(),
@@ -166,6 +166,9 @@ export function acceptProgress(remote, kind) {
         );
         merged.currentStreak = streak.currentStreak;
         merged.longestStreak = Math.max(merged.longestStreak || 0, streak.longestStreak);
+        if (refunded) {
+            prepareProgress('gamification');
+        }
     }
     return merged;
 }
@@ -824,7 +827,7 @@ export function reconcileStreakFreeze(g = _gamification) {
     const falseFrozenDates = [];
     for (const d of frozen) {
         const count = heatmap[d] || 0;
-        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (d < STREAK_LEGACY_CUTOFF_DATE && count > 1);
+        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (d < STREAK_LEGACY_CUTOFF_DATE && count > 0);
         if (hasRealStudy) {
             falseFrozenDates.push(d);
         }
@@ -832,7 +835,7 @@ export function reconcileStreakFreeze(g = _gamification) {
 
     if (g.lastStreakFreezeDate) {
         const count = heatmap[g.lastStreakFreezeDate] || 0;
-        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (g.lastStreakFreezeDate < STREAK_LEGACY_CUTOFF_DATE && count > 1);
+        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (g.lastStreakFreezeDate < STREAK_LEGACY_CUTOFF_DATE && count > 0);
         if (hasRealStudy && !falseFrozenDates.includes(g.lastStreakFreezeDate)) {
             falseFrozenDates.push(g.lastStreakFreezeDate);
         }
