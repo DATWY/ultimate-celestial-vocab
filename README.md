@@ -2,9 +2,9 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-DATWY.V2.261021-8a2be2.svg?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-DATWY.V2.261024.10-8a2be2.svg?style=for-the-badge)
 ![FSRS-7 Engine](https://img.shields.io/badge/SRS%20Engine-FSRS--7%20(34%20Params)-blueviolet.svg?style=for-the-badge)
-![Tests](https://img.shields.io/badge/Tests-52%2F52%20PASS-brightgreen.svg?style=for-the-badge)
+![Tests](https://img.shields.io/badge/Tests-77%2F77%20PASS-brightgreen.svg?style=for-the-badge)
 ![Multi-Device Sync](https://img.shields.io/badge/Sync-4--Vector%20Outbox-cyan.svg?style=for-the-badge)
 ![PWA Ready](https://img.shields.io/badge/PWA-Offline--First-orange.svg?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
@@ -13,7 +13,7 @@
 
 **Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới — kết hợp thuật toán FSRS-7 (34 tham số), Heuristics ngôn ngữ học, đồng bộ đa thiết bị 4-Vector Outbox và hệ sinh thái Offline-First PWA.**
 
-🌐 **[[hidden]](https://[hidden])** &nbsp;•&nbsp; [📖 Tài Liệu Kỹ Thuật](#8-kiến-trúc-hệ-thống--cấu-trúc-mã-nguồn) &nbsp;•&nbsp; [📊 Benchmark](#6-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
+[📖 Tài Liệu Kỹ Thuật](#8-kiến-trúc-hệ-thống--cấu-trúc-mã-nguồn) &nbsp;•&nbsp; [📊 Benchmark](#6-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark) &nbsp;•&nbsp; [🐛 Báo Lỗi / Đóng Góp](https://github.com/DATWY/ultimate-celestial-vocab/issues)
 
 <br/>
 
@@ -88,9 +88,9 @@ Hầu hết các phần mềm học từ vựng truyền thống gặp phải c�
 
 <div align="center">
 
-| Tab Tổng Quan & Trí Nhớ | Tab Từ Vựng |
+| Tab Danh Sách Từ Vựng | Tab Dữ Liệu & Đồng Bộ (Mới) |
 | :---: | :---: |
-| <img src="docs/screenshots/manage_modal_words.webp" width="480" alt="Tổng Quan FusionSRS"/> | <img src="docs/screenshots/manage_modal_io.webp" width="480" alt="Danh Sách Từ Vựng"/> |
+| <img src="docs/screenshots/manage_modal_words.webp" width="480" alt="Danh Sách Từ Vựng"/> | <img src="docs/screenshots/manage_modal_io.webp" width="480" alt="Dữ Liệu & Đồng Bộ Đa Thiết Bị"/> |
 
 </div>
 
@@ -99,9 +99,9 @@ Hầu hết các phần mềm học từ vựng truyền thống gặp phải c�
 | Tab | Nội Dung |
 |---|---|
 | 📊 **Tổng Quan & Trí Nhớ** | Bento Grid HUD: Level/XP, Streak, FusionSRS 3 chỉ số vàng, Forecast 7 ngày, Heatmap lịch 12×7 |
-| 📚 **Từ Vựng** | Lưới thẻ từ vựng, tìm kiếm, lọc chủ đề/trạng thái, thêm/sửa/xóa, Radar Dedup |
-| 💾 **Dữ Liệu** | Nhập TSV/JSON (hỗ trợ quotes đa dòng, BOM, header lộn xộn), Xuất Review Logs, cấu hình 34 tham số FSRS-7 + Optimizer on-device |
-| 🏆 **Huy Hiệu** | Bộ sưu tập huy hiệu thành tựu mở khóa theo streak & độ khó |
+| 📚 **Từ Vựng** | Lưới thẻ từ vựng, tìm kiếm thời gian thực, lọc chủ đề/trạng thái, thêm/sửa/xóa, Radar Dedup tốc độ cao (SymSpell O(1)) |
+| 💾 **Dữ Liệu & Đồng Bộ** | Bố cục 6 thẻ đối xứng: Nhập TSV Smart Merge, Xuất TSV/JSON Logs, Cấu hình 34 tham số FSRS-7 & Danger Zone, Đồng bộ đa thiết bị (Sync Key), Kho âm thanh ngoại tuyến (Offline Audio Cache) và Trạng thái phiên bản |
+| 🏆 **Huy Hiệu** | Bộ sưu tập phòng truyền thống mở khóa theo chuỗi streak, độ khó và tiến độ học tập |
 
 **Heatmap nâng cấp:** 12 cột (12 tuần) × 7 hàng (Thứ 2 → CN) + nhãn Thứ/Tháng + thang màu ░▒▓█.  
 **Topic display:** Dấu gạch dưới `_` tự động thay bằng dấu cách trong UI (dữ liệu gốc giữ nguyên).
@@ -116,6 +116,9 @@ Kiến trúc **Local-First / Offline-First** đảm bảo không bao giờ mất
 - **4 Vector độc lập:** Nếu PC sửa nghĩa từ và Mobile đang ôn tập cùng lúc → cả hai thao tác đều được bảo tồn.
 - **Multi-tab safe:** 2 tab mở cùng lúc → merge bằng IndexedDB transaction, không ghi đè.
 - **Chống Clock Skew:** Cửa sổ an toàn cho đồng hồ thiết bị lệch nhau.
+- **Không gian riêng theo người dùng:** Dữ liệu Cloud nằm trong `users/{uid}/vocabulary` và `users/{uid}/state`. Firestore Rules chỉ cho chủ sở hữu đọc/ghi, không còn collection dùng chung cho mọi tài khoản.
+- **Mã đồng bộ (Sync Key):** Mỗi thiết bị sinh một mã 20 ký tự. Nhập cùng mã trên thiết bị khác (tab **Nhập & Xuất → Đồng Bộ Đa Thiết Bị**) để dùng chung không gian. Mã chính là chìa khoá; mất mã thì dữ liệu Cloud không truy cập được (bản trên máy vẫn còn).
+- **Pull theo trang & Circuit Breaker:** Đồng bộ nền kéo tối đa 2 trang × 200 thẻ, lưu cursor sau từng trang. Gặp `429 resource-exhausted` sẽ ngắt 1 giờ và lưu trạng thái xuống `localStorage`; nút đồng bộ luôn được reset.
 
 ---
 
@@ -342,11 +345,15 @@ ultimate-celestial-vocab/
 │       ├── style.css               # Design system chính
 │       ├── transition.css          # Page transitions
 │       └── study-polish.css        # Zen flashcard refinements
-├── tests/                          # 52 unit/integration tests (Node.js built-in)
+├── tests/                          # 77 unit/integration tests (Node.js built-in)
+│   ├── cloud-identity.test.mjs
+│   ├── dedup-accuracy.test.mjs
 │   ├── import-and-srs.test.mjs
 │   ├── progress.test.mjs
 │   ├── reliability.test.mjs
-│   └── storage.test.mjs
+│   ├── srs-arithmetic.test.mjs
+│   ├── storage.test.mjs
+│   └── upgrade-regressions.test.mjs
 ├── tools/
 │   └── train_fsrs7.js              # (1+λ)-ES optimizer + TimeSeriesSplit
 ├── reports/
@@ -383,29 +390,50 @@ cp .env.example .env
 npm run dev
 # → http://localhost:5173
 
-# 5. Chạy 52 tests
+# 5. Chạy 77 tests
 npm test
 
 # 6. Build production
 npm run build
 
-# 7. Deploy Firebase
-firebase deploy --only hosting
+# 7. Deploy Firestore Rules + Hosting
+#    BẮT BUỘC deploy rules: không deploy thì collection cũ vẫn mở cho mọi
+#    tài khoản đã đăng nhập đọc/ghi.
+firebase deploy --only firestore:rules,firestore:indexes,hosting
 ```
 
 ### Chạy kiểm thử thuật toán riêng lẻ
 
 ```bash
-# 179 kịch bản FSRS-7
-node scratch/test_fsrs7_scenarios.js
+# Đối chiếu mô hình FSRS-7 với reference
+node audit/probe-vs-reference.mjs
 
-# 5 kịch bản chống lặp từ
-node scratch/test_anti_loop_unit.js
+# Kiểm tra hồi quy dedup (-er, dist-2, bucket, guard)
+node audit/probe-recheck.mjs
+node audit/probe-bucketcap.mjs
+
+# Đo khởi động với 3.000 thẻ (cần npm run preview)
+node audit/startup-probe.mjs http://localhost:4173/ 3000
 ```
 
 ---
 
 ## 10. Changelog
+
+### DATWY.V2.261024.10 (2026-10-24) — Tinh Chỉnh Giao Diện Dữ Liệu & Chuẩn Hóa FSRS-7 Toàn Diện
+
+**Giao diện & Trải nghiệm (UI/UX):**
+- 🎨 **Tái thiết kế toàn diện tab Dữ Liệu (Celestial Hub):** Bố cục 6 thẻ đối xứng theo nhịp thị giác `2 → (1 + 1) → 2 → (1 + 1)`, loại bỏ hoàn toàn khoảng trống lệch cột.
+- 🔑 **Khắc phục lỗi ô nhập Sync Key bị thu hẹp:** Tách biệt layout flex với `sync-input-pill`, mở rộng trường mã 20 ký tự chuẩn monospace, bổ sung nút sao chép 1 chạm có hiệu ứng phản hồi trực quan "Đã chép!" và đèn xanh báo kết nối bảo mật.
+- 🎵 **Kho Âm Thanh Ngoại Tuyến (Offline Audio Hub):** Thống kê trực tiếp số lượng phát âm đã nạp trong IndexedDB (`2.140 / 2.140 từ`), badge trạng thái `Đầy đủ 100%`, tiến trình tải toàn bộ audio ngoại tuyến theo lô an toàn.
+- 🛡️ **Phiên Bản & Cập Nhật Hệ Thống:** Ghép cặp đối xứng với thẻ Âm Thanh, hiển thị mã bản dựng công nghệ cao (`DATWY.V2.261024.10`) cùng nút kiểm tra và làm mới cache Service Worker PWA tức thì.
+- 💥 **Khu Vực Nguy Hiểm (Danger Zone):** Nâng cấp thẻ cảnh báo đỏ rượu kính mờ với xác thực bảo vệ 2 lớp khi xóa trắng kho từ.
+
+**Thuật toán & Hiệu năng (FSRS-7 & Data Engine):**
+- 🧠 **Chuẩn hóa FSRS-7 Canonical Benchmark:** Bảo toàn tham số gốc $w_{14} = 1.0$ chuẩn `fsrs_v7.py`, bỏ ép cứng $S_{\text{short}} \le S_{\text{long}}$ trên lượt trả lời đúng (chỉ giữ cap $0.8 \times S_{\text{long}}$ khi lapse), chuyển mốc cap 21 ngày thẻ mới ra sau bước fuzzing.
+- ⚡ **Loại bỏ triệt để O(N²) Dedup:** Thuật toán SymSpell 1-deletion kết hợp tiền tố/hậu tố 4 ký tự, chunking 200 item với `requestIdleCallback`, quét 3.000 từ giảm từ 43.8s xuống 1.1s. Loại bỏ false positive danh từ tận cùng `-er` (`matter/mat`, `farmer/farm`).
+- 🛡️ **Bảo mật phân vùng người dùng Cloud & Quota Shield:** Phân vùng Firestore `users/{uid}/...` với rules `isOwner(userId)`, khóa Sync Key 20 ký tự ngẫu nhiên, ngắt mạch tự động chống bùng nổ request vượt ngưỡng Spark plan.
+- 🧪 **Kiểm định & Báo cáo:** Toàn bộ 77/77 tests PASS qua 8 bộ kiểm thử, xuất báo cáo PDF chuẩn kỹ thuật (`BAO_CAO_DANH_GIA_VA_KHAC_PHUC_TOAN_DIEN.pdf`).
 
 ### DATWY.V2.261021 (2026-10-21) — Data Integrity + UI Cleanup
 
@@ -448,6 +476,6 @@ Phát hành theo giấy phép **MIT License**.
 
 ⭐ **Nếu dự án hữu ích, hãy tặng một Star trên GitHub!** ⭐
 
-[🌐 Live App](https://[hidden]) &nbsp;•&nbsp; [🐛 Issues](https://github.com/DATWY/ultimate-celestial-vocab/issues) &nbsp;•&nbsp; [📦 Releases](https://github.com/DATWY/ultimate-celestial-vocab/releases)
+[🐛 Issues](https://github.com/DATWY/ultimate-celestial-vocab/issues) &nbsp;•&nbsp; [📦 Releases](https://github.com/DATWY/ultimate-celestial-vocab/releases)
 
 </div>
