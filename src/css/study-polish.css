@@ -158,3 +158,331 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
     body.focus-study *, body.focus-study *::before, body.focus-study *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     body.focus-study #celestial-canvas { display: none; }
 }
+
+
+/* ==========================================================================
+   120FPS TACTILE SPRING MICRO-INTERACTIONS (TRANSFORM-ONLY)
+   - Không đặt will-change thường trực: gắn lên mọi <button> sẽ giữ layer vĩnh viễn
+     và tốn bộ nhớ GPU. Phép scale 100ms đã được composite sẵn, không cần hint.
+   - Không dùng `all`: thay bằng danh sách thuộc tính rẻ, nhưng VẪN giữ
+     background/border/box-shadow để các hiệu ứng hover sẵn có không bị mất.
+   ========================================================================== */
+:is(button, .btn, .icon-btn, .srs-btn, .card-action-btn, .modal-close-btn, .manage-nav-tab, [role="button"]):not(:disabled):not([disabled]):not([aria-disabled="true"]) {
+    transition:
+        transform 100ms cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 100ms cubic-bezier(0.16, 1, 0.3, 1),
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease;
+}
+
+:is(button, .btn, .icon-btn, .srs-btn, .card-action-btn, .modal-close-btn, .manage-nav-tab, [role="button"]):not(:disabled):not([disabled]):not([aria-disabled="true"]):active {
+    transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :is(button, .btn, .icon-btn, .srs-btn, .card-action-btn, .modal-close-btn, .manage-nav-tab, [role="button"]):not(:disabled):not([disabled]):not([aria-disabled="true"]):active {
+        transform: none !important;
+        transition: none !important;
+    }
+}
+
+/* ==========================================================================
+   REFINED CELESTIAL FROSTED GLASS UI (DESKTOP ONLY: >= 769px)
+   Mobile (<= 768px) GPU performance contract (backdrop-filter: none) preserved 100%
+   Boost Mode contract preserved: mọi rule blur đều nằm sau :not(.boost-mode)
+   nên TỰ VÔ HIỆU khi bật Boost (không phụ thuộc specificity của style.css).
+   Viền hairline dùng inset shadow (không dùng border) để KHÔNG đổi box model.
+   ========================================================================== */
+@media (min-width: 769px) {
+    /* 1. Header & Navigation Dock */
+    body:not(.boost-mode) .app-header {
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 60%), linear-gradient(135deg, rgba(18, 22, 38, 0.78) 0%, rgba(11, 14, 25, 0.84) 100%) !important;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 12px 36px -4px rgba(0, 0, 0, 0.25), 0 0 24px rgba(138, 43, 226, 0.08) !important;
+    }
+
+    body:not(.boost-mode):not(.dark-mode) .app-header {
+        background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.88) 0%, transparent 60%), linear-gradient(135deg, rgba(255, 255, 255, 0.86) 0%, rgba(248, 250, 252, 0.80) 100%) !important;
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 0 20px rgba(99, 102, 241, 0.06) !important;
+    }
+
+    /* 2. Modal Content & Large Management Panel */
+    body:not(.boost-mode) .modal-content,
+    body:not(.boost-mode) #manage-modal .manage-panel,
+    body:not(.boost-mode) .manage-panel {
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        background: rgba(14, 18, 32, 0.84) !important;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 25px 60px -10px rgba(0, 0, 0, 0.65), 0 8px 24px -4px rgba(0, 0, 0, 0.35), 0 0 32px rgba(138, 43, 226, 0.12) !important;
+    }
+
+    body:not(.boost-mode):not(.dark-mode) .modal-content,
+    body:not(.boost-mode):not(.dark-mode) #manage-modal .manage-panel,
+    body:not(.boost-mode):not(.dark-mode) .manage-panel {
+        background: rgba(255, 255, 255, 0.88) !important;
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.88), 0 25px 60px -10px rgba(15, 23, 42, 0.12), 0 8px 20px -4px rgba(15, 23, 42, 0.06), 0 0 28px rgba(99, 102, 241, 0.08) !important;
+    }
+
+
+    /* 4. Bento HUD Widgets & Scholar Cards
+       Các card này nằm TRONG .modal-content (đã blur 16px). Blur lồng blur buộc
+       trình duyệt tạo thêm layer + blur lại toàn bộ nền cho từng card ⇒ rất tốn
+       GPU. Bỏ blur ở lớp trong, giữ nguyên nền gradient/viền/bóng nên giao diện
+       trông y hệt (nền phía sau đã được làm mờ bởi lớp modal). */
+    body:not(.boost-mode) .profile-hero-card .level-card,
+    body:not(.boost-mode) .hero-scholar-card,
+    body:not(.boost-mode) .streak-bento-card,
+    body:not(.boost-mode) .fusionsrs-bento-section,
+    body:not(.boost-mode) .bento-stat-card,
+    body:not(.boost-mode) .heatmap-card,
+    body:not(.boost-mode) .forecast-card,
+    body:not(.boost-mode) .stats-card {
+        background: rgba(18, 24, 42, 0.72) !important;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 16px -2px rgba(0, 0, 0, 0.3), 0 8px 24px -4px rgba(0, 0, 0, 0.2), 0 0 18px rgba(138, 43, 226, 0.06) !important;
+    }
+
+    body:not(.boost-mode):not(.dark-mode) .profile-hero-card .level-card,
+    body:not(.boost-mode):not(.dark-mode) .hero-scholar-card,
+    body:not(.boost-mode):not(.dark-mode) .streak-bento-card,
+    body:not(.boost-mode):not(.dark-mode) .fusionsrs-bento-section,
+    body:not(.boost-mode):not(.dark-mode) .bento-stat-card,
+    body:not(.boost-mode):not(.dark-mode) .heatmap-card,
+    body:not(.boost-mode):not(.dark-mode) .forecast-card,
+    body:not(.boost-mode):not(.dark-mode) .stats-card {
+        background: rgba(255, 255, 255, 0.82) !important;
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 4px 14px -2px rgba(15, 23, 42, 0.05), 0 8px 20px -4px rgba(15, 23, 42, 0.04), 0 0 16px rgba(99, 102, 241, 0.05) !important;
+    }
+
+    /* 5. Floating Quick Bars & Dropdowns
+       .custom-*dropdown nguyên bản KHÔNG có border, nên tuyệt đối không thêm
+       border ở đây (sẽ đẩy layout 1-2px). Dùng inset shadow cho hairline.
+       Dropdown wrapper nằm ngay trong .app-header (đã blur) và toast có nền
+       gradient đục ⇒ blur thêm là vô hình nhưng vẫn tốn GPU. Chỉ giữ bóng/viền. */
+    body:not(.boost-mode) #taskbar-container,
+    body:not(.boost-mode) .floating-quick-bar,
+    body:not(.boost-mode) .custom-topic-dropdown,
+    body:not(.boost-mode) .custom-typing-dropdown,
+    body:not(.boost-mode) .toast-item {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 28px -4px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(138, 43, 226, 0.08) !important;
+    }
+
+    body:not(.boost-mode):not(.dark-mode) #taskbar-container,
+    body:not(.boost-mode):not(.dark-mode) .floating-quick-bar,
+    body:not(.boost-mode):not(.dark-mode) .custom-topic-dropdown,
+    body:not(.boost-mode):not(.dark-mode) .custom-typing-dropdown,
+    body:not(.boost-mode):not(.dark-mode) .toast-item {
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), 0 0 18px rgba(99, 102, 241, 0.06) !important;
+    }
+}
+
+/* ==========================================================================
+   PRESTIGE BADGES & ACHIEVEMENTS UI ELEVATION (CELESTIAL HUB)
+   ========================================================================== */
+
+/* Overall Summary Banner */
+.achievements-summary-banner {
+    border-radius: 20px !important;
+    padding: 18px 22px !important;
+    position: relative;
+    overflow: hidden;
+}
+
+body:not(.dark-mode) .achievements-summary-banner {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(245, 158, 11, 0.06) 50%, rgba(6, 182, 212, 0.06) 100%) !important;
+    border: 1.5px solid rgba(139, 92, 246, 0.22) !important;
+    box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+body:not(.dark-mode) .summary-title {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+}
+
+body:not(.dark-mode) .summary-subtitle {
+    color: #475569 !important;
+    font-weight: 500 !important;
+}
+
+body:not(.dark-mode) .summary-progress-bg {
+    background: rgba(226, 232, 240, 0.9) !important;
+    height: 9px !important;
+}
+
+/* Category Filter Tabs */
+.achievements-filter-tabs {
+    gap: 10px !important;
+    margin: 8px 0 14px 0 !important;
+}
+
+.achieve-tab-btn {
+    border-radius: 14px !important;
+    padding: 7px 16px !important;
+    font-weight: 700 !important;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.22s ease,
+                border-color 0.22s ease,
+                box-shadow 0.22s ease,
+                color 0.22s ease !important;
+}
+
+body:not(.dark-mode) .achieve-tab-btn {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+}
+
+body:not(.dark-mode) .achieve-tab-btn:hover {
+    background: #f8fafc !important;
+    color: var(--primary-color, #8b5cf6) !important;
+    border-color: color-mix(in srgb, var(--primary-color, #8b5cf6) 40%, #e2e8f0) !important;
+    transform: translateY(-1px);
+}
+
+body:not(.dark-mode) .achieve-tab-btn.active {
+    background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+}
+
+/* Milestone Track Badge Cards */
+.badge-track-item {
+    border-radius: 20px !important;
+    padding: 20px !important;
+    gap: 16px !important;
+    position: relative;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease !important;
+    overflow: hidden;
+}
+
+/* Accent top-stripe reflecting track's identity */
+.badge-track-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--track-theme, #8b5cf6);
+    opacity: 0.95;
+    border-radius: 20px 20px 0 0;
+    transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.badge-track-item:hover::before {
+    height: 6px;
+    opacity: 1;
+}
+
+/* Light mode luxury styling */
+body:not(.dark-mode) .badge-track-item {
+    background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--track-theme, #8b5cf6) 6%, #ffffff) 100%) !important;
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8b5cf6) 24%, #e2e8f0) !important;
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+
+body:not(.dark-mode) .badge-track-item:hover {
+    transform: translateY(-5px) !important;
+    border-color: color-mix(in srgb, var(--track-theme, #8b5cf6) 50%, #cbd5e1) !important;
+    box-shadow: 0 16px 36px -6px color-mix(in srgb, var(--track-theme, #8b5cf6) 24%, rgba(15, 23, 42, 0.08)), 
+                0 4px 12px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Dark mode luxury styling */
+body.dark-mode .badge-track-item {
+    background: linear-gradient(145deg, rgba(26, 32, 53, 0.85) 0%, color-mix(in srgb, var(--track-theme, #8b5cf6) 12%, rgba(15, 20, 35, 0.92)) 100%) !important;
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, rgba(255, 255, 255, 0.08)) !important;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .badge-track-item:hover {
+    transform: translateY(-5px) !important;
+    border-color: color-mix(in srgb, var(--track-theme, #8b5cf6) 65%, transparent) !important;
+    box-shadow: 0 16px 38px -4px color-mix(in srgb, var(--track-theme, #8b5cf6) 35%, transparent) !important;
+}
+
+/* 3D Icon Box Enhancement */
+.track-icon-box {
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 18px !important;
+    font-size: 1.85rem !important;
+    box-shadow: 0 6px 18px -2px color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, transparent) !important;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.badge-track-item:hover .track-icon-box {
+    transform: scale(1.1) rotate(4deg) !important;
+}
+
+/* Category Pill */
+.track-cat-pill {
+    padding: 5px 12px !important;
+    border-radius: 10px !important;
+    font-size: 0.78rem !important;
+    font-weight: 800 !important;
+}
+
+/* Level Badge */
+.track-level-badge {
+    padding: 4px 11px !important;
+    border-radius: 10px !important;
+    font-weight: 800 !important;
+    font-size: 0.74rem !important;
+}
+
+body:not(.dark-mode) .track-level-badge {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* Progress bar inside badge cards */
+.track-prog-bar-bg {
+    height: 8px !important;
+    border-radius: 999px !important;
+}
+
+.track-prog-bar-fill {
+    border-radius: 999px !important;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--track-theme, #8b5cf6) 65%, #ffffff), var(--track-theme, #8b5cf6)) !important;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--track-theme, #8b5cf6) 45%, transparent) !important;
+}
+
+.track-prog-view-more {
+    font-weight: 700 !important;
+    color: var(--track-theme, #8b5cf6) !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.2s ease;
+}
+
+.badge-track-item:hover .track-prog-view-more {
+    transform: translateX(3px);
+}
+
+/* ==========================================================================
+   MILESTONE TRACK BADGES GRID - BALANCED 2x2 LAYOUT (Fix 'trên 3 dưới 1')
+   ========================================================================== */
+.achievements-wrapper {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+}
+
+.special-badges-section {
+    grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 640px) {
+    .achievements-wrapper {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+}
+
+

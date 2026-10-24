@@ -40,6 +40,7 @@ firestore-debug.log*
 ui-debug.log*
 
 # Scratch & test scripts
+*.zip
 scratch/
 .verify_screens/
 tmp_audit_verify_fixes/
@@ -47,3 +48,12 @@ tmp_audit_verify_fixes/
 tmp_audit_verify_xp/
 tmp_audit_verify_ver/
 tmp_audit_verify_*/
+.codex-evaluation-dist/
+reports/evaluation_evidence/
+reports/perf-*.json
+*.pdf
+BAO_CAO_DANH_GIA_VA_KHAC_PHUC_TOAN_DIEN.html
+*REPORT*.md
+*report*.md
+*plan*.md
+audit/

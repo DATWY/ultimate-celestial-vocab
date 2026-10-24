@@ -7,14 +7,61 @@ import { initializeProgress, captureProgress, mergeProgress } from './progress-m
 import { validFsrs7Params } from './srs/constants.js';
 import { saveProgressToDB } from './idb.js';
 import { announceSyncStatus } from './sync-status.js';
-import { isIsolatedStorage } from './idb.js';
-import { showPopup, showToast } from '../ui/modal.js';
-import { updateStats } from '../ui/render.js';
-import { initAppDB, getAllVocabularyFromDB, saveAllVocabularyToDB, saveWordToDB, getSettingFromDB, saveSettingToDB } from './idb.js';
+import { initAppDB, getAllVocabularyFromDB, saveAllVocabularyToDB, saveWordToDB, getSettingFromDB, saveSettingToDB, isIsolatedStorage } from './idb.js';
 import { getLocalDateString, getOffsetDateString } from './utils/date.js';
 export { getLocalDateString, getOffsetDateString } from './utils/date.js';
 
-import { syncCardToFirebase } from './sync.js';
+// Cloud sync nạp MUỘN: state.js nằm trong entry chunk, nếu import tĩnh sync.js
+// thì firebase (547 kB) lại quay vào critical path. Chỉ nạp khi thực sự có thẻ
+// cần xếp hàng đồng bộ (sau lượt học đầu tiên).
+let _syncModulePromise = null;
+function queueCardSync(card) {
+    if (typeof window === 'undefined' || !card || !card.id) return;
+    if (!_syncModulePromise) _syncModulePromise = import('./sync.js');
+    _syncModulePromise.then(m => m.syncCardToFirebase?.(card)).catch(() => {});
+}
+
+let _renderModulePromise = null;
+function getRenderModule() {
+    if (!_renderModulePromise) _renderModulePromise = import('../ui/render.js');
+    return _renderModulePromise;
+}
+
+// Gộp nhiều lần gọi stats trong cùng một frame thành 1 lần render.
+let _statsFrameHandle = 0;
+function safeUpdateStats() {
+    if (typeof window === 'undefined' || _statsFrameHandle) return;
+    const run = () => {
+        _statsFrameHandle = 0;
+        getRenderModule().then(m => m.updateStats?.()).catch(() => {});
+    };
+    if (typeof requestAnimationFrame === 'function') {
+        _statsFrameHandle = requestAnimationFrame(run);
+    } else {
+        _statsFrameHandle = setTimeout(run, 0);
+    }
+}
+function updateStats() {
+    safeUpdateStats();
+}
+
+function safeShowPopup(message, type = 'info') {
+    if (typeof window !== 'undefined') {
+        import('../ui/modal.js').then(m => m.showPopup?.(message, type)).catch(() => {});
+    }
+}
+function showPopup(message, type = 'info') {
+    safeShowPopup(message, type);
+}
+
+function safeShowToast(title, message = '', icon = 'ph-trophy') {
+    if (typeof window !== 'undefined') {
+        import('../ui/modal.js').then(m => m.showToast?.(title, message, icon)).catch(() => {});
+    }
+}
+function showToast(title, message = '', icon = 'ph-trophy') {
+    safeShowToast(title, message, icon);
+}
 
 let _vocabulary = [];
 let _vocabIndex = new Map(); // id → index in _vocabulary
@@ -144,7 +191,13 @@ let _userFsrs7Params = null;
 let _userFsrs7TrainedAt = null;
 const progressActor = getDeviceId();
 function skipPersistence() {
-    return _isPreviewMode || (sessionStorage.getItem('CHEAT_MODE') === 'true' && !isIsolatedStorage);
+    // sessionStorage có thể không tồn tại (SSR, môi trường test thuần Node,
+    // hoặc trình duyệt chặn WebStorage) — truy cập trực tiếp sẽ ném ReferenceError.
+    let cheatMode = false;
+    try {
+        if (typeof sessionStorage !== 'undefined') cheatMode = sessionStorage.getItem('CHEAT_MODE') === 'true';
+    } catch (_) { cheatMode = false; }
+    return _isPreviewMode || (cheatMode && !isIsolatedStorage);
 }
 
 export function prepareProgress(kind) {
@@ -336,7 +389,7 @@ export function setDailyStats(data) { _dailyStats = data; }
 export function setPreviewMode(val) { _isPreviewMode = val; }
 export function isPreviewMode() { return _isPreviewMode; }
 
-export async function saveVocabulary(skipSync = false) {
+export async function saveVocabulary(skipSync = true) {
     try {
         const vocabToSave = _vocabulary.map(w => ({ ...w, srsDueDate: w.srsDueDate || null }));
         
@@ -346,10 +399,16 @@ export async function saveVocabulary(skipSync = false) {
         setVocabulary(stored.map(card => mergeCardFields(current.get(card.id) || card, card)));
         await saveDailyStats();
         
-        updateStats();
+        safeUpdateStats();
+        return true;
     } catch (e) {
         console.error("Save error:", e);
-        showPopup("Lỗi không thể lưu dữ liệu!", "error");
+        announceSyncStatus({ phase: 'storage-error' });
+        safeShowPopup("Lỗi không thể lưu dữ liệu!", "error");
+        // Trả về false để nơi gọi biết dữ liệu CHƯA được ghi bền vững.
+        // Đặc biệt quan trọng với sync: không được nâng watermark khi lưu thất bại,
+        // nếu không lần sync sau sẽ bỏ qua vĩnh viễn các thẻ vừa kéo về.
+        return false;
     }
 }
 
@@ -364,15 +423,15 @@ export async function saveOneWord(word) {
         const stored = await saveWordToDB({ ...word, srsDueDate: word.srsDueDate || null });
         const merged = mergeCardFields(getVocabById(word.id) || word, stored);
         updateCardInVocabulary(word.id, merged);
-        updateStats();
-        // Queue sync lên Cloud (batch 30s)
-        syncCardToFirebase(merged);
-        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastCardUpdated?.(merged));
+        // Không chặn lượt học: stats gộp theo frame, sync xếp hàng nền.
+        safeUpdateStats();
+        queueCardSync(merged);
+        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastCardUpdated?.(merged)).catch(() => {});
         return merged;
     } catch (e) {
         console.error("SaveOneWord error:", e);
         announceSyncStatus({ phase: 'storage-error' });
-        showToast('Chưa lưu được', 'Thiết bị chưa lưu được lượt học này. Hãy xuất dữ liệu trước khi đóng trang.', 'ph-warning');
+        safeShowToast('Chưa lưu được', 'Thiết bị chưa lưu được lượt học này. Hãy xuất dữ liệu trước khi đóng trang.', 'ph-warning');
         return null;
     }
 }
@@ -485,7 +544,7 @@ export async function loadVocabulary() {
 
     console.log(`Loaded: ${_vocabulary.length} words from IDB.`);
     _rebuildVocabIndex();
-    updateStats();
+    safeUpdateStats();
 }
 
 async function persistReviewLogs() {
@@ -656,7 +715,7 @@ export function recordReviewResult(isCorrect) {
         
         // Gamification: Thông báo Combo mỗi 10 câu đúng liên tiếp
         if (_gamification.consecutiveCorrect > 0 && _gamification.consecutiveCorrect % 10 === 0) {
-            showToast('Chuỗi Combo Đỉnh Cao', `🔥 Đỉnh quá! Trả lời đúng liên tiếp: ${_gamification.consecutiveCorrect}`, 'ph-fire');
+            safeShowToast('Chuỗi Combo Đỉnh Cao', `🔥 Đỉnh quá! Trả lời đúng liên tiếp: ${_gamification.consecutiveCorrect}`, 'ph-fire');
         }
     } else {
         // Option 3 Combo Degradation: Bấm sai khi >=30 rớt về 10, còn lại rớt về 0
@@ -950,7 +1009,7 @@ export function checkAndApplyStreakFreeze(todayStr = getLocalDateString()) {
         _gamification.lastStreakFreezeDate = yesterdayStr;
 
         console.log(`❄️ Khiên Băng đã kích hoạt bảo vệ ngày ${yesterdayStr}!`);
-        showToast('Khiên Băng Kích Hoạt ❄️', `Kết giới băng giá đã bảo vệ chuỗi của bạn cho ngày ${yesterdayStr}!`, 'ph-snowflake');
+        safeShowToast('Khiên Băng Kích Hoạt ❄️', `Kết giới băng giá đã bảo vệ chuỗi của bạn cho ngày ${yesterdayStr}!`, 'ph-snowflake');
         return true;
     }
 
@@ -1157,7 +1216,7 @@ export function logActivity() {
     _gamification.activityHeatmap[today] += 1;
     const currentTodayCount = _gamification.activityHeatmap[today];
     if (currentTodayCount === MIN_STREAK_DAILY_REVIEWS) {
-        showToast('Nối Chuỗi Thành Công! 🔥', `Tuyệt vời! Bạn đã hoàn thành ${MIN_STREAK_DAILY_REVIEWS} lượt ôn tập hôm nay để bảo toàn chuỗi tinh tú!`, 'ph-fire');
+        safeShowToast('Nối Chuỗi Thành Công! 🔥', `Tuyệt vời! Bạn đã hoàn thành ${MIN_STREAK_DAILY_REVIEWS} lượt ôn tập hôm nay để bảo toàn chuỗi tinh tú!`, 'ph-fire');
     }
     syncStreakFromHeatmap();
 }
@@ -1172,6 +1231,71 @@ export function checkAndUpdateStreak() {
     syncStreakFromHeatmap();
 }
 
+// ─── BADGE CELEBRATION BATCHING ───────────────────────────────────────────
+// Mỗi huy hiệu mở khóa từng: ghi IDB + nạp 4 module + phát 1 âm thanh + chạy
+// 1 vòng confetti + tạo 1 toast. Nhập kho lớn có thể mở 20–30 huy hiệu cùng
+// lúc ⇒ 20–30 lần ghi IDB, 20–30 vòng confetti và một "bức tường" toast.
+// Nay: gộp các huy hiệu trong cùng 120ms thành MỘT đợt chúc mừng (1 âm thanh,
+// 1 đợt confetti, 3 toast đầu + 1 toast tổng kết), và gộp 1 lần ghi IDB.
+// Người dùng vẫn thấy đầy đủ thông tin mở khóa, giao diện không đổi.
+let _badgeCelebrateTimer = null;
+let _badgeCelebrateQueue = [];
+let _badgeSaveTimer = null;
+
+function scheduleGamificationSave() {
+    if (_badgeSaveTimer) return;
+    _badgeSaveTimer = setTimeout(() => {
+        _badgeSaveTimer = null;
+        saveGamification();
+    }, 150);
+}
+
+function flushBadgeCelebrations() {
+    _badgeCelebrateTimer = null;
+    const ids = _badgeCelebrateQueue.splice(0);
+    if (!ids.length) return;
+
+    import('./sound.js').then(m => m.playSound('badgeUnlock')).catch(() => {});
+    import('../ui/render.js')
+        .then(m => m.launchCelebrationConfetti?.({ count: Math.min(85 + ids.length * 8, 160) }))
+        .catch(() => {});
+
+    Promise.all([import('../ui/modal.js'), import('../features/badges.js')])
+        .then(([ui, badgeModule]) => {
+            const { BADGE_TRACKS, SPECIAL_BADGES } = badgeModule;
+            const infoOf = (badgeId) => {
+                let badgeInfo = SPECIAL_BADGES.find(b => b.id === badgeId);
+                if (!badgeInfo) {
+                    for (const track of BADGE_TRACKS) {
+                        const index = track.ids.indexOf(badgeId);
+                        if (index !== -1) {
+                            badgeInfo = { name: track.names[index], icon: track.icons[index] };
+                            break;
+                        }
+                    }
+                }
+                return badgeInfo;
+            };
+
+            // Tối đa 3 toast chi tiết; phần còn lại gộp thành 1 toast tổng kết
+            // để không tạo hàng chục phần tử DOM + transition cùng lúc.
+            ids.slice(0, 3).forEach((badgeId) => {
+                const badgeInfo = infoOf(badgeId);
+                const title = badgeInfo ? `Huy hiệu: ${badgeInfo.name}` : 'Huy hiệu mới!';
+                const icon = badgeInfo ? badgeInfo.icon : 'ph-trophy';
+                ui.showToast(title, 'Bạn vừa mở khóa một thành tựu tuyệt vời!', icon);
+            });
+            if (ids.length > 3) {
+                ui.showToast(
+                    `+${ids.length - 3} huy hiệu khác`,
+                    'Bạn vừa mở khóa thêm nhiều thành tựu tuyệt vời!',
+                    'ph-trophy'
+                );
+            }
+        })
+        .catch(() => {});
+}
+
 export function unlockBadge(badgeId) {
     if (_isPreviewMode) {
         if (!_gamification.unlockedBadges) _gamification.unlockedBadges = [];
@@ -1184,39 +1308,12 @@ export function unlockBadge(badgeId) {
     if (!_gamification.unlockedBadges) _gamification.unlockedBadges = [];
     if (!_gamification.unlockedBadges.includes(badgeId)) {
         _gamification.unlockedBadges.push(badgeId);
-        saveGamification();
-        
-        import('./sound.js').then(m => m.playSound('badgeUnlock'));
+        scheduleGamificationSave();
 
-        // Cập nhật: Sử dụng Toast thay vì Modal Popup
-        import('../ui/modal.js').then(m => {
-            // Lấy tên huy hiệu để hiển thị cho Toast
-            import('../features/badges.js').then(badgeModule => {
-                const { BADGE_TRACKS, SPECIAL_BADGES } = badgeModule;
-                let badgeInfo = null;
-                
-                // Check Special Badges
-                badgeInfo = SPECIAL_BADGES.find(b => b.id === badgeId);
-                
-                // Check Tracks
-                if (!badgeInfo) {
-                    for (const track of BADGE_TRACKS) {
-                        const index = track.ids.indexOf(badgeId);
-                        if (index !== -1) {
-                            badgeInfo = {
-                                name: track.names[index],
-                                icon: track.icons[index]
-                            };
-                            break;
-                        }
-                    }
-                }
-
-                const title = badgeInfo ? `Huy hiệu: ${badgeInfo.name}` : `Huy hiệu mới!`;
-                const icon = badgeInfo ? badgeInfo.icon : 'ph-trophy';
-                m.showToast(title, 'Bạn vừa mở khóa một thành tựu tuyệt vời!', icon);
-            });
-        });
+        _badgeCelebrateQueue.push(badgeId);
+        if (!_badgeCelebrateTimer) {
+            _badgeCelebrateTimer = setTimeout(flushBadgeCelebrations, 120);
+        }
     }
 }
 

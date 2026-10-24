@@ -2440,30 +2440,44 @@ body.dark-mode .example-focus-tag {
     50% { opacity: 1; transform: scale(1.03); }
 }
 
-/* Hiệu ứng Deep Focus breathing trên khung ví dụ khi gặp từ khó */
+/* Hiệu ứng Deep Focus breathing trên khung ví dụ khi gặp từ khó.
+   Bản cũ animate border-color + box-shadow (thuộc tính paint) nên mỗi frame
+   trình duyệt phải repaint cả khung chữ. Nay giữ nguyên nhịp 3.5s / easing
+   nhưng chỉ animate OPACITY của một lớp phủ tĩnh (compositor) — mắt vẫn thấy
+   đúng nhịp "thở" sáng–tối, CPU/GPU gần như bằng 0. */
 .detail-row.example-row.is-hard-focus {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(168, 85, 247, 0.05));
     border: 1px solid rgba(245, 158, 11, 0.3);
     padding: 12px 14px;
     margin-top: 6px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), inset 0 0 15px rgba(245, 158, 11, 0.06);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.detail-row.example-row.is-hard-focus::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    border: 1px solid rgba(245, 158, 11, 0.6);
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.2), inset 0 0 22px rgba(245, 158, 11, 0.12);
+    opacity: 0.35;
+    pointer-events: none;
     animation: exampleBoxBreathing 3.5s infinite ease-in-out;
 }
 
 body.dark-mode .detail-row.example-row.is-hard-focus {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(139, 92, 246, 0.08));
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(245, 158, 11, 0.08);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .detail-row.example-row.is-hard-focus::after {
+    border-color: rgba(245, 158, 11, 0.65);
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.18), inset 0 0 22px rgba(245, 158, 11, 0.14);
 }
 
 @keyframes exampleBoxBreathing {
-    0%, 100% {
-        border-color: rgba(245, 158, 11, 0.3);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 0 12px rgba(245, 158, 11, 0.05);
-    }
-    50% {
-        border-color: rgba(245, 158, 11, 0.6);
-        box-shadow: 0 6px 24px rgba(245, 158, 11, 0.2), inset 0 0 22px rgba(245, 158, 11, 0.12);
-    }
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
 }
 
 #card-example {
@@ -6809,10 +6823,17 @@ body:not(.dark-mode) .vocab-empty-results .reset-filter-btn:hover {
     display: flex;
     flex-direction: row;
     gap: 0;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    /* transition:all khiến mọi thay đổi style (kể cả width/height bên trong)
+       đều đi qua transition; chỉ rõ 3 thuộc tính thật sự đổi khi hover. */
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    /* Cô lập layout/paint của từng thẻ: khi hover hoặc cập nhật 1 thẻ, trình
+       duyệt không phải xét lại toàn bộ lưới 40–500 thẻ. */
+    contain: layout paint style;
 }
 
 body:not(.dark-mode) .word-card {
@@ -7241,12 +7262,36 @@ body:not(.dark-mode) .profile-nav-tab.active {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    /* Chỉ transform (compositor) trên icon; phần "lửa sáng lên" do lớp
+       phủ mờ bên dưới animate opacity. Trước đây animate filter drop-shadow
+       khiến trình duyệt phải vẽ lại icon mỗi frame. */
+}
+
+.streak-icon-wrapper > i {
+    display: block;
     animation: fireFlamePulse 1.5s ease-in-out infinite alternate;
 }
 
+.streak-icon-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 112, 67, 0.42) 0%, rgba(255, 87, 34, 0.16) 45%, transparent 72%);
+    opacity: 0.45;
+    pointer-events: none;
+    animation: fireFlameGlow 1.5s ease-in-out infinite alternate;
+}
+
 @keyframes fireFlamePulse {
-    0% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255, 87, 34, 0.5)); }
-    100% { transform: scale(1.08) rotate(2deg); filter: drop-shadow(0 0 14px rgba(255, 112, 67, 0.9)); }
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08) rotate(2deg); }
+}
+
+@keyframes fireFlameGlow {
+    0% { opacity: 0.35; transform: scale(0.94); }
+    100% { opacity: 0.9; transform: scale(1.06); }
 }
 
 .streak-count-row {
@@ -7796,17 +7841,25 @@ body:not(.dark-mode) .forecast-avg-line {
 }
 
 @keyframes emeraldBarPulse {
-    0%, 100% {
-        box-shadow: 0 0 14px rgba(16, 185, 129, 0.4), inset 0 0 10px rgba(52, 211, 153, 0.3);
-    }
-    50% {
-        box-shadow: 0 0 22px rgba(52, 211, 153, 0.7), inset 0 0 14px rgba(110, 231, 183, 0.45);
-    }
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
 }
 
 .forecast-bar-container.today .forecast-bar {
     background: linear-gradient(180deg, #34d399 0%, rgba(16, 185, 129, 0.35) 100%);
     border-top: 2.5px solid #6ee7b7;
+}
+
+/* Quầng sáng "thở" đặt trên pseudo-element: box-shadow tĩnh + animate opacity,
+   thay vì animate box-shadow trên chính thanh bar (repaint mỗi frame). */
+.forecast-bar-container.today .forecast-bar::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    box-shadow: 0 0 22px rgba(52, 211, 153, 0.7), inset 0 0 14px rgba(110, 231, 183, 0.45);
+    opacity: 0.55;
+    pointer-events: none;
     animation: emeraldBarPulse 2.8s ease-in-out infinite;
 }
 
@@ -8634,15 +8687,16 @@ body.dark-mode .profile-card.achievements-card:hover {
 
 /* Light Mode Overrides for Milestone Track Cards */
 body:not(.dark-mode) .badge-track-item {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.05);
+    background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--track-theme, #8B5CF6) 8%, #ffffff) 100%);
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, #CBD5E1);
+    border-top: 4px solid var(--track-theme, #8B5CF6);
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.07);
 }
 
 body:not(.dark-mode) .badge-track-item:hover {
-    background: #ffffff;
-    border-color: color-mix(in srgb, var(--track-theme, #8B5CF6) 45%, transparent);
-    box-shadow: 0 10px 28px -4px color-mix(in srgb, var(--track-theme, #8B5CF6) 20%, transparent);
+    transform: translateY(-5px);
+    border-color: var(--track-theme, #8B5CF6);
+    box-shadow: 0 16px 36px -6px color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, transparent);
 }
 
 body:not(.dark-mode) .track-level-badge {
@@ -8835,22 +8889,20 @@ body:not(.dark-mode) .achieve-tab-btn.active {
 }
 
 /* Light mode milestone track cards */
-body:not(.dark-mode) .badge-track-item {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
-}
-
-body:not(.dark-mode) .badge-track-item:hover {
-    transform: translateY(-4px);
-    border-color: #CBD5E1;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.09);
-}
-
+body:not(.dark-mode) .badge-track-item,
 body:not(.dark-mode) .badge-track-item.unlocked {
-    background: #FFFFFF;
-    border-color: #E2E8F0;
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--track-theme, #8B5CF6) 8%, #ffffff) 100%) !important;
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, #CBD5E1) !important;
+    border-top: 4px solid var(--track-theme, #8B5CF6) !important;
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.07), 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+}
+
+body:not(.dark-mode) .badge-track-item:hover,
+body:not(.dark-mode) .badge-track-item.unlocked:hover {
+    transform: translateY(-5px) !important;
+    border-color: var(--track-theme, #8B5CF6) !important;
+    border-top-color: var(--track-theme, #8B5CF6) !important;
+    box-shadow: 0 16px 36px -6px color-mix(in srgb, var(--track-theme, #8B5CF6) 28%, transparent), 0 4px 14px rgba(15, 23, 42, 0.06) !important;
 }
 
 body:not(.dark-mode) .track-title-single {
@@ -10260,7 +10312,11 @@ body.dark-mode .word-card-tags {
     font-size: 0.85rem !important;
     border-radius: 8px !important;
     border: 1px solid transparent !important;
-    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1) !important;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+                background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                color 0.2s ease !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -10374,9 +10430,34 @@ body.dark-mode .io-clean-card {
     grid-column: span 2;
 }
 
+.io-card-sync {
+    grid-column: span 2;
+}
+
+.io-card-export {
+    grid-column: 1;
+}
+
+.io-card-admin {
+    grid-column: 2;
+}
+
+.io-card-audio {
+    grid-column: 1;
+}
+
+.io-card-version {
+    grid-column: 2;
+}
+
 @media (max-width: 768px) {
-    .io-card-import {
-        grid-column: span 1;
+    .io-card-import,
+    .io-card-sync,
+    .io-card-export,
+    .io-card-admin,
+    .io-card-audio,
+    .io-card-version {
+        grid-column: span 1 !important;
     }
 }
 
@@ -10415,10 +10496,37 @@ body.dark-mode .io-clean-card {
     border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+.sync-icon {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.16));
+    color: #0284c7;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.audio-icon {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(234, 179, 8, 0.16));
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.version-icon {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.16), rgba(6, 182, 212, 0.16));
+    color: #0d9488;
+    border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
 .io-card-titles {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    flex: 1;
+}
+
+.io-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .io-card-title {
@@ -10433,6 +10541,448 @@ body.dark-mode .io-clean-card {
     color: var(--text-light);
     margin: 0;
     line-height: 1.45;
+}
+
+.io-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.28);
+}
+
+body.dark-mode .io-header-badge {
+    background: rgba(99, 102, 241, 0.18);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
+.sync-shield-badge {
+    background: rgba(56, 189, 248, 0.12) !important;
+    color: #0284c7 !important;
+    border-color: rgba(56, 189, 248, 0.28) !important;
+}
+
+body.dark-mode .sync-shield-badge {
+    background: rgba(56, 189, 248, 0.18) !important;
+    color: #38bdf8 !important;
+    border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Card 4: Hệ thống Đồng bộ đa thiết bị (2-Column Grid) */
+.sync-columns-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .sync-columns-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+.sync-box-card {
+    background: rgba(15, 23, 42, 0.04);
+    border: 1.5px solid var(--border-color);
+    border-radius: 16px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.25s ease;
+}
+
+body.dark-mode .sync-box-card {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(51, 65, 85, 0.7);
+}
+
+.sync-box-card:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.sync-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.sync-box-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sync-box-label i {
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.sync-active-indicator {
+    font-size: 0.72rem;
+    color: #10b981;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.sync-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    display: inline-block;
+    animation: versionPulse 2s infinite ease-in-out;
+}
+
+.sync-box-hint {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Fix lỗi Input bị thu hẹp: Layout phân tách Input & Button chuẩn xác */
+.sync-input-button-group {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 4px;
+}
+
+.sync-input-pill {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0 14px;
+    transition: all 0.2s ease;
+}
+
+body:not(.dark-mode) .sync-input-pill {
+    background: #ffffff;
+    border-color: #cbd5e1;
+}
+
+.sync-input-pill:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.sync-pill-icon {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.io-sync-key-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 0;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.io-sync-key-input::placeholder {
+    font-weight: normal;
+    letter-spacing: normal;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.8rem;
+}
+
+.sync-action-btn {
+    flex-shrink: 0 !important;
+    width: auto !important;
+    min-width: 105px;
+    padding: 0 16px;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sync-copy-btn {
+    background: rgba(99, 102, 241, 0.12) !important;
+    color: #6366f1 !important;
+    border: 1.5px solid rgba(99, 102, 241, 0.3) !important;
+}
+
+body.dark-mode .sync-copy-btn {
+    background: rgba(99, 102, 241, 0.18) !important;
+    color: #a5b4fc !important;
+    border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+.sync-copy-btn:hover {
+    background: var(--primary-color) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-color) !important;
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+
+.sync-btn-copied {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+.sync-link-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25) !important;
+}
+
+.sync-link-btn:hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+}
+
+.sync-notice-text {
+    font-size: 0.74rem;
+    color: #0284c7;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.95;
+    margin-top: 2px;
+}
+
+body.dark-mode .sync-notice-text {
+    color: #38bdf8;
+}
+
+.io-sync-key-status {
+    margin: 2px 0 0 0;
+    min-height: 1.2em;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+
+/* Card 5: Kho Âm Thanh Ngoại Tuyến */
+.audio-status-card {
+    background: rgba(15, 23, 42, 0.04);
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.dark-mode .audio-status-card {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(51, 65, 85, 0.7);
+}
+
+.audio-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.audio-stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.audio-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+.audio-stat-number {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.audio-cache-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+body.dark-mode .audio-cache-badge {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.audio-cache-badge.badge-pending {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #d97706 !important;
+    border-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+body.dark-mode .audio-cache-badge.badge-pending {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.audio-progress-wrap {
+    width: 100%;
+    height: 6px;
+    background: rgba(15, 23, 42, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+body.dark-mode .audio-progress-wrap {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.audio-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #10b981);
+    border-radius: 999px;
+    transition: width 0.25s ease;
+}
+
+.audio-download-btn {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 146, 60, 0.12) 100%) !important;
+    color: #d97706 !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+body.dark-mode .audio-download-btn {
+    background: rgba(245, 158, 11, 0.16) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.audio-download-btn:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #ffffff !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Card 6: Thông Tin Phiên Bản & Cập Nhật Hệ Thống */
+.version-meta-card {
+    background: rgba(15, 23, 42, 0.04);
+    border: 1.5px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+body.dark-mode .version-meta-card {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(51, 65, 85, 0.7);
+}
+
+.version-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.84rem;
+}
+
+.version-build-note {
+    font-size: 0.74rem;
+    color: #059669;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+}
+
+body.dark-mode .version-build-note {
+    color: #34d399;
+}
+
+.check-update-btn {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(6, 182, 212, 0.12) 100%) !important;
+    color: #0d9488 !important;
+    border: 1.5px solid rgba(20, 184, 166, 0.3) !important;
+}
+
+body.dark-mode .check-update-btn {
+    background: rgba(20, 184, 166, 0.16) !important;
+    color: #2dd4bf !important;
+    border-color: rgba(20, 184, 166, 0.35) !important;
+}
+
+.check-update-btn:hover {
+    background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%) !important;
+    color: #ffffff !important;
+    border-color: #0d9488 !important;
+    box-shadow: 0 4px 14px rgba(20, 184, 166, 0.3) !important;
+}
+
+/* Stacked Button Titles */
+.btn-text-stacked {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    line-height: 1.25;
+}
+
+.btn-main-text {
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.btn-sub-text {
+    font-size: 0.7rem;
+    opacity: 0.82;
+    font-weight: 500;
 }
 
 /* IO Segmented Tabs */
@@ -10959,31 +11509,40 @@ body:not(.dark-mode) #fsrs7-params-input:focus {
    HIỆU ỨNG SÓNG TỎA RA (WAVE / PULSE EFFECT)
    ========================================= */
 
-/* 1. Tạo hoạt ảnh "cơn sóng" lan ra bằng box-shadow */
+/* 1. Hiệu ứng "cơn sóng" lan ra.
+   Bản cũ animate box-shadow 0 → 15px: box-shadow KHÔNG chạy trên compositor nên
+   mỗi frame đều phải repaint. Khi sync bị kẹt, animation chạy vô hạn và repaint
+   liên tục. Bản mới dùng pseudo-element với transform + opacity (compositor-only),
+   giữ nguyên timing 1.5s và cảm giác vòng sáng lan ra ~15px. */
 @keyframes wave-pulse {
     0% {
-        /* Bắt đầu: Vòng sóng sát vào nút, màu xanh lá đậm */
-        box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7);
+        transform: scale(1);
+        opacity: 0.75;
     }
 
-    70% {
-        /* Giữa chừng: Sóng lan rộng ra 15px và mờ dần đi */
-        box-shadow: 0 0 0 15px rgba(39, 174, 96, 0);
-    }
-
-    100% {
-        /* Kết thúc: Reset lại */
-        box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);
+    70%, 100% {
+        transform: scale(1.6);
+        opacity: 0;
     }
 }
 
 /* 2. Áp dụng hiệu ứng sóng cho CẢ CÁI NÚT khi đang sync */
 .syncing-active {
-    /* Gọi cơn sóng, lặp lại liên tục mỗi 1.5s */
-    animation: wave-pulse 1.5s infinite;
+    position: relative;
     pointer-events: none;
     cursor: wait;
     background-color: rgba(39, 174, 96, 0.15) !important;
+}
+
+.syncing-active::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    border: 2px solid rgba(39, 174, 96, 0.7);
+    animation: wave-pulse 1.5s infinite;
+    will-change: transform, opacity;
+    pointer-events: none;
 }
 
 /* 3. Hiệu ứng quay tròn (chỉ dành riêng cho ICON bên trong) */
@@ -11889,6 +12448,7 @@ body:not(.dark-mode) .level-card.rank-diamond .level-circle {
     pointer-events: auto;
     min-width: min(320px, calc(100vw - 32px));
     max-width: calc(100vw - 32px);
+    contain: layout paint style;
 }
 
 .toast-item.show {
@@ -15290,9 +15850,13 @@ body.boost-mode .victory-nebula-glow,
 body.boost-mode .victory-ambient-ring,
 body.boost-mode .example-focus-tag,
 body.boost-mode .detail-row.example-row.is-hard-focus,
+body.boost-mode .detail-row.example-row.is-hard-focus::after,
 body.boost-mode .waveform-bar,
 body.boost-mode .ring-rotate,
 body.boost-mode .fire-flame-pulse,
+body.boost-mode .streak-icon-wrapper > i,
+body.boost-mode .streak-icon-wrapper::before,
+body.boost-mode .forecast-bar-container.today .forecast-bar::after,
 body.boost-mode .gold-pulse,
 body.boost-mode .summary-shine-sweep,
 body.boost-mode .summary-trophy-pulse,
@@ -15356,6 +15920,7 @@ body:not(.dark-mode).boost-mode .celestial-stats-dock {
     /* Disable continuous background ambient animation on mobile */
     .example-focus-tag,
     .detail-row.example-row.is-hard-focus,
+    .detail-row.example-row.is-hard-focus::after,
     .victory-halo-spin,
     .victory-nebula-glow,
     .victory-ambient-ring {
@@ -15368,74 +15933,3 @@ body:not(.dark-mode).boost-mode .celestial-stats-dock {
     }
 }
 
-/* --- VERSION & AUTO-UPDATE STYLES (DATWY.V) --- */
-.version-icon {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.16), rgba(59, 130, 246, 0.16));
-    color: #0891b2;
-    border: 1px solid rgba(6, 182, 212, 0.3);
-}
-
-.io-version-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.version-meta-box {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(15, 23, 42, 0.05);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 999px;
-    padding: 6px 14px;
-    font-size: 0.84rem;
-    color: var(--text-color);
-}
-
-body.dark-mode .version-meta-box {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: rgba(51, 65, 85, 0.8);
-    color: #e2e8f0;
-}
-
-.version-pulse-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 8px #10b981;
-    display: inline-block;
-    animation: versionPulse 2s infinite ease-in-out;
-}
-
-@keyframes versionPulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.3); opacity: 0.6; }
-}
-
-.version-tag-text strong {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    color: var(--primary-color);
-    letter-spacing: 0.3px;
-    font-weight: 700;
-}
-
-.check-update-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-size: 0.84rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
-
-.check-update-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.25);
-}

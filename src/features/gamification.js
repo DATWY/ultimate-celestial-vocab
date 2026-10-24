@@ -1,17 +1,12 @@
 // src/features/gamification.js
 import { DOM } from '../ui/elements.js';
-import { getState, unlockBadge, trackEvent, MIN_STREAK_DAILY_REVIEWS, isDayStreakQualified } from '../core/state.js';
-import { openModal, showPopup, openManageModal, switchHubTab } from '../ui/modal.js';
+import { getState, unlockBadge, MIN_STREAK_DAILY_REVIEWS, isDayStreakQualified } from '../core/state.js';
+import { openModal, showPopup, switchHubTab } from '../ui/modal.js';
 import { getLocalDateString } from '../core/utils/date.js';
 
 // Removed static import for BADGES to use dynamic import for BADGE_TRACKS and SPECIAL_BADGES
 import { animateNumber, animateForecastChart, animateHeatmap, animateOverviewEntrance } from '../core/animations.js';
 import { renderFsrsPersonaUI } from './fsrsPersona.js';
-
-export function openProfileModal(targetTab = 'overview') {
-    trackEvent('profileViews');
-    openManageModal(targetTab);
-}
 
 export function renderFsrsPersonaTab() {
     const panePersona = document.getElementById('profile-view-persona');
@@ -547,7 +542,11 @@ function renderBadges(unlockedBadges) {
                 </div>
             `;
 
-            trackEl.addEventListener('click', () => {
+            trackEl.addEventListener('click', (e) => {
+                if (level > 0) {
+                    import('../ui/render.js').then(m => m.launchCelebrationConfetti?.({ x: e?.clientX, y: e?.clientY, count: 65 }));
+                    import('../core/sound.js').then(m => m.playSound?.('starOn'));
+                }
                 const isDark = document.body.classList.contains('dark-mode');
                 let detailsHtml = `<div style="text-align: left;">`;
                 detailsHtml += `
@@ -640,7 +639,11 @@ function renderBadges(unlockedBadges) {
                     </div>
                 `;
 
-                badgeEl.addEventListener('click', () => {
+                badgeEl.addEventListener('click', (e) => {
+                    if (isUnlocked) {
+                        import('../ui/render.js').then(m => m.launchCelebrationConfetti?.({ x: e?.clientX, y: e?.clientY, count: 55 }));
+                        import('../core/sound.js').then(m => m.playSound?.('starOn'));
+                    }
                     const isDark = document.body.classList.contains('dark-mode');
                     const tierColor = badge.tier
                         ? (isDark ? badge.tier.color : (badge.tier.lightColor || badge.tier.color))
@@ -1252,7 +1255,7 @@ document.getElementById('app-container')?.addEventListener('gamification:xp_adde
 });
 
 // Debug / Test Utils for Gamification (SAFE - không lưu, không sync Firebase)
-if (import.meta.env.DEV && new URLSearchParams(location.search).get('audit') === '1') {
+if (import.meta.env?.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('audit') === '1') {
 window.__testGamification = {
     _backup: null,
     

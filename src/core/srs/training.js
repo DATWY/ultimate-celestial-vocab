@@ -18,7 +18,7 @@ export function prepareTrainingData(logs, vocabulary = []) {
     }).map(log => ({ ...log, ts: log.ts || log.reviewTime })).sort((a,b) => a.ts - b.ts).slice(-3000);
     const cards = new Map();
     for (const log of valid) {
-        if (!cards.has(log.cardId)) cards.set(log.cardId, { id: log.cardId, english: words.get(log.cardId)?.english || '', reviews: [] });
+        if (!cards.has(log.cardId)) cards.set(log.cardId, { id: log.cardId, english: words.get(log.cardId)?.english || '', type: words.get(log.cardId)?.type || '', reviews: [] });
         cards.get(log.cardId).reviews.push(log);
     }
     return { count: valid.length, split: valid[Math.floor(valid.length * .8)]?.ts || Infinity,
@@ -28,7 +28,7 @@ export function prepareTrainingData(logs, vocabulary = []) {
 export function evaluateParameters(data, weights, partition = 'train') {
     let loss = 0, count = 0;
     for (const card of data.cards) {
-        let state = { id: card.id, english: card.english, srsStatus: 'New', reps: 0 };
+        let state = { id: card.id, english: card.english, type: card.type, srsStatus: 'New', reps: 0 };
         for (let i = 0; i < card.reviews.length; i++) {
             const review = card.reviews[i];
             if (partition === 'train' && review.ts >= data.split) break;

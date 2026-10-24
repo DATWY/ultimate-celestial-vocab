@@ -18,12 +18,13 @@ import { DEFAULT_FSRS7_PARAMS, S_MIN, S_MAX } from './constants.js';
 export function nextStability(last_s, last_d, r, rating, start = 7, customParams = null) {
     const w = customParams || DEFAULT_FSRS7_PARAMS;
 
-    const safeS = Math.min(S_MAX, Math.max(S_MIN, last_s));
-    const safeD = Math.min(10.0, Math.max(1.0, last_d));
-    const safeR = Math.min(1.0, Math.max(0.0, r));
+    const safeS = Number.isFinite(last_s) ? Math.min(S_MAX, Math.max(S_MIN, last_s)) : S_MIN;
+    const safeD = Number.isFinite(last_d) ? Math.min(10.0, Math.max(1.0, last_d)) : 5.0;
+    const safeR = Number.isFinite(r) ? Math.min(1.0, Math.max(0.0, r)) : 0.9;
+    const safeRating = Number.isFinite(rating) ? Math.min(4, Math.max(1, Math.round(rating))) : 3;
 
-    const hard_penalty = (rating === 2) ? w[start + 6] : 1.0;
-    const easy_bonus = (rating === 4) ? w[start + 7] : 1.0;
+    const hard_penalty = (safeRating === 2) ? w[start + 6] : 1.0;
+    const easy_bonus = (safeRating === 4) ? w[start + 7] : 1.0;
 
     // Post-lapse stability (when forgotten)
     const new_s_fail = w[start + 3] * 
@@ -40,7 +41,7 @@ export function nextStability(last_s, last_d, r, rating, start = 7, customParams
         easy_bonus + 1.0;
 
     const new_s_success = Math.max(pls, safeS * sinc);
-    const result = (rating > 1) ? new_s_success : pls;
+    const result = (safeRating > 1) ? new_s_success : pls;
 
     return Math.min(S_MAX, Math.max(S_MIN, result));
 }

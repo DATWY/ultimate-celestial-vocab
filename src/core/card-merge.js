@@ -42,7 +42,6 @@ export function normalizeCard(card) {
     for (const [key, min, max] of [['difficulty', 1, 10], ['stability', .01, 36500], ['stabilityShort', .01, 36500]]) {
         if (card[key] != null) normalized[key] = Number.isFinite(Number(card[key])) ? Math.min(max, Math.max(min, Number(card[key]))) : undefined;
     }
-    if (normalized.stability && normalized.stabilityShort) normalized.stabilityShort = Math.min(normalized.stability, normalized.stabilityShort);
     delete normalized.phonetic;
     return normalized;
 }

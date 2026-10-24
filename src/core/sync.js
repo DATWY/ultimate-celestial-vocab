@@ -1,9 +1,7 @@
-import { doc, setDoc } from "firebase/firestore";
-import { db, getCalibratedNow, getDeviceId, writeMergedCards, mergeCardFields, syncProgressToFirebase, syncUserSettings, sendSyncBeacon } from './firebase.js';
+import { writeMergedCards, mergeCardFields, syncProgressToFirebase, syncUserSettings, ensureCloudAuth } from './firebase.js';
 import { saveWordToDB, getPendingCardIds, getPendingWriteSnapshot, acknowledgePendingWrites } from './idb.js';
 import { announceSyncStatus } from './sync-status.js';
 
-const USER_SYNC_COLLECTION = 'celestial_user_sync';
 const _syncQueue = new Map();
 let _generation = 0;
 let _syncTimer = null;
@@ -28,7 +26,10 @@ export function syncCardToFirebase(card) {
     persistPendingIds();
     if (_syncTimer) clearTimeout(_syncTimer);
     if (_syncQueue.size >= DIRTY_THRESHOLD) void flushSyncQueue();
-    else _syncTimer = setTimeout(flushSyncQueue, BATCH_WINDOW_MS);
+    else {
+        _syncTimer = setTimeout(flushSyncQueue, BATCH_WINDOW_MS);
+        _syncTimer?.unref?.();
+    }
 }
 
 export async function flushSyncQueue() {
@@ -38,11 +39,16 @@ export async function flushSyncQueue() {
     clearTimeout(_syncTimer);
     _syncTimer = null;
     const job = async () => {
-        const state = await import('./state.js');
-        for (const id of await getPendingCardIds()) if (!_syncQueue.has(id)) _syncQueue.set(id, ++_generation);
-        const entries = [..._syncQueue.entries()];
         const flushed = [];
         try {
+            const user = await ensureCloudAuth();
+            if (!user) {
+                _retryDelay = Math.min(60000, Math.max(_retryDelay, 15000));
+                return flushed;
+            }
+            const state = await import('./state.js');
+            for (const id of await getPendingCardIds()) if (!_syncQueue.has(id)) _syncQueue.set(id, ++_generation);
+            const entries = [..._syncQueue.entries()];
             for (let i = 0; i < entries.length; i += 100) {
                 const chunk = entries.slice(i, i + 100);
                 const records = await getPendingWriteSnapshot(chunk.map(([id]) => id));
@@ -68,16 +74,19 @@ export async function flushSyncQueue() {
                 persistPendingIds();
             }
             _retryDelay = 2000;
-            if (flushed.length > 0 && typeof sendSyncBeacon === 'function') {
-                sendSyncBeacon('vocab');
-            }
             return flushed;
         } catch (error) {
             _retryDelay = Math.min(60000, _retryDelay * 2);
             console.warn('Chưa đồng bộ được; dữ liệu vẫn được giữ trên máy và trong hàng chờ.', error);
             return flushed;
         } finally {
-            if (_syncQueue.size) _syncTimer = setTimeout(flushSyncQueue, _retryDelay);
+            if (_syncQueue.size) {
+                // Một edit trong lúc đang xác thực có thể đã đặt lịch sẵn một timer.
+                // Xoá trước khi đặt timer mới để không tồn tại hai lượt flush song song.
+                clearTimeout(_syncTimer);
+                _syncTimer = setTimeout(flushSyncQueue, _retryDelay);
+                _syncTimer?.unref?.();
+            }
         }
     };
     _flushPromise = job();
@@ -117,9 +126,10 @@ let _gamificationSyncTimer = null;
 const GAMIFICATION_SYNC_DEBOUNCE_MS = 60000; // 60 giây (1 phút debounce, tránh gửi request liên tục khi đang học)
 
 export function queueGamificationSync() {
-    if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('CHEAT_MODE') === 'true') return;
     if (_gamificationSyncTimer) return;
     _gamificationSyncTimer = setTimeout(syncGamificationToFirebase, GAMIFICATION_SYNC_DEBOUNCE_MS); 
+    _gamificationSyncTimer?.unref?.();
 }
 
 export async function syncGamificationToFirebase() {
@@ -129,7 +139,6 @@ export async function syncGamificationToFirebase() {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     try {
         await syncProgressToFirebase();
-        if (typeof sendSyncBeacon === 'function') sendSyncBeacon('progress');
     }
     catch (error) { console.warn('Chưa đồng bộ được thống kê; bản lưu trên máy được giữ nguyên.', error); queueGamificationSync(); }
 }

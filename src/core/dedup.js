@@ -6,8 +6,43 @@ const VI_STOPWORDS = new Set([
     'sự', 'việc', 'cái', 'con', 'bị', 'được', 'một', 'những', 'các', 'làm', 'bản',
     'có', 'và', 'hoặc', 'hay', 'cho', 'để', 'với', 'của', 'trong', 'ngoài', 'về',
     'từ', 'đến', 'ở', 'tại', 'như', 'là', 'nhất', 'rất', 'quá', 'lại', 'qua', 'đi',
-    'ra', 'vào', 'lên', 'xuống', 'theo', 'khi', 'nếu', 'mà', 'vì', 'do', 'bởi'
+    'ra', 'vào', 'lên', 'xuống', 'theo', 'khi', 'nếu', 'mà', 'vì', 'do', 'bởi',
+    'nghĩa', 'nghia', 'nghĩa là', 'nghia la', 'ý nghĩa', 'y nghia'
 ]);
+
+// Danh sách cặp từ tiếng Anh dễ nhầm lẫn nhưng là các từ độc lập khác nhau, không được gộp mờ (confusables/homophones)
+const ENGLISH_CONFUSABLES = new Set([
+    'accept|except',
+    'adapt|adopt',
+    'advice|advise',
+    'affect|effect',
+    'allusion|illusion',
+    'bare|bear',
+    'capital|capitol',
+    'cite|sight',
+    'cite|site',
+    'coarse|course',
+    'compliment|complement',
+    'desert|dessert',
+    'elicit|illicit',
+    'eminent|imminent',
+    'form|from',
+    'loose|lose',
+    'peace|piece',
+    'principal|principle',
+    'quiet|quite',
+    'sight|site',
+    'stationary|stationery',
+    'weather|whether'
+]);
+
+function isConfusablePair(wordA, wordB) {
+    const a = (wordA || '').toLowerCase().trim();
+    const b = (wordB || '').toLowerCase().trim();
+    if (a === b) return false;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    return ENGLISH_CONFUSABLES.has(key);
+}
 
 // Danh sách các động từ phổ biến hay tạo phrasal verbs
 const COMMON_VERBS = new Set([
@@ -154,52 +189,128 @@ export function compactEnglish(text) {
 }
 
 /**
- * Rút gọn gốc từ tiếng Anh cơ bản (Stemming - loại bỏ số nhiều, thì quá khứ, phân từ -ing)
+ * Sinh tập gốc từ khả dĩ cho một từ tiếng Anh.
+ *
+ * Trả về NHIỀU ứng viên thay vì một gốc duy nhất vì tiếng Anh có hiện tượng nhập nhằng:
+ * "worked" có thể là "work" + "-ed" hoặc "worke" + "-d"; "demonstrated" là
+ * "demonstrat" + "-ed" nhưng từ gốc đúng là "demonstrate". Chỉ một gốc duy nhất
+ * sẽ bỏ sót một trong hai trường hợp (lỗi cũ: worked → worke nên không khớp work).
+ *
+ * Quy tắc -er so sánh hơn đã được TÁCH khỏi đây: nó chỉ đúng khi cả hai thẻ là
+ * tính từ/trạng từ (xem isComparativeVariant), nếu không sẽ biến matter→mat,
+ * corner→corn, farmer→farm... thành cặp trùng giả.
  */
-export function stemEnglishWord(word) {
-    if (!word) return '';
-    let w = word.toLowerCase().trim();
+export function stemCandidatesWord(word) {
+    const candidates = new Set();
+    if (!word) return candidates;
+    const w = word.toLowerCase().trim();
+    if (!w) return candidates;
+    candidates.add(w);
 
-    // -ies -> -y (ví dụ: parties -> party)
-    if (w.endsWith('ies') && w.length > 4) {
-        return w.slice(0, -3) + 'y';
-    }
+    const add = (value) => { if (value && value.length >= 2) candidates.add(value); };
+
+    // -ies -> -y (parties -> party)
+    if (w.endsWith('ies') && w.length > 4) add(w.slice(0, -3) + 'y');
     // -es cho các âm xuýt (boxes -> box, watches -> watch)
     if (w.endsWith('es') && (w.endsWith('shes') || w.endsWith('ches') || w.endsWith('sses') || w.endsWith('xes') || w.endsWith('zes'))) {
-        return w.slice(0, -2);
+        add(w.slice(0, -2));
     }
-    // -ing (ví dụ: demonstrating -> demonstrate, running -> run)
+    // -ing (demonstrating -> demonstrat / demonstrate; running -> run / runn)
     if (w.endsWith('ing') && w.length > 5) {
-        let base = w.slice(0, -3);
-        if (base.length > 3 && base[base.length - 1] === base[base.length - 2]) {
-            base = base.slice(0, -1);
-        } else if (!base.endsWith('e') && !['sing', 'ring', 'bring', 'king', 'wing'].includes(w)) {
-            base = base + 'e';
-        }
-        return base;
+        const base = w.slice(0, -3);
+        add(base);
+        if (base.length > 3 && base[base.length - 1] === base[base.length - 2]) add(base.slice(0, -1));
+        if (!base.endsWith('e')) add(base + 'e');
     }
-    // -ed (ví dụ: demonstrated -> demonstrate, studied -> study)
+    // -ed (worked -> work; demonstrated -> demonstrat / demonstrate; studied -> study)
     if (w.endsWith('ed') && w.length > 4) {
-        let base = w.slice(0, -2);
-        if (base.endsWith('i')) base = base.slice(0, -1) + 'y';
-        else if (!base.endsWith('e')) base = base + 'e';
-        return base;
+        const base = w.slice(0, -2);
+        add(base);
+        add(base + 'e');
+        if (base.endsWith('i')) add(base.slice(0, -1) + 'y');
+        if (base.length > 3 && base[base.length - 1] === base[base.length - 2]) add(base.slice(0, -1));
     }
-    // -s số nhiều thông thường (colleagues -> colleague, credentials -> credential)
-    if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) {
-        return w.slice(0, -1);
-    }
+    // -iest / -ier -> -y (happiest -> happy, happier -> happy)
+    if (w.endsWith('iest') && w.length > 5) add(w.slice(0, -4) + 'y');
+    if (w.endsWith('ier') && w.length > 4) add(w.slice(0, -3) + 'y');
+    // -s số nhiều thông thường (colleagues -> colleague)
+    if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) add(w.slice(0, -1));
 
-    return w;
+    return candidates;
 }
 
 /**
- * Rút gọn gốc từ cho cả cụm từ tiếng Anh
+ * Rút gọn gốc từ tiếng Anh (giữ API cũ). Trả về gốc "gần đúng" đầu tiên;
+ * việc so khớp thực tế dùng stemCandidatesPhrase() để không bỏ sót.
+ */
+export function stemEnglishWord(word) {
+    if (!word) return '';
+    const w = word.toLowerCase().trim();
+    if (!w) return '';
+    const candidates = [...stemCandidatesWord(w)];
+    const derived = candidates.find(c => c !== w);
+    return derived || w;
+}
+
+/**
+ * Sinh tập gốc từ cho cả cụm từ tiếng Anh (tổ hợp ứng viên từng từ).
+ */
+export function stemCandidatesPhrase(text) {
+    const canon = canonicalEnglish(text);
+    if (!canon) return new Set();
+    const words = canon.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return new Set();
+    let combos = [''];
+    for (const word of words) {
+        const wordCandidates = stemCandidatesWord(word);
+        const next = [];
+        for (const prefix of combos) {
+            for (const candidate of wordCandidates) {
+                next.push(prefix ? `${prefix} ${candidate}` : candidate);
+                if (next.length >= 32) break;
+            }
+            if (next.length >= 32) break;
+        }
+        combos = next;
+    }
+    return new Set(combos);
+}
+
+/**
+ * Rút gọn gốc từ cho cả cụm từ tiếng Anh (API cũ, một gốc duy nhất).
  */
 export function stemEnglishPhrase(text) {
     const canon = canonicalEnglish(text);
     if (!canon) return '';
     return canon.split(/\s+/).map(stemEnglishWord).join(' ');
+}
+
+function stemsIntersect(candidatesA, candidatesB) {
+    if (candidatesA.size === 0 || candidatesB.size === 0) return false;
+    const [small, large] = candidatesA.size <= candidatesB.size ? [candidatesA, candidatesB] : [candidatesB, candidatesA];
+    for (const value of small) {
+        if (large.has(value)) return true;
+    }
+    return false;
+}
+
+/**
+ * So sánh hơn (-er) chỉ hợp lệ khi cả hai thẻ cùng là tính từ/trạng từ và nghĩa tương đồng.
+ * Ngăn false positive kiểu matter/mat, corner/corn, farmer/farm, worker/work, mother/moth.
+ */
+function isComparativeVariant(cardA, cardB, posA, posB, semSim) {
+    if (!((posA === 'adjective' || posA === 'adverb') && posA === posB)) return false;
+    if (semSim < 0.5) return false;
+    const a = compactEnglish(cardA.english);
+    const b = compactEnglish(cardB.english);
+    if (!a || !b || a === b) return false;
+    const short = a.length <= b.length ? a : b;
+    const long = a.length <= b.length ? b : a;
+    if (long.length === short.length) return false;
+    // slow -> slower, late -> later, big -> bigger (gấp đôi phụ âm cuối: +3 ký tự)
+    if (long === `${short}er` || long === `${short}r`) return true;
+    if (long === `${short}${short.slice(-1)}er`) return true;
+    return false;
 }
 
 /**
@@ -335,7 +446,7 @@ export function extractVietnameseKeywords(text) {
     const tokens = cleanText.toLowerCase()
         .replace(/[^a-zà-ỹ0-9]/gi, ' ')
         .split(/\s+/)
-        .filter(w => w.length > 0 && !VI_STOPWORDS.has(w));
+        .filter(w => w.length > 1 && !VI_STOPWORDS.has(w));
     
     return new Set(tokens);
 }
@@ -389,12 +500,21 @@ export function calculateSemanticSimilarity(vietnameseA, vietnameseB) {
  * Có cơ chế bảo vệ ngăn chặn gộp nhầm Word Families (adj/adv, verb/noun) và từ khác nghĩa.
  */
 export function isDuplicateCard(cardA, cardB) {
-    const canonA = canonicalEnglish(cardA.english);
-    const canonB = canonicalEnglish(cardB.english);
-    const compactA = compactEnglish(cardA.english);
-    const compactB = compactEnglish(cardB.english);
-    const stemA = stemEnglishPhrase(cardA.english);
-    const stemB = stemEnglishPhrase(cardB.english);
+    if (!cardA || !cardB || !cardA.english || !cardB.english) {
+        return { isDuplicate: false, confidence: 0, category: 'DIFFERENT', reason: 'Không trùng lặp' };
+    }
+    const rawA = String(cardA.english).trim();
+    const rawB = String(cardB.english).trim();
+    if (!rawA || !rawB) {
+        return { isDuplicate: false, confidence: 0, category: 'DIFFERENT', reason: 'Không trùng lặp' };
+    }
+
+    const canonA = canonicalEnglish(rawA);
+    const canonB = canonicalEnglish(rawB);
+    const compactA = compactEnglish(rawA);
+    const compactB = compactEnglish(rawB);
+    const stemCandidatesA = stemCandidatesPhrase(rawA);
+    const stemCandidatesB = stemCandidatesPhrase(rawB);
 
     const posA = canonicalPartOfSpeech(cardA.type, cardA.english);
     const posB = canonicalPartOfSpeech(cardB.type, cardB.english);
@@ -420,26 +540,23 @@ export function isDuplicateCard(cardA, cardB) {
     // CẤP ĐỘ 1: EXACT MATCH (Trùng khớp chính xác từ vựng hoặc dạng viết gạch nối/cách)
     // Ví dụ: "demonstrate" vs "Demonstrate", "take off" vs "take-off"
     // -------------------------------------------------------------
+    // -------------------------------------------------------------
+    // CẤP ĐỘ 1: EXACT MATCH (Trùng khớp chính xác từ vựng hoặc dạng viết gạch nối/cách)
+    // Ví dụ: "demonstrate" vs "Demonstrate", "take off" vs "take-off", "Color" vs "colour"
+    // -------------------------------------------------------------
     if (canonA === canonB || compactA === compactB) {
-        if (isCompatiblePOS && (semSim >= 0.15 || phraseOverlap > 0)) {
-            return {
-                isDuplicate: true,
-                confidence: Math.max(0.95, semSim),
-                category: 'EXACT',
-                reason: 'Trùng khớp 100% từ vựng và loại từ'
-            };
+        // Cùng từ tiếng Anh nhưng khác hẳn loại từ (ví dụ noun vs verb) và nghĩa không tương đồng -> POLYSEMY
+        if (!isCompatiblePOS && posA !== 'unknown' && posB !== 'unknown' && semSim < 0.70) {
+            return { isDuplicate: false, confidence: semSim, category: 'POLYSEMY', reason: 'Từ đa nghĩa (khác loại từ và nghĩa)' };
         }
-        // Khác loại từ nhưng nghĩa tiếng Việt gần như y hệt (>= 0.70)
-        if (semSim >= 0.70) {
-            return {
-                isDuplicate: true,
-                confidence: semSim,
-                category: 'EXACT',
-                reason: 'Trùng khớp từ vựng với nghĩa tiếng Việt tương đồng cao'
-            };
-        }
-        // Cùng từ tiếng Anh nhưng khác loại từ và khác nghĩa -> TỪ ĐA NGHĨA (Polysemy), giữ riêng
-        return { isDuplicate: false, confidence: semSim, category: 'POLYSEMY', reason: 'Từ đa nghĩa (khác loại từ và nghĩa)' };
+        return {
+            isDuplicate: true,
+            confidence: Math.max(0.95, semSim),
+            category: 'EXACT',
+            reason: isCompatiblePOS && posA !== 'unknown'
+                ? 'Trùng khớp 100% từ vựng và loại từ'
+                : 'Trùng khớp từ vựng (biến thể chính tả / viết hoa / cách viết)'
+        };
     }
 
     // Nếu khác mặt chữ và là từ loại phái sinh (Word Family) -> KHÔNG COI LÀ TRÙNG LẶP
@@ -448,18 +565,32 @@ export function isDuplicateCard(cardA, cardB) {
     }
 
     // -------------------------------------------------------------
-    // CẤP ĐỘ 2: INFLECTION / STEM MATCH (Biến thể ngữ pháp / số ít - nhiều / thì)
-    // Ví dụ: "colleague" vs "colleagues", "demonstrate" vs "demonstrating"
+    // CẤP ĐỘ 2: INFLECTION / STEM MATCH (Biến thể ngữ pháp / số ít - nhiều / thì / so sánh)
+    // Ví dụ: "colleague" vs "colleagues", "demonstrate" vs "demonstrating", "run" vs "running", "happy" vs "happier"
     // -------------------------------------------------------------
-    if (stemA === stemB) {
-        if (isCompatiblePOS && (semSim >= 0.20 || phraseOverlap > 0)) {
+    // Chỉ nhận biến thể khi gốc từ giao nhau VÀ nghĩa đủ tương đồng (hoặc thiếu dữ liệu nghĩa).
+    // Nếu không có cổng ngữ nghĩa, các cặp như seed/see, mater/mat sẽ bị gộp nhầm.
+    const hasMeaning = Boolean(cardA.vietnamese && cardB.vietnamese);
+    const stemMeaningOk = !hasMeaning || semSim >= 0.45 || phraseOverlap >= 0.5;
+    if (stemsIntersect(stemCandidatesA, stemCandidatesB) && stemMeaningOk) {
+        if (isCompatiblePOS || posA === 'unknown' || posB === 'unknown') {
             return {
                 isDuplicate: true,
-                confidence: 0.90,
+                confidence: Math.max(0.90, semSim),
                 category: 'INFLECTION',
                 reason: `Biến thể ngữ pháp (${cardA.english} ⟷ ${cardB.english})`
             };
         }
+    }
+
+    // So sánh hơn (-er) chỉ dành cho tính từ/trạng từ cùng loại và cùng nghĩa.
+    if (isComparativeVariant(cardA, cardB, posA, posB, semSim)) {
+        return {
+            isDuplicate: true,
+            confidence: Math.max(0.88, semSim),
+            category: 'INFLECTION',
+            reason: `Biến thể so sánh hơn (${cardA.english} ⟷ ${cardB.english})`
+        };
     }
 
     // -------------------------------------------------------------
@@ -467,10 +598,11 @@ export function isDuplicateCard(cardA, cardB) {
     // Ví dụ: "demonstate" vs "demonstrate" (thiếu chữ r)
     // BẮT BUỘC:
     // - Cùng loại từ hoặc tương thích
-    // - Cụm nghĩa tiếng Việt tương đồng cao (ngăn chặn assume vs assure, affect vs effect)
+    // - Không phải cặp từ confusable/homophone độc lập trong tiếng Anh
+    // - Cụm nghĩa tiếng Việt tương đồng cao
     // - Khoảng cách ký tự phù hợp với độ dài từ
     // -------------------------------------------------------------
-    if (isCompatiblePOS) {
+    if (isCompatiblePOS && !isConfusablePair(cardA.english, cardB.english) && !isConfusablePair(canonA, canonB)) {
         const minLen = Math.min(compactA.length, compactB.length);
         const maxLen = Math.max(compactA.length, compactB.length);
         const dist = levenshteinDistance(compactA, compactB);
@@ -479,7 +611,7 @@ export function isDuplicateCard(cardA, cardB) {
         const isAllowedDist = (minLen >= 5 && dist === 1) || (minLen >= 8 && dist <= 2);
 
         // Bắt buộc nghĩa tiếng Việt phải có sự tương đồng cụm hoặc semSim cao
-        if (isAllowedDist && simRatio >= 0.82 && (phraseOverlap > 0 || semSim >= 0.35)) {
+        if (isAllowedDist && simRatio >= 0.82 && (phraseOverlap >= 0.5 || semSim >= 0.60)) {
             return {
                 isDuplicate: true,
                 confidence: Math.round(simRatio * Math.max(0.85, semSim) * 100) / 100,
@@ -492,89 +624,154 @@ export function isDuplicateCard(cardA, cardB) {
     return { isDuplicate: false, confidence: 0, category: 'DIFFERENT', reason: 'Không trùng lặp' };
 }
 
-/**
- * Quét toàn bộ kho từ vựng và tìm các cặp trùng lặp với thuật toán Đa Phân Nhóm (Multi-Bucket)
- * Đảm bảo hiệu năng cực cao O(N) và phát hiện đầy đủ Exact, Inflection, Fuzzy Typo
- */
-export function findDuplicatePairs(vocabulary) {
-    const activeCards = vocabulary.filter(w => !w.isDeleted);
-    const candidatePairsMap = new Map();
+// Giới hạn bucket: trước đây là 100 và mọi bucket lớn hơn bị BỎ IM LẶNG, khiến
+// các cặp lỗi chính tả trong kho lớn không bao giờ được báo. Nâng ngưỡng và chỉ
+// bỏ qua khi bucket thực sự phi thực tế (dữ liệu nhân tạo hàng nghìn từ cùng gốc).
+const MAX_DELETION_BUCKET = 512;
+const MAX_PREFIX_BUCKET = 600;
+const MAX_STEM_BUCKET = 200;
 
-    const addCandidate = (cA, cB) => {
-        if (cA.id === cB.id) return;
-        const pairKey = cA.id < cB.id ? `${cA.id}|${cB.id}` : `${cB.id}|${cA.id}`;
-        if (!candidatePairsMap.has(pairKey)) {
-            candidatePairsMap.set(pairKey, [cA, cB]);
-        }
-    };
+// Thẻ thiếu id (dữ liệu import lỗi) vẫn phải có khoá ổn định riêng, nếu không
+// mọi thẻ sẽ va vào cùng khoá "undefined|undefined" và chỉ giữ lại một cặp.
+const _anonCardKeys = new WeakMap();
+let _anonCardKeySeq = 0;
+function cardPairKey(card) {
+    if (card.id !== undefined && card.id !== null && card.id !== '') return String(card.id);
+    if (!_anonCardKeys.has(card)) _anonCardKeys.set(card, `__anon_${++_anonCardKeySeq}`);
+    return _anonCardKeys.get(card);
+}
 
-    // Multi-bucket Indexing
-    const compactBuckets = new Map();
-    const stemBuckets = new Map();
-    const prefixBuckets = new Map();
+function addPairCandidate(map, cardA, cardB) {
+    if (!cardA || !cardB) return;
+    const keyA = cardPairKey(cardA);
+    const keyB = cardPairKey(cardB);
+    if (keyA === keyB) return;
+    const key = keyA < keyB ? `${keyA}|${keyB}` : `${keyB}|${keyA}`;
+    if (!map.has(key)) map.set(key, [cardA, cardB]);
+}
 
-    activeCards.forEach(card => {
-        const compact = compactEnglish(card.english);
-        if (compact) {
-            if (!compactBuckets.has(compact)) compactBuckets.set(compact, []);
-            compactBuckets.get(compact).push(card);
-
-            if (compact.length >= 3) {
-                const pfx = compact.slice(0, 3);
-                if (!prefixBuckets.has(pfx)) prefixBuckets.set(pfx, []);
-                prefixBuckets.get(pfx).push(card);
-            }
-        }
-
-        const stem = stemEnglishPhrase(card.english);
-        if (stem) {
-            if (!stemBuckets.has(stem)) stemBuckets.set(stem, []);
-            stemBuckets.get(stem).push(card);
-        }
-    });
-
-    // 1. Gom ứng viên từ Compact (trùng từ, khác cách viết hoa/dấu cách/gạch nối)
-    for (const cards of compactBuckets.values()) {
+function addExactBucketPairs(map, buckets) {
+    for (const cards of buckets.values()) {
         if (cards.length < 2) continue;
-        for (let i = 0; i < cards.length; i++) {
-            for (let j = i + 1; j < cards.length; j++) {
-                addCandidate(cards[i], cards[j]);
-            }
-        }
-    }
-
-    // 2. Gom ứng viên từ Stem (biến thể ngữ pháp -ing, -ed, -s, -ies)
-    for (const cards of stemBuckets.values()) {
-        if (cards.length < 2) continue;
-        for (let i = 0; i < cards.length; i++) {
-            for (let j = i + 1; j < cards.length; j++) {
-                addCandidate(cards[i], cards[j]);
-            }
-        }
-    }
-
-    // 3. Gom ứng viên từ Prefix (cho lỗi chính tả với độ dài chênh lệch <= 2)
-    for (const cards of prefixBuckets.values()) {
-        if (cards.length < 2) continue;
-        for (let i = 0; i < cards.length; i++) {
-            for (let j = i + 1; j < cards.length; j++) {
-                const lenA = cards[i].english.length;
-                const lenB = cards[j].english.length;
-                if (Math.abs(lenA - lenB) <= 2) {
-                    addCandidate(cards[i], cards[j]);
+        if (cards.length <= 100) {
+            for (let i = 0; i < cards.length; i++) {
+                for (let j = i + 1; j < cards.length; j++) {
+                    addPairCandidate(map, cards[i], cards[j]);
                 }
             }
+            continue;
+        }
+        // Bucket lớn không thể ghép mọi cặp (O(n^2)). Nhưng KHÔNG được chỉ so với cards[0]:
+        // khi bucket trộn nhiều từ loại/nghĩa (vd "run" noun + 200 "run" verb) cách đó bỏ sót
+        // mọi cặp hợp lệ còn lại. Thay vào đó giữ một đại diện cho MỖI nhóm tương thích
+        // (so sánh thật bằng isDuplicateCard) và nối mọi thẻ vào đại diện của nhóm đó.
+        const representatives = [];
+        for (const card of cards) {
+            let matched = false;
+            for (const rep of representatives) {
+                if (isDuplicateCard(rep, card).isDuplicate) {
+                    addPairCandidate(map, rep, card);
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) representatives.push(card);
+        }
+    }
+}
+
+function addBucketPairs(map, buckets, maxBucket, lengthTolerance = 0, stats = null) {
+    for (const cards of buckets.values()) {
+        if (cards.length < 2) continue;
+        if (cards.length > maxBucket) {
+            if (stats) stats.skippedOversizedBuckets = (stats.skippedOversizedBuckets || 0) + 1;
+            continue;
+        }
+        for (let i = 0; i < cards.length; i++) {
+            for (let j = i + 1; j < cards.length; j++) {
+                if (lengthTolerance > 0) {
+                    const lenA = cards[i].english.length;
+                    const lenB = cards[j].english.length;
+                    if (Math.abs(lenA - lenB) > lengthTolerance) continue;
+                }
+                addPairCandidate(map, cards[i], cards[j]);
+            }
+        }
+    }
+}
+
+/**
+ * Xây chỉ mục ứng viên dùng chung cho cả bản đồng bộ và bản bất đồng bộ.
+ * - Compact: trùng mặt chữ, khác hoa/thường, dấu cách, gạch nối.
+ * - Stem: biến thể ngữ pháp (-s, -ies, -ing, -ed, -ier).
+ * - Deletion: lỗi chính tả Levenshtein 1 (SymSpell) và 2 (xóa kép cho từ >= 8 ký tự).
+ * - Prefix: lỗi chính tả 2 ký tự ở giữa từ (maintenance/maintainance) mà vùng xóa đơn không bắt được.
+ */
+function indexCard(card, indexes) {
+    const compact = compactEnglish(card.english);
+    if (compact) {
+        if (!indexes.compactBuckets.has(compact)) indexes.compactBuckets.set(compact, []);
+        indexes.compactBuckets.get(compact).push(card);
+
+        if (compact.length >= 5) {
+            const addDeletionKey = (key) => {
+                if (!indexes.deletionBuckets.has(key)) indexes.deletionBuckets.set(key, []);
+                indexes.deletionBuckets.get(key).push(card);
+            };
+            addDeletionKey(compact);
+            for (let i = 0; i < compact.length; i++) {
+                addDeletionKey(compact.slice(0, i) + compact.slice(i + 1));
+            }
+        }
+
+        // Prefix/suffix 4 ký tự: bắt lỗi chính tả 2 ký tự không chia sẻ vùng xóa đơn
+        // (maintenance/maintainance). Không sinh xóa kép cho mọi từ vì sẽ bùng nổ bộ nhớ.
+        if (compact.length >= 5) {
+            const prefix = compact.slice(0, Math.min(4, compact.length - 1));
+            if (!indexes.prefixBuckets.has(prefix)) indexes.prefixBuckets.set(prefix, []);
+            indexes.prefixBuckets.get(prefix).push(card);
+
+            if (compact.length >= 8) {
+                const suffix = compact.slice(-4);
+                if (!indexes.suffixBuckets.has(suffix)) indexes.suffixBuckets.set(suffix, []);
+                indexes.suffixBuckets.get(suffix).push(card);
+            }
         }
     }
 
-    // 4. So khớp và lọc các cặp trùng thật sự
+    for (const stem of stemCandidatesPhrase(card.english)) {
+        if (!stem) continue;
+        if (!indexes.stemBuckets.has(stem)) indexes.stemBuckets.set(stem, []);
+        indexes.stemBuckets.get(stem).push(card);
+    }
+}
+
+function createIndexes() {
+    return {
+        compactBuckets: new Map(),
+        stemBuckets: new Map(),
+        deletionBuckets: new Map(),
+        prefixBuckets: new Map(),
+        suffixBuckets: new Map()
+    };
+}
+
+function collectCandidatePairs(indexes, stats = null) {
+    const candidatePairsMap = new Map();
+    addExactBucketPairs(candidatePairsMap, indexes.compactBuckets);
+    addBucketPairs(candidatePairsMap, indexes.stemBuckets, MAX_STEM_BUCKET, 0, stats);
+    addBucketPairs(candidatePairsMap, indexes.deletionBuckets, MAX_DELETION_BUCKET, 2, stats);
+    addBucketPairs(candidatePairsMap, indexes.prefixBuckets, MAX_PREFIX_BUCKET, 2, stats);
+    addBucketPairs(candidatePairsMap, indexes.suffixBuckets, MAX_PREFIX_BUCKET, 2, stats);
+    return candidatePairsMap;
+}
+
+function matchCandidatePairs(candidatePairsMap) {
     const duplicateGroups = [];
     for (const [cA, cB] of candidatePairsMap.values()) {
         const check = isDuplicateCard(cA, cB);
         if (check.isDuplicate) {
-            // Chuẩn bị trước nghĩa được làm sạch sau khi gộp
             const cleanedSuggestedMeaning = cleanAndDeduplicateVietnamese(`${cA.vietnamese}, ${cB.vietnamese}`);
-
             duplicateGroups.push({
                 key: `${cA.english}_${cB.english}`,
                 cardA: cA,
@@ -586,9 +783,92 @@ export function findDuplicatePairs(vocabulary) {
             });
         }
     }
-
-    // Sắp xếp các cặp trùng theo độ tin cậy từ cao xuống thấp
     return duplicateGroups.sort((a, b) => b.confidence - a.confidence);
+}
+
+function activeDuplicateCards(vocabulary) {
+    if (!Array.isArray(vocabulary)) return [];
+    return vocabulary.filter(w => w && !w.isDeleted && typeof w.english === 'string' && w.english.trim().length > 0);
+}
+
+function yieldToMainThread() {
+    if (typeof requestIdleCallback === 'function') {
+        return new Promise(resolve => requestIdleCallback(() => resolve(), { timeout: 50 }));
+    }
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+/**
+ * Quét toàn bộ kho từ vựng và tìm các cặp trùng lặp với thuật toán Đa Phân Nhóm
+ * (Multi-Bucket & SymSpell Deletion). Bản đồng bộ dùng cho test và kho nhỏ.
+ */
+export function findDuplicatePairs(vocabulary, options = {}) {
+    const activeCards = activeDuplicateCards(vocabulary);
+    const indexes = createIndexes();
+    for (const card of activeCards) indexCard(card, indexes);
+    const stats = { skippedOversizedBuckets: 0 };
+    const result = matchCandidatePairs(collectCandidatePairs(indexes, stats));
+    Object.defineProperty(result, 'skippedOversizedBuckets', { value: stats.skippedOversizedBuckets, writable: true, configurable: true, enumerable: false });
+    Object.defineProperty(result, 'skippedBuckets', { value: stats.skippedOversizedBuckets, writable: true, configurable: true, enumerable: false });
+    if (options && typeof options === 'object' && options.stats && typeof options.stats === 'object') {
+        options.stats.skippedOversizedBuckets = stats.skippedOversizedBuckets;
+        options.stats.skippedBuckets = stats.skippedOversizedBuckets;
+    }
+    return result;
+}
+
+/**
+ * Bản bất đồng bộ: chia nhỏ theo lô và nhường main thread giữa các lô.
+ * Dùng cho giao diện để không chặn 1,3 giây với kho 3.000 từ.
+ * @param {Array} vocabulary
+ * @param {{onProgress?: (phase: 'index'|'match', done: number, total: number) => void, chunkSize?: number}} options
+ */
+export async function findDuplicatePairsAsync(vocabulary, options = {}) {
+    const { onProgress = null, chunkSize = 200 } = options;
+    const activeCards = activeDuplicateCards(vocabulary);
+    const indexes = createIndexes();
+
+    for (let i = 0; i < activeCards.length; i++) {
+        indexCard(activeCards[i], indexes);
+        if ((i + 1) % chunkSize === 0) {
+            onProgress?.('index', i + 1, activeCards.length);
+            await yieldToMainThread();
+        }
+    }
+    onProgress?.('index', activeCards.length, activeCards.length);
+
+    const stats = { skippedOversizedBuckets: 0 };
+    const candidatePairsMap = collectCandidatePairs(indexes, stats);
+    const entries = [...candidatePairsMap.values()];
+    const duplicateGroups = [];
+    for (let i = 0; i < entries.length; i++) {
+        const [cA, cB] = entries[i];
+        const check = isDuplicateCard(cA, cB);
+        if (check.isDuplicate) {
+            duplicateGroups.push({
+                key: `${cA.english}_${cB.english}`,
+                cardA: cA,
+                cardB: cB,
+                confidence: check.confidence,
+                category: check.category,
+                reason: check.reason,
+                suggestedVietnamese: cleanAndDeduplicateVietnamese(`${cA.vietnamese}, ${cB.vietnamese}`)
+            });
+        }
+        if ((i + 1) % chunkSize === 0) {
+            onProgress?.('match', i + 1, entries.length);
+            await yieldToMainThread();
+        }
+    }
+    onProgress?.('match', entries.length, entries.length);
+    const result = duplicateGroups.sort((a, b) => b.confidence - a.confidence);
+    Object.defineProperty(result, 'skippedOversizedBuckets', { value: stats.skippedOversizedBuckets, writable: true, configurable: true, enumerable: false });
+    Object.defineProperty(result, 'skippedBuckets', { value: stats.skippedOversizedBuckets, writable: true, configurable: true, enumerable: false });
+    if (options && typeof options === 'object' && options.stats && typeof options.stats === 'object') {
+        options.stats.skippedOversizedBuckets = stats.skippedOversizedBuckets;
+        options.stats.skippedBuckets = stats.skippedOversizedBuckets;
+    }
+    return result;
 }
 
 /**
@@ -596,11 +876,12 @@ export function findDuplicatePairs(vocabulary) {
  * Ví dụ thẻ Demonstrate: "Thị phạm, chứng minh, Chứng minh, giải thích"
  */
 export function findInternalDuplicateCards(vocabulary) {
-    const activeCards = vocabulary.filter(w => !w.isDeleted);
+    if (!Array.isArray(vocabulary)) return [];
+    const activeCards = vocabulary.filter(w => w && typeof w === 'object' && !w.isDeleted);
     const cardsWithInternalDups = [];
 
     activeCards.forEach(card => {
-        if (!card.vietnamese) return;
+        if (!card.vietnamese || typeof card.vietnamese !== 'string') return;
         const cleaned = cleanAndDeduplicateVietnamese(card.vietnamese);
         
         // Kiểm tra xem chuỗi ban đầu có bị lặp từ hay không

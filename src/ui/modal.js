@@ -4,12 +4,19 @@ import { setReviewQueue, trackEvent } from '../core/state.js';
 
 import { DOM } from './elements.js';
 import { getState, saveVocabulary, setVocabulary, setAllTags, saveOneWord } from '../core/state.js';
-import { populateTopicFilters, updatePanelWordList, displayCard, checkAndCleanupTags } from './render.js';
+import { populateTopicFilters, updatePanelWordList, displayCard, checkAndCleanupTags, updateUndoButtonState } from './render.js';
+import { displayAppVersion } from '../core/versionCheck.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 import { playSound } from '../core/sound.js';
 import { animateModalOpen, animateModalClose } from '../core/animations.js';
-import { syncCardToFirebase } from '../core/sync.js';
-import { findDuplicatePairs, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese } from '../core/dedup.js';
+// Nạp động sync: modal.js nằm trong entry chunk, tránh kéo firebase 547 kB vào.
+let _syncModulePromise = null;
+function syncCardToFirebase(card) {
+    if (!card || !card.id) return;
+    if (!_syncModulePromise) _syncModulePromise = import('../core/sync.js');
+    _syncModulePromise.then(module => module.syncCardToFirebase?.(card)).catch(() => {});
+}
+import { findDuplicatePairs, findDuplicatePairsAsync, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from './celestial-canvas.js';
 
@@ -298,13 +305,14 @@ export function switchHubTab(targetTab = 'overview') {
 
     if (activeTabId === 'words') {
         updatePanelWordList(false);
-        import('../events.js').then(m => m.updateUndoButtonState?.());
+        updateUndoButtonState?.();
     } else if (activeTabId === 'overview') {
         import('../features/gamification.js').then(m => m.renderGamificationUI?.({ force: true }));
     } else if (activeTabId === 'badges') {
         import('../features/gamification.js').then(m => (m.renderBadgesTab || m.renderGamificationUI)?.());
     } else if (activeTabId === 'io') {
-        import('../core/versionCheck.js').then(m => m.displayAppVersion?.());
+        displayAppVersion?.();
+        import('../features/io.js').then(m => m.refreshIoTabUI?.());
     }
 }
 
@@ -345,7 +353,7 @@ export function openCelestialHub(targetTab = 'overview') {
 }
 
 function saveAndRefreshUI(tagsHaveChanged = false) {
-    saveVocabulary();
+    saveVocabulary(true);
     playSound('complete');
     if (tagsHaveChanged) {
         populateTopicFilters(true);
@@ -355,14 +363,26 @@ function saveAndRefreshUI(tagsHaveChanged = false) {
 }
 
 // --- Toast Notification System ---
-export function showToast(title, message = '', iconClass = 'ph-trophy') {
+// Hàng đợi: tối đa 3 toast hiển thị cùng lúc. Trước đây mỗi huy hiệu mở khóa
+// tạo ngay một toast; nhập kho lớn có thể sinh 20–40 toast chồng nhau, mỗi toast
+// là một layer + transition + filter, làm main thread và compositor quá tải.
+// Giao diện/nội dung từng toast giữ nguyên, chỉ lần lượt hiện ra.
+const MAX_VISIBLE_TOASTS = 3;
+const MAX_QUEUED_TOASTS = 12;
+const _toastQueue = [];
+
+function getToastContainer() {
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
         document.body.appendChild(container);
     }
+    return container;
+}
 
+function renderToast({ title, message, iconClass }) {
+    const container = getToastContainer();
     const resolvedIconClass = /\bph(-fill|-bold|-duotone|-thin|-light)?\b/.test(iconClass)
         ? iconClass
         : `ph ${iconClass}`;
@@ -392,24 +412,65 @@ export function showToast(title, message = '', iconClass = 'ph-trophy') {
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => {
-            if (toast.parentElement) {
-                toast.parentElement.removeChild(toast);
-            }
+            if (toast.parentElement) toast.parentElement.removeChild(toast);
+            drainToastQueue(); // hiện toast kế tiếp trong hàng đợi
         }, 400); // Đợi CSS transition chạy xong
     }, 4000);
 }
 
+function drainToastQueue() {
+    const container = getToastContainer();
+    while (_toastQueue.length > 0 && container.childElementCount < MAX_VISIBLE_TOASTS) {
+        renderToast(_toastQueue.shift());
+    }
+}
+
+export function showToast(title, message = '', iconClass = 'ph-trophy') {
+    // Nếu hàng đợi quá dài (badge storm), bỏ bớt toast cũ nhất để không bao giờ
+    // có một "dòng" thông báo kéo dài hàng phút.
+    if (_toastQueue.length >= MAX_QUEUED_TOASTS) _toastQueue.shift();
+    _toastQueue.push({ title, message, iconClass });
+    drainToastQueue();
+}
+
 // --- Next-Gen Deduplication Modal & Smart Merge Handlers (v5.0 Fuzzy & Meaning Cleaning) ---
+
+let _dedupScanToken = 0;
+let _lastDedupScan = { vocabulary: null, dups: [] };
 
 export function openDedupModal() {
     if (!DOM.dedupModal) return;
     openModal(DOM.dedupModal);
-    renderDedupPairs();
+    if (DOM.dedupList) {
+        DOM.dedupList.innerHTML = `
+            <div class="dedup-loading-state" style="text-align: center; padding: 2rem;">
+                <i class="ph-duotone ph-spinner ph-spin" style="font-size: 2rem; color: var(--primary-color, #8a2be2);"></i>
+                <p style="margin-top: 0.5rem; color: var(--text-muted, #94a3b8);">Đang quét kho từ vựng...</p>
+            </div>
+        `;
+    }
+    setTimeout(() => {
+        void renderDedupPairs();
+    }, 16);
 }
 
-export function renderDedupPairs() {
+/**
+ * Quét trùng theo lô, nhường main thread giữa các lô. Trước đây toàn bộ 3.000 từ
+ * được quét đồng bộ trong 1 khối 1,3 giây làm treo giao diện.
+ */
+export async function renderDedupPairs() {
+    const scanToken = ++_dedupScanToken;
     const { vocabulary } = getState();
-    const dups = findDuplicatePairs(vocabulary);
+    const dups = await findDuplicatePairsAsync(vocabulary, {
+        onProgress: (phase, done, total) => {
+            if (scanToken !== _dedupScanToken || !DOM.dedupSummaryText) return;
+            DOM.dedupSummaryText.textContent = phase === 'index'
+                ? `Đang lập chỉ mục ${done}/${total} từ...`
+                : `Đang so khớp ${done}/${total} cặp ứng viên...`;
+        }
+    });
+    if (scanToken !== _dedupScanToken) return;
+    _lastDedupScan = { vocabulary, dups };
     const internalDups = findInternalDuplicateCards(vocabulary);
     
     if (!DOM.dedupList || !DOM.dedupSummaryText) return;
@@ -573,7 +634,7 @@ export function executeCleanAllInternalMeanings() {
     });
 
     setVocabulary(currentVocab);
-    saveVocabulary();
+    saveVocabulary(true);
 
     // Sync to Firebase & update UI
     modifiedWords.forEach(word => saveOneWord(word));
@@ -593,7 +654,7 @@ export function executeMergeSingle(cardA, cardB) {
     });
 
     setVocabulary(newVocab);
-    saveVocabulary();
+    saveVocabulary(true);
     
     // Lưu và sync
     saveOneWord(mergedCard);
@@ -602,12 +663,13 @@ export function executeMergeSingle(cardA, cardB) {
 
     updatePanelWordList(false);
     showToast('Đã gộp thành công!', `Đã hợp nhất thẻ "${mergedCard.english}".`, 'ph-sparkle');
-    renderDedupPairs();
+    void renderDedupPairs();
 }
 
 export function executeMergeAll() {
     const { vocabulary } = getState();
-    const dups = findDuplicatePairs(vocabulary);
+    // Dùng lại kết quả quét vừa hiển thị nếu vocabulary chưa đổi, tránh quét lại 1,3 s.
+    const dups = _lastDedupScan.vocabulary === vocabulary ? _lastDedupScan.dups : findDuplicatePairs(vocabulary);
     const internalDups = findInternalDuplicateCards(vocabulary);
     if (dups.length === 0 && internalDups.length === 0) return;
 
@@ -654,13 +716,13 @@ export function executeMergeAll() {
         });
 
         setVocabulary(currentVocab);
-        saveVocabulary();
+        saveVocabulary(true);
         
         // Sync queue cho tất cả các thẻ đã sửa
         modifiedWords.forEach(word => saveOneWord(word));
         updatePanelWordList(false);
         showPopup(`Hoàn tất! Đã gộp ${mergedCount} cặp từ và làm sạch ${cleanedCount} thẻ lặp nghĩa.`, 'success');
-        renderDedupPairs();
+        void renderDedupPairs();
     });
 }
 

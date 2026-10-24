@@ -7,7 +7,7 @@ import { DEFAULT_FSRS7_PARAMS, D_MIN, D_MAX } from './constants.js';
  * Formula: w[4] - exp(w[5] * (rating - 1)) + 1.0, clamped to [D_MIN, D_MAX]
  */
 export function initDifficulty(rating, w = DEFAULT_FSRS7_PARAMS) {
-    const clampedRating = Math.min(4, Math.max(1, Math.round(rating)));
+    const clampedRating = Number.isFinite(rating) ? Math.min(4, Math.max(1, Math.round(rating))) : 3;
     const rawD = w[4] - Math.exp(w[5] * (clampedRating - 1)) + 1.0;
     return Math.min(D_MAX, Math.max(D_MIN, rawD));
 }
@@ -17,10 +17,11 @@ export function initDifficulty(rating, w = DEFAULT_FSRS7_PARAMS) {
  * Damps the change in D as it approaches boundary extremes (1.0 or 10.0)
  */
 export function linearDamping(deltaD, lastD) {
+    const safeLastD = Number.isFinite(lastD) ? lastD : 5.0;
     if (deltaD > 0) {
-        return ((D_MAX - lastD) / 9.0) * deltaD;
+        return ((D_MAX - safeLastD) / 9.0) * deltaD;
     } else {
-        return ((lastD - D_MIN) / 9.0) * deltaD;
+        return ((safeLastD - D_MIN) / 9.0) * deltaD;
     }
 }
 
@@ -30,7 +31,8 @@ export function linearDamping(deltaD, lastD) {
  */
 export function meanReversion(currentD, w = DEFAULT_FSRS7_PARAMS) {
     const init4 = initDifficulty(4, w);
-    return 0.01 * init4 + 0.99 * currentD;
+    const safeCurrentD = Number.isFinite(currentD) ? currentD : 5.0;
+    return 0.01 * init4 + 0.99 * safeCurrentD;
 }
 
 /**
@@ -42,19 +44,21 @@ export function meanReversion(currentD, w = DEFAULT_FSRS7_PARAMS) {
  * - Clamping to [1.0, 10.0]
  */
 export function nextDifficulty(lastD, rating, retention, anchor = 0, w = DEFAULT_FSRS7_PARAMS) {
-    const safeD = Math.min(D_MAX, Math.max(D_MIN, typeof lastD === 'number' ? lastD : 5.0));
+    const safeD = Number.isFinite(lastD) ? Math.min(D_MAX, Math.max(D_MIN, lastD)) : 5.0;
+    const safeRating = Number.isFinite(rating) ? Math.min(4, Math.max(1, Math.round(rating))) : 3;
     
-    let deltaD = -w[6] * (rating - 3);
+    let deltaD = -w[6] * (safeRating - 3);
 
     // FSRS-7 Surprise-weighted lapse: failing a high-retention card means it is surprisingly hard
-    if (rating === 1) {
-        const safeR = Math.min(1.0, Math.max(0.0, retention !== undefined ? retention : 0.9));
+    if (safeRating === 1) {
+        const safeR = Number.isFinite(retention) ? Math.min(1.0, Math.max(0.0, retention)) : 0.9;
         deltaD = deltaD * (safeR + 0.1);
     }
 
+    const safeAnchor = Number.isFinite(anchor) ? anchor : 0;
     // Anchor protection (if user created mnemonic anchors)
-    if (anchor > 0) {
-        deltaD *= (1.0 - Math.min(0.5, 0.2 * anchor));
+    if (safeAnchor > 0) {
+        deltaD *= (1.0 - Math.min(0.5, 0.2 * safeAnchor));
     }
 
     const dampedDelta = linearDamping(deltaD, safeD);

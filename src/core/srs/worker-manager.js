@@ -22,7 +22,7 @@ export function runOptimizer() {
     if (activeTask) return activeTask;
     const { reviewLogs, vocabulary, userFsrs7Params, userFsrs7TrainedAt } = getState();
     const baselineTime = userFsrs7TrainedAt;
-    const input = structuredClone({ logs: reviewLogs, vocabulary: vocabulary.map(({ id, english }) => ({ id, english })), params: userFsrs7Params });
+    const input = structuredClone({ logs: reviewLogs, vocabulary: vocabulary.map(({ id, english, type }) => ({ id, english, type })), params: userFsrs7Params });
     activeTask = new Promise((resolve, reject) => {
         const worker = new Worker(new URL('./optimizer.worker.js', import.meta.url), { type: 'module' });
         const timeout = setTimeout(() => finish(new Error('Quá thời gian tối ưu. Bạn có thể thử lại.')), 30000);

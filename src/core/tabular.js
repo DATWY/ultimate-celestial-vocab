@@ -64,7 +64,6 @@ export function cardFromParts(parts) {
     };
     ['notes', 'exampleMeaning', 'synonyms', 'antonyms', 'collocations'].forEach((field, i) => { card[field] = parts[19 + i] || ''; });
     if (status === 'New') card.srsDueDate = null;
-    if (card.stability && card.stabilityShort > card.stability) throw new Error('Độ bền ngắn hạn không được lớn hơn độ bền dài hạn.');
     return card;
 }
 

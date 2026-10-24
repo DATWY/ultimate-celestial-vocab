@@ -41,10 +41,11 @@ export function dualTraceForgettingCurve(t, s_long, s_short, d = 5.0, w = DEFAUL
         w = d;
         d = 5.0;
     }
-    const safeT = Math.max(0, t);
-    const safeLong = Math.max(S_MIN, s_long);
-    const safeShort = Math.max(S_MIN, s_short);
-    const safeD = Math.min(D_MAX, Math.max(D_MIN, Number(d) || 5.0));
+    const safeT = Number.isFinite(t) ? Math.max(0, t) : 0;
+    const safeLong = Number.isFinite(s_long) ? Math.min(S_MAX, Math.max(S_MIN, s_long)) : S_MIN;
+    // S_short độc lập với S_long trong FSRS-7; chỉ clamp vào [S_MIN, S_MAX].
+    const safeShort = Number.isFinite(s_short) ? Math.min(S_MAX, Math.max(S_MIN, s_short)) : 0.8 * safeLong;
+    const safeD = Math.min(D_MAX, Math.max(D_MIN, Number.isFinite(d) ? d : 5.0));
 
     // Short-term component r1
     const r1 = shortComponentRecall(safeT, safeShort, w);
@@ -85,22 +86,24 @@ export function nextIntervalNewton(s_long, s_short, d = 5.0, desiredRetention = 
         w = desiredRetention;
         desiredRetention = DESIRED_RETENTION;
     }
-    const safeD = Math.min(D_MAX, Math.max(D_MIN, Number(d) || 5.0));
-    const target = Math.min(0.99, Math.max(0.70, Number(desiredRetention) || DESIRED_RETENTION));
+    const safeLong = Number.isFinite(s_long) ? Math.min(S_MAX, Math.max(S_MIN, s_long)) : S_MIN;
+    const safeShort = Number.isFinite(s_short) ? Math.min(S_MAX, Math.max(S_MIN, s_short)) : 0.8 * safeLong;
+    const safeD = Math.min(D_MAX, Math.max(D_MIN, Number.isFinite(d) ? d : 5.0));
+    const target = Math.min(0.99, Math.max(0.70, Number.isFinite(desiredRetention) ? desiredRetention : DESIRED_RETENTION));
     
     // Initial guess starting point in log(t) space
-    let t = Math.max(1.0 / 86400.0, s_long * 0.6);
+    let t = Math.max(1.0 / 86400.0, safeLong * 0.6);
     let u = Math.log(t);
 
     for (let iter = 0; iter < 12; iter++) {
-        const curR = dualTraceForgettingCurve(t, s_long, s_short, d, w);
+        const curR = dualTraceForgettingCurve(t, safeLong, safeShort, safeD, w);
         const diff = curR - target;
         if (Math.abs(diff) < 1e-4) break;
 
         // Symmetric difference derivative
         const eps = Math.max(1e-7, t * 1e-4);
-        const rPlus = dualTraceForgettingCurve(t + eps, s_long, s_short, d, w);
-        const rMinus = dualTraceForgettingCurve(Math.max(0, t - eps), s_long, s_short, d, w);
+        const rPlus = dualTraceForgettingCurve(t + eps, safeLong, safeShort, safeD, w);
+        const rMinus = dualTraceForgettingCurve(Math.max(0, t - eps), safeLong, safeShort, safeD, w);
         const dR_dt = (rPlus - rMinus) / (2 * eps);
 
         const denominator = dR_dt * t;

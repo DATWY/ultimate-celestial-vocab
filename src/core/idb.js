@@ -53,7 +53,7 @@ export async function saveWordToDB(word, { markDirty = true } = {}) {
     return merged;
 }
 
-export async function saveAllVocabularyToDB(vocabArray, { markDirty = false } = {}) {
+export async function saveAllVocabularyToDB(vocabArray, { markDirty = false, dirtyIds = null } = {}) {
     const db = await dbPromise;
     if (!db) throw new Error('Kho dữ liệu chưa sẵn sàng.');
     const tx = db.transaction([VOCAB_STORE, OUTBOX_STORE], 'readwrite');
@@ -63,7 +63,9 @@ export async function saveAllVocabularyToDB(vocabArray, { markDirty = false } = 
         const merged = mergeCardFields(word, stored.get(word.id));
         stored.set(word.id, merged);
         await words.put(merged);
-        if (markDirty) {
+        // dirtyIds cho phép chỉ đánh dấu dirty đúng những thẻ thực sự thay đổi
+        // (dùng cho import) thay vì phải đánh dấu toàn bộ kho.
+        if (markDirty || (dirtyIds && dirtyIds.has(word.id))) {
             await outbox.put({ id: word.id, revision: crypto.randomUUID() });
         }
     }

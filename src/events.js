@@ -8,14 +8,19 @@ import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabular
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
-import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI } from './ui/render.js';
+import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
-import { openProfileModal } from './features/gamification.js';
 import { setupIOEventListeners } from './features/io.js';
-import { playSound, speakText, preloadAudio  } from './core/sound.js';
+import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
-import { smartSync } from './core/firebase.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
+
+// Cloud nạp động: events.js nằm trong entry chunk, không kéo firebase 547 kB vào.
+function runCloudSync(options) {
+    import('./core/firebase.js')
+        .then(module => module.smartSync?.(options))
+        .catch(error => console.warn('Cloud sync chưa sẵn sàng:', error));
+}
 
 async function loadAndShowQuiz() {
     DOM.startQuizBtn.disabled = true;
@@ -36,18 +41,6 @@ let stashedCardState = null;
 let stashedCardIndex = -1;
 let typingRetryCount = 0;
 let isTypoRetry = false;
-
-export function updateUndoButtonState() {
-    const snapshot = getLastReviewSnapshot();
-    const undoBtn = DOM.undoBtn || document.getElementById('undo-btn');
-    if (undoBtn) {
-        undoBtn.disabled = !snapshot;
-        undoBtn.classList.toggle('disabled', !snapshot);
-        undoBtn.title = snapshot 
-            ? `Hoàn tác đánh giá từ "${snapshot.previousCard?.english || ''}" (Ctrl+Shift+Z)` 
-            : 'Chưa có lượt đánh giá nào để hoàn tác';
-    }
-}
 
 let _isUndoQueued = false;
 export async function undoLastReview() {
@@ -410,7 +403,7 @@ export function setupEventListeners() {
     const btnEmptyAdd = document.getElementById('btn-empty-add-word');
     const btnEmptyImport = document.getElementById('btn-empty-import');
     const btnEmptySample = document.getElementById('btn-empty-sample');
-    if (btnEmptySample && !(import.meta.env.DEV && new URLSearchParams(location.search).get('audit') === '1')) btnEmptySample.classList.add('hidden');
+    if (btnEmptySample && !((import.meta.env?.DEV ?? false) && new URLSearchParams(location.search).get('audit') === '1')) btnEmptySample.classList.add('hidden');
 
     btnEmptyAdd?.addEventListener('click', () => {
         openAddEditModal(false);
@@ -739,7 +732,13 @@ export function setupEventListeners() {
     }
     document.getElementById('manage-add-word-btn')?.addEventListener('click', () => { closeModal(DOM.manageModal); openAddEditModal(); });
     if (DOM.profileBtn && DOM.profileBtn !== DOM.celestialHubBtn) {
-        DOM.profileBtn.addEventListener('click', () => { closeMenu(); openProfileModal('overview'); });
+        DOM.profileBtn.addEventListener('click', () => {
+            closeMenu();
+            // openProfileModal() chỉ gồm trackEvent + openManageModal. Gọi trực
+            // tiếp để không phụ thuộc việc nạp chunk gamification (59 kB) khi offline.
+            trackEvent('profileViews');
+            openManageModal('overview');
+        });
     }
     DOM.startQuizBtn?.addEventListener('click', () => { closeMenu(); loadAndShowQuiz(); });
     // Custom Topic Dropdown
@@ -1140,7 +1139,83 @@ export function setupEventListeners() {
 	DOM.manualSyncBtn?.addEventListener('click', (e) => {
         trackEvent('syncSpamCount');
         const forceFull = Boolean(e?.altKey || e?.shiftKey);
-        smartSync({ forceFullPull: forceFull, isManual: true });
+        runCloudSync({ forceFullPull: forceFull, isManual: true });
+    });
+
+    setupCloudVaultControls();
+}
+
+/**
+ * Điều khiển "Mã đồng bộ" trong tab Nhập & Xuất: xem/sao chép mã, liên kết
+ * thiết bị khác và tải toàn bộ audio ngoại tuyến (chủ động, không tự chạy).
+ */
+function setupCloudVaultControls() {
+    const keyInput = document.getElementById('sync-key-input');
+    const copyBtn = document.getElementById('copy-sync-key-btn');
+    const applyInput = document.getElementById('sync-key-apply-input');
+    const applyBtn = document.getElementById('apply-sync-key-btn');
+    const audioBtn = document.getElementById('download-all-audio-btn');
+    const statusEl = document.getElementById('sync-key-status');
+
+    if (!keyInput && !applyBtn && !audioBtn) return;
+
+    const setStatus = (text) => { if (statusEl) statusEl.textContent = text; };
+
+    const refreshKey = () => {
+        import('./core/firebase.js').then(module => {
+            const key = module.getSyncKey?.() || '';
+            if (keyInput && key) keyInput.value = module.formatSyncKey ? module.formatSyncKey(key) : key;
+            if (!statusEl?.textContent) setStatus(key ? 'Không gian đồng bộ cá nhân đã sẵn sàng.' : '');
+        }).catch(() => setStatus('Cloud chưa sẵn sàng (đang offline).'));
+    };
+
+    document.getElementById('tab-data-io')?.addEventListener('click', refreshKey);
+    keyInput?.addEventListener('focus', refreshKey);
+
+    copyBtn?.addEventListener('click', async () => {
+        const value = (keyInput?.value || '').trim();
+        if (!value) { setStatus('Chưa có mã đồng bộ để sao chép.'); return; }
+        try {
+            await navigator.clipboard.writeText(value.replace(/-/g, ''));
+            setStatus('Đã sao chép mã. Dán sang thiết bị khác để liên kết.');
+        } catch (_) {
+            keyInput?.select();
+            setStatus('Hãy nhấn Ctrl+C để sao chép mã đang chọn.');
+        }
+    });
+
+    applyBtn?.addEventListener('click', () => {
+        const raw = (applyInput?.value || '').trim();
+        if (!raw) { setStatus('Hãy nhập mã đồng bộ từ thiết bị khác.'); return; }
+        showConfirmation('Liên kết thiết bị này với không gian đồng bộ khác? Kho từ vựng trên máy vẫn được giữ và sẽ gộp vào không gian mới.', async () => {
+            setStatus('Đang liên kết...');
+            try {
+                const module = await import('./core/firebase.js');
+                await module.applySyncKey(raw);
+                setStatus('Đã liên kết. Đang đồng bộ dữ liệu...');
+                await module.smartSync({ forceFullPull: true, isManual: true });
+                refreshKey();
+                setStatus('Đã liên kết và đồng bộ xong.');
+                showToast('Liên kết thành công', 'Thiết bị đã dùng chung không gian đồng bộ mới.', 'ph-cloud-check');
+            } catch (error) {
+                setStatus(error?.message || 'Không liên kết được.');
+                showToast('Liên kết thất bại', error?.message || 'Kiểm tra mã và kết nối mạng.', 'ph-warning-circle');
+            }
+        });
+    });
+
+    audioBtn?.addEventListener('click', async () => {
+        audioBtn.disabled = true;
+        setStatus('Đang tải audio... có thể mất vài phút tuỳ số từ.');
+        try {
+            const sound = await import('./core/sound.js');
+            await sound.startBackgroundAudioPreload(getState().vocabulary, { reason: 'manual' });
+            setStatus('Đã tải xong audio ngoại tuyến.');
+        } catch (error) {
+            setStatus(error?.message || 'Tải audio thất bại.');
+        } finally {
+            audioBtn.disabled = false;
+        }
     });
 }
 

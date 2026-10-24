@@ -43,25 +43,27 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         newState.stabilityShort = Math.max(S_MIN, 0.8 * newState.stability);
     }
 
-    newState.lapses = newState.lapses || 0;
+    newState.lapses = Number.isFinite(Number(newState.lapses)) ? Math.max(0, parseInt(newState.lapses, 10)) : 0;
     newState.anchor = Number.isFinite(anchorStrength) ? Math.min(1, Math.max(0, anchorStrength)) : 0;
     newState.modality = modality;
     newState.srsStatus = newState.srsStatus || 'New';
 
+    let repsNum = Number.isFinite(Number(newState.reps)) ? parseInt(newState.reps, 10) : 0;
     // Inferred reps for legacy cards that have progressed but lack reps counter
-    if (newState.srsStatus !== 'New' && (!newState.reps || newState.reps === 0)) {
-        newState.reps = Math.max(1, Math.round(Math.log2(Math.max(2, newState.srsInterval || newState.stability || 2))));
-    } else {
-        newState.reps = newState.reps || 0;
+    if (newState.srsStatus !== 'New' && repsNum <= 0) {
+        repsNum = Math.max(1, Math.round(Math.log2(Math.max(2, newState.srsInterval || newState.stability || 2))));
     }
+    newState.reps = Math.max(0, repsNum);
 
     const lastReviewDate = newState.lastReviewDate || 
         (newState.srsDueDate ? Math.max(0, newState.srsDueDate - (newState.srsInterval || 1) * 86400000) : now);
     const actualDaysElapsed = Math.max(0, (now - lastReviewDate) / 86400000);
     newState.lastReviewDate = now;
 
+    const isFirstReview = newState.srsStatus === 'New' && (card.reps === undefined || card.reps === null || card.reps === 0 || card.reps === '0');
+
     // 3. First review initialization (New Card)
-    if (newState.srsStatus === 'New' && (!newState.reps || newState.reps === 0)) {
+    if (isFirstReview) {
         const hBias = getDifficultyBias(card);
         const sMult = getStabilityMultiplier(hBias);
         const ratingIdx = Math.min(4, Math.max(1, rating)) - 1;
@@ -88,29 +90,21 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         // Update Difficulty with Surprise-Weighted Lapse
         let upd_d = nextDifficulty(newState.difficulty, rating, retrievability, newState.anchor, w);
 
-        const isRelearningPass = card.srsStatus === 'Learning' && actualDaysElapsed < 0.05; // < 1.2 giờ
-
         if (rating === 1) { // Lapse (Again)
             // Post-lapse short-term cap: s_short is capped at 0.8 * post-lapse long-term S (bounded by S_MIN)
             upd_s_short = Math.max(S_MIN, Math.min(upd_s_short, 0.8 * upd_s_long));
             newState.lapses = (newState.lapses || 0) + 1;
-            newState.isSuspended = false; // Đã loại bỏ hoàn toàn chế độ tạm ngưng theo yêu cầu
+            newState.isSuspended = false;
             // Lapse forgiveness: keep 50% reps rather than resetting to 0
             newState.reps = Math.max(1, Math.ceil((newState.reps || 0) / 2));
-        } else if (isRelearningPass) {
-            // Tốt nghiệp từ hàng đợi Re-learning nội nhật (< 1.2 giờ):
-            // 1. Giữ nguyên S_long sau phạt (khử hiện tượng r_1 kéo R(t) xuống gây tăng ảo sau 3 phút)
-            upd_s_long = card.stability || upd_s_long;
-            // 2. Phục hồi S_short về ngưỡng an toàn 0.8 * S_long để bước sang lịch ngày hôm sau
-            upd_s_short = Math.min(upd_s_long, Math.max(S_MIN, 0.8 * upd_s_long));
-            // 3. Giữ nguyên độ khó D đã phạt ở lượt Lapse trước đó
-            upd_d = card.difficulty || upd_d;
         } else {
             newState.reps = (newState.reps || 0) + 1;
         }
 
         newState.stability = upd_s_long;
-        newState.stabilityShort = Math.min(newState.stability, upd_s_short);
+        // FSRS-7 chính thức chỉ giới hạn S_short trong khoảng [S_MIN, S_MAX];
+        // KHÔNG ép S_short <= S_long sau mỗi lượt (chỉ nhánh lapse mới có cap 0.8*S_long ở trên).
+        newState.stabilityShort = Math.min(S_MAX, Math.max(S_MIN, upd_s_short));
         newState.difficulty = upd_d;
     }
 
@@ -126,11 +120,8 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         }
         if (newState.stabilityShort > oldShort) {
             const deltaShort = newState.stabilityShort - oldShort;
-            // Đảm bảo bất biến: S_short không bao giờ vượt quá S_long
-            newState.stabilityShort = Math.min(
-                newState.stability,
-                oldShort + deltaShort * 1.25
-            );
+            // Giữ nguyên mô hình FSRS-7: chỉ clamp vào [S_MIN, S_MAX], không ép theo S_long.
+            newState.stabilityShort = Math.min(S_MAX, oldShort + deltaShort * 1.25);
         }
     }
 
@@ -151,17 +142,17 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
     } else {
         nextIntervalDays = options.memoryOnly ? 0 : nextIntervalNewton(effectiveLongS, effectiveShortS, newState.difficulty, DESIRED_RETENTION, w);
 
-        // Chốt chặn an toàn (Fail-safe): Thẻ mới tinh lần đầu tiên tối đa 21 ngày (tránh bấm nhầm Easy bị đẩy đi 4 tháng)
-        const isInitialReview = !card.reps || card.reps <= 1 || card.srsStatus === 'New';
-        if (isInitialReview && nextIntervalDays > MAX_INITIAL_INTERVAL) {
-            nextIntervalDays = MAX_INITIAL_INTERVAL;
-        }
-
         // Fuzzing for intervals >= 2.5 days to distribute review load
         if (nextIntervalDays >= 2.5 && !isSimulation) {
             const fuzzRange = nextIntervalDays * FUZZ_PERCENTAGE;
             const fuzzOffset = (Math.random() * 2 - 1) * fuzzRange;
             nextIntervalDays = Math.max(1.0, nextIntervalDays + fuzzOffset);
+        }
+
+        // Chốt chặn an toàn (Fail-safe): thẻ mới tinh lần đầu tối đa 21 ngày.
+        // Phải áp SAU fuzz, nếu không fuzz ±5% có thể đẩy 21 ngày lên 22,05 ngày.
+        if (isFirstReview && nextIntervalDays > MAX_INITIAL_INTERVAL) {
+            nextIntervalDays = MAX_INITIAL_INTERVAL;
         }
 
         // Graduation to Mastered:
@@ -205,7 +196,7 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         ? `${(nextIntervalDays * 24).toFixed(1)}h` 
         : `${nextIntervalDays.toFixed(1)}d`;
 
-    if (!isSimulation) {
+    if (!isSimulation && options.debug) {
         console.log(`[FSRS-7] "${newState.english}" | R: ${rating} | D: ${newState.difficulty.toFixed(2)} | S_long: ${newState.stability.toFixed(2)} | S_short: ${newState.stabilityShort.toFixed(2)} | Interval: ${intervalStr}`);
     }
 

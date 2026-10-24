@@ -222,14 +222,35 @@ body:not(.dark-mode) .v5-shimmer {
     animation: v5PulseHero 3s infinite ease-in-out;
 }
 
+/* Chỉ animate transform (compositor). Độ "sáng lên" của bóng được giữ bằng
+   pseudo-element opacity thay vì animate box-shadow gây repaint mỗi frame. */
+.onboarding-hero-icon::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.35), transparent 70%);
+    opacity: 0.25;
+    animation: v5PulseGlow 3s infinite ease-in-out;
+    will-change: opacity;
+    pointer-events: none;
+}
+
 @keyframes v5PulseHero {
     0%, 100% {
         transform: translateY(0);
-        box-shadow: 0 8px 24px rgba(138, 43, 226, 0.25);
     }
     50% {
         transform: translateY(-4px);
-        box-shadow: 0 12px 32px rgba(168, 85, 247, 0.38);
+    }
+}
+
+@keyframes v5PulseGlow {
+    0%, 100% {
+        opacity: 0.2;
+    }
+    50% {
+        opacity: 0.55;
     }
 }
 
@@ -646,5 +667,38 @@ body:not(.dark-mode) .onboarding-pill {
         gap: 10px !important;
     }
 }
+
+/* ==========================================================================
+   LEGACY COMPATIBILITY BRIDGE: Map Legacy Tokens -> Celestial V5 Tokens
+   ========================================================================== */
+:root {
+    --primary-color: var(--v5-nebula-purple);
+    --primary-color-darker: var(--v5-obsidian-700);
+    --secondary-color: var(--v5-emerald-green);
+    --accent-color: var(--v5-starlight-cyan);
+    --danger-color: var(--v5-srs-again);
+    --border-color: var(--v5-glass-border);
+    --card-bg: var(--v5-glass-bg);
+    --button-bg: var(--v5-glass-bg-subtle);
+    --button-bg-hover: var(--v5-glass-bg-active);
+    --text-color: var(--v5-porcelain-100);
+    --text-light: var(--v5-porcelain-400);
+    --due-color: var(--v5-srs-hard);
+    --new-color: var(--v5-starlight-cyan);
+    --learning-color: var(--v5-srs-hard);
+    --mastered-color: var(--v5-srs-easy);
+}
+
+body.light-mode {
+    --primary-color: var(--v5-deep-cyan);
+    --secondary-color: var(--v5-emerald-green);
+    --accent-color: var(--v5-rose-pink);
+    --danger-color: var(--v5-coral-red);
+    --border-color: var(--v5-porcelain-300);
+    --card-bg: var(--v5-porcelain-100);
+    --text-color: var(--v5-porcelain-900);
+    --text-light: var(--v5-porcelain-600);
+}
+
 
 

@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -247,8 +248,10 @@ test('transaction merges against the remote revision from the successful retry',
     let remote = { ...base(), stability: 10, lastReviewDate: 200, srsUpdatedAt: 200, updatedAt: 200 };
     let committed;
     const c = context(fn('src/core/firebase.js', 'writeMergedCards'), {
-        normalizeCard, mergeCardFields, isSrsEqual, db: {}, VOCAB_COLLECTION: 'mock',
-        doc: (_, collection, id) => id, serverTimestamp: () => 'server-commit', getDeviceId: () => 'test',
+        normalizeCard, mergeCardFields, isSrsEqual, db: {},
+        ensureCloudAuth: async () => ({ uid: 'test-user' }),
+        doc: (_, ...path) => path.join('/'),
+        serverTimestamp: () => 'server-commit', getDeviceId: () => 'test',
         runTransaction: async (_, callback) => {
             const attempt = () => callback({ get: async () => ({ exists: () => true, data: () => remote }), set: (_, card) => { committed = card; } });
             await attempt(); // discarded attempt; another device reviewed concurrently
@@ -273,6 +276,7 @@ function syncHarness(writer) {
         .replace("await import('./state.js')", 'stateModule');
     const c = context(source, { localStorage: storage, sessionStorage: storage, navigator: { onLine: true }, stateModule,
         setTimeout: () => 1, clearTimeout() {}, writeMergedCards: writer, mergeCardFields, saveWordToDB: async () => {},
+        ensureCloudAuth: async () => ({ uid: 'test-user' }),
         syncProgressToFirebase: async () => {}, announceSyncStatus() {},
         getPendingCardIds: async () => [],
         getPendingWriteSnapshot: async ids => ids.map(id => ({ id, card, revision: 1 })),
@@ -306,3 +310,55 @@ test('failed/offline writes keep durable pending IDs', async () => {
     assert.equal(h.c.getSyncQueueSize(), 1);
     assert.deepEqual(JSON.parse(h.values.get('pendingSyncIds')), ['a']);
 });
+
+test('computeDailyNewLimit can be imported and executed directly without vm context', async () => {
+    const { computeDailyNewLimit } = await import('../src/core/queue.js');
+    assert.equal(typeof computeDailyNewLimit, 'function');
+    const stats = { currentLimit: 15, retentionHistory: [{ correct: 9, total: 10 }] };
+    assert.equal(computeDailyNewLimit(stats, '2026-10-20'), 20);
+});
+
+test('dedup edge cases: null, empty, and malformed cards are handled without throwing', async () => {
+    const { isDuplicateCard, findDuplicatePairs } = await import('../src/core/dedup.js');
+    assert.equal(isDuplicateCard(null, null).isDuplicate, false);
+    assert.equal(isDuplicateCard({}, {}).isDuplicate, false);
+    assert.equal(isDuplicateCard({ english: '' }, { english: '' }).isDuplicate, false);
+    assert.equal(isDuplicateCard({ english: '  ' }, { english: '  ' }).isDuplicate, false);
+    assert.equal(isDuplicateCard({ english: 'valid' }, null).isDuplicate, false);
+
+    const emptyPairs = findDuplicatePairs([null, {}, { id: 'x', english: '' }, { id: 'y', english: ' ' }]);
+    assert.equal(emptyPairs.length, 0);
+});
+
+test('saveVocabulary and saveOneWord do not throw ReferenceError for missing UI globals', async () => {
+    const { initAppDB, getAllVocabularyFromDB, getPendingCardIds } = await import('../src/core/idb.js');
+    const db = await initAppDB();
+    try {
+        const { saveVocabulary, saveOneWord, setVocabulary } = await import('../src/core/state.js');
+
+        const cardA = { id: 'card-persist-a', english: 'nebula', vietnamese: 'tinh vân', type: 'n', srsStatus: 'New', reps: 0 };
+        const cardB = { id: 'card-persist-b', english: 'quasar', vietnamese: 'chuẩn tinh', type: 'n', srsStatus: 'Learning', reps: 1, stability: 10 };
+
+        setVocabulary([cardA]);
+        await saveVocabulary(false);
+
+        const savedB = await saveOneWord(cardB);
+        assert.ok(savedB, 'saveOneWord should return the saved card and not throw or fail');
+
+        const stored = await getAllVocabularyFromDB();
+        const storedMap = new Map(stored.map(card => [card.id, card]));
+
+        assert.ok(storedMap.has('card-persist-a'), 'cardA must be persisted to IndexedDB by saveVocabulary');
+        assert.equal(storedMap.get('card-persist-a').english, 'nebula');
+
+        assert.ok(storedMap.has('card-persist-b'), 'cardB must be persisted to IndexedDB by saveOneWord');
+        assert.equal(storedMap.get('card-persist-b').english, 'quasar');
+
+        const pendingIds = await getPendingCardIds();
+        assert.ok(pendingIds.includes('card-persist-a'), 'cardA should have a pending outbox entry');
+        assert.ok(pendingIds.includes('card-persist-b'), 'cardB should have a pending outbox entry');
+    } finally {
+        db.close();
+    }
+});
+

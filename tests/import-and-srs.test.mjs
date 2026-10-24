@@ -63,8 +63,8 @@ test('first reviews are logged, and simulated schedules are deterministic', () =
 });
 test('training replay uses timestamps, typing flags, deleted IDs and actual scheduler state', () => {
     const logs = { dict: ['a'], logs: [[0,3,0,1700000000000,0,'first'],[0,3,1,1700086400000,1,'second'],[0,1,1,1700172800000,0,'undone']], deletedIds: ['undone'] };
-    const data = prepareTrainingData(logs, [{ id: 'a', english: 'cat' }]);
-    assert.equal(data.count, 2); assert.equal(data.cards[0].reviews[1].modality, 'typing');
+    const data = prepareTrainingData(logs, [{ id: 'a', english: 'cat', type: 'idiom' }]);
+    assert.equal(data.count, 2); assert.equal(data.cards[0].type, 'idiom'); assert.equal(data.cards[0].reviews[1].modality, 'typing');
     const result = evaluateParameters({ ...data, split: Infinity }, DEFAULT_FSRS7_PARAMS);
     assert.equal(result.count, 1); assert.ok(Number.isFinite(result.loss));
     const insufficient = optimizeParameters(logs);

@@ -1,16 +1,180 @@
 import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
-import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter, ensureDailyStats } from '../core/state.js';
-import { playSound, preloadAudio } from '../core/sound.js';
+import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
+import { playSound, ensureAudioForWords } from '../core/sound.js';
 import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards } from '../core/queue.js';
-import { openAddEditModal, showConfirmation, showPopup, closeModal, showToast } from './modal.js';
+// modal.js được nạp động: render <-> modal là vòng import lớn nhất của app.
+// Gọi UI modal không cần đồng bộ, nên nạp động vừa phá vòng vừa giảm entry chunk.
+let _modalModulePromise = null;
+function getModalModule() {
+    if (!_modalModulePromise) _modalModulePromise = import('./modal.js');
+    return _modalModulePromise;
+}
 import { setBoostMode, updateCanvasTheme } from './celestial-canvas.js';
 import { animateFlip, animateNumber } from '../core/animations.js';
 import { isFuzzySearchMatch } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { nextRevision } from '../core/card-merge.js';
+import { predictNextIntervals } from '../core/srs/index.js';
+import { startTypingTimer } from '../features/typing.js';
+
+export function updateUndoButtonState() {
+    const snapshot = getLastReviewSnapshot();
+    const undoBtn = DOM.undoBtn || (typeof document !== 'undefined' ? document.getElementById('undo-btn') : null);
+    if (undoBtn) {
+        undoBtn.disabled = !snapshot;
+        undoBtn.classList.toggle('disabled', !snapshot);
+        undoBtn.title = snapshot 
+            ? `Hoàn tác đánh giá từ "${snapshot.previousCard?.english || ''}" (Ctrl+Shift+Z)` 
+            : 'Chưa có lượt đánh giá nào để hoàn tác';
+    }
+}
+
+// ─── CELEBRATION CONFETTI: MỘT canvas + MỘT vòng rAF duy nhất ─────────────
+// Trước đây mỗi lần mở khóa huy hiệu lại tạo một mảng particles + một vòng
+// requestAnimationFrame RIÊNG, cùng vẽ chồng lên một canvas. Khi người dùng
+// nhập một kho lớn, hàng chục huy hiệu mở cùng lúc ⇒ hàng chục vòng rAF và
+// clearRect toàn màn hình mỗi frame ⇒ lag nặng. Nay các đợt pháo hoa được gộp
+// vào cùng một danh sách, tối đa 220 hạt, và chỉ có tối đa một vòng rAF.
+const CELEBRATE_COLORS = ['#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#fde047', '#a855f7', '#06b6d4', '#e11d48'];
+const MAX_CELEBRATE_PARTICLES = 220;
+let _celebrateCanvas = null;
+let _celebrateCtx = null;
+let _celebrateParticles = [];
+let _celebrateRaf = 0;
+let _celebrateLastTs = 0;
+
+function getCelebrationSurface() {
+    if (typeof document === 'undefined') return null;
+    if (!_celebrateCanvas) {
+        _celebrateCanvas = document.createElement('canvas');
+        _celebrateCanvas.id = 'global-celebrate-canvas';
+        _celebrateCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:999999;display:none;';
+        document.body.appendChild(_celebrateCanvas);
+        _celebrateCtx = _celebrateCanvas.getContext('2d');
+    }
+    if (!_celebrateCtx) _celebrateCtx = _celebrateCanvas.getContext('2d');
+    if (!_celebrateCtx) return null;
+
+    // Chỉ đổi kích thước khi thực sự thay đổi: đổi width/height sẽ xóa canvas
+    // và làm mất các hạt đang bay của đợt trước.
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (_celebrateCanvas.width !== w || _celebrateCanvas.height !== h) {
+        _celebrateCanvas.width = w;
+        _celebrateCanvas.height = h;
+    }
+    return _celebrateCtx;
+}
+
+function stepCelebration(ts) {
+    const ctx = _celebrateCtx;
+    const canvas = _celebrateCanvas;
+    if (!ctx || !canvas) { _celebrateRaf = 0; return; }
+
+    if (getState?.()?.isBoostMode) {
+        _celebrateParticles.length = 0;
+        _celebrateRaf = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.style.display = 'none';
+        return;
+    }
+
+    const dt = Math.min(48, ts - _celebrateLastTs || 16.666) / 16.666;
+    _celebrateLastTs = ts;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const drag = Math.pow(0.965, dt); // mọi hạt dùng chung hệ số cản
+    let writeIndex = 0;
+    for (let i = 0; i < _celebrateParticles.length; i++) {
+        const p = _celebrateParticles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += p.gravity * dt;
+        p.vx *= drag;
+        p.vy *= drag;
+        p.rotation += p.vRot * dt;
+
+        if (ts - p.bornAt > 1100) {
+            p.opacity = Math.max(0, p.opacity - 0.024 * dt);
+        }
+
+        if (p.opacity <= 0 || p.y > canvas.height + 30) continue;
+
+        _celebrateParticles[writeIndex++] = p;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        if (p.shape === 'rect') {
+            ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+    _celebrateParticles.length = writeIndex;
+
+    if (_celebrateParticles.length > 0) {
+        _celebrateRaf = requestAnimationFrame(stepCelebration);
+    } else {
+        _celebrateRaf = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.style.display = 'none';
+    }
+}
+
+export function launchCelebrationConfetti(options = {}) {
+    if (typeof window === 'undefined') return;
+    if (getState?.()?.isBoostMode) return;
+
+    const canvas = _celebrateCanvas || document.getElementById('global-celebrate-canvas') || null;
+    if (canvas && !_celebrateCanvas) _celebrateCanvas = canvas;
+    const ctx = getCelebrationSurface();
+    if (!ctx || !_celebrateCanvas) return;
+
+    const now = performance.now();
+    const count = Math.min(options.count || 85, 120);
+    const originX = options.x ?? (_celebrateCanvas.width * 0.5);
+    const originY = options.y ?? (_celebrateCanvas.height * 0.38);
+
+    for (let i = 0; i < count; i++) {
+        const angle = Math.PI * 2 * Math.random();
+        const speed = Math.random() * 12 + 4;
+        _celebrateParticles.push({
+            x: originX + (Math.random() - 0.5) * 40,
+            y: originY + (Math.random() - 0.5) * 30,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - Math.random() * 5,
+            size: Math.random() * 7 + 4,
+            color: CELEBRATE_COLORS[Math.floor(Math.random() * CELEBRATE_COLORS.length)],
+            rotation: Math.random() * 360,
+            vRot: (Math.random() - 0.5) * 14,
+            opacity: 1,
+            gravity: 0.24,
+            drag: 0.965,
+            shape: Math.random() > 0.35 ? 'rect' : 'circle',
+            bornAt: now
+        });
+    }
+
+    // Giữ tổng số hạt trong ngưỡng an toàn: bỏ các hạt cũ nhất trước.
+    if (_celebrateParticles.length > MAX_CELEBRATE_PARTICLES) {
+        _celebrateParticles.splice(0, _celebrateParticles.length - MAX_CELEBRATE_PARTICLES);
+    }
+
+    _celebrateCanvas.style.display = 'block';
+    if (!_celebrateRaf) {
+        _celebrateLastTs = now;
+        _celebrateRaf = requestAnimationFrame(stepCelebration);
+    }
+}
 
 export function launchVictoryConfetti() {
+    launchCelebrationConfetti();
     if (getState().isBoostMode) return;
     const canvas = document.getElementById('victory-confetti-canvas');
     if (!canvas) return;
@@ -175,7 +339,6 @@ export function displayCard(index, preserveFlipState = false) {
 
             // Kích hoạt âm thanh hoàn thành vinh quang và pháo hoa rực rỡ
             playSound('complete');
-            setTimeout(launchVictoryConfetti, 120);
         }
         
         setCurrentCardIndex(-1);
@@ -184,10 +347,13 @@ export function displayCard(index, preserveFlipState = false) {
     }
     
     // ----- NÂNG CẤP HIỆU SUẤT -----
-    // Ngay sau khi xác định có thẻ, bắt đầu tìm nạp trước âm thanh trong nền.
-    // Việc này diễn ra trong khi phần còn lại của hàm đang cập nhật giao diện.
+    // Trước đây mỗi lần hiện thẻ đều gọi preloadAudio() ngay: fetch proxy + đọc
+    // IndexedDB + atob/Blob trên main thread. Khi người dùng lật/đánh giá liên
+    // tục, việc này chạy cho từng thẻ và tranh frame. Nay đưa vào hàng đợi
+    // debounce 350ms + requestIdleCallback (3 luồng, không retry), chỉ tải khi
+    // thẻ thực sự dừng lại đủ lâu; bấm loa vẫn phát ngay qua speakText().
     if (cardData.english) {
-        preloadAudio(cardData.english);
+        ensureAudioForWords([cardData.english]);
     }
     // -----------------------------
 
@@ -309,7 +475,7 @@ export async function flipCard() {
             playSound('flip');
             const currentCard = getState().vocabulary[getState().currentCardIndex];
             if (shouldCardUseTyping(currentCard)) {
-                import('../features/typing.js').then(m => m.startTypingTimer());
+                startTypingTimer();
             } else {
                 DOM.srsFeedbackButtons?.querySelector('.srs-btn[data-rating="3"]')?.focus({ preventScroll: true });
             }
@@ -352,7 +518,7 @@ function toggleFlashcardControlButtons(showSRSAndNext) {
             setTimeout(() => {
                 DOM.typingInput?.focus();
             }, 50);
-            import('../features/typing.js').then(m => m.startTypingTimer());
+            startTypingTimer();
         }
         
         DOM.nextCardBtn?.classList.toggle('hidden', !showSRSAndNext);
@@ -372,6 +538,25 @@ function toggleFlashcardControlButtons(showSRSAndNext) {
         // Hide nextCardBtn to prevent skipping SRS feedback without rating.
         DOM.nextCardBtn?.classList.add('hidden');
     }
+
+    // Nạp audio LAZY: chỉ thẻ hiện tại + 2 thẻ kế, chạy khi main thread rảnh.
+    // Thay cho việc quét/tải toàn bộ kho lúc mở app (nguyên nhân lag chính).
+    try {
+        const state = getState();
+        const upcoming = [];
+        if (currentCard && currentCard.english) upcoming.push(currentCard.english);
+        if (Array.isArray(state.currentReviewQueue)) {
+            for (const queueIndex of state.currentReviewQueue) {
+                if (upcoming.length >= 3) break;
+                if (queueIndex === currentCardIndex) continue;
+                const nextCard = state.vocabulary[queueIndex];
+                if (nextCard?.english) upcoming.push(nextCard.english);
+            }
+        }
+        if (upcoming.length) ensureAudioForWords(upcoming);
+    } catch (error) {
+        console.warn('[audio-preload]', error);
+    }
 }
 
 /**
@@ -383,7 +568,7 @@ export function updateSrsButtonIntervalPreviews() {
     const cardData = vocabulary[currentCardIndex];
     if (!cardData) return;
 
-    import('../core/srs/index.js').then(({ predictNextIntervals }) => {
+    try {
         const intervals = predictNextIntervals(cardData, 'en-vi');
         
         const ratingConfig = [
@@ -406,9 +591,9 @@ export function updateSrsButtonIntervalPreviews() {
                 `;
             }
         });
-    }).catch(err => {
+    } catch (err) {
         console.warn('Failed to predict FSRS intervals:', err);
-    });
+    }
 }
 
 function wordMatchesTopic(word, filterLowerCase) {
@@ -422,68 +607,69 @@ export function updateStats() {
     const { vocabulary, currentTopicFilter } = getState();
     const todayStats = ensureDailyStats();
     // study-session-bar removed; these elements no longer exist in DOM
-    const activeVocabulary = vocabulary.filter(w => !w.isDeleted);
-    const totalCount = activeVocabulary.length;
     const filterLowerCase = (currentTopicFilter || 'all').toLowerCase();
-    const filteredVocab = activeVocabulary.filter(w => 
-        wordMatchesTopic(w, filterLowerCase)
-    );
-    const filteredCount = filteredVocab.length;
     const now = Date.now();
     const endOfDay = new Date(now).setHours(23, 59, 59, 999);
-    
-    // V3.3: Tập hợp các thẻ CẦN ÔN (Bao gồm thẻ đến hạn tự nhiên + Thẻ đang trong hàng đợi ôn tập do học nhồi)
-    const activeDueSet = new Set();
-    filteredVocab.forEach((w, idx) => {
-        const isNaturalDue = w.srsDueDate && (w.srsStatus === 'Mastered' ? w.srsDueDate <= endOfDay : w.srsDueDate <= now);
-        if (isNaturalDue) {
-            activeDueSet.add(w.id || idx);
-        }
-    });
-
     const { currentReviewQueue, currentCardIndex } = getState();
-    // Bổ sung thẻ hiện tại nếu là thẻ Mastered đang ôn tập
-    if (currentCardIndex >= 0 && currentCardIndex < vocabulary.length) {
-        const cw = vocabulary[currentCardIndex];
-        if (cw && !cw.isDeleted && wordMatchesTopic(cw, filterLowerCase)) {
-            if (cw.srsStatus === 'Mastered') {
-                activeDueSet.add(cw.id || currentCardIndex);
-            }
-        }
-    }
-    // Bổ sung các thẻ trong currentReviewQueue (được nạp từ học nhồi)
+
+    // Thẻ được ép vào hàng đợi ôn tập (học nhồi / thẻ đang mở) dù chưa đến hạn tự nhiên.
+    const forcedDueKeys = new Set();
+    const addForcedDue = (index) => {
+        if (index < 0 || index >= vocabulary.length) return;
+        const card = vocabulary[index];
+        if (!card || card.isDeleted || !wordMatchesTopic(card, filterLowerCase)) return;
+        if (card.srsStatus === 'Mastered') forcedDueKeys.add(card.id || index);
+    };
+    addForcedDue(currentCardIndex);
     if (Array.isArray(currentReviewQueue)) {
-        currentReviewQueue.forEach(idx => {
-            if (idx >= 0 && idx < vocabulary.length) {
-                const qw = vocabulary[idx];
-                if (qw && !qw.isDeleted && wordMatchesTopic(qw, filterLowerCase)) {
-                    if (qw.srsStatus === 'Mastered') {
-                        activeDueSet.add(qw.id || idx);
-                    }
-                }
-            }
-        });
+        for (const queueIndex of currentReviewQueue) addForcedDue(queueIndex);
     }
 
-    const dueCount = activeDueSet.size;
-    const newCount = filteredVocab.filter(w => w.srsStatus === 'New').length;
-    const totalLearningRaw = filteredVocab.filter(w => w.srsStatus === 'Learning').length;
-    const totalMasteredRaw = filteredVocab.filter(w => w.srsStatus === 'Mastered').length;
+    // MỘT vòng lặp duy nhất thay cho 7 lần filter() trên toàn kho.
+    let totalCount = 0;
+    let filteredCount = 0;
+    let dueCount = 0;
+    let newCount = 0;
+    let totalLearningRaw = 0;
+    let totalMasteredRaw = 0;
+    let masteredNonDue = 0;
+    let learningNonDue = 0;
 
-    // Mutually exclusive partitioning for progress bar:
-    // 1. Due today (Active review queue)
-    // 2. Mastered & not due (Long-term retained)
-    // 3. Learning & not due (In-progress review)
-    // 4. New (Unseen cards)
-    const masteredNonDue = filteredVocab.filter(w => w.srsStatus === 'Mastered' && !activeDueSet.has(w.id)).length;
-    const learningNonDue = filteredVocab.filter(w => w.srsStatus === 'Learning' && !activeDueSet.has(w.id)).length;
+    for (let index = 0; index < vocabulary.length; index++) {
+        const word = vocabulary[index];
+        if (!word || word.isDeleted) continue;
+        totalCount++;
+        if (!wordMatchesTopic(word, filterLowerCase)) continue;
+        filteredCount++;
 
-    animateNumber(DOM.statTotal, totalCount);
-    animateNumber(DOM.statFiltered, filteredCount);
-    animateNumber(DOM.statDue, dueCount);
-    animateNumber(DOM.statNew, newCount);
-    animateNumber(DOM.statLearning, totalLearningRaw);
-    animateNumber(DOM.statMastered, totalMasteredRaw);
+        const status = word.srsStatus;
+        if (status === 'New') newCount++;
+        else if (status === 'Learning') totalLearningRaw++;
+        else if (status === 'Mastered') totalMasteredRaw++;
+
+        const isNaturalDue = Boolean(word.srsDueDate) && (status === 'Mastered' ? word.srsDueDate <= endOfDay : word.srsDueDate <= now);
+        const isDue = isNaturalDue || forcedDueKeys.has(word.id || index);
+        if (isDue) dueCount++;
+        else if (status === 'Mastered') masteredNonDue++;
+        else if (status === 'Learning') learningNonDue++;
+    }
+
+    // Chỉ chạy animation đếm số khi Hub đang mở; khi đang học, ghi thẳng text để
+    // không tạo 6 vòng animation 1,6 s cho phần tử người dùng không nhìn thấy.
+    const manageModalEl = document.getElementById('manage-modal');
+    const isHubVisible = Boolean(manageModalEl && !manageModalEl.classList.contains('hidden'));
+    const shouldAnimate = isHubVisible && !getState().isBoostMode;
+    const applyStat = (element, value) => {
+        if (!element) return;
+        if (shouldAnimate) animateNumber(element, value, 600);
+        else element.textContent = String(value);
+    };
+    applyStat(DOM.statTotal, totalCount);
+    applyStat(DOM.statFiltered, filteredCount);
+    applyStat(DOM.statDue, dueCount);
+    applyStat(DOM.statNew, newCount);
+    applyStat(DOM.statLearning, totalLearningRaw);
+    applyStat(DOM.statMastered, totalMasteredRaw);
 
     // Cập nhật Radial Progress Rings & Segmented Bar (Celestial Dock v3)
     const baseCount = filteredCount || 1;
@@ -849,11 +1035,13 @@ export function applyBoostMode(isBoost, showToastNotification = false) {
     setBoostMode(isBoost);
 
     if (showToastNotification) {
-        if (isBoost) {
-            showToast('Chế Độ Tăng Tốc ⚡', 'Đã bật Boost Mode: Giảm chuyển động và hiệu ứng nền để tập trung học.', 'ph-lightning');
-        } else {
-            showToast('Hiệu Ứng Thiên Hà ✨', 'Đã khôi phục giao diện sao trời đầy đủ.', 'ph-sparkle');
-        }
+        getModalModule().then(m => {
+            if (isBoost) {
+                m.showToast?.('Chế Độ Tăng Tốc ⚡', 'Đã bật Boost Mode: Giảm chuyển động và hiệu ứng nền để tập trung học.', 'ph-lightning');
+            } else {
+                m.showToast?.('Hiệu Ứng Thiên Hà ✨', 'Đã khôi phục giao diện sao trời đầy đủ.', 'ph-sparkle');
+            }
+        }).catch(() => {});
     }
 }
 
@@ -862,24 +1050,64 @@ const INITIAL_LOAD_COUNT = 40;
 let filteredWordsCache = [];
 let scrollListenerAttached = false;
 let sentinelObserver = null;
+let wordListDelegationAttached = false;
+let pendingLoadMore = false;
+let loadMoreDebounceTimer = null;
+
+/**
+ * Trước đây mỗi sự kiện scroll chạm đáy đều tạo ngay 40 thẻ (hàng trăm DOM
+ * node) ngay giữa frame ⇒ khựng đúng lúc đang cuộn. Nay:
+ *   1. Chờ người dùng ngừng cuộn ~140ms (tránh chèn DOM giữa lúc cuộn).
+ *   2. Nạp trong requestIdleCallback.
+ *   3. Chỉ có tối đa 1 lượt nạp đang chờ.
+ */
+function scheduleLoadMoreWords() {
+    if (loadMoreDebounceTimer) clearTimeout(loadMoreDebounceTimer);
+    if (visibleCount >= filteredWordsCache.length) {
+        updateSentinelState();
+        return;
+    }
+    loadMoreDebounceTimer = setTimeout(() => {
+        loadMoreDebounceTimer = null;
+        if (pendingLoadMore) return;
+        pendingLoadMore = true;
+        const run = () => {
+            pendingLoadMore = false;
+            loadMoreWords();
+        };
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(run, { timeout: 400 });
+        } else {
+            setTimeout(run, 16);
+        }
+    }, 140);
+}
 
 function loadMoreWords() {
     if (visibleCount >= filteredWordsCache.length) {
         updateSentinelState();
         return;
     }
-    
+
     const prevCount = visibleCount;
     visibleCount = Math.min(visibleCount + INITIAL_LOAD_COUNT, filteredWordsCache.length);
-    
-    const fragment = document.createDocumentFragment();
-    filteredWordsCache.slice(prevCount, visibleCount).forEach(word => {
-        const card = createWordCard(word);
-        fragment.appendChild(card);
-    });
-    
-    DOM.wordListDisplay.appendChild(fragment);
+
+    // Một lần parse HTML cho cả trang thay vì 40 lần createElement + 160 lần
+    // appendChild + 160 closure onclick. Danh sách vẫn giữ nguyên cấu trúc DOM.
+    const html = filteredWordsCache.slice(prevCount, visibleCount).map(wordCardHtml).join('');
+    if (html) DOM.wordListDisplay.insertAdjacentHTML('beforeend', html);
     updateSentinelState();
+
+    // Nếu màn hình vẫn chưa được lấp đầy (sentinel còn trong vùng nhìn), nạp
+    // tiếp trang sau. Quan sát lại sentinel thay vì đọc getBoundingClientRect
+    // để không ép layout ngay sau khi vừa chèn DOM.
+    if (visibleCount < filteredWordsCache.length && sentinelObserver) {
+        const sentinel = document.getElementById('word-list-sentinel');
+        if (sentinel) {
+            sentinelObserver.unobserve(sentinel);
+            sentinelObserver.observe(sentinel);
+        }
+    }
 }
 
 function updateSentinelState() {
@@ -915,13 +1143,8 @@ export function updatePanelWordList(resetScroll = true) {
         return topicMatch && statusMatch && searchMatch;
     }).sort((a, b) => a.english.localeCompare(b.english));
 
-    // Cập nhật thẻ đếm tổng số từ
-    const countBadge = document.getElementById('manage-total-count');
-    if (countBadge) {
-        const totalCount = vocabulary.filter(w => !w.isDeleted).length;
-        const countText = filteredWordsCache.length === totalCount ? `${totalCount} từ` : `${filteredWordsCache.length}/${totalCount}`;
-        countBadge.innerHTML = `<i class="ph-bold ph-cards"></i> ${countText}`;
-    }
+    // Cập nhật thẻ đếm tổng số từ (1 vòng lặp, không cấp phát mảng phụ)
+    updateWordListCountBadge();
 
     if (filteredWordsCache.length === 0) {
         DOM.wordListDisplay.innerHTML = `
@@ -954,16 +1177,17 @@ export function updatePanelWordList(resetScroll = true) {
         visibleCount = INITIAL_LOAD_COUNT;
         const section = document.getElementById('word-list-section');
         if (section) section.scrollTop = 0;
+    } else if (visibleCount > filteredWordsCache.length) {
+        visibleCount = filteredWordsCache.length;
     }
 
-    const fragment = document.createDocumentFragment();
-    filteredWordsCache.slice(0, visibleCount).forEach(word => {
-        const card = createWordCard(word);
-        fragment.appendChild(card);
-    });
-
-    DOM.wordListDisplay.appendChild(fragment);
+    // Một lần parse HTML cho cả trang: nhanh hơn đáng kể so với tạo từng node.
+    DOM.wordListDisplay.innerHTML = filteredWordsCache
+        .slice(0, visibleCount)
+        .map(wordCardHtml)
+        .join('');
     updateSentinelState();
+    ensureWordListDelegation();
 
     // Thiết lập IntersectionObserver và scroll listener cho infinite scroll mượt mà
     const section = document.getElementById('word-list-section');
@@ -972,7 +1196,7 @@ export function updatePanelWordList(resetScroll = true) {
     if (!scrollListenerAttached && section) {
         section.addEventListener('scroll', () => {
             if (section.scrollTop + section.clientHeight >= section.scrollHeight - 250) {
-                loadMoreWords();
+                scheduleLoadMoreWords();
             }
         }, { passive: true });
         scrollListenerAttached = true;
@@ -982,7 +1206,7 @@ export function updatePanelWordList(resetScroll = true) {
         if (sentinelObserver) sentinelObserver.disconnect();
         sentinelObserver = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
-                loadMoreWords();
+                scheduleLoadMoreWords();
             }
         }, {
             root: section,
@@ -992,13 +1216,24 @@ export function updatePanelWordList(resetScroll = true) {
     }
 }
 
-// HÀM MỚI: Tạo một thẻ từ vựng (Material Design 3 & Celestial V5)
-function createWordCard(word) {
-    const cardEl = document.createElement('div');
-    cardEl.className = 'word-card';
-    cardEl.classList.add(`status-${(word.srsStatus || 'New').toLowerCase()}`);
+function updateWordListCountBadge() {
+    const countBadge = document.getElementById('manage-total-count');
+    if (!countBadge) return;
+    const { vocabulary } = getState();
+    let totalCount = 0;
+    for (let i = 0; i < vocabulary.length; i++) {
+        if (vocabulary[i] && !vocabulary[i].isDeleted) totalCount++;
+    }
+    const countText = filteredWordsCache.length === totalCount
+        ? `${totalCount} từ`
+        : `${filteredWordsCache.length}/${totalCount}`;
+    countBadge.innerHTML = `<i class="ph-bold ph-cards"></i> ${countText}`;
+}
 
-    // Determine status color
+// HTML của một thẻ từ vựng (Material Design 3 & Celestial V5).
+// Trả về chuỗi để cả trang chỉ cần một lần parse; toàn bộ nút hành động dùng
+// event delegation ở cấp danh sách nên không tạo closure/listener cho từng thẻ.
+function wordCardHtml(word) {
     const statusColors = {
         'New': 'var(--new-color)',
         'Learning': 'var(--learning-color)',
@@ -1007,24 +1242,25 @@ function createWordCard(word) {
     const statusColor = statusColors[word.srsStatus] || 'var(--new-color)';
     const statusLabels = { 'New': 'Mới', 'Learning': 'Đang học', 'Mastered': 'Đã thuộc' };
     const statusLabel = statusLabels[word.srsStatus] || 'Mới';
-    
-    cardEl.style.setProperty('--status-color', statusColor);
+    const statusSlug = (word.srsStatus || 'New').toLowerCase();
 
     const safeEnglish = escapeHTML(word.english);
     const safeType = escapeHTML(word.type || '');
     const safeVietnamese = escapeHTML(word.vietnamese);
     const safePronunciation = word.pronunciation ? escapeHTML(word.pronunciation) : '';
-    const rawWordTags = Array.isArray(word.tags) 
-        ? word.tags 
+    const rawWordTags = Array.isArray(word.tags)
+        ? word.tags
         : (typeof word.tags === 'string' ? word.tags.split(',') : []);
     const safeTagsStr = escapeHTML(rawWordTags.map(t => (t ? String(t).trim().replace(/_/g, ' ') : '')).filter(Boolean).join(', '));
     const safeTagsDisplay = safeTagsStr || 'Không có chủ đề';
+    const safeId = escapeHTML(word.id);
+    const isStarred = !!word.isStarred;
 
     const srsMetricPill = (typeof word.stability === 'number' && word.stability > 0)
         ? `<span class="word-card-srs-badge" style="background: rgba(138,43,226,0.18); border-color: rgba(168,85,247,0.35); color: #c084fc;" title="Độ bền FSRS-7: ${word.stability.toFixed(1)} ngày">S: ${word.stability.toFixed(1)}d</span>`
         : '';
 
-    cardEl.innerHTML = `
+    return `<div class="word-card status-${statusSlug}" data-word-id="${safeId}" style="--status-color: ${statusColor}">
         <div class="word-card-status-bar"></div>
         <div class="word-card-inner">
             <div class="word-card-header">
@@ -1035,7 +1271,7 @@ function createWordCard(word) {
                 <div class="word-card-header-right">
                     ${srsMetricPill}
                     <span class="word-card-srs-badge">${statusLabel}</span>
-                    <input type="checkbox" class="word-card-checkbox" data-id="${escapeHTML(word.id)}" aria-label="Chọn từ ${safeEnglish}">
+                    <input type="checkbox" class="word-card-checkbox" data-id="${safeId}" aria-label="Chọn từ ${safeEnglish}">
                 </div>
             </div>
             <div class="word-card-body">
@@ -1044,79 +1280,89 @@ function createWordCard(word) {
             </div>
             <div class="word-card-footer">
                 <span class="word-card-tags" title="${safeTagsStr}">${safeTagsDisplay}</span>
-                <div class="word-card-actions"></div>
+                <div class="word-card-actions">
+                    <button type="button" class="icon-btn card-action-btn tts-btn-card" title="Phát âm (TTS)"><i class="ph-duotone ph-speaker-high"></i></button>
+                    <button type="button" class="icon-btn card-action-btn star-btn-card${isStarred ? ' starred' : ''}" title="${isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao'}"><i class="${isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i></button>
+                    <button type="button" class="icon-btn card-action-btn edit-btn-card" title="Sửa từ"><i class="ph-duotone ph-pencil-simple"></i></button>
+                    <button type="button" class="icon-btn card-action-btn danger-btn delete-btn-card" title="Xóa từ"><i class="ph-duotone ph-trash"></i></button>
+                </div>
             </div>
         </div>
-    `;
+    </div>`;
+}
 
-    const actionsContainer = cardEl.querySelector('.word-card-actions');
-    
+function ensureWordListDelegation() {
+    if (wordListDelegationAttached || !DOM.wordListDisplay) return;
+    wordListDelegationAttached = true;
+    DOM.wordListDisplay.addEventListener('click', handleWordListActionClick);
+}
+
+function findWordForCard(cardEl) {
+    const id = cardEl?.dataset?.wordId;
+    if (!id) return null;
+    return getState().vocabulary.find(card => card.id === id && !card.isDeleted) || null;
+}
+
+function handleWordListActionClick(e) {
+    const btn = e.target.closest('.card-action-btn');
+    if (!btn || !DOM.wordListDisplay?.contains(btn)) return;
+    const cardEl = btn.closest('.word-card');
+    const current = findWordForCard(cardEl);
+    if (!current) return;
+
     // Nút Nghe Phát Âm (TTS)
-    const ttsBtn = document.createElement('button');
-    ttsBtn.className = 'icon-btn card-action-btn tts-btn-card';
-    ttsBtn.title = 'Phát âm (TTS)';
-    ttsBtn.innerHTML = '<i class="ph-duotone ph-speaker-high"></i>';
-    ttsBtn.onclick = (e) => {
+    if (btn.classList.contains('tts-btn-card')) {
         e.stopPropagation();
-        import('../core/sound.js').then(m => m.speakText(word.english));
-    };
+        import('../core/sound.js').then(m => m.speakText(current.english));
+        return;
+    }
 
     // Nút Đánh dấu sao (Star)
-    const starBtn = document.createElement('button');
-    starBtn.className = `icon-btn card-action-btn star-btn-card ${word.isStarred ? 'starred' : ''}`;
-    starBtn.title = word.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
-    starBtn.innerHTML = `<i class="${word.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
-    starBtn.onclick = (e) => {
+    if (btn.classList.contains('star-btn-card')) {
         e.stopPropagation();
-        const current = getState().vocabulary.find(card => card.id === word.id && !card.isDeleted);
-        if (!current) return;
         current.isStarred = !current.isStarred;
         current.flagsUpdatedAt = nextRevision(current, 'flagsUpdatedAt');
         current.updatedAt = Math.max(Date.now(), current.updatedAt || 0, current.flagsUpdatedAt);
         import('../core/state.js').then(m => m.saveOneWord(current));
-        starBtn.className = `icon-btn card-action-btn star-btn-card ${current.isStarred ? 'starred' : ''}`;
-        starBtn.innerHTML = `<i class="${current.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
-        starBtn.title = current.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
-    };
+        btn.classList.toggle('starred', !!current.isStarred);
+        btn.innerHTML = `<i class="${current.isStarred ? 'ph-fill ph-star' : 'ph ph-star'}"></i>`;
+        btn.title = current.isStarred ? 'Bỏ đánh dấu sao' : 'Đánh dấu sao';
+        return;
+    }
 
     // Nút Sửa
-    const editBtn = document.createElement('button');
-    editBtn.className = 'icon-btn card-action-btn edit-btn-card';
-    editBtn.title = 'Sửa từ';
-    editBtn.innerHTML = '<i class="ph-duotone ph-pencil-simple"></i>';
-    editBtn.onclick = () => {
-        closeModal(DOM.manageModal);
-        openAddEditModal(true, word);
-    };
+    if (btn.classList.contains('edit-btn-card')) {
+        getModalModule().then(m => {
+            m.closeModal?.(DOM.manageModal);
+            m.openAddEditModal?.(true, current);
+        }).catch(() => {});
+        return;
+    }
 
     // Nút Xóa
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'icon-btn card-action-btn danger-btn delete-btn-card';
-    deleteBtn.title = 'Xóa từ';
-    deleteBtn.innerHTML = '<i class="ph-duotone ph-trash"></i>';
-    deleteBtn.onclick = () => {
-        showConfirmation(`Bạn có chắc muốn xóa từ "${word.english}"?`, () => {
+    if (btn.classList.contains('delete-btn-card')) {
+        getModalModule().then(m => m.showConfirmation?.(`Bạn có chắc muốn xóa từ "${current.english}"?`, () => {
             const currentVocab = getState().vocabulary;
-            const idx = currentVocab.findIndex(v => v.id === word.id);
-            if (idx > -1) {
-                currentVocab[idx].isDeleted = true;
-                currentVocab[idx].updatedAt = Date.now();
-                setVocabulary(currentVocab);
-                import('../core/state.js').then(m => m.saveOneWord(currentVocab[idx]));
-                updatePanelWordList(false);
-                showPopup(`Đã xóa từ "${word.english}".`, 'success');
+            const idx = currentVocab.findIndex(v => v.id === current.id);
+            if (idx === -1) return;
+            currentVocab[idx].isDeleted = true;
+            currentVocab[idx].updatedAt = Date.now();
+            setVocabulary(currentVocab);
+            import('../core/state.js').then(s => s.saveOneWord(currentVocab[idx]));
+            // Xóa đúng thẻ khỏi DOM thay vì render lại toàn bộ danh sách (có
+            // thể đang có hàng trăm thẻ đã cuộn qua).
+            filteredWordsCache = filteredWordsCache.filter(w => w.id !== current.id);
+            if (filteredWordsCache.length === 0) {
+                updatePanelWordList(false); // hiển thị đúng empty-state như trước
+            } else {
+                if (cardEl?.isConnected) cardEl.remove();
+                visibleCount = Math.max(0, Math.min(visibleCount - 1, filteredWordsCache.length));
+                updateWordListCountBadge();
+                updateSentinelState();
             }
-        });
-    };
-
-    actionsContainer.appendChild(ttsBtn);
-    actionsContainer.appendChild(starBtn);
-    actionsContainer.appendChild(editBtn);
-
-
-    actionsContainer.appendChild(deleteBtn);
-
-    return cardEl;
+            getModalModule().then(modal => modal.showPopup?.(`Đã xóa từ "${current.english}".`, 'success'));
+        })).catch(() => {});
+    }
 }
 
 

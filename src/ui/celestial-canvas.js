@@ -7,6 +7,33 @@ let mouse = { x: null, y: null, targetX: null, targetY: null };
 let isDark = true;
 let animFrameId = null;
 let lastFrameTime = 0;
+let _frameTimer = null;
+
+/** Dừng cả rAF đang chờ lẫn timer hẹn frame kế tiếp. */
+function stopAnimationLoop() {
+    if (_frameTimer) {
+        clearTimeout(_frameTimer);
+        _frameTimer = null;
+    }
+    if (animFrameId && animFrameId > 0) cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+}
+
+/**
+ * Hẹn frame kế tiếp. Nếu còn phải chờ > 1ms mới tới nhịp 30 FPS thì dùng
+ * setTimeout rồi mới rAF, thay vì gọi rAF 60 lần/giây để rồi return.
+ */
+function scheduleNextFrame(delayMs = 0) {
+    if (delayMs > 1) {
+        animFrameId = -1; // đánh dấu "đang có lịch chờ" để không schedule trùng
+        _frameTimer = setTimeout(() => {
+            _frameTimer = null;
+            animFrameId = requestAnimationFrame(animate);
+        }, Math.round(delayMs));
+    } else {
+        animFrameId = requestAnimationFrame(animate);
+    }
+}
 let lastActivityTime = performance.now();
 let isTabVisible = true;
 let isSuspended = false;
@@ -23,9 +50,35 @@ export function isMobileDevice() {
     return isSmallScreen || isMobileUserAgent || isCoarseTouchOnly;
 }
 
+// Cache kết quả dò thiết bị: trước đây animate() gọi isMobileDevice() mỗi frame,
+// kéo theo matchMedia() 30 lần/giây. Chỉ tính lại khi resize.
+let _isMobileCache = null;
+function cachedIsMobile() {
+    if (_isMobileCache === null) _isMobileCache = isMobileDevice();
+    return _isMobileCache;
+}
+
 // Pre-rendered Sprite Cache for Ultra High FPS
 let starSpritesDark = [];
 let starSpritesLight = [];
+// Gradient của sao băng được cache theo (theme, len) thay vì tạo mới mỗi frame.
+const _shootingGradients = new Map();
+function getShootingGradient(ctx, len, isDark) {
+    const key = `${isDark ? 'd' : 'l'}:${len.toFixed(1)}`;
+    let gradient = _shootingGradients.get(key);
+    if (gradient) return gradient;
+    gradient = ctx.createLinearGradient(0, 0, -len * 1.2, -len * 0.8);
+    if (isDark) {
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(0.3, 'rgba(192, 132, 252, 0.6)');
+        gradient.addColorStop(1, 'rgba(192, 132, 252, 0)');
+    } else {
+        gradient.addColorStop(0, 'rgba(138, 43, 226, 1)');
+        gradient.addColorStop(1, 'rgba(138, 43, 226, 0)');
+    }
+    _shootingGradients.set(key, gradient);
+    return gradient;
+}
 
 function createStarSprite(size, isDarkMode) {
     const spriteCanvas = document.createElement('canvas');
@@ -168,25 +221,17 @@ class ShootingStar {
 
     draw(ctx, isDark) {
         if (!this.active) return;
+        // Dời gốc toạ độ tới đầu sao, dùng gradient đã cache và nhân alpha bằng
+        // globalAlpha. Kết quả màu/độ mờ giống hệt bản cũ nhưng không cấp phát
+        // gradient mới 30 lần/giây.
         ctx.save();
-        const gradient = ctx.createLinearGradient(
-            this.x, this.y,
-            this.x - this.len * 1.2, this.y - this.len * 0.8
-        );
-        if (isDark) {
-            gradient.addColorStop(0, `rgba(255, 255, 255, ${this.alpha})`);
-            gradient.addColorStop(0.3, `rgba(192, 132, 252, ${this.alpha * 0.6})`);
-            gradient.addColorStop(1, 'rgba(192, 132, 252, 0)');
-        } else {
-            gradient.addColorStop(0, `rgba(138, 43, 226, ${this.alpha})`);
-            gradient.addColorStop(1, 'rgba(138, 43, 226, 0)');
-        }
-
-        ctx.strokeStyle = gradient;
+        ctx.translate(this.x, this.y);
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.strokeStyle = getShootingGradient(ctx, this.len, isDark);
         ctx.lineWidth = this.size;
         ctx.beginPath();
-        ctx.moveTo(this.x, this.y);
-        ctx.lineTo(this.x - this.len * 1.2, this.y - this.len * 0.8);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-this.len * 1.2, -this.len * 0.8);
         ctx.stroke();
         ctx.restore();
     }
@@ -205,10 +250,7 @@ function wakeAndRecordActivity() {
 
 export function suspendCelestialCanvas() {
     isSuspended = true;
-    if (animFrameId) {
-        cancelAnimationFrame(animFrameId);
-        animFrameId = null;
-    }
+    stopAnimationLoop();
 }
 
 export function resumeCelestialCanvas() {
@@ -227,10 +269,7 @@ export function resumeCelestialCanvas() {
 export function setTypingActive(active) {
     isTypingActive = !!active;
     if (isTypingActive) {
-        if (animFrameId) {
-            cancelAnimationFrame(animFrameId);
-            animFrameId = null;
-        }
+        stopAnimationLoop();
     } else {
         if (!isBoostMode && isTabVisible && !isSuspended) {
             wakeAndRecordActivity();
@@ -241,10 +280,7 @@ export function setTypingActive(active) {
 export function setBoostMode(enabled) {
     isBoostMode = !!enabled;
     if (isBoostMode) {
-        if (animFrameId) {
-            cancelAnimationFrame(animFrameId);
-            animFrameId = null;
-        }
+        stopAnimationLoop();
         if (ctx && canvas) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
@@ -261,6 +297,7 @@ export function setBoostMode(enabled) {
             canvas.style.display = 'block';
             if (!ctx) {
                 ctx = canvas.getContext('2d', { alpha: true });
+                _shootingGradients.clear();
                 initSpriteCache();
                 resizeCanvas();
             }
@@ -288,6 +325,7 @@ function attachEventListeners() {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             if (isBoostMode) return;
+            _isMobileCache = null; // cửa sổ có thể đã đổi qua ngưỡng mobile
             resizeCanvas();
             createElements();
             wakeAndRecordActivity();
@@ -369,6 +407,7 @@ export function initCelestialCanvas() {
     }
 
     ctx = canvas.getContext('2d', { alpha: true });
+    _shootingGradients.clear();
     initSpriteCache();
     resizeCanvas();
     createElements();
@@ -388,7 +427,7 @@ function resizeCanvas() {
 
 function createElements() {
     if (!canvas || isBoostMode) return;
-    const isMobile = isMobileDevice();
+    const isMobile = cachedIsMobile();
     const w = window.innerWidth;
     const h = window.innerHeight;
 
@@ -419,18 +458,12 @@ export function updateCanvasTheme(darkMode) {
 
 function animate(timestamp) {
     if (!ctx || !canvas || !isTabVisible || isSuspended || isBoostMode || isTypingActive) {
-        if (animFrameId) {
-            cancelAnimationFrame(animFrameId);
-            animFrameId = null;
-        }
+        stopAnimationLoop();
         return;
     }
 
     if (document.hidden || document.body.classList.contains('modal-active') || document.body.classList.contains('window-blurred')) {
-        if (animFrameId) {
-            cancelAnimationFrame(animFrameId);
-            animFrameId = null;
-        }
+        stopAnimationLoop();
         return;
     }
 
@@ -440,25 +473,22 @@ function animate(timestamp) {
 
     // Graceful Drain: If idle and in-flight shooting stars finished their path, pause RAF loop completely
     if (isIdle && !hasActiveShootingStars) {
-        if (animFrameId) {
-            cancelAnimationFrame(animFrameId);
-            animFrameId = null;
-        }
+        stopAnimationLoop();
         return; // Fully idle: 0 FPS, 0% GPU
     }
-
-    animFrameId = requestAnimationFrame(animate);
 
     // Eco Frame Rate Throttling:
     // Desktop: 30 FPS active (33.3ms), 15 FPS idle (66.6ms)
     // Mobile:  20 FPS active (50.0ms), 10 FPS idle (100ms)
-    const isMobile = isMobileDevice();
+    const isMobile = cachedIsMobile();
     const targetInterval = isMobile 
         ? (isIdle ? 100 : 50) 
         : (isIdle ? 66.6 : 33.33);
 
     const elapsed = timestamp - lastFrameTime;
     if (elapsed < targetInterval) {
+        // Chưa tới nhịp: hẹn bằng timer thay vì giữ rAF chạy 60 lần/giây.
+        scheduleNextFrame(targetInterval - elapsed);
         return;
     }
 
@@ -490,4 +520,8 @@ function animate(timestamp) {
             shootingStars[i].draw(ctx, isDark);
         }
     }
+
+    // Chỉ hẹn frame kế tiếp sau khi đã vẽ xong; nếu vẽ nhanh hơn nhịp 30 FPS
+    // thì chờ nốt phần còn lại bằng timer (compositor không bị đánh thức 60 lần/giây).
+    scheduleNextFrame(targetInterval - (performance.now() - lastFrameTime));
 }

@@ -5,15 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ultimate Celestial Vocab ✨</title>
+    <meta name="description" content="Ultimate Celestial Vocab - Ứng dụng học từ vựng tiếng Anh theo thuật toán lặp lại ngắt quãng FSRS-7 tối ưu">
+    <meta property="og:title" content="Ultimate Celestial Vocab ✨">
+    <meta property="og:description" content="Ứng dụng học từ vựng tiếng Anh theo thuật toán lặp lại ngắt quãng FSRS-7 tối ưu">
+    <meta property="og:type" content="website">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; worker-src 'self' blob:;">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="canonical" href="https://ultimate-celestial-vocab.web.app/">
     <meta name="theme-color" content="#8a2be2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Nạp Anime.js từ CDN -->
+    <!-- Phosphor: bản subset do tools/build-icon-subset.mjs sinh ra từ đúng
+         version 2.1.1, chỉ giữ 199 icon × 4 weight đang dùng (990 rule thay vì
+         ~9.000). Font .woff2 vẫn tải từ unpkg (đã preconnect), CSS phục vụ nội
+         bộ nên bỏ được 4 request cross-origin và giảm mạnh Recalculate Style. -->
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="stylesheet" href="/phosphor-subset.css">
 </head>
 
 <body class="focus-study">
@@ -829,17 +839,20 @@
                             <div class="io-card-header">
                                 <div class="io-card-icon import-icon"><i class="ph-duotone ph-cloud-arrow-down"></i></div>
                                 <div class="io-card-titles">
-                                    <h4 class="io-card-title">Nhập Dữ Liệu</h4>
-                                    <p class="io-card-desc">Thêm từ vựng hàng loạt từ file hoặc văn bản dán trực tiếp. Hỗ trợ Smart Merge bảo vệ tiến độ SRS.</p>
+                                    <div class="io-card-title-row">
+                                        <h4 class="io-card-title">Nhập Dữ Liệu</h4>
+                                        <span class="io-header-badge"><i class="ph-fill ph-sparkle"></i> Smart Merge FSRS-7</span>
+                                    </div>
+                                    <p class="io-card-desc">Thêm từ vựng hàng loạt từ file hoặc văn bản dán trực tiếp. Hệ thống tự động lọc trùng và bảo toàn 100% tiến độ SRS.</p>
                                 </div>
                             </div>
 
                             <div class="io-segmented-tabs">
                                 <button class="import-tab active" data-target="import-file-panel">
-                                    <i class="ph-bold ph-file-text"></i> Tải File .tsv
+                                    <i class="ph-bold ph-file-text"></i> Tải File .tsv / .txt
                                 </button>
                                 <button class="import-tab" data-target="import-text-panel">
-                                    <i class="ph-bold ph-textbox"></i> Dán Văn Bản
+                                    <i class="ph-bold ph-textbox"></i> Dán Văn Bản Trực Tiếp
                                 </button>
                             </div>
 
@@ -847,14 +860,14 @@
                                 <label for="import-file" id="drop-zone" class="io-dropzone-clean">
                                     <div class="dropzone-icon-box"><i class="ph-duotone ph-upload-simple"></i></div>
                                     <span class="dropzone-title">Kéo thả file .tsv hoặc .txt vào đây</span>
-                                    <span class="dropzone-sub">hoặc <span class="browse-link">duyệt từ máy tính</span></span>
-                                    <span class="dropzone-badge"><i class="ph-fill ph-lightning"></i> Tự động lọc trùng &amp; Smart Merge FSRS-7</span>
+                                    <span class="dropzone-sub">hoặc <span class="browse-link">duyệt tệp từ máy tính</span></span>
+                                    <span class="dropzone-badge"><i class="ph-fill ph-lightning"></i> Tự động nhận diện cấu trúc &amp; lọc trùng thông minh</span>
                                 </label>
                                 <input type="file" id="import-file" accept=".txt,.tsv" class="file-input" style="display: none !important;">
                             </div>
 
                             <div id="import-text-panel" class="import-panel hidden">
-                                <textarea id="import-text-area" aria-label="Danh sách từ vựng cần nhập" class="io-textarea-clean" placeholder="Dán nội dung TSV tại đây (English [tab] Vietnamese [tab] Type...)"></textarea>
+                                <textarea id="import-text-area" aria-label="Danh sách từ vựng cần nhập" class="io-textarea-clean" placeholder="Dán nội dung phân tách bằng dấu Tab tại đây (English [tab] Vietnamese [tab] Type...)..."></textarea>
                                 <button id="import-text-btn" class="primary-btn io-submit-btn"><i class="ph-bold ph-sparkle"></i> Phân Tích &amp; Nạp Dữ Liệu</button>
                             </div>
                         </div>
@@ -865,15 +878,23 @@
                                 <div class="io-card-icon export-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></div>
                                 <div class="io-card-titles">
                                     <h4 class="io-card-title">Xuất Dữ Liệu &amp; Sao Lưu</h4>
-                                    <p class="io-card-desc">Tạo bản sao lưu toàn bộ kho từ vựng ra file TSV chuẩn để chỉnh sửa hoặc lưu trữ an toàn.</p>
+                                    <p class="io-card-desc">Lưu trữ an toàn kho từ vựng và lịch sử học tập ra file chuẩn để dự phòng hoặc chia sẻ.</p>
                                 </div>
                             </div>
                             <div class="io-card-actions">
                                 <button id="export-btn" class="secondary-btn io-action-btn export-tsv-btn">
-                                    <i class="ph-bold ph-download-simple"></i> Xuất File Từ Vựng (.tsv)
+                                    <i class="ph-bold ph-download-simple"></i>
+                                    <div class="btn-text-stacked">
+                                        <span class="btn-main-text">Xuất File Từ Vựng (.tsv)</span>
+                                        <span class="btn-sub-text">Tương thích Excel, Google Sheets, Anki</span>
+                                    </div>
                                 </button>
                                 <button id="export-logs-btn" class="outline-btn io-action-btn export-logs-btn">
-                                    <i class="ph-bold ph-file-arrow-down"></i> Xuất Review Logs FSRS-7 (.json)
+                                    <i class="ph-bold ph-file-arrow-down"></i>
+                                    <div class="btn-text-stacked">
+                                        <span class="btn-main-text">Xuất Review Logs FSRS-7 (.json)</span>
+                                        <span class="btn-sub-text">Dữ liệu phân tích để huấn luyện AI</span>
+                                    </div>
                                 </button>
                             </div>
                         </div>
@@ -883,18 +904,22 @@
                             <div class="io-card-header">
                                 <div class="io-card-icon fsrs-icon"><i class="ph-duotone ph-brain"></i></div>
                                 <div class="io-card-titles">
-                                    <h4 class="io-card-title">Trí Nhớ FSRS &amp; Quản Trị</h4>
-                                    <p class="io-card-desc">Cấu hình 34 tham số thuật toán trí nhớ FSRS-7 cá nhân hóa hoặc dọn dẹp cơ sở dữ liệu.</p>
+                                    <h4 class="io-card-title">Trí Nhớ FSRS-7 &amp; Quản Trị</h4>
+                                    <p class="io-card-desc">Cấu hình 34 tham số thuật toán trí nhớ DSR hoặc quản lý kho lưu trữ dữ liệu cục bộ.</p>
                                 </div>
                             </div>
                             <div class="io-card-actions">
                                 <button id="config-fsrs7-btn" class="primary-btn io-action-btn config-btn">
-                                    <i class="ph-bold ph-sliders-horizontal"></i> Cấu Hình 34 Tham Số FSRS-7
+                                    <i class="ph-bold ph-sliders-horizontal"></i>
+                                    <div class="btn-text-stacked">
+                                        <span class="btn-main-text">Cấu Hình 34 Tham Số FSRS-7</span>
+                                        <span class="btn-sub-text">Cá nhân hóa theo phản hồi thực tế</span>
+                                    </div>
                                 </button>
                                 <div class="io-danger-box">
                                     <div class="danger-info-text">
                                         <span class="danger-title"><i class="ph-bold ph-warning-octagon"></i> Khu Vực Nguy Hiểm</span>
-                                        <span class="danger-sub">Xóa toàn bộ từ vựng trên máy và trên Cloud sau khi đồng bộ. Không thể hoàn tác trong ứng dụng.</span>
+                                        <span class="danger-sub">Xóa toàn bộ từ vựng trên máy và trên Cloud sau khi đồng bộ. Không thể hoàn tác.</span>
                                     </div>
                                     <button id="clear-all-btn" class="danger-btn io-action-btn clear-btn">
                                         <i class="ph-bold ph-trash"></i> Xóa toàn bộ từ vựng
@@ -903,22 +928,118 @@
                             </div>
                         </div>
 
-                        <!-- Card 4: Thông Tin Phiên Bản & Cập Nhật Hệ Thống -->
+                        <!-- Card 4: Đồng bộ đa thiết bị bằng Mã đồng bộ -->
+                        <div class="io-clean-card io-card-sync">
+                            <div class="io-card-header">
+                                <div class="io-card-icon sync-icon"><i class="ph-duotone ph-cloud-check"></i></div>
+                                <div class="io-card-titles">
+                                    <div class="io-card-title-row">
+                                        <h4 class="io-card-title">Đồng Bộ Đa Thiết Bị</h4>
+                                        <span class="io-header-badge sync-shield-badge"><i class="ph-fill ph-lock-key"></i> Mã Hóa Riêng Tư</span>
+                                    </div>
+                                    <p class="io-card-desc">Kho từ vựng được phân vùng bảo mật trên Cloud. Nhập cùng mã trên các thiết bị (PC, điện thoại, tablet) để tự động đồng bộ hai chiều.</p>
+                                </div>
+                            </div>
+
+                            <div class="sync-columns-grid">
+                                <!-- Cột 1: Mã hiện tại của thiết bị này -->
+                                <div class="sync-box-card current-key-box">
+                                    <div class="sync-box-header">
+                                        <span class="sync-box-label"><i class="ph-bold ph-key"></i> Mã đồng bộ của thiết bị này</span>
+                                        <span class="sync-active-indicator"><span class="sync-pulse-dot"></span> Đang kết nối</span>
+                                    </div>
+                                    <p class="sync-box-hint">Dùng mã này nhập vào thiết bị thứ hai để truy cập kho từ vựng chung.</p>
+                                    <div class="sync-input-button-group">
+                                        <div class="sync-input-pill">
+                                            <i class="ph-bold ph-shield-check sync-pill-icon"></i>
+                                            <input id="sync-key-input" class="io-sync-key-input" type="text" readonly autocomplete="off" spellcheck="false" aria-label="Mã đồng bộ hiện tại" value="...">
+                                        </div>
+                                        <button id="copy-sync-key-btn" class="sync-action-btn sync-copy-btn" type="button" title="Sao chép mã vào clipboard">
+                                            <i class="ph-bold ph-copy"></i>
+                                            <span class="btn-copy-label">Sao chép</span>
+                                        </button>
+                                    </div>
+                                    <p id="sync-key-status" class="io-sync-key-status" role="status">Không gian đồng bộ cá nhân an toàn đã sẵn sàng.</p>
+                                </div>
+
+                                <!-- Cột 2: Ghép đôi thiết bị khác -->
+                                <div class="sync-box-card link-device-box">
+                                    <div class="sync-box-header">
+                                        <span class="sync-box-label"><i class="ph-bold ph-device-mobile"></i> Ghép đôi thiết bị khác</span>
+                                    </div>
+                                    <p class="sync-box-hint">Dán mã từ thiết bị khác của bạn để kết nối và hợp nhất từ vựng.</p>
+                                    <div class="sync-input-button-group">
+                                        <div class="sync-input-pill">
+                                            <i class="ph-bold ph-keyhole sync-pill-icon"></i>
+                                            <input id="sync-key-apply-input" class="io-sync-key-input" type="text" placeholder="Dán mã từ thiết bị khác..." autocomplete="off" spellcheck="false" aria-label="Nhập mã đồng bộ của thiết bị khác">
+                                        </div>
+                                        <button id="apply-sync-key-btn" class="sync-action-btn sync-link-btn" type="button">
+                                            <i class="ph-bold ph-link"></i>
+                                            <span>Liên kết</span>
+                                        </button>
+                                    </div>
+                                    <div class="sync-notice-text">
+                                        <i class="ph-bold ph-shield-star"></i> Tự động hợp nhất (Smart Merge), bảo toàn 100% lịch sử học cũ.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: Kho Âm Thanh Ngoại Tuyến -->
+                        <div class="io-clean-card io-card-audio">
+                            <div class="io-card-header">
+                                <div class="io-card-icon audio-icon"><i class="ph-duotone ph-headphones"></i></div>
+                                <div class="io-card-titles">
+                                    <h4 class="io-card-title">Âm Thanh Ngoại Tuyến</h4>
+                                    <p class="io-card-desc">Lưu trước giọng phát âm bản xứ vào IndexedDB để luyện tập trơn tru ngay cả khi không có mạng.</p>
+                                </div>
+                            </div>
+
+                            <div class="audio-status-card">
+                                <div class="audio-status-row">
+                                    <div class="audio-stat-info">
+                                        <span class="audio-stat-label">Trạng thái phát âm ngoại tuyến</span>
+                                        <strong id="audio-cache-count" class="audio-stat-number">Đang kiểm tra...</strong>
+                                    </div>
+                                    <span id="audio-cache-badge" class="audio-cache-badge"><i class="ph-fill ph-check-circle"></i> Sẵn sàng</span>
+                                </div>
+                                <div id="audio-download-progress-wrap" class="audio-progress-wrap hidden">
+                                    <div id="audio-download-progress-fill" class="audio-progress-fill" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="io-card-actions">
+                                <button id="download-all-audio-btn" class="secondary-btn io-action-btn audio-download-btn" type="button">
+                                    <i class="ph-bold ph-download-simple"></i>
+                                    <span id="download-audio-btn-text">Tải toàn bộ audio ngoại tuyến</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card 6: Thông Tin Phiên Bản & Cập Nhật Hệ Thống -->
                         <div class="io-clean-card io-card-version">
                             <div class="io-card-header">
                                 <div class="io-card-icon version-icon"><i class="ph-duotone ph-shield-check"></i></div>
                                 <div class="io-card-titles">
                                     <h4 class="io-card-title">Phiên Bản &amp; Trạng Thái Cập Nhật</h4>
-                                    <p class="io-card-desc">Hệ thống tự động phát hiện phiên bản mới và làm mới bộ nhớ đệm (Cache/PWA) mỗi khi vào ứng dụng.</p>
+                                    <p class="io-card-desc">Tự động phát hiện phiên bản mới và làm mới bộ nhớ đệm (Cache/PWA) mỗi khi vào ứng dụng.</p>
                                 </div>
                             </div>
-                            <div class="io-card-actions io-version-actions">
-                                <div class="version-meta-box">
+
+                            <div class="version-meta-card">
+                                <div class="version-meta-pill">
                                     <span class="version-pulse-dot"></span>
-                                    <span class="version-tag-text">Phiên bản: <strong id="app-version-display">DATWY.V1.261020.16</strong></span>
+                                    <span class="version-tag-text">Phiên bản: <strong id="app-version-display">DATWY.V2.261024.23</strong></span>
                                 </div>
-                                <button id="btn-check-update" class="secondary-btn io-action-btn check-update-btn">
-                                    <i class="ph-bold ph-arrows-clockwise"></i> Kiểm Tra Cập Nhật
+                                <div id="app-build-time-display" class="version-build-note">
+                                    <i class="ph-bold ph-check-circle"></i> Đang hoạt động ở bản dựng tối ưu nhất
+                                </div>
+                            </div>
+
+                            <div class="io-card-actions">
+                                <button id="btn-check-update" class="secondary-btn io-action-btn check-update-btn" type="button">
+                                    <i class="ph-bold ph-arrows-clockwise"></i>
+                                    <span id="btn-check-update-text">Kiểm Tra Cập Nhật Ngay</span>
                                 </button>
                             </div>
                         </div>

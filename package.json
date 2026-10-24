@@ -9,7 +9,8 @@
     "build": "node tools/generate_version.js && vite build",
     "preview": "vite preview",
     "train": "node tools/train_fsrs7.js",
-    "version": "node tools/generate_version.js"
+    "version": "node tools/generate_version.js",
+    "icons": "node tools/build-icon-subset.mjs"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.6",

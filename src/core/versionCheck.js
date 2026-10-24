@@ -1,6 +1,13 @@
 // src/core/versionCheck.js
 import { APP_VERSION, BUILD_TIME } from './version.js';
-import { showToast } from '../ui/modal.js';
+
+// Nạp động modal để phá vòng import modal.js <-> versionCheck.js.
+async function showToastAsync(title, message, icon = 'ph-trophy') {
+    try {
+        const modal = await import('../ui/modal.js');
+        modal.showToast?.(title, message, icon);
+    } catch (_) {}
+}
 
 let _isUpdating = false;
 let _lastCheckTime = 0;
@@ -26,7 +33,7 @@ export async function performAppResetAndUpdate(newVersion) {
     _isUpdating = true;
 
     console.log(`[VersionCheck] 🚀 Đang tiến hành reset web để cập nhật lên phiên bản: ${newVersion}`);
-    showToast("Phát hiện Bản Cập Nhật Mới", `Hệ thống nâng cấp lên ${newVersion}. Đang làm mới dữ liệu...`, "ph-arrows-clockwise");
+    await showToastAsync("Phát hiện Bản Cập Nhật Mới", `Hệ thống nâng cấp lên ${newVersion}. Đang làm mới dữ liệu...`, "ph-arrows-clockwise");
 
     try {
         // 1. Lưu phiên bản mới vào localStorage
@@ -103,13 +110,13 @@ export async function checkAppVersion(options = { isManual: false }) {
 
         // Phiên bản đã là mới nhất
         if (options.isManual) {
-            showToast("Hệ Thống Đã Mới Nhất", `Bạn đang chạy phiên bản ${APP_VERSION}`, "ph-check-circle");
+            await showToastAsync("Hệ Thống Đã Mới Nhất", `Bạn đang chạy phiên bản ${APP_VERSION}`, "ph-check-circle");
         }
         return false;
     } catch (err) {
         // Xử lý khi offline hoặc mạng gián đoạn
         if (options.isManual) {
-            showToast("Không Thể Kiểm Tra", "Không thể kết nối máy chủ để kiểm tra bản mới (Offline)", "ph-wifi-slash");
+            await showToastAsync("Không Thể Kiểm Tra", "Không thể kết nối máy chủ để kiểm tra bản mới (Offline)", "ph-wifi-slash");
         } else {
             console.log('[VersionCheck] Không thể kiểm tra phiên bản từ xa (có thể đang offline):', err.message);
         }

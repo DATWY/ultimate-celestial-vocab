@@ -29,6 +29,7 @@ let quizAnswerSettled = false;
 let quizDeadline = 0;
 let quizOriginalTotal = 0;
 let quizOriginalDuration = 0;
+let quizQuestionStartTime = 0;
 
 function resetQuizFlow() {
     clearTimeout(quizAdvanceTimer);
@@ -88,10 +89,28 @@ function startQuiz() {
         return tagsArr.some(t => t && String(t).trim().toLowerCase() === filterLower);
     });
     const now = Date.now();
-    let dueWords = potentialQuizVocab.filter(w => w.srsDueDate && w.srsDueDate <= now);
-    let learningWords = potentialQuizVocab.filter(w => w.srsStatus === 'Learning' && !dueWords.includes(w));
-    let newWords = potentialQuizVocab.filter(w => w.srsStatus === 'New' && !dueWords.includes(w) && !learningWords.includes(w));
-    let otherWords = potentialQuizVocab.filter(w => !dueWords.includes(w) && !learningWords.includes(w) && !newWords.includes(w));
+    const dueWords = [];
+    const learningWords = [];
+    const newWords = [];
+    const otherWords = [];
+    const dueSet = new Set();
+    const learningSet = new Set();
+    const newSet = new Set();
+
+    for (const w of potentialQuizVocab) {
+        if (w.srsDueDate && w.srsDueDate <= now) {
+            dueWords.push(w);
+            dueSet.add(w);
+        } else if (w.srsStatus === 'Learning' && !dueSet.has(w)) {
+            learningWords.push(w);
+            learningSet.add(w);
+        } else if (w.srsStatus === 'New' && !dueSet.has(w) && !learningSet.has(w)) {
+            newWords.push(w);
+            newSet.add(w);
+        } else if (!dueSet.has(w) && !learningSet.has(w) && !newSet.has(w)) {
+            otherWords.push(w);
+        }
+    }
     
     shuffleArray(dueWords);
     shuffleArray(learningWords);
@@ -153,6 +172,7 @@ function displayQuizQuestion() {
         DOM.quizFeedback.textContent = '';
         DOM.quizFeedback.className = 'quiz-feedback';
     }
+    quizQuestionStartTime = Date.now();
     updateQuizProgress();
 }
 
@@ -194,7 +214,12 @@ function checkQuizAnswer() {
             }
             
             recordQuizAnswer(true);
-            applyQuizReview(currentWord, 3);
+            const elapsedMs = Date.now() - (quizQuestionStartTime || Date.now());
+            const wordLen = currentWord.english.trim().length;
+            const isFast = elapsedMs <= Math.max(3500, wordLen * 350);
+            const isHard = elapsedMs > 15000;
+            const quizRating = isFast ? 4 : (isHard ? 2 : 3);
+            applyQuizReview(currentWord, quizRating);
         }
         DOM.quizFeedback.textContent = "Đúng!";
         DOM.quizFeedback.className = 'quiz-feedback correct';

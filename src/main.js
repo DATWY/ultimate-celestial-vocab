@@ -5,19 +5,43 @@ import './css/transition.css';
 import './css/study-polish.css';
 import { loadVocabulary, getState, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
-import { initializeSound, startBackgroundAudioPreload } from './core/sound.js';
+import { initializeSound } from './core/sound.js';
 import { displayCard, flipCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting, applyBoostMode } from './ui/render.js';
 import { setupEventListeners } from './events.js';
-import { smartSync } from './core/firebase.js';
 import { openManageModal, openAddEditModal, openDedupModal, openModal, showPopup } from './ui/modal.js';
-import { showQuizSetup } from './features/quiz.js';
-import { evaluateTyping, stripVietnameseDiacritics } from './features/typing.js';
-import { calculateNextSrsState } from './core/srs/index.js';
-import { getDifficultyBias, getStabilityMultiplier } from './core/srs/heuristics.js';
-import { clearVocabularyDB } from './core/idb.js';
-import { checkAppVersion, displayAppVersion } from './core/versionCheck.js';
+import { checkAppVersion } from './core/versionCheck.js';
+import { initTabBus } from './core/tab-bus.js';
 
-if (import.meta.env.DEV && new URLSearchParams(location.search).get('audit') === '1') {
+// Cloud (firebase 547 kB) được nạp SAU khi giao diện sẵn sàng, không nằm trên
+// critical path của entry chunk. Trước đây main.js import tĩnh firebase nên mọi
+// lần mở app đều phải tải 547 kB trước khi hiển thị thẻ đầu tiên.
+let _cloudModulePromise = null;
+let _syncQueueModulePromise = null;
+function loadCloud() {
+    if (!_cloudModulePromise) _cloudModulePromise = import('./core/firebase.js');
+    return _cloudModulePromise;
+}
+function loadSyncQueue() {
+    if (!_syncQueueModulePromise) _syncQueueModulePromise = import('./core/sync.js');
+    return _syncQueueModulePromise;
+}
+
+/** Chạy sau khi app đã ổn định: ưu tiên requestIdleCallback, fallback setTimeout. */
+function runWhenIdle(task, { delay = 6000, timeout = 3000 } = {}) {
+    const run = () => {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+        try { task(); } catch (error) { console.warn('Idle task failed:', error); }
+    };
+    setTimeout(() => {
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(run, { timeout });
+        } else {
+            run();
+        }
+    }, delay);
+}
+
+if (import.meta.env?.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('audit') === '1') {
 // Sample Vocabulary Seeder for Isolated Testing & First-Run Exploration
 window.loadIsolatedSampleVocabulary = async function() {
     await seedIsolatedDemoVocabulary();
@@ -33,6 +57,7 @@ window.__celestialAudit = {
     seed: window.loadIsolatedSampleVocabulary,
     clear: async () => {
         setVocabulary([]);
+        const { clearVocabularyDB } = await import('./core/idb.js');
         await clearVocabularyDB();
         displayCard(null);
     },
@@ -52,7 +77,8 @@ window.__celestialAudit = {
         const modal = document.getElementById('fsrs7-config-modal');
         if (modal) openModal(modal);
     },
-    showQuizSetup: () => {
+    showQuizSetup: async () => {
+        const { showQuizSetup } = await import('./features/quiz.js');
         showQuizSetup();
     },
     showVictoryStage: () => {
@@ -67,16 +93,19 @@ window.__celestialAudit = {
     getBoostMode: () => {
         return getState().isBoostMode;
     },
-    evaluateTyping: (input, target) => {
+    evaluateTyping: async (input, target) => {
+        const { evaluateTyping, stripVietnameseDiacritics } = await import('./features/typing.js');
         return {
             eval: evaluateTyping(input, target),
             stripped: stripVietnameseDiacritics(input)
         };
     },
-    calculateSRS: (card, rating) => {
+    calculateSRS: async (card, rating) => {
+        const { calculateNextSrsState } = await import('./core/srs/index.js');
         return calculateNextSrsState(card, rating, 'en-vi');
     },
-    getHeuristics: (card) => {
+    getHeuristics: async (card) => {
+        const { getDifficultyBias, getStabilityMultiplier } = await import('./core/srs/heuristics.js');
         const bias = getDifficultyBias(card);
         const mult = getStabilityMultiplier(bias);
         return { bias, mult };
@@ -92,7 +121,7 @@ async function initializeApp() {
     initializeSound();
 
     const urlParams = new URLSearchParams(window.location.search);
-    const auditMode = import.meta.env.DEV && urlParams.get('audit') === '1';
+    const auditMode = (import.meta.env?.DEV ?? false) && urlParams.get('audit') === '1';
     if (auditMode) {
         sessionStorage.setItem('CHEAT_MODE', 'true');
         sessionStorage.setItem('ISOLATED_TEST_MODE', 'true');
@@ -140,32 +169,40 @@ async function initializeApp() {
     document.body.classList.add('app-ready');
     console.log("App Initialized Successfully.");
 
-    // Khởi tạo trước UI Gamification / Rank / XP bar từ dữ liệu IndexedDB local
-    import('./features/gamification.js').then(m => m.renderGamificationUI?.({ isBackgroundUpdate: true, force: true }));
+    // Khởi tạo UI Gamification / Rank / XP bar SAU khi màn học đã vẽ xong.
+    // Toàn bộ UI này nằm trong Hub (đang đóng) nên không cần render trên
+    // critical path; dời sang idle giúp first paint/typing mượt hơn.
+    // Hub vẫn force-render lại mỗi lần mở nên không có dữ liệu cũ.
+    runWhenIdle(() => {
+        // Nếu người dùng đã mở Hub trước mốc idle, Hub đã tự force-render;
+        // không render lại để tránh animation đếm số chạy lần hai.
+        const hubEl = document.getElementById('manage-modal');
+        if (hubEl && !hubEl.classList.contains('hidden')) return;
+        import('./features/gamification.js')
+            .then(m => m.renderGamificationUI?.({ isBackgroundUpdate: true, force: true }))
+            .catch(() => {});
+    }, { delay: 4000, timeout: 3000 });
 
     // Kiểm tra phiên bản mới từ server để phát hiện và reset web cập nhật nếu cần
     checkAppVersion();
 
-    // Recover pending sync IDs từ phiên trước (crash/đóng tab đột ngột)
-    const { recoverPendingSyncIds, flushSyncQueueBeforeUnload, flushSyncQueue, syncGamificationToFirebase } = await import('./core/sync.js');
-    await recoverPendingSyncIds();
-
     // Khởi tạo Bus đồng bộ đa tab (<2ms) & Bầu chọn Leader Tab
-    const { initTabBus } = await import('./core/tab-bus.js');
     initTabBus();
 
-    // Setup online/offline detection & Real-time Cloud Beacon listener
-    const { setupOnlineOfflineListeners, setupRealtimeSyncListener } = await import('./core/firebase.js');
-    setupOnlineOfflineListeners();
-    setupRealtimeSyncListener();
-
-    // Đồng bộ lần đầu sau 2 giây (chờ DOM ổn định)
-	setTimeout(() => {
-        smartSync({ isManual: false });
-    }, 2000);
-	setTimeout(() => {
-        startBackgroundAudioPreload(getState().vocabulary);
-    }, 3000);
+    // --- CLOUD: nạp muộn, sau khi UI đã hiển thị ---
+    // Recover pending sync IDs + listener online/offline + smart sync đầu tiên.
+    // 6 giây + requestIdleCallback: không tranh main thread với lần vẽ đầu.
+    runWhenIdle(() => {
+        loadSyncQueue().then(m => m.recoverPendingSyncIds()).catch(() => {});
+        // Nạp module Cloud kể cả khi đang offline để gắn listener online/offline;
+        // smartSync tự bỏ qua và giữ trạng thái offline nếu chưa có mạng.
+        loadCloud().then(m => {
+            m.setupOnlineOfflineListeners();
+            m.setupRealtimeSyncListener();
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return null;
+            return m.smartSync({ isManual: false });
+        }).catch(error => console.warn('Cloud sync chưa sẵn sàng:', error));
+    }, { delay: 6000 });
 
     // --- VISIBILITYCHANGE: Sync nhẹ nhàng khi chuyển tab ---
     // Khi user rời tab: flush pending changes lên Cloud
@@ -176,14 +213,16 @@ async function initializeApp() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             // User rời tab → flush ngầm dữ liệu để thiết bị khác nhận được
-            flushSyncQueue();
-            syncGamificationToFirebase();
+            loadSyncQueue().then(m => {
+                m.flushSyncQueue();
+                m.syncGamificationToFirebase();
+            }).catch(() => {});
         } else if (document.visibilityState === 'visible') {
             const now = Date.now();
             if (now - _lastVisibilitySync > VISIBILITY_SYNC_COOLDOWN_MS) {
                 _lastVisibilitySync = now;
                 console.log("👀 Tab active trở lại. Đồng bộ dữ liệu nền...");
-                smartSync({ isManual: false });
+                loadCloud().then(m => m.smartSync({ isManual: false })).catch(() => {});
             }
             checkAppVersion();
         }
@@ -191,7 +230,11 @@ async function initializeApp() {
 
     // --- BEFOREUNLOAD: Flush sync queue an toàn trước khi đóng tab ---
     window.addEventListener('beforeunload', () => {
-        flushSyncQueueBeforeUnload();
+        // Module sync thường đã được nạp sau lượt học đầu tiên; nếu chưa thì việc
+        // persist pending IDs đã diễn ra ngay khi thẻ được xếp hàng.
+        if (_syncQueueModulePromise) {
+            _syncQueueModulePromise.then(m => m.flushSyncQueueBeforeUnload()).catch(() => {});
+        }
     });
     // Auto-open manage tab if specified in URL query (for direct routing and verification)
     const initialTab = urlParams.get('tab');

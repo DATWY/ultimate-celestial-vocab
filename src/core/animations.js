@@ -5,6 +5,7 @@ import { getState } from './state.js';
 // 'anime' là biến toàn cục từ CDN, không cần import
 
 const DEFAULT_DURATION = 400;
+const APPLE_SPRING = 'cubicBezier(0.16, 1, 0.3, 1)';
 const EASE_OUT_EXPO = 'easeOutExpo';
 const EASE_IN_OUT_SINE = 'easeInOutSine';
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -95,22 +96,31 @@ export function animateModalOpen(modalElement) {
     const content = modalElement.querySelector('.modal-content');
     if (reducedMotion()) { anime.set([overlay, content], { opacity: 1, translateY: 0, scale: 1 }); return; }
     
+    if (overlay) overlay.style.willChange = 'opacity';
+    if (content) content.style.willChange = 'transform, opacity';
+
     // Overlay fade in
     anime({
         targets: overlay,
         opacity: [0, 1],
-        duration: 350,
-        easing: 'easeOutCubic'
+        duration: 320,
+        easing: APPLE_SPRING,
+        complete: () => {
+            if (overlay) overlay.style.willChange = '';
+        }
     });
     
-    // Content scale in with Material motion
+    // Content scale in with Apple spring motion
     anime({
         targets: content,
         opacity: [0, 1],
-        scale: [0.92, 1],
-        translateY: [24, 0],
-        duration: 500,
-        easing: 'cubicBezier(0.2, 0, 0, 1)' // Material standard easing
+        scale: [0.94, 1],
+        translateY: [16, 0],
+        duration: 440,
+        easing: APPLE_SPRING,
+        complete: () => {
+            if (content) content.style.willChange = '';
+        }
     });
     
     // Stagger children — manage panel vs form modal
@@ -121,14 +131,18 @@ export function animateModalOpen(modalElement) {
     
     const children = content.querySelectorAll(childSelector);
     if (children.length > 0) {
-        anime.set(children, { opacity: 0, translateY: 20 });
+        children.forEach(c => { c.style.willChange = 'transform, opacity'; });
+        anime.set(children, { opacity: 0, translateY: 14 });
         anime({
             targets: children,
             opacity: 1,
             translateY: 0,
-            duration: 450,
-            delay: anime.stagger(60, { start: 200 }),
-            easing: 'cubicBezier(0.2, 0, 0, 1)'
+            duration: 400,
+            delay: anime.stagger(50, { start: 150 }),
+            easing: APPLE_SPRING,
+            complete: () => {
+                children.forEach(c => { c.style.willChange = ''; });
+            }
         });
     }
 }
@@ -137,47 +151,62 @@ export async function animateModalClose(modalElement) {
     const overlay = modalElement.querySelector('.modal-overlay');
     const content = modalElement.querySelector('.modal-content');
     if (reducedMotion()) { anime.set([overlay, content], { opacity: 0 }); return; }
+    if (overlay) overlay.style.willChange = 'opacity';
+    if (content) content.style.willChange = 'transform, opacity';
+
     await Promise.all([
         anime({
             targets: overlay,
             opacity: 0,
-            duration: 250,
-            easing: 'easeOutCubic'
+            duration: 220,
+            easing: APPLE_SPRING
         }).finished,
         anime({
             targets: content,
             opacity: 0,
-            scale: 0.95,
-            translateY: 10,
-            duration: 250,
-            easing: 'cubicBezier(0.4, 0, 1, 1)' // Material decelerate
+            scale: 0.96,
+            translateY: 8,
+            duration: 220,
+            easing: APPLE_SPRING
         }).finished
     ]);
+    if (overlay) overlay.style.willChange = '';
+    if (content) content.style.willChange = '';
 }
 
 export function animatePulse(element) {
-    if (reducedMotion()) return;
+    if (!element || reducedMotion()) return;
+    element.style.willChange = 'transform';
     anime({
         targets: element,
         scale: [
-            { value: 1.1, duration: 150 },
-            { value: 1, duration: 150 }
+            { value: 1.08, duration: 120, easing: APPLE_SPRING },
+            { value: 1, duration: 160, easing: APPLE_SPRING }
         ],
-        easing: 'easeInOutSine'
+        complete: () => {
+            element.style.willChange = '';
+        }
     });
 }
+
 /**
  * Animate lắc một element để báo hiệu lỗi.
  * @param {HTMLElement} element - Phần tử cần animate.
  */
 export function animateShake(element) {
-    if (reducedMotion()) return;
+    if (!element || reducedMotion()) return;
+    element.style.willChange = 'transform';
     anime({
         targets: element,
         translateX: [
-            { value: -10, duration: 50, easing: 'easeInOutSine' },
-            { value: 10, duration: 100, easing: 'easeInOutSine' },
+            { value: -8, duration: 60, easing: APPLE_SPRING },
+            { value: 8, duration: 80, easing: APPLE_SPRING },
+            { value: -4, duration: 60, easing: APPLE_SPRING },
+            { value: 0, duration: 50, easing: APPLE_SPRING },
         ],
+        complete: () => {
+            element.style.willChange = '';
+        }
     });
 }
 
@@ -243,7 +272,7 @@ export function animateNumber(element, endValue, duration = 1600, options = fals
         targets: obj,
         val: endValue,
         duration: duration,
-        easing: 'easeOutCubic',
+        easing: APPLE_SPRING,
         update: function() {
             const currentStr = formatVal(obj.val);
             if (lastRenderedVal !== currentStr) {
@@ -300,7 +329,7 @@ export function animateForecastChart(chartContainer) {
 
     // Timeline cho biểu đồ
     const tl = anime.timeline({
-        easing: 'easeOutCubic',
+        easing: APPLE_SPRING,
     });
 
     // 1. Cột mọc lên tuần tự với hiệu ứng lò xo bật nảy (kinetic overshoot)
@@ -318,7 +347,7 @@ export function animateForecastChart(chartContainer) {
         translateY: [-8, 0],
         duration: 400,
         delay: anime.stagger(35),
-        easing: 'easeOutQuad'
+        easing: APPLE_SPRING
     }, '-=520')
     // 3. Số đếm trên đỉnh cột nảy bung ra và chạy số đồng bộ
     .add({
@@ -328,7 +357,7 @@ export function animateForecastChart(chartContainer) {
         translateY: [14, 0],
         duration: 480,
         delay: anime.stagger(40),
-        easing: 'easeOutBack',
+        easing: 'cubicBezier(0.34, 1.4, 0.64, 1)',
         begin: function() {
             counts.forEach(c => {
                 const targetNum = parseInt(c.dataset.targetCount, 10) || 0;
@@ -344,7 +373,7 @@ export function animateForecastChart(chartContainer) {
             opacity: [0, 1],
             scaleX: [0, 1],
             duration: 650,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+            easing: APPLE_SPRING
         }, '-=380');
     }
 
@@ -355,7 +384,7 @@ export function animateForecastChart(chartContainer) {
             opacity: [0, 1],
             translateY: [10, 0],
             duration: 450,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+            easing: APPLE_SPRING
         }, '-=300');
     }
 }
@@ -396,7 +425,7 @@ export function animateHeatmap(heatmapContainer) {
             translateY: [-8, 0],
             duration: 420,
             delay: anime.stagger(70),
-            easing: 'easeOutCubic'
+            easing: APPLE_SPRING
         });
     }
 
@@ -407,7 +436,7 @@ export function animateHeatmap(heatmapContainer) {
             targets: weekdayLabels,
             opacity: [0, 1],
             duration: 420,
-            easing: 'easeOutCubic'
+            easing: APPLE_SPRING
         });
     }
 
@@ -428,7 +457,7 @@ export function animateHeatmap(heatmapContainer) {
             translateY: [6, 0],
             duration: 400,
             delay: 300,
-            easing: 'easeOutCubic'
+            easing: APPLE_SPRING
         });
     }
 
@@ -438,13 +467,13 @@ export function animateHeatmap(heatmapContainer) {
     anime({
         targets: cells,
         scale: [
-            { value: 1.25, easing: 'easeOutSine', duration: 140 },
-            { value: 1, easing: 'easeInOutQuad', duration: 180 }
+            { value: 1.25, easing: APPLE_SPRING, duration: 140 },
+            { value: 1, easing: APPLE_SPRING, duration: 180 }
         ],
         opacity: [0.2, 1],
         borderRadius: ['6px', '4px'],
-        delay: anime.stagger(7, { from: 'last' }), // ~580ms lan tỏa mượt mà từ ngày gần nhất
-        easing: 'easeOutQuad',
+        delay: anime.stagger(7, { from: 'last' }),
+        easing: APPLE_SPRING,
         complete: () => {
             cells.forEach(c => {
                 c.style.opacity = '';
@@ -479,7 +508,7 @@ export function animateOverviewEntrance(container = document.getElementById('pro
             translateY: [16, 0],
             duration: 520,
             delay: anime.stagger(85, { start: 40 }),
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+            easing: APPLE_SPRING
         });
     }
 
@@ -494,7 +523,7 @@ export function animateOverviewEntrance(container = document.getElementById('pro
             opacity: [0, 1],
             duration: 650,
             delay: 120,
-            easing: 'easeOutBack'
+            easing: 'cubicBezier(0.34, 1.4, 0.64, 1)'
         });
     }
 
@@ -508,7 +537,7 @@ export function animateOverviewEntrance(container = document.getElementById('pro
             rotate: [-12, 4, 0],
             duration: 700,
             delay: 160,
-            easing: 'easeOutBack'
+            easing: 'cubicBezier(0.34, 1.4, 0.64, 1)'
         });
     }
 
@@ -528,7 +557,7 @@ export function animateOverviewEntrance(container = document.getElementById('pro
             width: targetWidth,
             duration: 850,
             delay: 180,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+            easing: APPLE_SPRING,
             complete: () => {
                 if (xpFill) {
                     xpFill.style.transition = prevTransition || '';
@@ -554,7 +583,7 @@ export function animateOverviewEntrance(container = document.getElementById('pro
             width: targetWidth,
             duration: 800,
             delay: 200 + idx * 60,
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+            easing: APPLE_SPRING,
             complete: () => {
                 if (meter) {
                     meter.style.transition = prevTransition || '';
@@ -574,7 +603,7 @@ export function animateOverviewEntrance(container = document.getElementById('pro
             translateY: [10, 0],
             duration: 480,
             delay: anime.stagger(50, { start: 140 }),
-            easing: 'cubicBezier(0.16, 1, 0.3, 1)'
+            easing: APPLE_SPRING
         });
     }
 }

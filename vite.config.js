@@ -7,9 +7,26 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,wav}'],
-        globIgnores: ['**/version.json'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,wav,mp3}'],
+        // Firebase SDK (468 kB) là chunk nạp ĐỘNG sau khi UI sẵn sàng. Không
+        // precache để lần cài đặt đầu không phải tải; runtime cache sẽ giữ lại
+        // sau lần đồng bộ đầu tiên, nên offline vẫn hoạt động.
+        globIgnores: ['**/version.json', '**/firebase-*.js'],
         runtimeCaching: [
+          {
+            urlPattern: /\/assets\/firebase-.*\.js$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'firebase-chunk-cache',
+              expiration: {
+                maxEntries: 4,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
@@ -145,6 +162,27 @@ export default defineConfig({
   server: {
     fs: {
       strict: true
+    }
+  },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'DYNAMIC_IMPORT_WILL_NOT_MOVE_MODULE' || (warning.message && warning.message.includes('dynamic import will not move module into another chunk'))) {
+          return;
+        }
+        warn(warning);
+      },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase')) {
+            return 'firebase';
+          }
+          if (id.includes('node_modules/animejs') || id.includes('node_modules/idb')) {
+            return 'vendor';
+          }
+        }
+      }
     }
   }
 });
