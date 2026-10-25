@@ -3,7 +3,7 @@
 /* REGULAR */
 @font-face {
   font-family: "Phosphor";
-  src: url("https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/Phosphor.woff2") format("woff2");
+  src: url("/fonts/phosphor-regular.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -630,7 +630,7 @@
 /* BOLD */
 @font-face {
   font-family: "Phosphor-Bold";
-  src: url("https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/Phosphor-Bold.woff2") format("woff2");
+  src: url("/fonts/phosphor-bold.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -1257,7 +1257,7 @@
 /* FILL */
 @font-face {
   font-family: "Phosphor-Fill";
-  src: url("https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/Phosphor-Fill.woff2") format("woff2");
+  src: url("/fonts/phosphor-fill.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -1884,7 +1884,7 @@
 /* DUOTONE */
 @font-face {
   font-family: "Phosphor-Duotone";
-  src: url("https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/Phosphor-Duotone.woff2") format("woff2");
+  src: url("/fonts/phosphor-duotone.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block;

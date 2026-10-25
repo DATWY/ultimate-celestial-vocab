@@ -7,6 +7,10 @@
  * "Recalculate Style" jank. Shipping a subset keeps the exact same glyphs and
  * classes, but cuts the rule set by ~80% and removes 4 cross-origin requests.
  *
+ * Fonts are self-hosted: the woff2 for each weight is downloaded once into
+ * public/fonts/ and the generated @font-face points at /fonts/... so the app
+ * never depends on unpkg at runtime.
+ *
  * Run: node tools/build-icon-subset.mjs
  * The generated file is committed so normal builds do not need network access.
  */
@@ -81,11 +85,23 @@ for (const weight of WEIGHTS) {
     const capWeight = weight[0].toUpperCase() + weight.slice(1);
     const family = weight === 'regular' ? 'Phosphor' : `Phosphor-${capWeight}`;
     const fontFile = weight === 'regular' ? 'Phosphor' : `Phosphor-${capWeight}`;
+    // Self-host: tải woff2 về public/fonts một lần (nếu chưa có) và tham chiếu
+    // đường dẫn nội bộ trong @font-face.
+    const fontsDir = path.join(ROOT, 'public', 'fonts');
+    fs.mkdirSync(fontsDir, { recursive: true });
+    const localFontPath = path.join(fontsDir, `phosphor-${weight}.woff2`);
+    if (!fs.existsSync(localFontPath) || fs.statSync(localFontPath).size < 1000) {
+        const fontUrl = `https://unpkg.com/@phosphor-icons/web@${VERSION}/src/${weight}/${fontFile}.woff2`;
+        const fontRes = await fetch(fontUrl);
+        if (!fontRes.ok) throw new Error(`Cannot fetch ${fontUrl}: ${fontRes.status}`);
+        fs.writeFileSync(localFontPath, Buffer.from(await fontRes.arrayBuffer()));
+        console.log(`Downloaded ${fontUrl} -> public/fonts/phosphor-${weight}.woff2`);
+    }
     const header = [`/* ${weight.toUpperCase()} */`];
     const iconRules = [];
     for (const block of blocks) {
         if (block.selector === '@font-face') {
-            header.push(`@font-face {\n  font-family: "${family}";\n  src: url("https://unpkg.com/@phosphor-icons/web@${VERSION}/src/${weight}/${fontFile}.woff2") format("woff2");\n  font-weight: normal;\n  font-style: normal;\n  font-display: block;\n}`);
+            header.push(`@font-face {\n  font-family: "${family}";\n  src: url("/fonts/phosphor-${weight}.woff2") format("woff2");\n  font-weight: normal;\n  font-style: normal;\n  font-display: block;\n}`);
             continue;
         }
         if (block.selector === baseClass) {

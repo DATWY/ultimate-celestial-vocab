@@ -9,6 +9,14 @@ const APPLE_SPRING = 'cubicBezier(0.16, 1, 0.3, 1)';
 const EASE_OUT_EXPO = 'easeOutExpo';
 const EASE_IN_OUT_SINE = 'easeInOutSine';
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const isPageHidden = () => typeof document !== 'undefined' && document.hidden;
+// anime.js chỉ resolve promise .finished qua requestAnimationFrame; khi tab bị
+// ẩn (hoặc renderer bị occlude) rAF ngừng hoàn toàn → promise không bao giờ
+// resolve và luồng gọi await (đóng modal, lưu từ...) treo vĩnh viễn. Ngân sách
+// frame buộc mọi await có mốc hoàn tất.
+const FRAME_BUDGET_MS = 600;
+const withFrameBudget = (animationPromise) =>
+    Promise.race([animationPromise, new Promise(resolve => setTimeout(resolve, FRAME_BUDGET_MS))]);
 
 export async function animateFlip(cardElement) {
     if (!cardElement) return;
@@ -55,7 +63,7 @@ let lastExitDirection = -1; // -1 for left, 1 for right
 export async function animateCardOut(cardElement) {
     if (!cardElement) return;
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
-    if (isBoost || reducedMotion()) return;
+    if (isBoost || reducedMotion() || isPageHidden()) return;
     lastExitDirection = Math.random() > 0.5 ? 1 : -1;
     const targetX = lastExitDirection * 150;
     const targetRot = lastExitDirection * 15;
@@ -72,7 +80,7 @@ export async function animateCardOut(cardElement) {
 export async function animateCardIn(cardElement) {
     if (!cardElement) return;
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
-    if (isBoost || reducedMotion()) {
+    if (isBoost || reducedMotion() || isPageHidden()) {
         if (typeof anime !== 'undefined') {
             anime.set(cardElement, {
                 translateX: '0%',
@@ -160,11 +168,13 @@ export function animateModalOpen(modalElement) {
 export async function animateModalClose(modalElement) {
     const overlay = modalElement.querySelector('.modal-overlay');
     const content = modalElement.querySelector('.modal-content');
-    if (reducedMotion()) { anime.set([overlay, content], { opacity: 0 }); return; }
+    // Tab đang ẩn: không ai nhìn thấy animation, áp trạng thái cuối ngay để
+    // luồng gọi (closeModal → lưu từ, re-enable nút Lưu...) không phải chờ rAF.
+    if (reducedMotion() || isPageHidden()) { anime.set([overlay, content], { opacity: 0 }); return; }
     if (overlay) overlay.style.willChange = 'opacity';
     if (content) content.style.willChange = 'transform, opacity';
 
-    await Promise.all([
+    await withFrameBudget(Promise.all([
         anime({
             targets: overlay,
             opacity: 0,
@@ -179,7 +189,7 @@ export async function animateModalClose(modalElement) {
             duration: 220,
             easing: APPLE_SPRING
         }).finished
-    ]);
+    ]));
     if (overlay) overlay.style.willChange = '';
     if (content) content.style.willChange = '';
 }

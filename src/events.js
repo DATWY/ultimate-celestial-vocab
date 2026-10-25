@@ -25,7 +25,7 @@ function runCloudSync(options) {
 
 async function loadAndShowQuiz() {
     DOM.startQuizBtn.disabled = true;
-    DOM.startQuizBtn.innerHTML = '<i class="ph-duotone ph-spinner animate-spin"></i> Đang tải...';
+    DOM.startQuizBtn.innerHTML = '<i class="ph-duotone ph-spinner animate-spin"></i><span class="btn-label">Đang tải...</span>';
     try {
         const quizModule = await import('./features/quiz.js');
         quizModule.showQuizSetup();
@@ -34,7 +34,8 @@ async function loadAndShowQuiz() {
         showPopup("Không thể tải chức năng kiểm tra. Vui lòng thử lại.", "error");
     } finally {
         DOM.startQuizBtn.disabled = false;
-        DOM.startQuizBtn.innerHTML = '<i class="ph-duotone ph-timer"></i> Kiểm tra';
+        // Giữ nguyên cấu trúc gốc (icon + span.btn-label) để không mất style của nút.
+        DOM.startQuizBtn.innerHTML = '<i class="ph-duotone ph-rocket-launch"></i><span class="btn-label">Kiểm tra</span>';
     }
 }
 
@@ -355,15 +356,8 @@ export function setupEventListeners() {
         }
     };
 
-    // Tự động đóng menu khi chạm ra vùng trống trên màn hình
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#taskbar-menu') && !e.target.closest('#toggle-taskbar-btn')) {
-            if (DOM.taskbarMenu?.classList.contains('show')) {
-                DOM.taskbarMenu.classList.remove('show');
-                DOM.toggleTaskbarBtn.querySelector('i').className = 'ph-duotone ph-list';
-            }
-        }
-    });
+    // (Đóng menu khi click ngoài đã xử lý ở listener capture phía trên —
+    // bỏ listener trùng lặp thứ hai để mỗi click chỉ chạy một lần.)
 
     // NÂNG CẤP: Xử lý nút bấm màn hình "Hoàn thành mục tiêu"
     if (DOM.btnSmartCramming) {
@@ -735,7 +729,6 @@ export function setupEventListeners() {
         applySoundSetting(nextMode); 
         DOM.toggleSoundBtn?.blur();
     });
-    DOM.addWordBtnOpen?.addEventListener('click', () => { closeMenu(); openAddEditModal(); });
     DOM.celestialHubBtn?.addEventListener('click', () => { closeMenu(); openManageModal('overview'); });
     if (DOM.manageWordsBtnOpen && DOM.manageWordsBtnOpen !== DOM.celestialHubBtn) {
         DOM.manageWordsBtnOpen.addEventListener('click', () => { closeMenu(); openManageModal('words'); });
@@ -835,7 +828,15 @@ export function setupEventListeners() {
     });
     DOM.nextCardBtn?.addEventListener('click', () => { 
         if (getState().isTransitioning) return;
-        if (getState().isFlipped) switchCardWithAnimation(); 
+        if (!getState().isFlipped) return;
+        // Chỉ một listener duy nhất cho nút này: đặt lại ô gõ (nếu có) rồi chuyển thẻ.
+        // Trước đây có 2 listener trùng nhau khiến switchCardWithAnimation chạy 2 lần.
+        if (DOM.typingInput) {
+            DOM.typingInput.disabled = false;
+            DOM.typingInput.classList.remove('input-danger');
+        }
+        if (DOM.typingSubmitBtn) DOM.typingSubmitBtn.disabled = false;
+        switchCardWithAnimation(); 
     });
     DOM.ttsBtn?.addEventListener('click', () => {
         const { vocabulary, currentCardIndex } = getState();
@@ -854,8 +855,6 @@ export function setupEventListeners() {
         const { vocabulary, currentCardIndex } = getState();
         if (currentCardIndex >= 0) speakText(vocabulary[currentCardIndex].english);
     });
-    DOM.editCurrentWordBtn?.addEventListener('click', editCurrentWord);
-    DOM.deleteCurrentWordBtn?.addEventListener('click', deleteCurrentWord);
     DOM.srsFeedbackButtons?.addEventListener('click', (e) => {
         const btn = e.target.closest('.srs-btn');
         if (btn) {
@@ -1050,17 +1049,6 @@ export function setupEventListeners() {
         recordFirstKeystroke(e);
     });
 
-    DOM.nextCardBtn?.addEventListener('click', () => { 
-        if (getState().isFlipped) {
-            if (DOM.typingInput) {
-                DOM.typingInput.disabled = false;
-                DOM.typingInput.classList.remove('input-danger');
-                DOM.typingSubmitBtn.disabled = false;
-            }
-            switchCardWithAnimation(); 
-        }
-    });
-
     // Modals
     DOM.addEditForm?.addEventListener('submit', handleAddEditSubmit);
     DOM.closeAddEditModalBtn?.addEventListener('click', () => closeModal(DOM.addEditModal));
@@ -1238,7 +1226,7 @@ function toggleStar() {
     const isStarred = toggleStarOnCurrentCard();
     const starIcon = DOM.starBtn?.querySelector('i');
     if (starIcon) {
-        starIcon.className = isStarred ? 'ph-fill ph-star' : 'ph-duotone ph-star';
+        starIcon.className = isStarred ? 'ph-fill ph-star' : 'ph ph-star';
         DOM.starBtn.classList.toggle('starred', isStarred);
     }
     playSound(isStarred ? 'starOn' : 'starOff');

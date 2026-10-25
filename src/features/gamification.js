@@ -448,10 +448,10 @@ function renderBadges(unlockedBadges) {
         const filterContainer = document.createElement('div');
         filterContainer.className = 'achievements-filter-tabs';
         filterContainer.innerHTML = `
-            <button class="achieve-tab-btn active" data-filter="all"><i class="ph-duotone ph-squares-four"></i> Tất cả</button>
-            <button class="achieve-tab-btn" data-filter="tracks"><i class="ph-duotone ph-chart-line-up"></i> Mốc Tiến Trình</button>
-            <button class="achieve-tab-btn" data-filter="specials"><i class="ph-duotone ph-sparkle"></i> Bí Mật</button>
-            <button class="achieve-tab-btn" data-filter="unlocked"><i class="ph-duotone ph-lock-key-open"></i> Đã Mở (${totalUnlocked})</button>
+            <button class="achieve-tab-btn active" data-filter="all" aria-pressed="true"><i class="ph-duotone ph-squares-four"></i> Tất cả</button>
+            <button class="achieve-tab-btn" data-filter="tracks" aria-pressed="false"><i class="ph-duotone ph-chart-line-up"></i> Mốc Tiến Trình</button>
+            <button class="achieve-tab-btn" data-filter="specials" aria-pressed="false"><i class="ph-duotone ph-sparkle"></i> Bí Mật</button>
+            <button class="achieve-tab-btn" data-filter="unlocked" aria-pressed="false"><i class="ph-duotone ph-lock-key-open"></i> Đã Mở (${totalUnlocked})</button>
         `;
         DOM.achievementsList.appendChild(filterContainer);
 
@@ -676,8 +676,12 @@ function renderBadges(unlockedBadges) {
         // --- 6. XỬ LÝ LỌC TAB (TAB FILTER LOGIC) ---
         filterContainer.querySelectorAll('.achieve-tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                filterContainer.querySelectorAll('.achieve-tab-btn').forEach(b => b.classList.remove('active'));
+                filterContainer.querySelectorAll('.achieve-tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-pressed', 'false');
+                });
                 btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
                 
                 const filter = btn.getAttribute('data-filter');
                 const trackItems = badgeWrapperContainer.querySelectorAll('.badge-track-item');

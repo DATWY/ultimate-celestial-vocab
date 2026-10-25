@@ -63,6 +63,9 @@ export function openModal(modalElement) {
     if (existing >= 0) modalStack.splice(existing, 1);
     modalStack.push(modalElement);
     modalGenerations.set(modalElement, (modalGenerations.get(modalElement) || 0) + 1);
+    // z-index theo độ sâu stack để modal mở sau luôn nằm TRÊN modal mở trước,
+    // bất kể thứ tự xuất hiện trong DOM.
+    if (modalElement.style) modalElement.style.zIndex = String(1000 + modalStack.length);
     modalElement.setAttribute('tabindex', '-1');
     document.body.classList.add('modal-active');
     suspendCelestialCanvas();
@@ -84,6 +87,7 @@ export async function closeModal(modalElement) {
     } finally {
         if (generation !== modalGenerations.get(modalElement)) return;
         modalElement.classList.add('hidden');
+        if (modalElement.style) modalElement.style.zIndex = '';
         const position = modalStack.indexOf(modalElement);
         if (position >= 0) modalStack.splice(position, 1);
         const opener = modalOpeners.get(modalElement);
@@ -383,9 +387,10 @@ function getToastContainer() {
 
 function renderToast({ title, message, iconClass }) {
     const container = getToastContainer();
-    const resolvedIconClass = /\bph(-fill|-bold|-duotone|-thin|-light)?\b/.test(iconClass)
-        ? iconClass
-        : `ph ${iconClass}`;
+    // Subset icon font chỉ gán glyph cho tổ hợp weight+icon (.ph-fill.ph-x:before).
+    // Tên icon trơn bắt buộc phải ghép thêm weight, nếu không icon render rỗng.
+    const hasWeight = /(^|\s)(ph|ph-fill|ph-bold|ph-duotone|ph-thin|ph-light)(\s|$)/.test(iconClass);
+    const resolvedIconClass = hasWeight ? iconClass : `ph-fill ${iconClass}`;
 
     const toast = document.createElement('div');
     toast.className = 'toast-item';
@@ -444,7 +449,7 @@ export function openDedupModal() {
     if (DOM.dedupList) {
         DOM.dedupList.innerHTML = `
             <div class="dedup-loading-state" style="text-align: center; padding: 2rem;">
-                <i class="ph-duotone ph-spinner ph-spin" style="font-size: 2rem; color: var(--primary-color, #8a2be2);"></i>
+                <i class="ph-duotone ph-spinner animate-spin" style="font-size: 2rem; color: var(--primary-color, #8a2be2);"></i>
                 <p style="margin-top: 0.5rem; color: var(--text-muted, #94a3b8);">Đang quét kho từ vựng...</p>
             </div>
         `;

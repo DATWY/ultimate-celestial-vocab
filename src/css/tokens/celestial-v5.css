@@ -290,7 +290,9 @@ body:not(.dark-mode) .onboarding-subtitle {
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* auto-fit để khi thẻ "Từ Mẫu" bị ẩn ở production (chỉ còn 2 CTA),
+       grid tự co còn 2 cột cân đối thay vì để trống cột thứ 3. */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 14px;
     margin-bottom: 28px;
 }

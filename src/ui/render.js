@@ -420,12 +420,6 @@ export function displayCard(index, preserveFlipState = false) {
         ? cardData.tags 
         : (typeof cardData.tags === 'string' ? cardData.tags.split(',') : []);
     DOM.cardTags.textContent = rawTags.map(t => (t ? String(t).trim().replace(/_/g, ' ') : '')).filter(Boolean).join(', ') || '-';
-    const srsStatus = cardData.srsStatus || 'New';
-    if (DOM.cardSrsStatus) {
-        DOM.cardSrsStatus.textContent = srsStatus;
-        DOM.cardSrsStatus.className = `status-badge status-${srsStatus.toLowerCase()}`;
-        DOM.cardSrsStatus.title = `Status: ${srsStatus}`;
-    }
 
     // Thêm class cho flashcard để CSS xử lý khoảng cách
     DOM.flashcard.classList.toggle('typing-mode-active', isTypingCard);
@@ -912,14 +906,6 @@ export function updateCustomTypingUI() {
     }
     if (DOM.typingModeIcon) {
         DOM.typingModeIcon.className = `ph-duotone ${activeConfig.icon} typing-trigger-icon`;
-    }
-    if (DOM.typingFilterBadge) {
-        if (activeConfig?.badgeText) {
-            DOM.typingFilterBadge.textContent = activeConfig.badgeText;
-            DOM.typingFilterBadge?.classList?.remove('hidden');
-        } else {
-            DOM.typingFilterBadge?.classList?.add('hidden');
-        }
     }
     if (DOM.customTypingTrigger) {
         DOM.customTypingTrigger.classList.toggle('is-typing-active', currentFilter !== 'off');

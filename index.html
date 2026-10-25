@@ -19,10 +19,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Phosphor: bản subset do tools/build-icon-subset.mjs sinh ra từ đúng
-         version 2.1.1, chỉ giữ 199 icon × 4 weight đang dùng (990 rule thay vì
-         ~9.000). Font .woff2 vẫn tải từ unpkg (đã preconnect), CSS phục vụ nội
-         bộ nên bỏ được 4 request cross-origin và giảm mạnh Recalculate Style. -->
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+         version 2.1.1, chỉ giữ ~199 icon × 4 weight đang dùng (~990 rule thay
+         vì ~9.000). Font .woff2 self-host tại /fonts/ nên icon không phụ thuộc
+         CDN bên ngoài (unpkg) — kể cả khi offline qua service worker. -->
     <link rel="stylesheet" href="/phosphor-subset.css">
 </head>
 
