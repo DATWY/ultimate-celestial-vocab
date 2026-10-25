@@ -20,6 +20,7 @@ const STORE_NAME = 'tts-data-urls';
 let sounds = {};
 let dbPromise;
 let currentUtterance = typeof Audio !== 'undefined' ? new Audio() : null;
+let _speakRequestId = 0;
 let audioCtx = null;
 let masterGainNode = null;   // bus chung cho sample + synth
 let synthGainNode = null;    // bus riêng để cân bằng synth với sample
@@ -43,6 +44,7 @@ let _sfxPreloadPromise = null;
 let _sfxReady = false;
 let _sfxRetryAfter = 0;
 let _audioUnlockInstalled = false;
+let _audioUnlocked = false;
 
 // In-memory cache cho Object URLs để tránh tạo lại mỗi lần gọi
 const _blobUrlCache = new Map(); // text → blobUrl
@@ -87,9 +89,11 @@ function getAudioContext() {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (AudioContextClass) {
             try {
-                audioCtx = new AudioContextClass();
+                // 'interactive' ưu tiên buffer nhỏ → giảm độ trễ cho tiếng bấm;
+                // trình duyệt cũ không hỗ trợ object options sẽ rơi vào catch.
+                audioCtx = new AudioContextClass({ latencyHint: 'interactive' });
             } catch (_) {
-                audioCtx = null;
+                try { audioCtx = new AudioContextClass(); } catch (_) { audioCtx = null; }
             }
         }
     }
@@ -145,6 +149,7 @@ function getAudioContext() {
             }
         } catch (_) {}
     }
+    if (audioCtx.state === 'running') _audioUnlocked = true;
     return audioCtx;
 }
 
@@ -778,6 +783,62 @@ function decodeAudioBuffer(ctx, arrayBuffer) {
     });
 }
 
+// Cắt khoảng lặng đầu/cuối của sample đã decode. MP3 thường có 20–30 ms
+// encoder delay ở đầu và đuôi im lặng (next.mp3 tới 1,1 s). Cắt bằng ngưỡng
+// rất thấp (-56 dB) nên không đổi âm sắc, chỉ làm tiếng bật tức thì và giải
+// phóng voice sớm hơn.
+function trimAudioBuffer(buffer, ctx) {
+    try {
+        const channels = buffer.numberOfChannels;
+        const length = buffer.length;
+        const rate = buffer.sampleRate;
+        if (!channels || !length || !rate) return buffer;
+
+        const data = [];
+        for (let c = 0; c < channels; c++) data.push(buffer.getChannelData(c));
+
+        const threshold = 0.0015;
+        const maxLead = Math.min(length, Math.floor(rate * 0.06));
+        let start = 0;
+        lead: for (; start < maxLead; start++) {
+            for (let c = 0; c < channels; c++) {
+                if (Math.abs(data[c][start]) > threshold) break lead;
+            }
+        }
+        // Không thấy điểm bắt đầu rõ ràng thì giữ nguyên, tránh cắt nhầm attack.
+        if (start >= maxLead) start = 0;
+
+        let end = length;
+        tail: while (end > start + 1) {
+            for (let c = 0; c < channels; c++) {
+                if (Math.abs(data[c][end - 1]) > threshold) break tail;
+            }
+            end--;
+        }
+
+        // Chừa 8 ms đuôi và fade 5 ms để không bao giờ kết thúc bằng một bước nhảy.
+        const pad = Math.floor(rate * 0.008);
+        end = Math.min(length, end + pad);
+
+        if (start < rate * 0.002) start = 0;
+        if (start === 0 && end === length) return buffer;
+        if (end - start < rate * 0.05) return buffer;
+
+        const out = ctx.createBuffer(channels, end - start, rate);
+        const fade = Math.min(Math.floor(rate * 0.005), end - start);
+        for (let c = 0; c < channels; c++) {
+            const dst = out.getChannelData(c);
+            dst.set(data[c].subarray(start, end));
+            for (let i = 0; i < fade; i++) {
+                dst[dst.length - 1 - i] *= i / fade;
+            }
+        }
+        return out;
+    } catch (_) {
+        return buffer;
+    }
+}
+
 function preloadSfxSamples() {
     if (_sfxReady) return Promise.resolve();
     if (_sfxPreloadPromise) return _sfxPreloadPromise;
@@ -801,19 +862,24 @@ function preloadSfxSamples() {
                 throw new Error(`SFX ${name}: HTTP ${response.status}`);
             }
             const arrayBuffer = await response.arrayBuffer();
-            const buffer = await decodeAudioBuffer(ctx, arrayBuffer);
-            if (!buffer || !buffer.length) throw new Error(`SFX ${name}: empty buffer`);
+            const decoded = await decodeAudioBuffer(ctx, arrayBuffer);
+            if (!decoded || !decoded.length) throw new Error(`SFX ${name}: empty buffer`);
+            const buffer = trimAudioBuffer(decoded, ctx);
             _sfxBuffers.set(name, buffer);
         } catch (error) {
             console.warn(`Không tải được SFX "${name}", dùng synth thay thế.`, error);
         }
     })).then(() => {
         _sfxPreloadPromise = null;
-        if (!_sfxBuffers.size) {
+        const missing = Object.keys(SFX_DEFS).some(name => !_sfxBuffers.has(name) && !_sfxFailed.has(name));
+        if (!missing) {
+            _sfxReady = true;
+        } else if (!_sfxBuffers.size) {
             // Không có sample nào: thử lại sau 15s thay vì spam request mỗi lần bấm.
             _sfxRetryAfter = Date.now() + 15000;
         } else {
-            _sfxReady = true;
+            // Thiếu một vài file: vẫn dùng được các file còn lại, thử bù sau 15s.
+            _sfxRetryAfter = Date.now() + 15000;
         }
     });
 
@@ -824,6 +890,9 @@ function playSample(name, def) {
     const ctx = getAudioContext();
     const buffer = _sfxBuffers.get(name);
     if (!ctx || !buffer || ctx.state === 'closed' || !masterGainNode) return false;
+    // Chưa có gesture đầu tiên: không xếp buffer vào context đang treo, vì nó
+    // sẽ phát bù rất muộn khi người dùng chạm lần đầu. Để element/synth xử lý.
+    if (ctx.state !== 'running' && !_audioUnlocked) return false;
 
     if (ctx.state === 'suspended') {
         try {
@@ -908,6 +977,9 @@ function installAudioUnlock() {
     if (_audioUnlockInstalled || typeof window === 'undefined') return;
     _audioUnlockInstalled = true;
     const unlock = () => {
+        // Đánh dấu đã có gesture kể cả khi đang Tắt: trình duyệt đã cấp quyền
+        // phát audio cho trang, lần bật lại sau đó không bị coi là autoplay.
+        _audioUnlocked = true;
         try {
             const mode = getState?.()?.soundMode;
             if (mode !== 'off' && mode !== 'tts') {
@@ -927,12 +999,60 @@ function installAudioUnlock() {
 }
 
 function scheduleSfxPreload() {
-    const run = () => { preloadSfxSamples().catch(() => {}); };
+    const run = () => {
+        // Người dùng có thể đã chuyển sang Tắt/TTS trước khi idle callback chạy.
+        try {
+            const mode = getState?.()?.soundMode;
+            if (mode === 'off' || mode === 'tts') return;
+        } catch (_) {}
+        preloadSfxSamples().catch(() => {});
+    };
     if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
         window.requestIdleCallback(run, { timeout: 2500 });
     } else {
         setTimeout(run, 350);
     }
+}
+
+function pauseSpokenAudio() {
+    _speakRequestId++;
+    try {
+        if (currentUtterance && !currentUtterance.paused) currentUtterance.pause();
+    } catch (_) {}
+    try {
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+    } catch (_) {}
+}
+
+function closeAudioContextForMute() {
+    const ctx = audioCtx;
+    audioCtx = null;
+    masterGainNode = null;
+    synthGainNode = null;
+    limiterNode = null;
+    _sfxVoices.clear();
+    _concurrentSfx = 0;
+    _resumeDeferred = false;
+    if (ctx && ctx.state !== 'closed') {
+        try {
+            const p = ctx.close();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+        } catch (_) {}
+    }
+}
+
+/**
+ * Đồng bộ engine âm thanh với chế độ người dùng chọn.
+ * - off/tts: đóng AudioContext để cắt ngay cả tiếng đang ngân (không để tail
+ *   phát lại khi bật lại), đồng thời dừng TTS nếu chế độ không cho phép TTS.
+ * - sfx: chỉ dừng TTS, giữ SFX.
+ */
+export function applySoundMode(mode) {
+    const sfxMuted = mode === 'off' || mode === 'tts';
+    if (sfxMuted) closeAudioContextForMute();
+    if (mode === 'off' || mode === 'sfx') pauseSpokenAudio();
 }
 
 export function getSfxStatus() {
@@ -1040,10 +1160,21 @@ async function getAudioDataURL(text) {
     }
 }
 
+// Chế độ 'sfx' và 'off' không được phát TTS, kể cả khi người dùng bấm loa.
+function isTtsAllowed() {
+    try {
+        const mode = typeof getState === 'function' ? getState()?.soundMode : 'all';
+        return mode !== 'off' && mode !== 'sfx';
+    } catch (_) {
+        return true;
+    }
+}
+
 /**
  * Fallback dùng Web Speech API native của trình duyệt.
  */
 function fallbackNativeTTS(text, rate = 1.0) {
+    if (!isTtsAllowed()) return;
     if ('speechSynthesis' in window) {
         try {
             window.speechSynthesis.cancel();
@@ -1063,6 +1194,9 @@ function fallbackNativeTTS(text, rate = 1.0) {
  */
 export async function speakText(text, rate = 1.0) {
     if (!text) return;
+    if (!isTtsAllowed()) return;
+    if (!currentUtterance) return;
+    const requestId = ++_speakRequestId;
 
     if (!currentUtterance.paused) {
         currentUtterance.pause();
@@ -1070,6 +1204,8 @@ export async function speakText(text, rate = 1.0) {
 
     try {
         const safeDataURL = await getAudioDataURL(text);
+        // Người dùng có thể đã tắt TTS hoặc bấm từ khác trong lúc chờ proxy.
+        if (requestId !== _speakRequestId || !isTtsAllowed()) return;
 
         currentUtterance.src = safeDataURL;
         currentUtterance.playbackRate = rate;
@@ -1079,6 +1215,7 @@ export async function speakText(text, rate = 1.0) {
         await currentUtterance.play();
 
     } catch (error) {
+        if (requestId !== _speakRequestId) return;
         console.warn('Speech Proxy / Audio playback error, using Web Speech API fallback:', error.message);
         fallbackNativeTTS(text, rate);
     }
@@ -1089,6 +1226,7 @@ export async function speakText(text, rate = 1.0) {
  */
 export async function preloadAudio(text) {
     if (!text) return;
+    if (!isTtsAllowed()) return;
     try {
         await getAudioDataURL(text);
     } catch (error) {

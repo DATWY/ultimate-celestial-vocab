@@ -1,0 +1,374 @@
+/* ==========================================================================
+   MOTION & FEEDBACK UPGRADE
+   Study-first motion: tactile card flip, clear answer feedback, discoverable
+   shortcuts. All loops animate transform/opacity only.
+   ========================================================================== */
+
+/* --- 1. CARD FLIP: depth + one-pass light sweep -------------------------- */
+.card-face {
+    position: relative;
+}
+
+.flashcard {
+    transition: box-shadow 0.32s ease;
+}
+
+.flashcard.is-flipping {
+    box-shadow:
+        0 24px 54px -12px rgba(138, 43, 226, 0.38),
+        0 0 0 1px rgba(168, 85, 247, 0.24);
+}
+
+body:not(.dark-mode) .flashcard.is-flipping {
+    box-shadow:
+        0 24px 54px -14px rgba(99, 102, 241, 0.24),
+        0 0 0 1px rgba(99, 102, 241, 0.18);
+}
+
+.card-face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    background-image: linear-gradient(
+        105deg,
+        transparent 38%,
+        rgba(255, 255, 255, 0.02) 44%,
+        rgba(255, 255, 255, 0.28) 50%,
+        rgba(255, 255, 255, 0.02) 56%,
+        transparent 62%
+    );
+    background-size: 260% 100%;
+    background-position: 130% 0;
+}
+
+.flashcard.is-flipping .card-face::after {
+    animation: celestialCardSweep 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes celestialCardSweep {
+    0% { opacity: 0; background-position: 130% 0; }
+    18% { opacity: 0.9; }
+    100% { opacity: 0; background-position: -30% 0; }
+}
+
+body:not(.dark-mode) .card-face::after {
+    background: linear-gradient(
+        105deg,
+        transparent 38%,
+        rgba(255, 255, 255, 0.04) 44%,
+        rgba(99, 102, 241, 0.16) 50%,
+        rgba(255, 255, 255, 0.04) 56%,
+        transparent 62%
+    );
+}
+
+/* --- 2. SRS BUTTONS: sheen + tactile press ------------------------------ */
+.srs-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        115deg,
+        transparent 32%,
+        rgba(255, 255, 255, 0.24) 50%,
+        transparent 68%
+    );
+    transform: translateX(-130%);
+    transition: transform 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.srs-btn:hover::before,
+.srs-btn:focus-visible::before {
+    transform: translateX(130%);
+}
+
+.srs-btn:active {
+    transform: translateY(0) scale(0.975) !important;
+}
+
+/* --- 3. ANSWER FEEDBACK OVERLAY ----------------------------------------- */
+#answer-feedback {
+    position: fixed;
+    left: 50%;
+    top: 43%;
+    z-index: 999998;
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -50%) scale(0.92);
+    will-change: transform, opacity;
+}
+
+#answer-feedback.show {
+    visibility: visible;
+    animation: afPop 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.af-halo {
+    position: absolute;
+    width: 230px;
+    height: 230px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--af-glow) 0%, transparent 68%);
+    opacity: 0;
+}
+
+#answer-feedback.show .af-halo {
+    animation: afHalo 780ms ease-out forwards;
+}
+
+.af-ring {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid var(--af-ring-color);
+    opacity: 0;
+}
+
+#answer-feedback.show .af-ring {
+    animation: afRing 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.af-icon {
+    width: 64px;
+    height: 64px;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    color: var(--af-color);
+    background: var(--af-chip-bg);
+    border: 1px solid var(--af-border);
+    box-shadow: 0 12px 30px -10px var(--af-glow);
+}
+
+.af-icon i {
+    font-size: 2rem;
+}
+
+.af-text {
+    padding: 3px 14px;
+    border-radius: 999px;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--af-color);
+    background: rgba(6, 8, 15, 0.62);
+    border: 1px solid var(--af-border);
+    text-shadow: 0 2px 18px var(--af-glow);
+    box-shadow: 0 8px 26px -12px var(--af-glow);
+}
+
+body:not(.dark-mode) .af-text {
+    background: rgba(255, 255, 255, 0.82);
+}
+
+.af-sub {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-light);
+    opacity: 0.9;
+}
+
+.af-combo {
+    margin-top: 2px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.2);
+}
+
+#answer-feedback.is-correct {
+    --af-color: #34d399;
+    --af-glow: rgba(16, 185, 129, 0.34);
+    --af-ring-color: rgba(16, 185, 129, 0.55);
+    --af-chip-bg: rgba(16, 185, 129, 0.12);
+    --af-border: rgba(16, 185, 129, 0.3);
+}
+
+#answer-feedback.is-again {
+    --af-color: #fbbf24;
+    --af-glow: rgba(245, 158, 11, 0.32);
+    --af-ring-color: rgba(245, 158, 11, 0.5);
+    --af-chip-bg: rgba(245, 158, 11, 0.12);
+    --af-border: rgba(245, 158, 11, 0.32);
+}
+
+@keyframes afPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+    16% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+    28% { transform: translate(-50%, -50%) scale(1); }
+    72% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -58%) scale(1); }
+}
+
+@keyframes afHalo {
+    0% { opacity: 0; transform: scale(0.6); }
+    30% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes afRing {
+    0% { opacity: 0; transform: scale(0.55); }
+    30% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.55); }
+}
+
+/* --- 4. TODAY ACCURACY PILL --------------------------------------------- */
+.dock-meta-row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+.meta-pill {
+    white-space: nowrap;
+}
+
+.meta-pill.meta-accuracy strong {
+    transition: color 0.3s ease;
+}
+
+.meta-pill.meta-accuracy.is-strong {
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.28);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.meta-pill.meta-accuracy.is-strong strong {
+    color: #10b981;
+}
+
+.meta-pill.meta-accuracy.is-low strong {
+    color: #f59e0b;
+}
+
+.meta-pill.combo-pill {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.10);
+    border-color: rgba(245, 158, 11, 0.30);
+    animation: comboPillPop 0.35s var(--v5-ease-spring);
+}
+
+.meta-pill.combo-pill i,
+.meta-pill.combo-pill strong {
+    color: #f59e0b;
+}
+
+@keyframes comboPillPop {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- 5. SHORTCUT HELP ---------------------------------------------------- */
+.shortcuts-modal-content {
+    max-width: 580px;
+    width: min(92vw, 580px);
+}
+
+.shortcuts-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-right: 36px;
+}
+
+.shortcuts-head-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: var(--primary-color);
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.shortcuts-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+}
+
+.shortcuts-head p {
+    margin: 2px 0 0;
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 40px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: hsla(0, 0%, 50%, 0.05);
+    border: 1px solid hsla(0, 0%, 50%, 0.08);
+    font-size: 0.78rem;
+    color: var(--text-color);
+}
+
+.shortcut-row kbd {
+    flex: 0 0 auto;
+    min-width: 26px;
+    padding: 3px 7px;
+    text-align: center;
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--text-color);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+}
+
+.shortcut-row span {
+    line-height: 1.25;
+}
+
+@media (max-width: 640px) {
+    .shortcuts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+body.boost-mode .flashcard.is-flipping .card-face::after,
+body.boost-mode .srs-btn::before {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .meta-pill.combo-pill {
+        animation: none;
+    }
+    .flashcard.is-flipping .card-face::after,
+    #answer-feedback.show,
+    #answer-feedback.show .af-halo,
+    #answer-feedback.show .af-ring {
+        animation-duration: 1ms !important;
+    }
+    .srs-btn::before {
+        display: none;
+    }
+}

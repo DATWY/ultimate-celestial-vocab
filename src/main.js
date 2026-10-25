@@ -3,6 +3,8 @@ import './css/tokens/celestial-v5.css';
 import './css/style.css';
 import './css/transition.css';
 import './css/study-polish.css';
+import './css/icon-system.css';
+import './css/motion-upgrade.css';
 import { loadVocabulary, getState, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
 import { initializeSound } from './core/sound.js';

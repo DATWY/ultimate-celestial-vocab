@@ -8,12 +8,13 @@ import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabular
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
-import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState } from './ui/render.js';
+import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { setupIOEventListeners } from './features/io.js';
 import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
+import { showAnswerFeedback } from './ui/feedback.js';
 
 // Cloud nạp động: events.js nằm trong entry chunk, không kéo firebase 547 kB vào.
 function runCloudSync(options) {
@@ -191,6 +192,15 @@ function processSrsFeedback(rating, autoAdvance = true) {
         // Rating 1 = Again -> incorrect. Rating > 1 -> correct
         recordReviewResult(rating > 1);
         logActivity(); // Ghi nhận hoạt động vào Heatmap
+
+        // Feedback burst after the stats update so the combo count is current.
+        showAnswerFeedback({
+            rating,
+            combo: getState().gamification?.consecutiveCorrect || 0,
+        });
+
+        // Typing mode keeps the same card on screen, so refresh the dock now.
+        if (!autoAdvance) updateStats();
 
         vocabulary[currentCardIndex] = updatedCard;
         // Incremental save: chỉ ghi 1 word + auto queue sync (thay vì saveVocabulary full)
@@ -1055,6 +1065,11 @@ export function setupEventListeners() {
     DOM.addEditForm?.addEventListener('submit', handleAddEditSubmit);
     DOM.closeAddEditModalBtn?.addEventListener('click', () => closeModal(DOM.addEditModal));
     DOM.addEditOverlay?.addEventListener('click', () => closeModal(DOM.addEditModal));
+
+    // Keyboard shortcut cheat-sheet
+    DOM.shortcutsMenuBtn?.addEventListener('click', openShortcutsModal);
+    DOM.closeShortcutsModalBtn?.addEventListener('click', () => closeModal(DOM.shortcutsModal));
+    DOM.shortcutsOverlay?.addEventListener('click', () => closeModal(DOM.shortcutsModal));
     DOM.cancelEditBtn?.addEventListener('click', cancelEdit);
     DOM.closeManageModalBtn?.addEventListener('click', () => closeModal(DOM.manageModal));
     DOM.manageOverlay?.addEventListener('click', () => closeModal(DOM.manageModal));
@@ -1305,6 +1320,15 @@ function handleWordCardCheckboxChange(event) {
 let globalKeystrokeBuffer = '';
 let globalKeystrokeTimer = null;
 
+function openShortcutsModal() {
+    const modal = DOM.shortcutsModal || document.getElementById('shortcuts-modal');
+    if (!modal) return;
+    DOM.taskbarMenu?.classList.remove('show');
+    const menuIcon = DOM.toggleTaskbarBtn?.querySelector('i');
+    if (menuIcon) menuIcon.className = 'ph-duotone ph-list';
+    openModal(modal);
+}
+
 function handleGlobalShortcuts(e) {
     const active = document.activeElement;
     const isTyping = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
@@ -1317,9 +1341,16 @@ function handleGlobalShortcuts(e) {
         }
         return;
     }
+
+    // Bảng phím tắt: "?" (Shift + /) — không chen vào ô nhập liệu.
+    if (!isTyping && !isModalOpen && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+        e.preventDefault();
+        openShortcutsModal();
+        return;
+    }
     // Phím tắt Hoàn tác (Undo): Ctrl + Z hoặc Ctrl + Shift + Z (Cmd + Z / Cmd + Shift + Z)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (!isTyping) {
+        if (!isTyping && !isModalOpen) {
             e.preventDefault();
             undoLastReview();
             return;

@@ -93,13 +93,21 @@ async function main() {
         await c.send('Runtime.enable');
         await c.send('Page.addScriptToEvaluateOnNewDocument', {
             source: `
-                window.__sfx = { buf: 0, osc: 0, el: 0, errors: [] };
+                window.__sfx = { buf: 0, osc: 0, el: 0, fetch: 0, close: 0, durations: [], errors: [] };
                 const _bs = AudioBufferSourceNode.prototype.start;
-                AudioBufferSourceNode.prototype.start = function (...a) { window.__sfx.buf++; return _bs.apply(this, a); };
+                AudioBufferSourceNode.prototype.start = function (...a) {
+                    window.__sfx.buf++;
+                    window.__sfx.durations.push(this.buffer?.duration || 0);
+                    return _bs.apply(this, a);
+                };
                 const _os = OscillatorNode.prototype.start;
                 OscillatorNode.prototype.start = function (...a) { window.__sfx.osc++; return _os.apply(this, a); };
                 const _ep = HTMLMediaElement.prototype.play;
                 HTMLMediaElement.prototype.play = function (...a) { window.__sfx.el++; return _ep.apply(this, a); };
+                const _close = AudioContext.prototype.close;
+                AudioContext.prototype.close = function (...a) { window.__sfx.close++; return _close.apply(this, a); };
+                const _fetch = window.fetch;
+                window.fetch = function (...a) { window.__sfx.fetch++; return _fetch.apply(this, a); };
                 window.addEventListener('error', e => window.__sfx.errors.push(String(e.message || e.reason)));
                 window.addEventListener('unhandledrejection', e => window.__sfx.errors.push(String(e.reason)));
             `,
@@ -121,8 +129,14 @@ async function main() {
             const mod = await import(entry.name);
             // Vite minifies entry exports to short aliases; locate them by source.
             const fns = Object.entries(mod).filter(([, v]) => typeof v === 'function');
-            const playSound = fns.find(([, v]) => /soundMode/.test(v.toString()))?.[1];
+            const soundModule = Object.values(mod).find(v => v && typeof v === 'object' && typeof v.speakText === 'function');
+            const playSound = fns.find(([, v]) => /soundMode/.test(v.toString()))?.[1] || soundModule?.playSound;
+            const speakText = soundModule?.speakText;
             if (!playSound) throw new Error('playSound export not found');
+            if (!speakText) throw new Error('speakText export not found');
+            const soundBtn = document.getElementById('toggle-sound-btn');
+            if (!soundBtn) throw new Error('sound toggle not found');
+
             const before = { ...window.__sfx };
             const played = [];
             for (const name of ['flip', 'correct', 'incorrect', 'next', 'starOn']) {
@@ -131,9 +145,38 @@ async function main() {
                 await new Promise(r => setTimeout(r, 80));
             }
             const afterSamples = { ...window.__sfx };
+            const durations = window.__sfx.durations.slice(0, 5);
+
             playSound('complete');
             await new Promise(r => setTimeout(r, 120));
             const afterSynth = { ...window.__sfx };
+
+            // all → sfx → tts → off
+            soundBtn.click(); soundBtn.click(); soundBtn.click();
+            const b0 = window.__sfx.buf, e0 = window.__sfx.el;
+            playSound('flip');
+            await new Promise(r => setTimeout(r, 120));
+            const muteBuffers = window.__sfx.buf - b0;
+            const muteElements = window.__sfx.el - e0;
+            const closeCalls = window.__sfx.close;
+
+            soundBtn.click(); // off → all
+            const b1 = window.__sfx.buf, e1 = window.__sfx.el;
+            playSound('flip');
+            await new Promise(r => setTimeout(r, 120));
+            const resumeBuffers = window.__sfx.buf - b1;
+            const resumeElements = window.__sfx.el - e1;
+
+            // all → sfx: TTS must not fetch or play.
+            soundBtn.click();
+            const f0 = window.__sfx.fetch, te0 = window.__sfx.el;
+            speakText('sfx-gate-test-zzz');
+            await new Promise(r => setTimeout(r, 180));
+            const ttsFetch = window.__sfx.fetch - f0;
+            const ttsElements = window.__sfx.el - te0;
+            // sfx → tts → off → all
+            soundBtn.click(); soundBtn.click(); soundBtn.click();
+
             const resources = performance.getEntriesByType('resource')
                 .filter(e => /\\/sounds\\/.*\\.mp3$/.test(e.name))
                 .map(e => ({ file: e.name.split('/').pop(), bytes: e.transferSize || e.encodedBodySize || 0 }));
@@ -141,6 +184,14 @@ async function main() {
                 sampleBuffers: afterSamples.buf - before.buf,
                 sampleElements: afterSamples.el - before.el,
                 synthOscillatorsFromComplete: afterSynth.osc - afterSamples.osc,
+                durations,
+                muteBuffers,
+                muteElements,
+                closeCalls,
+                resumeBuffers,
+                resumeElements,
+                ttsFetch,
+                ttsElements,
                 resources,
                 errors: window.__sfx.errors,
                 played,
@@ -153,6 +204,16 @@ async function main() {
         if (result.sampleBuffers < 5) failures.push(`expected >=5 buffer starts, got ${result.sampleBuffers}`);
         if (result.sampleElements !== 0) failures.push(`sample fallback used ${result.sampleElements} HTMLAudio plays`);
         if (result.synthOscillatorsFromComplete < 1) failures.push('synth fallback did not run for "complete"');
+        if (result.muteBuffers !== 0 || result.muteElements !== 0) failures.push(`muted mode still played SFX (${result.muteBuffers} buffers, ${result.muteElements} elements)`);
+        if (!result.closeCalls) failures.push('mute did not close the AudioContext to stop a lingering tail');
+        if (result.resumeBuffers < 1 || result.resumeElements !== 0) failures.push(`unmute did not reuse decoded buffer (${result.resumeBuffers} buffers, ${result.resumeElements} elements)`);
+        if (result.ttsFetch !== 0 || result.ttsElements !== 0) failures.push(`TTS ran in sfx mode (${result.ttsFetch} fetches, ${result.ttsElements} plays)`);
+        const d = result.durations || [];
+        if (d.length !== 5) failures.push(`expected 5 sample durations, got ${d.length}`);
+        if (d[0] >= 0.59) failures.push(`flip leading silence not trimmed (duration ${d[0]})`);
+        if (d[1] >= 0.95) failures.push(`correct trailing silence not trimmed (duration ${d[1]})`);
+        if (d[3] >= 0.7) failures.push(`next trailing silence not trimmed (duration ${d[3]})`);
+        if (d[4] >= 1.45) failures.push(`star_on trailing silence not trimmed (duration ${d[4]})`);
         if (result.resources.length < 5) failures.push(`expected 5 MP3 resources, got ${result.resources.length}`);
         if ((result.errors || []).length) failures.push(`page errors: ${result.errors.join(' | ')}`);
 

@@ -1,7 +1,7 @@
 import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
 import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
-import { playSound, ensureAudioForWords } from '../core/sound.js';
+import { playSound, ensureAudioForWords, applySoundMode } from '../core/sound.js';
 import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards } from '../core/queue.js';
 // modal.js được nạp động: render <-> modal là vòng import lớn nhất của app.
 // Gọi UI modal không cần đồng bộ, nên nạp động vừa phá vòng vừa giảm entry chunk.
@@ -284,6 +284,13 @@ export function displayCard(index, preserveFlipState = false) {
             const cramCards = getSmartCramCards(vocabulary, filterLowerCase);
             const masteredCount = vocabulary.filter(w => !w.isDeleted && w.srsStatus === 'Mastered').length;
             const streakCount = state.gamification?.currentStreak || 0;
+            const dayStats = ensureDailyStats();
+            const dayAccuracy = dayStats.todayTotal
+                ? Math.round((dayStats.todayCorrect / dayStats.todayTotal) * 100)
+                : null;
+            const withAccuracy = (text) => dayAccuracy === null
+                ? text
+                : `${text} Độ chính xác hôm nay: ${dayAccuracy}%.`;
 
             // Cập nhật các chip chiến tích
             if (DOM.victoryStreakVal) DOM.victoryStreakVal.textContent = `${streakCount} ngày`;
@@ -294,7 +301,7 @@ export function displayCard(index, preserveFlipState = false) {
 
             if (pendingLearning.length > 0) {
                 if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "CỦNG CỐ TRÍ NHỚ!";
-                if (DOM.victoryTagline) DOM.victoryTagline.textContent = `Bạn còn ${pendingLearning.length} từ đang trong bước ghi nhớ ngắn hạn.`;
+                if (DOM.victoryTagline) DOM.victoryTagline.textContent = withAccuracy(`Bạn còn ${pendingLearning.length} từ đang trong bước ghi nhớ ngắn hạn.`);
                 if (DOM.noCardText) DOM.noCardText.textContent = "Lộ trình FSRS đã sẵn sàng. Bạn có thể bấm tiếp tục để học dứt điểm các từ này trước khi hoàn tất mục tiêu hôm nay.";
                 DOM.smartCrammingActions?.classList.remove('hidden');
                 if (DOM.btnSmartCramming) {
@@ -312,7 +319,7 @@ export function displayCard(index, preserveFlipState = false) {
                 }
             } else if (cramCards.length > 0) {
                 if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "XUẤT SẮC HOÀN THÀNH!";
-                if (DOM.victoryTagline) DOM.victoryTagline.textContent = "Bạn đã hoàn thành xuất sắc toàn bộ mục tiêu từ vựng hôm nay.";
+                if (DOM.victoryTagline) DOM.victoryTagline.textContent = withAccuracy("Bạn đã hoàn thành xuất sắc toàn bộ mục tiêu từ vựng hôm nay.");
                 if (DOM.noCardText) DOM.noCardText.textContent = "Lộ trình FusionSRS đã được đồng bộ tối ưu. Tương lai vẫn còn thẻ đến hạn — bạn muốn nghỉ ngơi giữ phong độ hay tiếp tục bứt phá học nhồi thêm?";
                 DOM.smartCrammingActions?.classList.remove('hidden');
                 if (DOM.btnSmartCramming) {
@@ -331,7 +338,7 @@ export function displayCard(index, preserveFlipState = false) {
                 }
             } else {
                 if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "ĐỈNH CAO THIÊN HÀ!";
-                if (DOM.victoryTagline) DOM.victoryTagline.textContent = "Bạn đã hoàn thành hàng đợi hiện tại. Hãy quay lại khi có lịch ôn mới.";
+                if (DOM.victoryTagline) DOM.victoryTagline.textContent = withAccuracy("Bạn đã hoàn thành hàng đợi hiện tại. Hãy quay lại khi có lịch ôn mới.");
                 if (DOM.noCardText) DOM.noCardText.textContent = "Không còn thẻ nào cần ôn tập trước hạn. Hãy tận hưởng một ngày nghỉ ngơi thư giãn trọn vẹn!";
                 DOM.smartCrammingActions?.classList.add('hidden');
                 if (DOM.finalDayRestState) DOM.finalDayRestState.classList.remove('hidden');
@@ -671,6 +678,27 @@ export function updateStats() {
     applyStat(DOM.statLearning, totalLearningRaw);
     applyStat(DOM.statMastered, totalMasteredRaw);
 
+    // Daily accuracy: a small, honest learning signal next to the library stats.
+    const answeredToday = todayStats.todayTotal || 0;
+    const correctToday = todayStats.todayCorrect || 0;
+    const accuracyPct = answeredToday > 0 ? Math.round((correctToday / answeredToday) * 100) : null;
+    if (DOM.statAccuracy) {
+        DOM.statAccuracy.textContent = accuracyPct === null ? '—' : `${accuracyPct}%`;
+    }
+    if (DOM.metaAccuracy) {
+        DOM.metaAccuracy.classList.toggle('is-strong', accuracyPct !== null && accuracyPct >= 80);
+        DOM.metaAccuracy.classList.toggle('is-low', accuracyPct !== null && accuracyPct < 50);
+        DOM.metaAccuracy.title = answeredToday > 0
+            ? `Đúng ${correctToday}/${answeredToday} lượt hôm nay`
+            : 'Chưa có lượt ôn nào hôm nay';
+    }
+
+    const comboCount = getState().gamification?.consecutiveCorrect || 0;
+    if (DOM.comboPill) {
+        DOM.comboPill.classList.toggle('hidden', comboCount < 3);
+        if (DOM.statCombo) DOM.statCombo.textContent = String(comboCount);
+    }
+
     // Cập nhật Radial Progress Rings & Segmented Bar (Celestial Dock v3)
     const baseCount = filteredCount || 1;
     const { dailyStats } = getState();
@@ -1003,6 +1031,7 @@ export function applySoundSetting(mode) {
         else label.textContent = 'Âm thanh: Tắt';
     }
     DOM.toggleSoundBtn?.classList.toggle('muted', mode === 'off');
+    applySoundMode(mode);
 }
 
 export function applyBoostMode(isBoost, showToastNotification = false) {

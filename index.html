@@ -134,6 +134,10 @@
                         <i class="ph-duotone ph-lightning"></i>
                         <span class="btn-label">Tăng Tốc (Boost)</span>
                     </button>
+                    <button id="shortcuts-menu-btn" class="icon-btn shortcuts-menu-btn" title="Phím tắt (?)" aria-label="Xem phím tắt" aria-keyshortcuts="?">
+                        <i class="ph-duotone ph-keyboard"></i>
+                        <span class="btn-label">Phím tắt</span>
+                    </button>
                     <button id="toggle-dark-mode-btn" class="icon-btn" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
                         <i class="ph-duotone ph-moon-stars"></i>
                         <span class="btn-label">Giao diện Tối/Sáng</span>
@@ -450,6 +454,12 @@
                     <span class="meta-pill"><i class="ph-bold ph-cards"></i> Tổng: <strong id="stat-total">0</strong></span>
                     <span class="meta-pill"><i class="ph-bold ph-funnel"></i> Đang lọc: <strong id="stat-filtered">0</strong></span>
                     <span class="meta-pill"><i class="ph-bold ph-sparkle"></i> Từ mới: <strong id="stat-new">0</strong></span>
+                    <span class="meta-pill meta-accuracy" id="meta-accuracy" title="Tỷ lệ trả lời đúng trong ngày">
+                        <i class="ph-bold ph-target"></i> Đúng: <strong id="stat-accuracy">—</strong>
+                    </span>
+                    <span class="meta-pill combo-pill hidden" id="combo-pill" title="Chuỗi trả lời đúng liên tiếp">
+                        <i class="ph-fill ph-fire"></i> Combo ×<strong id="stat-combo">0</strong>
+                    </span>
                 </div>
             </div>
         </main>
@@ -1182,6 +1192,33 @@
                 <p id="popup-message" aria-live="polite">Nội dung...</p>
                 <div id="popup-actions" class="modal-actions"> <button id="popup-ok-btn">OK</button> <button
                         id="popup-cancel-btn" class="hidden">Hủy</button> </div>
+            </div>
+        </div>
+
+        <div id="shortcuts-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
+            <div class="modal-overlay" tabindex="-1"></div>
+            <div class="modal-content shortcuts-modal-content">
+                <button id="close-shortcuts-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
+                    aria-label="Đóng bảng phím tắt"><i class="ph-bold ph-x"></i></button>
+                <div class="shortcuts-head">
+                    <div class="shortcuts-head-icon"><i class="ph-duotone ph-keyboard"></i></div>
+                    <div>
+                        <h3 id="shortcuts-title">Phím tắt học nhanh</h3>
+                        <p>Điều khiển phiên ôn mà không cần rời bàn phím.</p>
+                    </div>
+                </div>
+                <div class="shortcuts-grid">
+                    <div class="shortcut-row"><kbd>F</kbd><span>Lật thẻ / xem nghĩa</span></div>
+                    <div class="shortcut-row"><kbd>Space</kbd><span>Lật thẻ, hoặc chọn “Nhớ”</span></div>
+                    <div class="shortcut-row"><kbd>1–4</kbd><span>Quên · Khó · Nhớ · Dễ</span></div>
+                    <div class="shortcut-row"><kbd>N</kbd><kbd>Enter</kbd><span>Thẻ tiếp theo</span></div>
+                    <div class="shortcut-row"><kbd>P</kbd><span>Phát âm từ hiện tại</span></div>
+                    <div class="shortcut-row"><kbd>S</kbd><span>Đánh dấu sao</span></div>
+                    <div class="shortcut-row"><kbd>B</kbd><span>Bật/tắt chế độ Tăng Tốc</span></div>
+                    <div class="shortcut-row"><kbd>Ctrl</kbd><kbd>Z</kbd><span>Hoàn tác lượt vừa chấm</span></div>
+                    <div class="shortcut-row"><kbd>?</kbd><span>Mở bảng phím tắt này</span></div>
+                    <div class="shortcut-row"><kbd>Esc</kbd><span>Đóng hộp thoại đang mở</span></div>
+                </div>
             </div>
         </div>
 

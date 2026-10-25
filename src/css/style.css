@@ -221,15 +221,9 @@ svg[class*="ph-"],
     opacity: 1 !important;
 }
 
-/* Globally eliminate Phosphor Duotone translucent background plate (::before opacity: 0.2) so icons render as pure, crisp vector outlines without any grey or murky background layer */
-.ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::before {
-    display: none !important;
-    content: none !important;
-    opacity: 0 !important;
-}
-
+/* Celestial two-tone icons: the filled backplate is restored in icon-system.css. */
 .ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::after {
-    margin-left: 0 !important;
+    margin-left: -1em !important;
     opacity: 1 !important;
 }
 

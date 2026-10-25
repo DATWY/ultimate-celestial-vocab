@@ -15,29 +15,39 @@ export async function animateFlip(cardElement) {
     const isBoost = typeof getState === 'function' && getState()?.isBoostMode;
     const currentRotation = typeof anime !== 'undefined' && anime.get ? anime.get(cardElement, 'rotateY', 'deg') : 0;
     cardElement.style.pointerEvents = 'none';
-    if (reducedMotion()) {
-        anime.set(cardElement, { rotateY: `${parseFloat(currentRotation) + 180}deg` });
-        cardElement.style.pointerEvents = 'auto';
-        return;
-    }
-    if (isBoost) {
-        if (typeof anime !== 'undefined') {
+    cardElement.classList.add('is-flipping');
+    try {
+        if (reducedMotion()) {
+            anime.set(cardElement, { rotateY: `${parseFloat(currentRotation) + 180}deg`, scale: 1 });
+            return;
+        }
+        if (isBoost) {
+            if (typeof anime !== 'undefined') {
+                await anime({
+                    targets: cardElement,
+                    rotateY: `${parseFloat(currentRotation) + 180}deg`,
+                    scale: 1,
+                    easing: 'easeOutQuad',
+                    duration: 120,
+                }).finished;
+            }
+        } else {
             await anime({
                 targets: cardElement,
                 rotateY: `${parseFloat(currentRotation) + 180}deg`,
-                easing: 'easeOutQuad',
-                duration: 120,
+                // A slight "inhale" gives the flip physical depth without moving layout.
+                scale: [
+                    { value: 0.965, duration: 130 },
+                    { value: 1, duration: 370 },
+                ],
+                easing: 'easeInOutSine',
+                duration: 500,
             }).finished;
         }
-    } else {
-        await anime({
-            targets: cardElement,
-            rotateY: `${parseFloat(currentRotation) + 180}deg`,
-            easing: 'easeInOutSine',
-            duration: 500,
-        }).finished;
+    } finally {
+        cardElement.classList.remove('is-flipping');
+        cardElement.style.pointerEvents = 'auto';
     }
-    cardElement.style.pointerEvents = 'auto';
 }
 
 let lastExitDirection = -1; // -1 for left, 1 for right
