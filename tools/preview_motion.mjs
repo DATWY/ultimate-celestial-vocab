@@ -1,5 +1,5 @@
 /**
- * Visual check for the motion upgrade: answer feedback + shortcut sheet.
+ * Visual check for the motion upgrade: card flip + shortcut sheet.
  * node tools/preview_motion.mjs
  */
 import http from 'http';
@@ -72,9 +72,6 @@ async function main() {
         await shot(c, 'flip-mid');
         await sleep(560);
         await shot(c, 'flipped');
-        await c.eval(`document.querySelector('.srs-btn[data-rating="3"]')?.click(); return true;`);
-        await sleep(220);
-        await shot(c, 'answer-feedback');
 
         await sleep(1400);
         await c.eval(`document.getElementById('shortcuts-menu-btn')?.click(); return true;`);

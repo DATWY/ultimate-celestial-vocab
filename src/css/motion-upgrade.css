@@ -1,7 +1,7 @@
 /* ==========================================================================
    MOTION & FEEDBACK UPGRADE
-   Study-first motion: tactile card flip, clear answer feedback, discoverable
-   shortcuts. All loops animate transform/opacity only.
+   Study-first motion: tactile card flip, discoverable shortcuts. All loops
+   animate transform/opacity only.
    ========================================================================== */
 
 /* --- 1. CARD FLIP: depth + one-pass light sweep -------------------------- */
@@ -90,143 +90,7 @@ body:not(.dark-mode) .card-face::after {
     transform: translateY(0) scale(0.975) !important;
 }
 
-/* --- 3. ANSWER FEEDBACK OVERLAY ----------------------------------------- */
-#answer-feedback {
-    position: fixed;
-    left: 50%;
-    top: 43%;
-    z-index: 999998;
-    display: grid;
-    justify-items: center;
-    gap: 6px;
-    pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    transform: translate(-50%, -50%) scale(0.92);
-    will-change: transform, opacity;
-}
-
-#answer-feedback.show {
-    visibility: visible;
-    animation: afPop 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.af-halo {
-    position: absolute;
-    width: 230px;
-    height: 230px;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--af-glow) 0%, transparent 68%);
-    opacity: 0;
-}
-
-#answer-feedback.show .af-halo {
-    animation: afHalo 780ms ease-out forwards;
-}
-
-.af-ring {
-    position: absolute;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    border: 2px solid var(--af-ring-color);
-    opacity: 0;
-}
-
-#answer-feedback.show .af-ring {
-    animation: afRing 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.af-icon {
-    width: 64px;
-    height: 64px;
-    display: grid;
-    place-items: center;
-    border-radius: 22px;
-    color: var(--af-color);
-    background: var(--af-chip-bg);
-    border: 1px solid var(--af-border);
-    box-shadow: 0 12px 30px -10px var(--af-glow);
-}
-
-.af-icon i {
-    font-size: 2rem;
-}
-
-.af-text {
-    padding: 3px 14px;
-    border-radius: 999px;
-    font-size: 1.35rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--af-color);
-    background: rgba(6, 8, 15, 0.62);
-    border: 1px solid var(--af-border);
-    text-shadow: 0 2px 18px var(--af-glow);
-    box-shadow: 0 8px 26px -12px var(--af-glow);
-}
-
-body:not(.dark-mode) .af-text {
-    background: rgba(255, 255, 255, 0.82);
-}
-
-.af-sub {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-light);
-    opacity: 0.9;
-}
-
-.af-combo {
-    margin-top: 2px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    color: #fbbf24;
-    background: rgba(245, 158, 11, 0.14);
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    box-shadow: 0 0 18px rgba(245, 158, 11, 0.2);
-}
-
-#answer-feedback.is-correct {
-    --af-color: #34d399;
-    --af-glow: rgba(16, 185, 129, 0.34);
-    --af-ring-color: rgba(16, 185, 129, 0.55);
-    --af-chip-bg: rgba(16, 185, 129, 0.12);
-    --af-border: rgba(16, 185, 129, 0.3);
-}
-
-#answer-feedback.is-again {
-    --af-color: #fbbf24;
-    --af-glow: rgba(245, 158, 11, 0.32);
-    --af-ring-color: rgba(245, 158, 11, 0.5);
-    --af-chip-bg: rgba(245, 158, 11, 0.12);
-    --af-border: rgba(245, 158, 11, 0.32);
-}
-
-@keyframes afPop {
-    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
-    16% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
-    28% { transform: translate(-50%, -50%) scale(1); }
-    72% { opacity: 1; }
-    100% { opacity: 0; transform: translate(-50%, -58%) scale(1); }
-}
-
-@keyframes afHalo {
-    0% { opacity: 0; transform: scale(0.6); }
-    30% { opacity: 1; }
-    100% { opacity: 0; transform: scale(1.5); }
-}
-
-@keyframes afRing {
-    0% { opacity: 0; transform: scale(0.55); }
-    30% { opacity: 1; }
-    100% { opacity: 0; transform: scale(1.55); }
-}
-
-/* --- 4. TODAY ACCURACY PILL --------------------------------------------- */
+/* --- 3. TODAY ACCURACY PILL --------------------------------------------- */
 .dock-meta-row {
     flex-wrap: wrap;
     row-gap: 6px;
@@ -271,7 +135,7 @@ body:not(.dark-mode) .af-text {
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* --- 5. SHORTCUT HELP ---------------------------------------------------- */
+/* --- 4. SHORTCUT HELP ---------------------------------------------------- */
 .shortcuts-modal-content {
     max-width: 580px;
     width: min(92vw, 580px);
@@ -362,10 +226,7 @@ body.boost-mode .srs-btn::before {
     .meta-pill.combo-pill {
         animation: none;
     }
-    .flashcard.is-flipping .card-face::after,
-    #answer-feedback.show,
-    #answer-feedback.show .af-halo,
-    #answer-feedback.show .af-ring {
+    .flashcard.is-flipping .card-face::after {
         animation-duration: 1ms !important;
     }
     .srs-btn::before {

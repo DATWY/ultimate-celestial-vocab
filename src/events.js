@@ -14,7 +14,6 @@ import { setupIOEventListeners } from './features/io.js';
 import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
-import { showAnswerFeedback } from './ui/feedback.js';
 
 // Cloud nạp động: events.js nằm trong entry chunk, không kéo firebase 547 kB vào.
 function runCloudSync(options) {
@@ -193,12 +192,6 @@ function processSrsFeedback(rating, autoAdvance = true) {
         // Rating 1 = Again -> incorrect. Rating > 1 -> correct
         recordReviewResult(rating > 1);
         logActivity(); // Ghi nhận hoạt động vào Heatmap
-
-        // Feedback burst after the stats update so the combo count is current.
-        showAnswerFeedback({
-            rating,
-            combo: getState().gamification?.consecutiveCorrect || 0,
-        });
 
         // Typing mode keeps the same card on screen, so refresh the dock now.
         if (!autoAdvance) updateStats();
