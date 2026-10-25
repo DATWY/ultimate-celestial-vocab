@@ -12634,13 +12634,13 @@ body.boost-mode #celestial-canvas {
     width: 42px;
     min-width: 42px;
     border-radius: 9999px;
+    /* Không đặt overflow:hidden để vòng sóng (::after) lan ra ngoài nút */
     background: var(--card-bg);
     border: 1.5px solid var(--border-color);
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
-    overflow: hidden;
     cursor: pointer;
     box-shadow: 0 4px 15px hsla(var(--shadow-color-calc), 0.08);
 }
@@ -12683,7 +12683,7 @@ body.boost-mode #celestial-canvas {
     height: 18px;
     transform-origin: bottom center;
     will-change: transform;
-    transform: scaleY(0.22);
+    transform: scaleY(0.25);
     background: linear-gradient(180deg, var(--primary-color), #a855f7);
     border-radius: 999px;
     box-shadow: 0 0 6px hsla(var(--primary-hue), 90%, 65%, 0.6);
@@ -12691,10 +12691,13 @@ body.boost-mode #celestial-canvas {
     flex-shrink: 0;
 }
 
-/* --- Active Speech Playing State --- */
+/* --- Active Speech Playing State ---
+   Bật/tắt bằng class `is-playing` do sự kiện phát thật điều khiển
+   (sound.js → waveform.js), nên animation chạy đúng bằng đúng thời
+   lượng audio thay vì một vòng lặp thời lượng cố định. */
 .tts-waveform-btn.is-playing {
     width: auto;
-    min-width: 86px;
+    min-width: 92px;
     padding: 0 14px 0 12px;
     background: hsla(var(--primary-hue), 85%, 55%, 0.15);
     border-color: var(--primary-color);
@@ -12703,7 +12706,7 @@ body.boost-mode #celestial-canvas {
 
 .tts-waveform-btn.is-playing .tts-icon {
     color: var(--primary-color);
-    animation: ttsPulse 0.6s ease infinite alternate;
+    animation: ttsIconBroadcast 0.9s ease-in-out infinite;
 }
 
 .tts-waveform-btn.is-playing .tts-divider {
@@ -12713,13 +12716,62 @@ body.boost-mode #celestial-canvas {
 }
 
 .tts-waveform-btn.is-playing .audio-waveform-bars {
-    width: 26px;
+    width: 27px;
     opacity: 1;
 }
 
-@keyframes ttsPulse {
-    from { transform: scale(1); filter: drop-shadow(0 0 2px var(--primary-color)); }
-    to { transform: scale(1.18); filter: drop-shadow(0 0 8px var(--primary-color)); }
+/* 5 thanh bar nhảy "dance" lệch pha (duration + delay khác nhau từng thanh)
+   cho cảm giác âm thanh thật — thuần transform, không tốn JS. */
+.tts-waveform-btn.is-playing .waveform-bar {
+    animation: ttsBarDance 0.82s ease-in-out infinite;
+}
+
+.tts-waveform-btn.is-playing .waveform-bar:nth-child(1) { animation-duration: 0.72s; animation-delay: -0.10s; }
+.tts-waveform-btn.is-playing .waveform-bar:nth-child(2) { animation-duration: 0.94s; animation-delay: -0.42s; }
+.tts-waveform-btn.is-playing .waveform-bar:nth-child(3) { animation-duration: 0.66s; animation-delay: -0.25s; }
+.tts-waveform-btn.is-playing .waveform-bar:nth-child(4) { animation-duration: 1.02s; animation-delay: -0.60s; }
+.tts-waveform-btn.is-playing .waveform-bar:nth-child(5) { animation-duration: 0.80s; animation-delay: -0.33s; }
+
+/* Vòng sóng âm lan dần ra quanh nút trong lúc phát. */
+.tts-waveform-btn::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    border: 2px solid hsla(var(--primary-hue), 85%, 65%, 0.55);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.tts-waveform-btn.is-playing::after {
+    animation: ttsSonicPing 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes ttsBarDance {
+    0%, 100% { transform: scaleY(0.25); }
+    18% { transform: scaleY(1); }
+    40% { transform: scaleY(0.42); }
+    62% { transform: scaleY(0.85); }
+    82% { transform: scaleY(0.35); }
+}
+
+@keyframes ttsIconBroadcast {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px hsla(var(--primary-hue), 85%, 65%, 0.5)); }
+    50% { transform: scale(1.12); filter: drop-shadow(0 0 9px hsla(var(--primary-hue), 85%, 65%, 0.85)); }
+}
+
+@keyframes ttsSonicPing {
+    0% { transform: scale(0.92); opacity: 0.85; }
+    70%, 100% { transform: scale(1.22); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tts-waveform-btn.is-playing .waveform-bar,
+    .tts-waveform-btn.is-playing .tts-icon,
+    .tts-waveform-btn.is-playing::after {
+        animation: none !important;
+    }
+    .tts-waveform-btn.is-playing .waveform-bar { transform: scaleY(0.55); }
 }
 
 /* ===== CELESTIAL STATUS DOCK V3.5 (SUPER SLEEK, COMPACT & REFINED) ===== */
@@ -15863,8 +15915,16 @@ body.boost-mode .badge-item::after,
 body.boost-mode .badge-icon-wrapper::before,
 body.boost-mode .level-card::after,
 body.boost-mode .level-card *,
-body.boost-mode .tts-waveform-btn.is-playing .waveform-bar {
+body.boost-mode .tts-waveform-btn.is-playing .waveform-bar,
+body.boost-mode .tts-waveform-btn.is-playing .tts-icon,
+body.boost-mode .tts-waveform-btn.is-playing::after {
     animation: none !important;
+}
+
+/* Boost mode: bar đứng im ở mức giữa — vẫn thấy trạng thái đang phát,
+   không tốn một frame animation nào. */
+body.boost-mode .tts-waveform-btn.is-playing .waveform-bar {
+    transform: scaleY(0.55);
 }
 
 /* Floating XP in Boost Mode: swift, clean single-pass animation */

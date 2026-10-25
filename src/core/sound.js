@@ -20,6 +20,19 @@ const STORE_NAME = 'tts-data-urls';
 let sounds = {};
 let dbPromise;
 let currentUtterance = typeof Audio !== 'undefined' ? new Audio() : null;
+// Hiệu ứng nút loa bám đúng thời điểm phát thật: 'playing' bật, kết thúc/pause
+// tắt — thay cho animation thời lượng cố định chạy lệch với độ dài audio.
+if (currentUtterance) {
+    const setWaveform = (playing) => {
+        import('../ui/waveform.js')
+            .then(w => w.setWaveformPlaying(playing))
+            .catch(() => {});
+    };
+    currentUtterance.addEventListener('playing', () => setWaveform(true));
+    currentUtterance.addEventListener('ended', () => setWaveform(false));
+    currentUtterance.addEventListener('pause', () => setWaveform(false));
+    currentUtterance.addEventListener('error', () => setWaveform(false));
+}
 let _speakRequestId = 0;
 let audioCtx = null;
 let masterGainNode = null;   // bus chung cho sample + synth
@@ -1181,8 +1194,11 @@ function fallbackNativeTTS(text, rate = 1.0) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = rate;
+            utterance.onstart = () => import('../ui/waveform.js')
+                .then(w => w.setWaveformPlaying(true)).catch(() => {});
+            utterance.onend = utterance.onerror = () => import('../ui/waveform.js')
+                .then(w => w.setWaveformPlaying(false)).catch(() => {});
             window.speechSynthesis.speak(utterance);
-            import('../ui/waveform.js').then(w => w.triggerAudioWaveformAnimation());
         } catch (e) {
             console.error('Web Speech API Fallback Error:', e);
         }
@@ -1211,7 +1227,8 @@ export async function speakText(text, rate = 1.0) {
         currentUtterance.playbackRate = rate;
         currentUtterance.currentTime = 0;
 
-        import('../ui/waveform.js').then(w => w.triggerAudioWaveformAnimation());
+        // Hiệu ứng nút loa do sự kiện 'playing' của Audio tự bật (xem listeners
+        // cạnh phần khai báo currentUtterance) — đúng lúc tiếng thật cất lên.
         await currentUtterance.play();
 
     } catch (error) {
