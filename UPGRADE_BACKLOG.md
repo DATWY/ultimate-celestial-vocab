@@ -75,7 +75,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T4.2 | `[x]` | `7ec2465` | `focusGradingArea()` khi lật bằng bàn phím; chuột/tap **không** cướp focus |
 | T4.3 | `[ ] một phần` | `7ec2465` | chỉ xong safe-area (`viewport-fit=cover`, `index.html:6`) + `@supports` margin-bottom. **Không** có `color-scheme` / bootstrap theme inline ⇒ nháy trắng **chưa** xử lý |
 | T4.4 | `[ ]` | — | không có file eslint/prettier trong repo; CI (`.github/workflows/ci.yml`) không có bước lint |
-| T4.5 | `[ ]` | — | `src/core/state.js` vẫn 1 file **1.621 dòng / 91 export** (ước lượng "1.378 dòng, 74 export" trong task đã lạc hậu) |
+| T4.5 | `[x]` một phần | `8d45904` | `state.js` **1.621 → 616 dòng**, 10 module trong `src/core/state/`, barrel giữ đúng **93 tên** (MISSING 0/ADDED 0, không sửa call site), 8 test mới canh API + 0 vòng import. **Byte KHÔNG giảm:** entry raw −1.374 B nhưng gzip **−7 B** (80.674 → 80.667) ⇒ đây là thắng về độ phức tạp, không phải byte — xem §3.5 #7 và task mới T4.5c |
 | T4.6 | `[ ]` | — | `tests/e2e/` không tồn tại; smoke test nằm ở `scratch/` và **không được git track** (`.gitignore:44`) |
 | T5.1 | `[ ]` | (`678132a` gắn nhãn) | commit `678132a` chỉ thêm script render báo cáo; đến hết `7ec2465` README **vẫn ghi "77/77"**. Bản viết lại theo số đo đang ở working tree, **chưa commit** |
 | T5.2 | `[ ]` | — | **14** file `.md` ở gốc trên đĩa, **8** file được track (`git ls-files "*.md"`); chưa gộp |
@@ -298,7 +298,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 - **DoD:** `npm run lint` = 0 error; CI có bước lint.
 - **Verify:** CI xanh.
 
-### [ ] T4.5 — Tách `state.js` · 4 h
+### [x] T4.5 — Tách `state.js` · 4 h
 - **Chạm:** `src/core/state.js` (1.378 dòng, 74 export)
 - **Làm:** tách `state/core.js` (vocab, queue index), `state/gamification.js`, `state/reviews.js`, `state/streak.js`; giữ re-export ở `state.js` để không phá import (làm 2 bước: re-export trước, cập nhật import sau).
 - **DoD:** mỗi file < 400 dòng; `npm test` xanh; không đổi hành vi (so sánh snapshot trước/sau).
@@ -408,6 +408,19 @@ Sửa xong 2 script (xem commit P5b) thì lộ ra 6 script còn lại cũng hỏ
 **Assertion chết cần xử lý:** `tools/verify_performance_lifecycle.mjs` Test 11 (Typing Field) trả `noSpuriousWake: true` **hardcode** ⇒ luôn PASS kể cả khi `inputRAF = 9`. Cần thay bằng assert thật hoặc xoá.
 
 **Đã sửa trong commit này:** 2 script trên + `npm run verify` (~29 s, exit 0). 6 script còn lại **chưa sửa** — để nguyên và ghi ở đây thay vì giả vờ chúng đang bảo vệ sản phẩm.
+### 3.5 #7 — Tách `state.js` KHÔNG làm entry nhỏ đi (đo được, kèm lý do)
+
+Tách 1.621 dòng thành 11 file nhưng entry gzip gần như không đổi: **80.674 → 80.667 B (−7 B)** dù raw giảm 1.374 B. Nguyên nhân đã kiểm:
+
+1. **Toàn bộ `src/` nằm trong MỘT chunk entry** — `vite.config.js` chỉ tách `firebase`/`vendor`, nên tách file không sinh chunk mới và không byte nào rời entry.
+2. **24 chỗ `await import('./state.js')`** (12 chỗ nằm ngay trong module entry: `events.js` ×6, `render.js` ×2, `queue.js`, `typing.js`, `tab-bus.js`, `state.js`) buộc Rollup dựng **nguyên namespace 93 tên** trong entry — kể cả **25 export không còn ai import**.
+3. **gzip đã "nén miễn phí" phần lặp**: xoá 1.374 B mã đã minify chỉ làm gzip giảm 7 B (~200:1). Gộp hàm cho gọn gần như vô nghĩa với chỉ số gzip; chỉ **xoá nội dung duy nhất** mới hạ được.
+4. Dữ liệu demo 10 thẻ **đã bị tree-shake từ trước** (kiểm: `serendipity`/`v5_c1` không có trong `dist/`) ⇒ ý "dynamic import dữ liệu demo" trong backlog cho ~0 byte.
+
+**Ràng buộc cứng phát hiện thêm:** `tests/reliability.test.mjs` **trích mã nguồn** của `removeReviewLog`/`compressLogs`/`mergeReviewLogs`/`revertGamificationAfterUndo` từ chính `state.js` rồi chạy trong `vm` với binding giả. Vì vậy 2 cụm này **không thể** chuyển sang module khác (đã thử: 2 test đỏ). Đây là test bám vào *cách bố trí mã*, không bám vào hành vi — sửa test đó nếu muốn tự do refactor.
+
+**Task mới T4.5c (chưa làm):** bỏ kiểu `await import('./state.js')` ở 12 call site trong module entry, chuyển sang import tĩnh có chọn lọc + xoá 25 export chết. Đó mới là đòn bẩy byte thật; ước tính cần đo lại chứ không hứa trước con số.
+
 ## 3.6 Bài học (P5)
 
 - **BOM UTF-8 làm hỏng `npm run build`.** Ghi file bằng `Set-Content -Encoding utf8` trên **PowerShell 5.1** sinh BOM

@@ -24,10 +24,10 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 | Test | **203 pass / 203**, 0 fail, 0 skip, ~0,50 s | `npm test` |
 | File test | **19** (`tests/*.test.mjs`) | `Get-ChildItem tests -File` |
 | File nguồn | **54** file, **35.504** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
-| Entry `assets/index-*.js` | 247.804 B thô → **80,67 kB gzip** (98,4% ngân sách 82 kB) | `npm run budget` |
+| Entry `assets/index-*.js` | 246.430 B thô → **80,67 kB gzip** (98,4% ngân sách 82 kB) | `npm run budget` |
 | Chunk Firebase lớn nhất | 492.097 B thô → **113,69 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
 | CSS do Vite sinh | **326.696 B thô** / 58,98 kB gzip (93,3% ngân sách 350 kB) | `npm run budget` |
-| Toàn bộ `dist/` | **2.096,07 kB thô / 40 file** (ngân sách 2.700 kB) | `npm run budget` |
+| Toàn bộ `dist/` | **2.094,70 kB thô / 40 file** (ngân sách 2.700 kB) | `npm run budget` |
 | Precache Service Worker | **35 URL** | đếm `url:"` trong `dist/sw.js` |
 | Khai báo `!important` | **1.920** trong `src/css` (riêng `style.css`: 1.624) | regex trên `src/css/**/*.css` |
 | Font Lexend self-host | **87.996 B / 3 file** `woff2` | `public/fonts/lexend-*.woff2` |
@@ -45,7 +45,7 @@ Con số "98,4% ngân sách" là **cảnh báo**, không phải thành tích: en
 npm install
 cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
 npm run dev               # http://localhost:5173
-npm test                  # 203 test
+npm test                  # 211 test
 npm run build             # build production vào dist/ (tự tăng version)
 npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~29 s, cần Chrome + dist đã build)
 ```
@@ -82,7 +82,7 @@ Thiếu `.env` thì app vẫn chạy offline-first; chỉ phần Cloud bị bỏ
 ### 3.3. Khác
 
 - **Quiz** (`src/features/quiz.js`) — mọi chuỗi chèn vào HTML đều qua `escapeHTML` (`src/core/utils/sanitize.js`), có test hồi quy XSS.
-- **Streak freeze / phục hồi streak** (`src/features/streakRecovery.js`, `src/core/state.js:1112-1475`).
+- **Streak freeze / phục hồi streak** (`src/features/streakRecovery.js`, `src/core/state/gamification.js`).
 - **Dark/Light mode**, hiệu ứng nền canvas tự dừng khi idle (`src/ui/celestial-canvas.js`).
 - **TTS:** giọng máy (Web Speech API) + một endpoint proxy Apps Script cho giọng nâng cao (`src/core/sound.js:18`), phần chọn giọng/tốc độ nằm ở `src/features/ttsSettings.js`.
 
@@ -94,6 +94,7 @@ Thiếu `.env` thì app vẫn chạy offline-first; chỉ phần Cloud bị bỏ
 
 | File | Vai trò |
 |---|---|
+| `src/core/state.js` | Store + barrel **93 tên công khai** (616 dòng); logic tách sang `src/core/state/` (10 module: gamification, review-log-prune, streak, progress-store, tts-settings, vocabulary, typing-filter, demo-seed, ui-notify, preview-mode) |
 | `src/core/srs/index.js` | Bộ điều phối: chấm điểm → state mới + lịch |
 | `src/core/srs/constants.js` | 34 tham số mặc định + biên hợp lệ từng tham số |
 | `src/core/srs/forgetting.js` | Đường cong quên **hai thành phần** + giải interval bằng Newton |

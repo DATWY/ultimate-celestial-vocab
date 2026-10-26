@@ -57,3 +57,6 @@ BAO_CAO_DANH_GIA_VA_KHAC_PHUC_TOAN_DIEN.html
 *report*.md
 *plan*.md
 audit/
+
+# anh do npm run verify sinh ra (tai lap duoc, khong commit)
+reports/verify/

@@ -154,27 +154,27 @@
     <div class="star" style="width:2px;height:2px;left:60px;top:330px;opacity:.3"></div>
 
     <div class="kicker"><span class="dot"></span> Báo cáo nâng cấp · 26/10/2026</div>
-    <h1>Ultimate Celestial Vocab<br><span class="grad">18 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
+    <h1>Ultimate Celestial Vocab<br><span class="grad">21 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
     <p class="sub">
         Mọi con số dưới đây là <b>đo được</b> (script trong repo hoặc Chrome headless), không phải ước lượng.
-        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>203</b> test, và có golden test khoá toàn bộ engine FSRS
+        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>211</b> test, và có golden test khoá toàn bộ engine FSRS
         để lần sau ai sửa công thức là CI đỏ ngay.
     </p>
 
     <div class="kpis">
         <div class="kpi" style="--c:var(--green)">
             <div class="label">Test tự động</div>
-            <div class="value">203 <small class="up">▲ +75</small></div>
-            <div class="note">128 → 142 → 166 → 195 → 203. Gồm 50 ca golden khoá engine, 8 test a11y, 10 test TTS.</div>
+            <div class="value">211 <small class="up">▲ +83</small></div>
+            <div class="note">128 → 142 → 166 → 195 → 203 → 211. Gồm 50 ca golden khoá engine, 8 test a11y, 10 test TTS, 8 test canh ranh giới module.</div>
         </div>
         <div class="kpi" style="--c:var(--cyan)">
             <div class="label">Precache PWA</div>
-            <div class="value">1.359 <small>KiB</small></div>
+            <div class="value">1.358 <small>KiB</small></div>
             <div class="note">Từ 1.906,7 KiB <span class="down">▼ 29%</span> — cài app nhẹ hơn ~549 KiB.</div>
         </div>
         <div class="kpi" style="--c:var(--violet)">
             <div class="label">Tổng bản build</div>
-            <div class="value">2.096 <small>KiB</small></div>
+            <div class="value">2.095 <small>KiB</small></div>
             <div class="note">Từ 2.434,3 KiB <span class="down">▼ 14%</span> dù thêm App Check + TTS + self-host font + 6 test mới.</div>
         </div>
         <div class="kpi" style="--c:var(--amber)">
@@ -217,7 +217,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:71.2%"></i></div>
                     </div>
-                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1359 KiB</span></div>
+                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1358 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>Tổng dist</b>toàn bộ site</div>
@@ -225,7 +225,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:86%"></i></div>
                     </div>
-                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2096 KiB</span></div>
+                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2095 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>reviewLogs (xấu nhất)</b>trần Firestore 1 MiB</div>
@@ -269,7 +269,8 @@
                 <div class="step"><div class="val">142</div><div class="col" style="height:78px"></div><div class="cap">SRS leech<br>+ heuristics</div><span class="delta-tag">+14 test</span></div>
                 <div class="step"><div class="val">166</div><div class="col" style="height:100px"></div><div class="cap">Golden FSRS<br>+ dự báo 7 ngày</div><span class="delta-tag">+24 test</span></div>
                 <div class="step"><div class="val">195</div><div class="col" style="height:118px"></div><div class="cap">reviewLogs 1 MiB<br>+ TTS</div><span class="delta-tag">+29 test</span></div>
-                <div class="step"><div class="val">203</div><div class="col" style="height:126px"></div><div class="cap">a11y P4<br>+ docs</div><span class="delta-tag">+8 test</span></div>
+                <div class="step"><div class="val">203</div><div class="col" style="height:120px"></div><div class="cap">a11y P4<br>+ docs</div><span class="delta-tag">+8 test</span></div>
+                <div class="step"><div class="val">211</div><div class="col" style="height:126px"></div><div class="cap">tách state.js<br>+ ranh giới module</div><span class="delta-tag">+8 test</span></div>
             </div>
         </div>
     </section>
@@ -459,7 +460,7 @@
     </section>
 
     <section>
-        <h2><span class="num">07</span> 18 commit, theo đúng thứ tự đã làm</h2>
+        <h2><span class="num">07</span> 21 commit, theo đúng thứ tự đã làm</h2>
         <div class="tl">
             <div class="item"><div class="sha">2390c23</div><div class="rail"><div class="node"></div></div>
                 <div class="body"><div class="t">Backup 3 lớp + backlog 36 task</div>
@@ -533,6 +534,14 @@
                 <div class="body"><div class="t">Sửa 2 verifier đã chết từ lâu</div>
                 <div class="d">Thay hook chỉ-có-ở-DEV bằng thao tác UI thật; version lấy từ <code>dist/version.json</code>. Test mobile <code>backdrop-filter</code> nay chạy thật: 0 vi phạm / 1225 phần tử.</div>
                 <div class="m">npm run verify: 11 + 4 PASS</div></div></div>
+            <div class="item"><div class="sha">2d67118</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Hướng dẫn xoay Firebase API key (chưa làm)</div>
+                <div class="d"><code>docs/SECURITY_KEY_ROTATION.md</code> + mục cảnh báo trong README: hạn chế referrer → xoay key → bật App Check; ghi rõ đây là việc <b>chưa làm</b>.</div>
+                <div class="m">tài liệu, không phải biên bản</div></div></div>
+            <div class="item"><div class="sha">8d45904</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Tách <code>state.js</code>: 1.621 → 616 dòng, 10 module</div>
+                <div class="d">Barrel giữ đúng 93 tên, không sửa call site. Đo được: entry raw −1.374 B nhưng gzip <b>−7 B</b> — thắng về độ phức tạp, <i>không</i> phải byte. Byte thật nằm ở T4.5c.</div>
+                <div class="m">+8 test</div></div></div>
         </div>
     </section>
 
@@ -544,7 +553,7 @@
         vẫn chết và chưa được sửa.
     </div>
 
-    <div class="foot"><span>Ultimate Celestial Vocab · 203/203 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
+    <div class="foot"><span>Ultimate Celestial Vocab · 211/211 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
 </div>
 
 </body>
