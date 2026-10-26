@@ -1,12 +1,70 @@
 // src/core/srs/index.js — FSRS-7 Dual-Stability Engine Coordinator
 
-import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL } from './constants.js';
+import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS, LEARNING_STEPS_MS } from './constants.js';
 import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton } from './forgetting.js';
 import { initDifficulty, nextDifficulty } from './difficulty.js';
 import { nextStability } from './stability.js';
 import { getDifficultyBias, getStabilityMultiplier } from './heuristics.js';
 import { validFsrs7Params } from './constants.js';
 import { nextRevision } from '../card-merge.js';
+
+const DAY_MS = 86400000;
+const FINAL_LEARNING_STEP = LEARNING_STEPS_MS.length - 1; // 2 => bước 1 ngày
+
+/**
+ * Đọc bước học hiện tại của thẻ. Thẻ cũ thiếu trường (undefined/null/NaN) => bước 0.
+ * @param {Object} card
+ * @returns {number} 0 | 1 | 2
+ */
+function readLearningStep(card) {
+    const raw = Number(card?.learningStep);
+    if (!Number.isFinite(raw)) return 0;
+    return Math.min(FINAL_LEARNING_STEP, Math.max(0, Math.trunc(raw)));
+}
+
+/**
+ * T1.1 — Learning steps thật cho thẻ đang ở pha New/Learning.
+ * Chỉ quyết định LỊCH (status / learningStep / khoảng cách), không đụng vào trạng thái bộ nhớ FSRS.
+ *
+ * @param {number} currentStep - bước hiện tại 0..2
+ * @param {number} rating - 1: Again, 2: Hard, 3: Good, 4: Easy
+ * @param {number} fsrsIntervalDays - interval FSRS đã tính (đã fuzz + cap 21 ngày cho lần đầu)
+ * @param {{ isFreshCard?: boolean }} [opts] - isFreshCard: thẻ CHƯA TỪNG thuộc (lapses = 0)
+ * @returns {{ srsStatus: 'Learning'|'Mastered', learningStep: number, intervalDays: number }}
+ */
+function scheduleLearningStep(currentStep, rating, fsrsIntervalDays, { isFreshCard = true } = {}) {
+    // Thẻ chưa từng thuộc: sau 2-3 lần chạm trong một ngày, FSRS thô vẫn cho 21-38 ngày.
+    // Chặn ở 7 ngày để từ mới không biến mất cả tuần ngay sau buổi học đầu tiên.
+    // Thẻ tái tốt nghiệp (đã từng Mastered rồi trượt) giữ interval FSRS đầy đủ.
+    const graduationCap = isFreshCard ? MAX_GRADUATION_INTERVAL_DAYS : MAX_INTERVAL_DAYS;
+    const graduate = () => ({
+        srsStatus: 'Mastered',
+        learningStep: FINAL_LEARNING_STEP,
+        // Tốt nghiệp: dùng interval FSRS nhưng tối thiểu 1 ngày và chịu trần tốt nghiệp ở trên.
+        intervalDays: Math.max(1.0, Math.min(graduationCap, fsrsIntervalDays || 1.0))
+    });
+
+    if (rating === 1) {
+        // Quên: quay về bước đầu, 1 phút nữa gặp lại trong chính phiên học này.
+        return { srsStatus: 'Learning', learningStep: 0, intervalDays: LEARNING_STEPS_MS[0] / DAY_MS };
+    }
+    if (rating === 2) {
+        // Khó: nhích 1 bước nhưng luôn chỉ hẹn 10 phút (không nhảy thẳng sang bước 1 ngày).
+        return {
+            srsStatus: 'Learning',
+            learningStep: Math.min(currentStep + 1, FINAL_LEARNING_STEP),
+            intervalDays: LEARNING_STEPS_MS[1] / DAY_MS
+        };
+    }
+    if (rating === 3) {
+        // Nhớ: chưa hết bước thì sang bước kế tiếp; đang ở bước cuối thì tốt nghiệp.
+        if (currentStep >= FINAL_LEARNING_STEP) return graduate();
+        const nextStep = currentStep + 1;
+        return { srsStatus: 'Learning', learningStep: nextStep, intervalDays: LEARNING_STEPS_MS[nextStep] / DAY_MS };
+    }
+    // Dễ: tốt nghiệp ngay, interval theo FSRS (lần chấm đầu vẫn chịu cap 21 ngày), tối thiểu 1 ngày.
+    return graduate();
+}
 
 /**
  * Calculates the next SRS state using the canonical Dual-Stability FSRS-7 algorithm.
@@ -134,26 +192,49 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
     }
 
     // 7. Calculate Fractional Interval via Newton-Raphson in log(t) space
-    let nextIntervalDays = 0;
-    if (rating === 1) {
-        // Failed card: schedule immediate review in the active session
-        nextIntervalDays = 0;
-        newState.srsStatus = 'Learning';
-    } else {
-        nextIntervalDays = options.memoryOnly ? 0 : nextIntervalNewton(effectiveLongS, effectiveShortS, newState.difficulty, DESIRED_RETENTION, w);
+    // Thẻ đang trong pha học (New/Learning) đi qua learning steps; mọi thẻ khác giữ hành vi cũ.
+    const wasInLearningPhase = card.srsStatus === 'New' || card.srsStatus === 'Learning';
+
+    // 7a. Interval dài hạn theo FSRS (đã fuzz + cap 21 ngày cho lần chấm đầu).
+    //     Dùng cho cả nhánh tốt nghiệp Learning steps lẫn nhánh Mastered.
+    let fsrsIntervalDays = 0;
+    if (rating > 1) {
+        fsrsIntervalDays = options.memoryOnly ? 0 : nextIntervalNewton(effectiveLongS, effectiveShortS, newState.difficulty, DESIRED_RETENTION, w);
 
         // Fuzzing for intervals >= 2.5 days to distribute review load
-        if (nextIntervalDays >= 2.5 && !isSimulation) {
-            const fuzzRange = nextIntervalDays * FUZZ_PERCENTAGE;
+        if (fsrsIntervalDays >= 2.5 && !isSimulation) {
+            const fuzzRange = fsrsIntervalDays * FUZZ_PERCENTAGE;
             const fuzzOffset = (Math.random() * 2 - 1) * fuzzRange;
-            nextIntervalDays = Math.max(1.0, nextIntervalDays + fuzzOffset);
+            fsrsIntervalDays = Math.max(1.0, fsrsIntervalDays + fuzzOffset);
         }
 
         // Chốt chặn an toàn (Fail-safe): thẻ mới tinh lần đầu tối đa 21 ngày.
         // Phải áp SAU fuzz, nếu không fuzz ±5% có thể đẩy 21 ngày lên 22,05 ngày.
-        if (isFirstReview && nextIntervalDays > MAX_INITIAL_INTERVAL) {
-            nextIntervalDays = MAX_INITIAL_INTERVAL;
+        if (isFirstReview && fsrsIntervalDays > MAX_INITIAL_INTERVAL) {
+            fsrsIntervalDays = MAX_INITIAL_INTERVAL;
         }
+    }
+
+    let nextIntervalDays;
+    if (wasInLearningPhase) {
+        // 7b. LEARNING STEPS (T1.1): 1 phút → 10 phút → 1 ngày → mới tốt nghiệp Mastered.
+        //     Chỉ override lịch; S/S_short/D/reps/lapses/srsUpdatedAt vẫn cập nhật như trên.
+        const schedule = scheduleLearningStep(readLearningStep(card), rating, fsrsIntervalDays, {
+            // lapses > 0 => thẻ đã từng thuộc rồi trượt: không áp trần tốt nghiệp 7 ngày.
+            isFreshCard: (Number(newState.lapses) || 0) === 0
+        });
+        newState.srsStatus = schedule.srsStatus;
+        newState.learningStep = schedule.learningStep;
+        nextIntervalDays = schedule.intervalDays;
+    } else if (rating === 1) {
+        // 7c. Failed card: schedule immediate review in the active session
+        nextIntervalDays = 0;
+        newState.srsStatus = 'Learning';
+        // Thẻ vừa trượt phải leo lại thang bước học từ đầu (không giữ bước cũ để "tốt nghiệp lại" ngay).
+        newState.learningStep = 0;
+    } else {
+        // 7d. Thẻ đã Mastered: giữ nguyên hành vi trước T1.1.
+        nextIntervalDays = fsrsIntervalDays;
 
         // Graduation to Mastered:
         // - Rating 3 (Good) / 4 (Easy)
@@ -172,6 +253,10 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             newState.srsStatus = 'Learning';
         }
     }
+
+    // Trần khoảng cách TUYỆT ĐỐI cho mọi lần chấm (không chỉ thẻ mới): áp SAU fuzz.
+    // MAX_INITIAL_INTERVAL chỉ là cap của lần chấm đầu; đây là cap của toàn bộ vòng đời thẻ.
+    nextIntervalDays = Math.min(MAX_INTERVAL_DAYS, nextIntervalDays);
 
     const nextDueDate = now + Math.round(nextIntervalDays * 86400000);
     newState.srsInterval = nextIntervalDays;
@@ -228,6 +313,21 @@ export function formatIntervalPreview(days) {
 }
 
 /**
+ * Nhãn cho thẻ đang ở pha học (New/Learning) — phải nói đúng bước học thật:
+ * "1p", "10p", "1h", "1 ngày"… thay vì "5d"/"13d" như trước T1.1.
+ * @param {number} intervalDays
+ * @returns {string}
+ */
+function formatLearningPreview(intervalDays) {
+    const ms = intervalDays * DAY_MS;
+    if (ms < 3600000) return `${Math.max(1, Math.round(ms / 60000))}p`;
+    if (ms < DAY_MS) return `${Math.round(ms / 3600000)}h`;
+    const days = Math.round(ms / DAY_MS);
+    if (days < 30) return `${days} ngày`;
+    return formatIntervalPreview(intervalDays);
+}
+
+/**
  * Predicts interval badges for all 4 ratings without mutating state or triggering logs.
  * @param {Object} card 
  * @param {string} modality 
@@ -235,13 +335,21 @@ export function formatIntervalPreview(days) {
  */
 export function predictNextIntervals(card, modality = 'en-vi') {
     if (!card) return { 1: '<10p', 2: '1d', 3: '3d', 4: '7d' };
-    const predictions = { 1: '<10p' };
-    for (let rating = 2; rating <= 4; rating++) {
+    const inLearningPhase = card.srsStatus === 'New' || card.srsStatus === 'Learning';
+    const fallback = inLearningPhase
+        ? { 1: '1p', 2: '10p', 3: '10p', 4: '1 ngày' }
+        : { 1: '<10p', 2: '1d', 3: '3d', 4: '7d' };
+    const predictions = {};
+    for (let rating = 1; rating <= 4; rating++) {
         try {
             const { newState } = calculateNextSrsState(card, rating, modality, 0, null, true);
-            predictions[rating] = formatIntervalPreview(newState.srsInterval);
+            // Nút chấm không được hứa quá 365 ngày (dự báo cũng phải chịu cùng trần với lịch thật).
+            const cappedDays = Math.min(MAX_INTERVAL_DAYS, newState.srsInterval);
+            predictions[rating] = inLearningPhase
+                ? formatLearningPreview(cappedDays)
+                : formatIntervalPreview(cappedDays);
         } catch (e) {
-            predictions[rating] = rating === 2 ? '1d' : (rating === 3 ? '3d' : '7d');
+            predictions[rating] = fallback[rating];
         }
     }
     return predictions;

@@ -3,6 +3,18 @@
 export const DESIRED_RETENTION = 0.90;
 export const FUZZ_PERCENTAGE = 0.05;
 export const MAX_INITIAL_INTERVAL = 21.0; // Chốt chặn an toàn: thẻ mới lần đầu tối đa 21 ngày (3 tuần)
+export const MAX_INTERVAL_DAYS = 365; // Trần khoảng cách ôn tập cho MỌI lần chấm (sau fuzz): tối đa 1 năm
+
+// Trần RIÊNG cho lần "tốt nghiệp" của thẻ CHƯA TỪNG thuộc (lapses = 0).
+// Thẻ mới chỉ được chạm 2-3 lần trong một ngày nên không được nhảy tới 21-38 ngày
+// như interval FSRS thô tính ra — đó là lý do gốc của lỗi "từ mới biến mất 3 tuần".
+// Thẻ đã từng Mastered rồi trượt (lapses >= 1) KHÔNG chịu trần này: chúng phải
+// khôi phục interval dài ngay khi tái tốt nghiệp.
+export const MAX_GRADUATION_INTERVAL_DAYS = 7;
+
+// Learning steps thật (T1.1): thẻ New/Learning đi 1 phút → 10 phút → 1 ngày rồi mới tốt nghiệp Mastered.
+// Đơn vị: mili-giây. index.js dùng trực tiếp mảng này để tính srsDueDate/srsInterval.
+export const LEARNING_STEPS_MS = [60_000, 600_000, 86_400_000];
 
 // Memory-state clamp bounds from FSRS-7 (fsrs-rs / srs-benchmark)
 export const S_MIN = 0.01;
@@ -36,6 +48,7 @@ export const DEFAULT_FSRS7_PARAMS = [
 // Legacy fallbacks for compatibility
 export const FACTOR = 19 / 81;
 export const DECAY = -0.5;
+// Legacy: số bước học của thế hệ scheduler cũ. Lịch thật hiện dùng LEARNING_STEPS_MS ở trên.
 export const LEARNING_STEPS = 2;
 
 export const FSRS7_PARAM_BOUNDS = [

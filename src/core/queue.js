@@ -6,7 +6,8 @@ const MAX_NEW_PER_DAY_INITIAL = 15;
 const MAX_ABSOLUTE_NEW = 40;
 const CRAMMING_MAX = 10;
 const DAYS_TO_MS = 24 * 60 * 60 * 1000;
-const LEARNING_STEPS = 2;
+// Thẻ vừa chấm chỉ được chèn lại ngay khi hạn của nó đã tới (sai số 10s do nhịp UI).
+const LEARNING_REINSERT_GRACE_MS = 10000;
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -63,6 +64,17 @@ export function getPendingLearningCards(vocabulary, filterLowerCase = 'all') {
     }
     pending.sort((a, b) => a.dueDate - b.dueDate);
     return pending.map(item => item.index);
+}
+
+/**
+ * T1.1 — Thẻ Learning phải quay lại ĐÚNG hạn, không bị đảo thứ tự ngẫu nhiên:
+ * sắp theo srsDueDate tăng dần (thẻ Quên 1 phút luôn đứng trước thẻ Khó 10 phút).
+ * @param {Array} vocabulary
+ * @param {number[]} indexes
+ * @returns {number[]}
+ */
+export function orderLearningByDue(vocabulary, indexes) {
+    return [...indexes].sort((a, b) => (vocabulary[a]?.srsDueDate || 0) - (vocabulary[b]?.srsDueDate || 0));
 }
 
 export function getSmartCramCards(vocabulary, filterLowerCase) {
@@ -162,23 +174,25 @@ export function buildReviewQueue() {
         }
     }
     
-    shuffleArray(buckets.learning);
+    // Thẻ Learning không xáo trộn: giữ đúng thứ tự hạn (1 phút trước 10 phút trước 1 ngày).
+    buckets.learning = orderLearningByDue(vocabulary, buckets.learning);
     shuffleArray(buckets.due);
     shuffleArray(buckets.new);
     
     let newToAdd = buckets.new.slice(0, newCardsRemaining);
     let newQueue = [...buckets.learning, ...buckets.due, ...newToAdd];
     
-    // LEARN AHEAD OPTIMIZATION:
-    // Nếu hàng đợi thông thường rỗng (đã xong thẻ New hôm nay và hết thẻ Due đến hạn)
-    // nhưng trong kho VẪN CÒN các thẻ Đang học (Learning) đang chờ đếm ngược:
-    // Tự động nạp các thẻ Learning này vào để người dùng được học dứt điểm,
-    // không bắt người dùng phải chờ 5-10 phút và không hiện màn hình hoàn thành giả mạo!
+    // LEARN AHEAD: chỉ nạp thẻ Đang học ĐÃ tới hạn.
+    // Từ T1.1 thẻ Learning có bước 1 phút / 10 phút; nạp sớm sẽ vô hiệu hoá bước học
+    // (thẻ vừa chấm hiện lại sau vài giây). Thẻ chưa tới hạn để nguyên cho lần build sau:
+    // Victory Stage vẫn báo "còn N từ đang trong bước ghi nhớ ngắn hạn" và người dùng có thể
+    // chủ động học sớm bằng nút "Học dứt điểm" (triggerSmartCramming).
     if (newQueue.length === 0) {
-        const pendingLearning = getPendingLearningCards(vocabulary, filterLowerCase);
-        if (pendingLearning.length > 0) {
-            newQueue = [...pendingLearning];
-            console.log(`⚡ Learn Ahead kích hoạt: Tự động nạp ${newQueue.length} thẻ Đang học vào hàng đợi để học liền mạch.`);
+        const dueLearning = getPendingLearningCards(vocabulary, filterLowerCase)
+            .filter(index => !vocabulary[index]?.srsDueDate || vocabulary[index].srsDueDate <= now);
+        if (dueLearning.length > 0) {
+            newQueue = dueLearning;
+            console.log(`⚡ Learn Ahead kích hoạt: nạp ${newQueue.length} thẻ Đang học đã tới hạn.`);
         }
     }
     
@@ -218,10 +232,15 @@ export function getNextCardToReview() {
 }
 
 export function insertCardForLearningStep(cardIndex) {
-    let { currentReviewQueue } = getState();
+    let { currentReviewQueue, vocabulary } = getState();
     
     // SỬA LỖI KB 3.2: Kiểm tra chống chèn trùng lặp thẻ vào hàng đợi
     if (currentReviewQueue.includes(cardIndex)) return;
+
+    // T1.1: chỉ chèn lại khi hạn của thẻ đã tới. Thẻ còn đang trong bước 10 phút / 1 ngày
+    // KHÔNG được hiện lại ngay; buildReviewQueue sẽ nhặt nó khi srsDueDate tới.
+    const cardDueDate = vocabulary?.[cardIndex]?.srsDueDate;
+    if (cardDueDate && cardDueDate > Date.now() + LEARNING_REINSERT_GRACE_MS) return;
 
     // V3: Chỉ chèn lại thẻ Learning, KHÔNG gọi getSmartCramCards()
     // để tránh kéo thêm thẻ Mastered vào và gây "Review Storm"
