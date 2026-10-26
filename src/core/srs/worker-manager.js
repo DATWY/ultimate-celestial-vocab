@@ -32,7 +32,7 @@ export function runOptimizer() {
     const input = structuredClone({ logs: reviewLogs, vocabulary: vocabulary.map(({ id, english, type }) => ({ id, english, type })), params: userFsrs7Params });
     activeTask = new Promise((resolve, reject) => {
         const worker = new Worker(new URL('./optimizer.worker.js', import.meta.url), { type: 'module' });
-        const timeout = setTimeout(() => finish(new Error('Quá thời gian tối ưu. Bạn có thể thử lại.')), 30000);
+        const timeout = setTimeout(() => finish(new Error('Quá thời gian tối ưu (60 s). Bạn có thể thử lại.')), 60000);
         const finish = (error, result) => { clearTimeout(timeout); worker.terminate(); error ? reject(error) : resolve(result); };
         worker.onerror = () => finish(new Error('Không khởi động được bộ tối ưu.'));
         worker.onmessage = async ({ data }) => {

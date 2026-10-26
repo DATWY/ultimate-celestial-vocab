@@ -127,38 +127,60 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
     const baselineValidation = evaluateParameters(data, start, 'validation');
     if (baselineTrain.count < 100 || baselineValidation.count < 30) return { improved: false, reason: 'insufficient-history', count: data.count };
     let best = start, bestScore = baselineTrain.loss;
-    const deadline = Date.now() + (options.budgetMs ?? 8000);
-    const passes = Math.max(1, Math.min(50, options.iterations ?? 2));
+    // Tối ưu là thao tác HIẾM (người dùng bấm tay, vài lần/tháng) nên được phép chạy lâu:
+    // ngân sách mặc định 22 s, worker timeout 60 s. Đổi lại phải dò sâu hơn hẳn bản cũ
+    // (100 vòng cố định, mỗi tham số ~3 lần thử) bằng pattern search có thu nhỏ bước.
+    const deadline = Date.now() + (options.budgetMs ?? 22000);
+    const maxPasses = Math.max(1, Math.min(400, options.iterations ?? 40));
+    const penaltyWeight = options.penaltyWeight ?? 0.002;
+    let factor = 0.08;          // bước lớn trước (8% giá trị), thu nhỏ dần khi hết cải thiện
     let evaluations = 0;
-    for (let pass = 0; pass < passes && Date.now() < deadline; pass++) {
+    for (let pass = 0; pass < maxPasses && Date.now() < deadline; pass++) {
         let improvedThisPass = false;
         for (let index = 0; index < 34 && Date.now() < deadline; index++) {
             const [min, max] = FSRS7_PARAM_BOUNDS[index];
-            // Bước nhảy theo BIÊN của tham số, không dùng sàn tuyệt đối 0.005: sàn đó
-            // phá các tham số nhỏ (vài phần nghìn) vì 0.005 lớn gấp hàng chục lần.
-            const step = Math.max((max - min) * 1e-3, Math.abs(best[index]) * 0.08);
+            const span = max - min;
+            // Bước theo BIÊN tham số, không dùng sàn tuyệt đối 0.005 (sàn đó phá các
+            // tham số nhỏ vì 0.005 lớn gấp hàng chục lần giá trị thật).
+            const step = Math.max(span * 1e-4, Math.abs(best[index]) * factor);
             for (const direction of [1, -1]) {
                 const candidate = [...best];
                 candidate[index] = Math.min(max, Math.max(min, candidate[index] + direction * step));
                 if (candidate[index] === best[index]) continue;
                 const train = evaluateParameters(data, candidate);
                 evaluations++;
-                const penalty = candidate.reduce((sum, value, j) => sum + ((value - start[j]) / Math.max(.1, Math.abs(start[j]))) ** 2, 0) * .01 / 34;
+                const penalty = candidate.reduce((sum, value, j) => sum + ((value - start[j]) / Math.max(.1, Math.abs(start[j]))) ** 2, 0) * penaltyWeight / 34;
                 const score = train.loss + penalty;
                 if (score < bestScore) { best = candidate; bestScore = score; improvedThisPass = true; }
             }
         }
-        if (!improvedThisPass) break;
+        if (!improvedThisPass) {
+            // Hết cải thiện ở bước hiện tại ⇒ thu nhỏ bước rồi thử tiếp (pattern search).
+            factor *= 0.5;
+            if (factor < 0.002) break;
+        }
     }
     const validation = evaluateParameters(data, best, 'validation');
     const baselineLosses = collectValidationLosses(data, start);
     const candidateLosses = collectValidationLosses(data, best);
     const ci = bootstrapGain(baselineLosses, candidateLosses);
+    // Kiểm tra thêm: phần giảm phải DƯƠNG ở cả hai nửa thời gian của holdout. Một bộ
+    // tham số chỉ thắng nhờ một cụm thẻ/dịp hiếm thường lệch dấu giữa hai nửa — đó là
+    // dấu hiệu overfit, không phải cải thiện thật. Rẻ (chỉ chia mảng đã có) nên dùng
+    // ngân sách thời gian rảnh để siết cổng thay vì dò thêm bước vô ích.
+    let halfGain = [0, 0];
+    if (baselineLosses.length >= 40) {
+        const mid = Math.floor(baselineLosses.length / 2);
+        const mean = arr => arr.reduce((s, x) => s + (x.a.loss - x.b.loss), 0) / arr.length;
+        const pairs = baselineLosses.map((a, i) => ({ a, b: candidateLosses[i] }));
+        halfGain = [mean(pairs.slice(0, mid)), mean(pairs.slice(mid))];
+    }
+    const consistent = halfGain[0] > 0 && halfGain[1] > 0;
     const relativeGain = baselineValidation.loss > 0 ? (baselineValidation.loss - validation.loss) / baselineValidation.loss : 0;
-    const significant = ci.lo > 0 && relativeGain >= MIN_RELATIVE_GAIN;
+    const significant = ci.lo > 0 && relativeGain >= MIN_RELATIVE_GAIN && consistent;
     const improved = validFsrs7Params(best) && bestScore < baselineTrain.loss && significant;
     return { improved,
-        reason: improved ? 'validated' : (ci.lo <= 0 && bestScore < baselineTrain.loss ? 'not-significant' : 'no-validation-gain'),
+        reason: improved ? 'validated' : (bestScore < baselineTrain.loss ? 'not-significant' : 'no-validation-gain'),
         params: improved ? best : start,
         oldLoss: baselineValidation.loss, newLoss: validation.loss,
         // Con số để UI hiển thị: mức giảm tương đối + khoảng tin cậy 95% (cũng theo %).
@@ -168,6 +190,8 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
             baselineValidation.loss > 0 ? (ci.hi / baselineValidation.loss) * 100 : 0
         ],
         gainSignificant: significant,
+        gainHalfConsistent: consistent,
+        trainLoss: baselineTrain.loss, trainLossBest: bestScore,
         trainCount: baselineTrain.count, validationCount: validation.count,
         evaluations, count: data.count, model: 'dual-stability-34' };
 }
