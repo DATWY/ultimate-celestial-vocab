@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Deep performance audit harness (UI unchanged).
  * Usage:
  *   node tools/perf_deep_audit.mjs --url http://127.0.0.1:5173 --cards 3000 --label dev

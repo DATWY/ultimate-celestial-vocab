@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Verifies that a large badge-unlock burst produces:
  *  - at most 3 concurrent toasts (queued, not stacked)
  *  - one confetti canvas / one rAF loop (not one per badge)

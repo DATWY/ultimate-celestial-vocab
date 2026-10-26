@@ -1,4 +1,4 @@
-﻿// tests/learning-steps.test.mjs — T1.1: learning steps thật (1 phút → 10 phút → 1 ngày → Mastered)
+// tests/learning-steps.test.mjs — T1.1: learning steps thật (1 phút → 10 phút → 1 ngày → Mastered)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LEARNING_STEPS_MS, MAX_INTERVAL_DAYS, MAX_INITIAL_INTERVAL, MAX_GRADUATION_INTERVAL_DAYS } from '../src/core/srs/constants.js';

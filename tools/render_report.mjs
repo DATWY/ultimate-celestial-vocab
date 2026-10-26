@@ -1,4 +1,4 @@
-﻿// tools/render_report.mjs — render reports/upgrade-report.html thành PNG từng trang (cần Chrome).
+// tools/render_report.mjs — render reports/upgrade-report.html thành PNG từng trang (cần Chrome).
 import http from 'http';
 import fs from 'fs';
 import path from 'path';

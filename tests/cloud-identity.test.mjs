@@ -1,4 +1,4 @@
-﻿// Kiểm tra lớp định danh Cloud (Mã đồng bộ) không cần trình duyệt.
+// Kiểm tra lớp định danh Cloud (Mã đồng bộ) không cần trình duyệt.
 import 'fake-indexeddb/auto';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
