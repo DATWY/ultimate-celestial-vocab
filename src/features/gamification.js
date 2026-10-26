@@ -1329,10 +1329,25 @@ document.getElementById('app-container')?.addEventListener('gamification:xp_adde
         floatEl.style.textShadow = '0 0 10px var(--primary-color-alpha)';
     }
 
-    // Vị trí ngẫu nhiên nhẹ quanh trung tâm để tránh chồng chéo
+    // Vị trí: bám vào THẺ HỌC, không dùng toạ độ trang.
+    // Trước đây là `top: 65%` của viewport — rơi đúng vào hàng nút chấm
+    // Quên/Khó/Nhớ/Dễ nên "+15 XP" đè lên nhãn nút. Nay lấy rect của
+    // #flashcard-area: ngang giữa thẻ, dọc ~18% chiều cao thẻ (phía trên từ
+    // cần học), luôn nằm trong thẻ nên không bao giờ chạm hàng nút.
     const offsetX = (Math.random() - 0.5) * 60;
-    floatEl.style.left = `calc(50% + ${offsetX}px)`;
-    floatEl.style.top = '65%';
+    const cardArea = document.getElementById('flashcard-area');
+    const rect = cardArea ? cardArea.getBoundingClientRect() : null;
+    if (rect && rect.width > 0 && rect.height > 0) {
+        const x = rect.left + rect.width / 2 + offsetX;
+        const preferredY = rect.top + rect.height * 0.18;
+        // Chặn trên/dưới để phần tử luôn nằm trong thẻ.
+        const y = Math.max(rect.top + 48, Math.min(preferredY, rect.bottom - 48));
+        floatEl.style.left = `${Math.round(x)}px`;
+        floatEl.style.top = `${Math.round(y)}px`;
+    } else {
+        floatEl.style.left = `calc(50% + ${offsetX}px)`;
+        floatEl.style.top = '38%';
+    }
 
     document.body.appendChild(floatEl);
 
