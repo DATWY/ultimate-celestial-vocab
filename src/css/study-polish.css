@@ -1,4 +1,6 @@
 /* Focused refinement of the existing Celestial theme. */
+
+@layer base {
 body.focus-study {
     --study-ink: #252d49;
     --study-muted: #647087;
@@ -28,45 +30,51 @@ body.focus-study .srs-btn { min-height: 58px; transition: transform .16s ease, b
 body.focus-study .srs-btn:hover:not(:disabled) { transform: translateY(-2px); }
 body.focus-study .srs-btn:active:not(:disabled) { transform: translateY(0) scale(.98); }
 body.focus-study .srs-btn:disabled, body.focus-study #skip-quiz-btn:disabled { opacity: .55; cursor: default; }
+}
+
+@layer overrides {
 body.focus-study :is(button, a, [role="button"], [role="tab"], [tabindex]:not(input):not(textarea):not(select)):focus-visible {
-    outline: 2px solid var(--study-accent) !important;
-    outline-offset: 3px !important;
+    outline: 2px solid var(--study-accent);
+    outline-offset: 3px;
 }
 body.focus-study :is(input, select, textarea):focus,
 body.focus-study :is(input, select, textarea):focus-visible {
-    outline: none !important;
+    outline: none;
 }
 
 /* Polish for search inputs and typing box to prevent double borders & distorted rings */
 body.focus-study .search-bar-wrapper input[type="search"] {
-    outline: none !important;
+    outline: none;
     transition: border-color 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), background 0.2s ease !important;
 }
 body.focus-study .search-bar-wrapper input[type="search"]:focus {
-    outline: none !important;
-    border-color: var(--study-accent, #a855f7) !important;
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.22), 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    outline: none;
+    border-color: var(--study-accent, #a855f7);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.22), 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 body.focus-study.dark-mode .search-bar-wrapper input[type="search"]:focus {
-    border-color: #b5a5ff !important;
-    box-shadow: 0 0 0 3px rgba(181, 165, 255, 0.25), 0 0 16px rgba(181, 165, 255, 0.12) !important;
+    border-color: #b5a5ff;
+    box-shadow: 0 0 0 3px rgba(181, 165, 255, 0.25), 0 0 16px rgba(181, 165, 255, 0.12);
 }
 body.focus-study:not(.dark-mode) .search-bar-wrapper input[type="search"]:focus {
-    border-color: #6350d9 !important;
-    box-shadow: 0 0 0 3px rgba(99, 80, 217, 0.18), 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+    border-color: #6350d9;
+    box-shadow: 0 0 0 3px rgba(99, 80, 217, 0.18), 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 body.focus-study #typing-input {
-    outline: none !important;
+    outline: none;
 }
 body.focus-study .typing-input-wrapper:focus-within {
-    border-color: var(--study-accent, #a855f7) !important;
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.22), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+    border-color: var(--study-accent, #a855f7);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.22), 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 body.focus-study.dark-mode .typing-input-wrapper:focus-within {
-    border-color: #b5a5ff !important;
-    box-shadow: 0 0 0 3px rgba(181, 165, 255, 0.25), 0 0 20px rgba(181, 165, 255, 0.15) !important;
+    border-color: #b5a5ff;
+    box-shadow: 0 0 0 3px rgba(181, 165, 255, 0.25), 0 0 20px rgba(181, 165, 255, 0.15);
 }
+}
+
+@layer base {
 body.focus-study .detail-row .label { color: var(--study-muted); opacity: 1; }
 body.focus-study .word-card .word-pronunciation { line-height: 1.5; }
 body.focus-study .manage-nav-tab { text-transform: none; }
@@ -76,74 +84,155 @@ body.focus-study .main-content { gap: 16px; }
 body.focus-study #flashcard-area { margin-bottom: 0; }
 body.focus-study #controls-area { margin-top: 8px; }
 body.focus-study #stats-area { margin-top: 12px; }
+}
 
 @media (min-width: 769px) and (max-height: 820px) {
+
+@layer base {
     body.focus-study { padding-block: 24px; }
     body.focus-study #flashcard { min-height: 280px; }
 }
+}
 
 @media (max-width: 600px) {
+
+@layer base {
     body.focus-study #app-container { padding-inline: 14px; }
-    body.focus-study #flashcard { min-height: 300px !important; }
+}
+
+@layer overrides {
+    body.focus-study #flashcard { min-height: 300px; }
+}
+
+@layer base {
     body.focus-study #card-english { font-size: clamp(1.8rem, 8vw, 2.6rem); }
+}
+
+@layer overrides {
     body.focus-study .card-back .detail-row:not(.example-row) {
-        grid-template-columns: 76px minmax(0, 1fr) !important;
-        gap: 10px !important;
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 10px;
     }
+}
+
+@layer base {
     body.focus-study .card-back .detail-row .label { font-size: .75rem; white-space: nowrap; text-align: left; }
     body.focus-study .card-back .detail-row .content { min-width: 0; }
     body.focus-study .manage-nav-tabs {
-        display: grid !important;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 3px !important;
+    }
+}
+
+@layer overrides {
+    body.focus-study .manage-nav-tabs {
+        display: grid !important;
+        gap: 3px;
         overflow: visible !important;
-        padding: 4px !important;
+        padding: 4px;
     }
+}
+
+@layer base {
     body.focus-study .manage-nav-tabs .manage-nav-tab {
-        min-width: 0 !important;
-        min-height: 52px !important;
-        padding: 6px 2px !important;
         flex-direction: column;
-        gap: 4px !important;
-        font-size: .65rem !important;
     }
+}
+
+@layer overrides {
+    body.focus-study .manage-nav-tabs .manage-nav-tab {
+        min-width: 0;
+        min-height: 52px;
+        padding: 6px 2px;
+        gap: 4px;
+        font-size: .65rem;
+    }
+}
+
+@layer base {
     body.focus-study .manage-nav-tab span { max-width: 100%; white-space: nowrap; }
     body.focus-study .word-card-header {
         position: relative;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px !important;
     }
+}
+
+@layer overrides {
+    body.focus-study .word-card-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+}
+
+@layer base {
     body.focus-study .word-card-title-group {
         max-width: calc(100% - 42px);
-        flex-direction: row !important;
-        align-items: baseline !important;
         flex-wrap: wrap;
         gap: 6px;
     }
-    body.focus-study .word-card-header .word-english { font-size: 1.05rem !important; overflow-wrap: anywhere; }
+}
+
+@layer overrides {
+    body.focus-study .word-card-title-group {
+        flex-direction: row;
+        align-items: baseline;
+    }
+}
+
+@layer base {
+    body.focus-study .word-card-header .word-english { overflow-wrap: anywhere; }
+}
+
+@layer overrides {
+    body.focus-study .word-card-header .word-english { font-size: 1.05rem; }
+}
+
+@layer base {
     body.focus-study .word-card-header-right { justify-content: flex-start; gap: 6px; }
     body.focus-study .word-card-checkbox { position: absolute; right: 0; top: 0; }
     body.focus-study .word-card-footer { flex-wrap: wrap; gap: 9px; }
     body.focus-study .word-card-tags { flex: 1 1 100%; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
     body.focus-study .word-card-actions { width: 100%; justify-content: flex-end; }
-    body.focus-study .word-card .card-action-btn { min-width: 40px !important; min-height: 40px !important; }
+}
+
+@layer overrides {
+    body.focus-study .word-card .card-action-btn { min-width: 40px; min-height: 40px; }
+}
+
+@layer base {
     body.focus-study .desktop-key-hint { display: none; }
     body.focus-study .srs-feedback-grid { gap: 10px; }
 }
+}
+
 @media (hover: none) {
+
+@layer base {
     .desktop-key-hint { display: none; }
     body.focus-study .srs-btn:hover:not(:disabled) { transform: none; }
 }
+}
+
 @media (max-width: 360px) {
+
+@layer overrides {
     body.focus-study .manage-count-badge { display: none !important; }
+}
+
+@layer base {
     body.focus-study .manage-header-main h2 { font-size: .88rem; }
 }
+}
+
 @media (prefers-reduced-motion: reduce) {
+
+@layer base {
     body.focus-study .srs-btn { transition: none; }
+}
 }
 
 /* Feedback for import validation and scheduler settings, outside the study screen. */
+
+@layer base {
 .import-errors { white-space: pre-line; color: #b25132; font-size: .8rem; }
 .dark-mode .import-errors { color: #ffbb99; }
 .optimizer-action-card { padding: 16px; border: 1px solid var(--study-line); border-radius: 12px; margin-bottom: 20px; color: var(--study-ink); }
@@ -154,11 +243,18 @@ body.focus-study #stats-area { margin-top: 12px; }
 
 /* Closed menus must also be absent from keyboard navigation. */
 body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visibility: hidden; }
-@media (prefers-reduced-motion: reduce) {
-    body.focus-study *, body.focus-study *::before, body.focus-study *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-    body.focus-study #celestial-canvas { display: none; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+
+@layer overrides {
+    body.focus-study *, body.focus-study *::before, body.focus-study *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@layer base {
+    body.focus-study #celestial-canvas { display: none; }
+}
+}
 
 /* ==========================================================================
    120FPS TACTILE SPRING MICRO-INTERACTIONS (TRANSFORM-ONLY)
@@ -167,6 +263,8 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
    - Không dùng `all`: thay bằng danh sách thuộc tính rẻ, nhưng VẪN giữ
      background/border/box-shadow để các hiệu ứng hover sẵn có không bị mất.
    ========================================================================== */
+
+@layer base {
 :is(button, .btn, .icon-btn, .srs-btn, .card-action-btn, .modal-close-btn, .manage-nav-tab, [role="button"]):not(:disabled):not([disabled]):not([aria-disabled="true"]) {
     transition:
         transform 100ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -179,12 +277,16 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
 :is(button, .btn, .icon-btn, .srs-btn, .card-action-btn, .modal-close-btn, .manage-nav-tab, [role="button"]):not(:disabled):not([disabled]):not([aria-disabled="true"]):active {
     transform: scale(0.97);
 }
+}
 
 @media (prefers-reduced-motion: reduce) {
+
+@layer overrides {
     :is(button, .btn, .icon-btn, .srs-btn, .card-action-btn, .modal-close-btn, .manage-nav-tab, [role="button"]):not(:disabled):not([disabled]):not([aria-disabled="true"]):active {
         transform: none !important;
         transition: none !important;
     }
+}
 }
 
 /* ==========================================================================
@@ -194,18 +296,21 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
    nên TỰ VÔ HIỆU khi bật Boost (không phụ thuộc specificity của style.css).
    Viền hairline dùng inset shadow (không dùng border) để KHÔNG đổi box model.
    ========================================================================== */
+
 @media (min-width: 769px) {
     /* 1. Header & Navigation Dock */
+
+@layer overrides {
     body:not(.boost-mode) .app-header {
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
-        background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 60%), linear-gradient(135deg, rgba(18, 22, 38, 0.78) 0%, rgba(11, 14, 25, 0.84) 100%) !important;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 12px 36px -4px rgba(0, 0, 0, 0.25), 0 0 24px rgba(138, 43, 226, 0.08) !important;
+        background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 60%), linear-gradient(135deg, rgba(18, 22, 38, 0.78) 0%, rgba(11, 14, 25, 0.84) 100%);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 20px -2px rgba(0, 0, 0, 0.35), 0 12px 36px -4px rgba(0, 0, 0, 0.25), 0 0 24px rgba(138, 43, 226, 0.08);
     }
 
     body:not(.boost-mode):not(.dark-mode) .app-header {
-        background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.88) 0%, transparent 60%), linear-gradient(135deg, rgba(255, 255, 255, 0.86) 0%, rgba(248, 250, 252, 0.80) 100%) !important;
-        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 0 20px rgba(99, 102, 241, 0.06) !important;
+        background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.88) 0%, transparent 60%), linear-gradient(135deg, rgba(255, 255, 255, 0.86) 0%, rgba(248, 250, 252, 0.80) 100%);
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 0 20px rgba(99, 102, 241, 0.06);
     }
 
     /* 2. Modal Content & Large Management Panel */
@@ -214,15 +319,15 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
     body:not(.boost-mode) .manage-panel {
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
-        background: rgba(14, 18, 32, 0.84) !important;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 25px 60px -10px rgba(0, 0, 0, 0.65), 0 8px 24px -4px rgba(0, 0, 0, 0.35), 0 0 32px rgba(138, 43, 226, 0.12) !important;
+        background: rgba(14, 18, 32, 0.84);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 25px 60px -10px rgba(0, 0, 0, 0.65), 0 8px 24px -4px rgba(0, 0, 0, 0.35), 0 0 32px rgba(138, 43, 226, 0.12);
     }
 
     body:not(.boost-mode):not(.dark-mode) .modal-content,
     body:not(.boost-mode):not(.dark-mode) #manage-modal .manage-panel,
     body:not(.boost-mode):not(.dark-mode) .manage-panel {
-        background: rgba(255, 255, 255, 0.88) !important;
-        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.88), 0 25px 60px -10px rgba(15, 23, 42, 0.12), 0 8px 20px -4px rgba(15, 23, 42, 0.06), 0 0 28px rgba(99, 102, 241, 0.08) !important;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.88), 0 25px 60px -10px rgba(15, 23, 42, 0.12), 0 8px 20px -4px rgba(15, 23, 42, 0.06), 0 0 28px rgba(99, 102, 241, 0.08);
     }
 
 
@@ -239,8 +344,8 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
     body:not(.boost-mode) .heatmap-card,
     body:not(.boost-mode) .forecast-card,
     body:not(.boost-mode) .stats-card {
-        background: rgba(18, 24, 42, 0.72) !important;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 16px -2px rgba(0, 0, 0, 0.3), 0 8px 24px -4px rgba(0, 0, 0, 0.2), 0 0 18px rgba(138, 43, 226, 0.06) !important;
+        background: rgba(18, 24, 42, 0.72);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 16px -2px rgba(0, 0, 0, 0.3), 0 8px 24px -4px rgba(0, 0, 0, 0.2), 0 0 18px rgba(138, 43, 226, 0.06);
     }
 
     body:not(.boost-mode):not(.dark-mode) .profile-hero-card .level-card,
@@ -251,8 +356,8 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
     body:not(.boost-mode):not(.dark-mode) .heatmap-card,
     body:not(.boost-mode):not(.dark-mode) .forecast-card,
     body:not(.boost-mode):not(.dark-mode) .stats-card {
-        background: rgba(255, 255, 255, 0.82) !important;
-        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 4px 14px -2px rgba(15, 23, 42, 0.05), 0 8px 20px -4px rgba(15, 23, 42, 0.04), 0 0 16px rgba(99, 102, 241, 0.05) !important;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 4px 14px -2px rgba(15, 23, 42, 0.05), 0 8px 20px -4px rgba(15, 23, 42, 0.04), 0 0 16px rgba(99, 102, 241, 0.05);
     }
 
     /* 5. Floating Quick Bars & Dropdowns
@@ -265,7 +370,7 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
     body:not(.boost-mode) .custom-topic-dropdown,
     body:not(.boost-mode) .custom-typing-dropdown,
     body:not(.boost-mode) .toast-item {
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 28px -4px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(138, 43, 226, 0.08) !important;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 28px -4px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.2), 0 0 20px rgba(138, 43, 226, 0.08);
     }
 
     body:not(.boost-mode):not(.dark-mode) #taskbar-container,
@@ -273,8 +378,9 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
     body:not(.boost-mode):not(.dark-mode) .custom-topic-dropdown,
     body:not(.boost-mode):not(.dark-mode) .custom-typing-dropdown,
     body:not(.boost-mode):not(.dark-mode) .toast-item {
-        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), 0 0 18px rgba(99, 102, 241, 0.06) !important;
+        box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85), 0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04), 0 0 18px rgba(99, 102, 241, 0.06);
     }
+}
 }
 
 /* ==========================================================================
@@ -282,44 +388,51 @@ body.focus-study :is(.custom-topic-menu, .custom-typing-menu):not(.open) { visib
    ========================================================================== */
 
 /* Overall Summary Banner */
+
+@layer base {
 .achievements-summary-banner {
-    border-radius: 20px !important;
-    padding: 18px 22px !important;
     position: relative;
     overflow: hidden;
 }
+}
+
+@layer overrides {
+.achievements-summary-banner {
+    border-radius: 20px;
+    padding: 18px 22px;
+}
 
 body:not(.dark-mode) .achievements-summary-banner {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(245, 158, 11, 0.06) 50%, rgba(6, 182, 212, 0.06) 100%) !important;
-    border: 1.5px solid rgba(139, 92, 246, 0.22) !important;
-    box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(245, 158, 11, 0.06) 50%, rgba(6, 182, 212, 0.06) 100%);
+    border: 1.5px solid rgba(139, 92, 246, 0.22);
+    box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 body:not(.dark-mode) .summary-title {
-    color: #0f172a !important;
-    font-weight: 800 !important;
+    color: #0f172a;
+    font-weight: 800;
 }
 
 body:not(.dark-mode) .summary-subtitle {
-    color: #475569 !important;
-    font-weight: 500 !important;
+    color: #475569;
+    font-weight: 500;
 }
 
 body:not(.dark-mode) .summary-progress-bg {
-    background: rgba(226, 232, 240, 0.9) !important;
-    height: 9px !important;
+    background: rgba(226, 232, 240, 0.9);
+    height: 9px;
 }
 
 /* Category Filter Tabs */
 .achievements-filter-tabs {
-    gap: 10px !important;
-    margin: 8px 0 14px 0 !important;
+    gap: 10px;
+    margin: 8px 0 14px 0;
 }
 
 .achieve-tab-btn {
-    border-radius: 14px !important;
-    padding: 7px 16px !important;
-    font-weight: 700 !important;
+    border-radius: 14px;
+    padding: 7px 16px;
+    font-weight: 700;
     transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
                 background-color 0.22s ease,
                 border-color 0.22s ease,
@@ -328,37 +441,57 @@ body:not(.dark-mode) .summary-progress-bg {
 }
 
 body:not(.dark-mode) .achieve-tab-btn {
-    background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    color: #475569 !important;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
 }
 
+@layer base {
+
 body:not(.dark-mode) .achieve-tab-btn:hover {
-    background: #f8fafc !important;
-    color: var(--primary-color, #8b5cf6) !important;
-    border-color: color-mix(in srgb, var(--primary-color, #8b5cf6) 40%, #e2e8f0) !important;
     transform: translateY(-1px);
+}
+}
+
+@layer overrides {
+
+body:not(.dark-mode) .achieve-tab-btn:hover {
+    background: #f8fafc;
+    color: var(--primary-color, #8b5cf6);
+    border-color: color-mix(in srgb, var(--primary-color, #8b5cf6) 40%, #e2e8f0);
 }
 
 body:not(.dark-mode) .achieve-tab-btn.active {
-    background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
-    color: #ffffff !important;
-    border-color: transparent !important;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
 }
 
 /* Milestone Track Badge Cards */
+}
+
+@layer base {
 .badge-track-item {
-    border-radius: 20px !important;
-    padding: 20px !important;
-    gap: 16px !important;
     position: relative;
-    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease !important;
     overflow: hidden;
+}
+}
+
+@layer overrides {
+.badge-track-item {
+    border-radius: 20px;
+    padding: 20px;
+    gap: 16px;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease !important;
 }
 
 /* Accent top-stripe reflecting track's identity */
+}
+
+@layer base {
 .badge-track-item::before {
     content: '';
     position: absolute;
@@ -378,39 +511,42 @@ body:not(.dark-mode) .achieve-tab-btn.active {
 }
 
 /* Light mode luxury styling */
+}
+
+@layer overrides {
 body:not(.dark-mode) .badge-track-item {
-    background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--track-theme, #8b5cf6) 6%, #ffffff) 100%) !important;
-    border: 1px solid color-mix(in srgb, var(--track-theme, #8b5cf6) 24%, #e2e8f0) !important;
-    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--track-theme, #8b5cf6) 6%, #ffffff) 100%);
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8b5cf6) 24%, #e2e8f0);
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 body:not(.dark-mode) .badge-track-item:hover {
     transform: translateY(-5px) !important;
-    border-color: color-mix(in srgb, var(--track-theme, #8b5cf6) 50%, #cbd5e1) !important;
+    border-color: color-mix(in srgb, var(--track-theme, #8b5cf6) 50%, #cbd5e1);
     box-shadow: 0 16px 36px -6px color-mix(in srgb, var(--track-theme, #8b5cf6) 24%, rgba(15, 23, 42, 0.08)), 
-                0 4px 12px rgba(15, 23, 42, 0.04) !important;
+                0 4px 12px rgba(15, 23, 42, 0.04);
 }
 
 /* Dark mode luxury styling */
 body.dark-mode .badge-track-item {
-    background: linear-gradient(145deg, rgba(26, 32, 53, 0.85) 0%, color-mix(in srgb, var(--track-theme, #8b5cf6) 12%, rgba(15, 20, 35, 0.92)) 100%) !important;
-    border: 1px solid color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, rgba(255, 255, 255, 0.08)) !important;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3) !important;
+    background: linear-gradient(145deg, rgba(26, 32, 53, 0.85) 0%, color-mix(in srgb, var(--track-theme, #8b5cf6) 12%, rgba(15, 20, 35, 0.92)) 100%);
+    border: 1px solid color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, rgba(255, 255, 255, 0.08));
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
 }
 
 body.dark-mode .badge-track-item:hover {
     transform: translateY(-5px) !important;
-    border-color: color-mix(in srgb, var(--track-theme, #8b5cf6) 65%, transparent) !important;
-    box-shadow: 0 16px 38px -4px color-mix(in srgb, var(--track-theme, #8b5cf6) 35%, transparent) !important;
+    border-color: color-mix(in srgb, var(--track-theme, #8b5cf6) 65%, transparent);
+    box-shadow: 0 16px 38px -4px color-mix(in srgb, var(--track-theme, #8b5cf6) 35%, transparent);
 }
 
 /* 3D Icon Box Enhancement */
 .track-icon-box {
-    width: 58px !important;
-    height: 58px !important;
-    border-radius: 18px !important;
-    font-size: 1.85rem !important;
-    box-shadow: 0 6px 18px -2px color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, transparent) !important;
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    font-size: 1.85rem;
+    box-shadow: 0 6px 18px -2px color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, transparent);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
@@ -420,46 +556,58 @@ body.dark-mode .badge-track-item:hover {
 
 /* Category Pill */
 .track-cat-pill {
-    padding: 5px 12px !important;
-    border-radius: 10px !important;
-    font-size: 0.78rem !important;
-    font-weight: 800 !important;
+    padding: 5px 12px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    font-weight: 800;
 }
 
 /* Level Badge */
 .track-level-badge {
-    padding: 4px 11px !important;
-    border-radius: 10px !important;
-    font-weight: 800 !important;
-    font-size: 0.74rem !important;
+    padding: 4px 11px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 0.74rem;
 }
 
 body:not(.dark-mode) .track-level-badge {
-    background: #f1f5f9 !important;
-    color: #334155 !important;
-    border: 1px solid #e2e8f0 !important;
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
 }
 
 /* Progress bar inside badge cards */
 .track-prog-bar-bg {
-    height: 8px !important;
-    border-radius: 999px !important;
+    height: 8px;
+    border-radius: 999px;
 }
 
 .track-prog-bar-fill {
-    border-radius: 999px !important;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--track-theme, #8b5cf6) 65%, #ffffff), var(--track-theme, #8b5cf6)) !important;
-    box-shadow: 0 0 10px color-mix(in srgb, var(--track-theme, #8b5cf6) 45%, transparent) !important;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--track-theme, #8b5cf6) 65%, #ffffff), var(--track-theme, #8b5cf6));
+    box-shadow: 0 0 10px color-mix(in srgb, var(--track-theme, #8b5cf6) 45%, transparent);
+}
 }
 
+@layer base {
+
 .track-prog-view-more {
-    font-weight: 700 !important;
-    color: var(--track-theme, #8b5cf6) !important;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     transition: transform 0.2s ease;
 }
+}
+
+@layer overrides {
+
+.track-prog-view-more {
+    font-weight: 700;
+    color: var(--track-theme, #8b5cf6);
+}
+}
+
+@layer base {
 
 .badge-track-item:hover .track-prog-view-more {
     transform: translateX(3px);
@@ -468,21 +616,26 @@ body:not(.dark-mode) .track-level-badge {
 /* ==========================================================================
    MILESTONE TRACK BADGES GRID - BALANCED 2x2 LAYOUT (Fix 'trên 3 dưới 1')
    ========================================================================== */
+}
+
+@layer overrides {
 .achievements-wrapper {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 18px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
 }
 
 .special-badges-section {
-    grid-column: 1 / -1 !important;
+    grid-column: 1 / -1;
+}
 }
 
 @media (max-width: 640px) {
+
+@layer overrides {
     .achievements-wrapper {
-        grid-template-columns: 1fr !important;
-        gap: 12px !important;
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
-
-
+}

@@ -1,10 +1,15 @@
+@layer base, overrides, safe-area;
+
+/* T3.2: cascade layers thay cho !important. base < overrides < safe-area; safe-area là layer cuối cho T4.3. */
+
 /* ==========================================================================
    CELESTIAL DESIGN SYSTEM V5 — DESIGN TOKENS & ELEVATIONS
    Architecture: Obsidian Observatory (Dark) × Celestial Porcelain (Light)
    ========================================================================== */
 
+@layer base {
+
 :root {
-    /* --- 1. PRIMITIVE COLOR TOKENS --- */
     --v5-obsidian-950: #06080f;
     --v5-obsidian-900: #0b0d19;
     --v5-obsidian-850: #0f1222;
@@ -22,8 +27,6 @@
     --v5-porcelain-700: #475569;
     --v5-porcelain-800: #334155;
     --v5-porcelain-900: #0f172a;
-
-    /* Cosmic Accents */
     --v5-nebula-purple: #8a2be2;
     --v5-aurora-violet: #a855f7;
     --v5-starlight-cyan: #38bdf8;
@@ -32,8 +35,6 @@
     --v5-amber-gold: #f59e0b;
     --v5-coral-red: #ef4444;
     --v5-rose-pink: #f43f5e;
-
-    /* --- 2. SEMANTIC LEARNING & SRS TOKENS --- */
     --v5-srs-again: #ef4444;
     --v5-srs-again-glow: rgba(239, 68, 68, 0.28);
     --v5-srs-hard: #f59e0b;
@@ -42,8 +43,6 @@
     --v5-srs-good-glow: rgba(56, 189, 248, 0.28);
     --v5-srs-easy: #10b981;
     --v5-srs-easy-glow: rgba(16, 185, 129, 0.28);
-
-    /* --- 3. GLASS & ELEVATION TOKENS (DARK MODE DEFAULT) --- */
     --v5-glass-bg: rgba(18, 22, 38, 0.72);
     --v5-glass-bg-subtle: rgba(22, 27, 46, 0.55);
     --v5-glass-bg-active: rgba(30, 37, 62, 0.85);
@@ -52,15 +51,11 @@
     --v5-glass-border-hover: rgba(168, 85, 247, 0.45);
     --v5-glass-blur: 16px;
     --v5-glass-glow: 0 0 24px rgba(138, 43, 226, 0.16);
-
-    /* --- 4. SHADOW & DEPTH ELEVATION --- */
     --v5-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.12);
     --v5-shadow-md: 0 6px 18px rgba(0, 0, 0, 0.22);
     --v5-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.32);
     --v5-shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.45);
     --v5-shadow-nebula: 0 12px 36px rgba(138, 43, 226, 0.25);
-
-    /* --- 5. MOTION & EASING TOKENS --- */
     --v5-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --v5-ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
     --v5-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -68,13 +63,23 @@
     --v5-duration-fast: 220ms;
     --v5-duration-normal: 350ms;
     --v5-duration-deliberate: 500ms;
-
-    /* --- 6. SHAPE & RADIUS --- */
     --v5-radius-sm: 8px;
     --v5-radius-md: 14px;
     --v5-radius-lg: 20px;
     --v5-radius-xl: 28px;
     --v5-radius-pill: 9999px;
+
+    /* Cosmic Accents */
+
+    /* --- 2. SEMANTIC LEARNING & SRS TOKENS --- */
+
+    /* --- 3. GLASS & ELEVATION TOKENS (DARK MODE DEFAULT) --- */
+
+    /* --- 4. SHADOW & DEPTH ELEVATION --- */
+
+    /* --- 5. MOTION & EASING TOKENS --- */
+
+    /* --- 6. SHAPE & RADIUS --- */
 }
 
 /* --- LIGHT MODE REFINED PORCELAIN OVERRIDES --- */
@@ -96,6 +101,7 @@ body:not(.dark-mode) {
 /* ==========================================================================
    V5 SKELETON SHIMMER SCREEN SYSTEM
    ========================================================================== */
+}
 
 @keyframes v5ShimmerAnimation {
     0% {
@@ -105,6 +111,8 @@ body:not(.dark-mode) {
         background-position: 200% 0;
     }
 }
+
+@layer base {
 
 .v5-shimmer {
     background: linear-gradient(
@@ -180,6 +188,7 @@ body:not(.dark-mode) .v5-shimmer {
     overflow: hidden;
     animation: v5FadeUp 0.6s var(--v5-ease-out-expo) forwards;
 }
+}
 
 @keyframes v5FadeUp {
     from {
@@ -191,6 +200,8 @@ body:not(.dark-mode) .v5-shimmer {
         transform: translateY(0) scale(1);
     }
 }
+
+@layer base {
 
 .onboarding-ambient-glow {
     position: absolute;
@@ -235,6 +246,7 @@ body:not(.dark-mode) .v5-shimmer {
     will-change: opacity;
     pointer-events: none;
 }
+}
 
 @keyframes v5PulseHero {
     0%, 100% {
@@ -253,6 +265,8 @@ body:not(.dark-mode) .v5-shimmer {
         opacity: 0.55;
     }
 }
+
+@layer base {
 
 .onboarding-title {
     position: relative;
@@ -290,19 +304,25 @@ body:not(.dark-mode) .onboarding-subtitle {
     position: relative;
     z-index: 1;
     display: grid;
-    /* auto-fit để khi thẻ "Từ Mẫu" bị ẩn ở production (chỉ còn 2 CTA),
-       grid tự co còn 2 cột cân đối thay vì để trống cột thứ 3. */
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 14px;
     margin-bottom: 28px;
+    /* auto-fit để khi thẻ "Từ Mẫu" bị ẩn ở production (chỉ còn 2 CTA),
+       grid tự co còn 2 cột cân đối thay vì để trống cột thứ 3. */
+}
 }
 
 @media (max-width: 640px) {
+
+@layer base {
     .onboarding-actions-grid {
         grid-template-columns: 1fr;
         gap: 10px;
     }
 }
+}
+
+@layer base {
 
 .onboarding-cta-card {
     display: flex;
@@ -388,35 +408,43 @@ body:not(.dark-mode) .onboarding-pill {
    ========================================================================== */
 
 /* Mobile Touch Target Expansion (< 640px) */
+}
+
 @media (max-width: 640px) {
+
+@layer overrides {
     .srs-feedback-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-        max-width: 380px !important;
-        margin: 12px auto 0 !important;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        max-width: 380px;
+        margin: 12px auto 0;
     }
     
     .srs-btn {
-        min-height: 52px !important;
-        padding: 8px 14px !important;
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        border-radius: var(--v5-radius-md) !important;
+        min-height: 52px;
+        padding: 8px 14px;
+        flex-direction: row;
+        justify-content: space-between;
+        border-radius: var(--v5-radius-md);
     }
 
     .srs-btn-label-group {
-        gap: 8px !important;
-        font-size: 0.95rem !important;
+        gap: 8px;
+        font-size: 0.95rem;
     }
 
     .srs-interval-badge {
-        font-size: 0.78rem !important;
-        padding: 2px 8px !important;
+        font-size: 0.78rem;
+        padding: 2px 8px;
     }
+}
 }
 
 /* High Contrast & Reduced Motion Compliance */
+
 @media (prefers-reduced-motion: reduce) {
+
+@layer overrides {
     *, ::before, ::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
@@ -424,12 +452,15 @@ body:not(.dark-mode) .onboarding-pill {
         scroll-behavior: auto !important;
     }
 }
+}
 
 /* ==========================================================================
    V5 CRITICAL CASCADE & VIEWPORT REFINEMENTS
    ========================================================================== */
 
 /* 1. Deduplication Button Hidden Cascade Fix (Overrides downstream !important) */
+
+@layer overrides {
 .merge-all-action-btn.hidden,
 #merge-all-dups-btn.hidden {
     display: none !important;
@@ -448,157 +479,195 @@ body:not(.dark-mode) .onboarding-pill {
 .word-card:has(.star-btn-card.starred) .word-card-actions {
     opacity: 1 !important;
 }
+}
+
+@layer base {
+
+.star-btn-card.starred i {
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+}
+}
+
+@layer overrides {
 
 .star-btn-card.starred i {
     color: var(--v5-amber-gold, #f59e0b) !important;
-    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
 }
 
 /* 3. Mobile Header Brand Title Anti-Clipping */
+}
+
 @media (max-width: 600px) {
+
+@layer overrides {
     .brand-title {
-        font-size: 0.85rem !important;
-        letter-spacing: -0.02em !important;
-        max-width: none !important;
-        white-space: nowrap !important;
+        font-size: 0.85rem;
+        letter-spacing: -0.02em;
+        max-width: none;
+        white-space: nowrap;
     }
+}
 }
 
 @media (max-width: 360px) {
+
+@layer overrides {
     .brand-title {
-        font-size: 0.78rem !important;
+        font-size: 0.78rem;
     }
+}
 }
 
 /* 4. Add/Edit Word Modal Viewport Safety (Guarantees Save Button is on-screen & scrollable) */
+
+@layer overrides {
 #add-edit-modal .modal-content {
-    max-width: 580px !important;
-    padding: 24px 30px !important;
-    max-height: 90vh !important;
-    max-height: 90dvh !important;
+    max-width: 580px;
+    padding: 24px 30px;
+    max-height: 90vh;
+    max-height: 90dvh;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
 }
 
 #add-edit-form {
-    gap: 12px !important;
+    gap: 12px;
 }
 
 #add-edit-form .form-group {
-    gap: 4px !important;
+    gap: 4px;
 }
 
 #add-edit-form .form-group label {
-    font-size: 0.84rem !important;
-    font-weight: 600 !important;
-    color: var(--text-light) !important;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-light);
 }
 
 #add-edit-form input,
 #add-edit-form textarea {
-    padding: 8px 12px !important;
-    font-size: 0.9rem !important;
-    border-radius: var(--v5-radius-sm, 8px) !important;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    border-radius: var(--v5-radius-sm, 8px);
 }
 
 #add-edit-form textarea {
-    min-height: 52px !important;
-    resize: vertical !important;
+    min-height: 52px;
+    resize: vertical;
 }
 
 #add-edit-form button[type="submit"] {
-    margin-top: 10px !important;
-    padding: 10px 24px !important;
-    width: 100% !important;
-    border-radius: var(--v5-radius-md, 12px) !important;
+    margin-top: 10px;
+    padding: 10px 24px;
+    width: 100%;
+    border-radius: var(--v5-radius-md, 12px);
     display: inline-flex !important;
-    justify-content: center !important;
-    align-items: center !important;
+    justify-content: center;
+    align-items: center;
+}
 }
 
 @media (max-width: 480px) {
+
+@layer overrides {
     #add-edit-modal .modal-content {
-        width: 96vw !important;
-        max-width: 96vw !important;
-        padding: 14px 12px 18px 12px !important;
-        border-radius: 18px !important;
-        max-height: 92dvh !important;
+        width: 96vw;
+        max-width: 96vw;
+        padding: 14px 12px 18px 12px;
+        border-radius: 18px;
+        max-height: 92dvh;
     }
 
     #add-edit-form {
-        gap: 8px !important;
+        gap: 8px;
     }
 
     #add-edit-form .form-group {
-        gap: 2px !important;
+        gap: 2px;
     }
 
     #add-edit-form .form-group label {
-        font-size: 0.78rem !important;
+        font-size: 0.78rem;
     }
 
     #add-edit-form input,
     #add-edit-form textarea {
-        padding: 7px 10px !important;
-        font-size: 0.84rem !important;
-        border-radius: 8px !important;
+        padding: 7px 10px;
+        font-size: 0.84rem;
+        border-radius: 8px;
     }
 
     #add-edit-form textarea {
-        min-height: 42px !important;
+        min-height: 42px;
     }
 
     #add-edit-form button[type="submit"] {
-        margin-top: 6px !important;
-        padding: 9px 18px !important;
-        font-size: 0.9rem !important;
+        margin-top: 6px;
+        padding: 9px 18px;
+        font-size: 0.9rem;
     }
+}
 }
 
 /* 5. Word List Container Scrollbar Clearance (Hub Tab 2) */
+
+@layer base {
 .word-list-cards-container {
-    padding-right: 14px !important;
     scrollbar-gutter: stable;
+}
+}
+
+@layer overrides {
+.word-list-cards-container {
+    padding-right: 14px;
 }
 
 /* 6. Mobile Toast Notification Screen Safety (Zero Document Overflow on <= 360px) */
+}
+
 @media (max-width: 480px) {
+
+@layer overrides {
     #toast-container {
         top: 10px !important;
         left: 10px !important;
         right: 10px !important;
-        width: auto !important;
-        max-width: calc(100vw - 20px) !important;
-        align-items: center !important;
+        width: auto;
+        max-width: calc(100vw - 20px);
+        align-items: center;
     }
 
     .toast-item {
-        min-width: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 10px 14px !important;
-        box-sizing: border-box !important;
-        border-radius: 12px !important;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        padding: 10px 14px;
+        box-sizing: border-box;
+        border-radius: 12px;
     }
 
     .toast-icon {
-        font-size: 1.6rem !important;
+        font-size: 1.6rem;
     }
 
     .toast-title {
-        font-size: 0.92rem !important;
-        margin-bottom: 2px !important;
+        font-size: 0.92rem;
+        margin-bottom: 2px;
     }
 
     .toast-message {
-        font-size: 0.8rem !important;
-        line-height: 1.35 !important;
+        font-size: 0.8rem;
+        line-height: 1.35;
     }
+}
 }
 
 /* 7. Mobile Touch Target Compliance (Apple HIG >= 44px) */
+
 @media (max-width: 768px) {
+
+@layer base {
     .icon-btn,
     .card-action-btn,
     .modal-close-btn,
@@ -631,48 +700,55 @@ body:not(.dark-mode) .onboarding-pill {
         pointer-events: auto;
     }
 }
+}
 
 /* 8. Deduplication Modal & Quiz Setup Mobile Overflow Defense */
+
 @media (max-width: 480px) {
+
+@layer overrides {
     #dedup-modal .modal-content,
     .dedup-panel {
-        width: 96vw !important;
-        max-width: 96vw !important;
-        padding: 14px 10px !important;
-        border-radius: 18px !important;
-        max-height: 92dvh !important;
+        width: 96vw;
+        max-width: 96vw;
+        padding: 14px 10px;
+        border-radius: 18px;
+        max-height: 92dvh;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
 
     .dedup-pair-grid {
-        grid-template-columns: 1fr !important;
-        gap: 8px !important;
+        grid-template-columns: 1fr;
+        gap: 8px;
     }
 
     .dedup-card-sub {
-        padding: 10px 12px !important;
+        padding: 10px 12px;
     }
 
     #quiz-modal .modal-content {
-        width: 96vw !important;
-        max-width: 96vw !important;
-        padding: 16px 14px !important;
-        border-radius: 18px !important;
-        max-height: 92dvh !important;
+        width: 96vw;
+        max-width: 96vw;
+        padding: 16px 14px;
+        border-radius: 18px;
+        max-height: 92dvh;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
 
     .achievements-wrapper {
-        grid-template-columns: 1fr !important;
-        gap: 10px !important;
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
+}
 }
 
 /* ==========================================================================
    LEGACY COMPATIBILITY BRIDGE: Map Legacy Tokens -> Celestial V5 Tokens
    ========================================================================== */
+
+@layer base {
 :root {
     --primary-color: var(--v5-nebula-purple);
     --primary-color-darker: var(--v5-obsidian-700);
@@ -701,6 +777,4 @@ body.light-mode {
     --text-color: var(--v5-porcelain-900);
     --text-light: var(--v5-porcelain-600);
 }
-
-
-
+}

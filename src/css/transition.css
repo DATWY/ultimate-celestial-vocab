@@ -1,6 +1,8 @@
 /* Shipper Curtain Transition CSS - Celestial Glassmorphism Engine */
 
 /* Container - Absolute Full Viewport Coverage (Guaranteed 100vw x 100vh / 100dvw x 100dvh) */
+
+@layer overrides {
 .shipper-curtain-container {
     position: fixed !important;
     top: 0 !important;
@@ -43,18 +45,35 @@ body.modal-active #shipper-curtain-container *::after {
 }
 
 /* Reduced Motion & Boost Mode Support */
+}
+
 @media (prefers-reduced-motion: reduce) {
+
+@layer overrides {
     .shipper-curtain-container {
         display: none !important;
         pointer-events: none !important;
     }
 }
+}
+
+@layer overrides {
 body.boost-mode .shipper-curtain-container {
     display: none !important;
     pointer-events: none !important;
 }
 
 /* Curtain Panels - Overlap by 12px each (total 24px center overlap) to unconditionally prevent center slit/gap */
+}
+
+@layer base {
+.curtain-left,
+.curtain-right {
+    will-change: transform;
+}
+}
+
+@layer overrides {
 .curtain-left,
 .curtain-right {
     position: fixed !important;
@@ -63,23 +82,43 @@ body.boost-mode .shipper-curtain-container {
     height: 100vh !important;
     height: 100dvh !important;
     width: calc(50% + 12px) !important;
-    will-change: transform;
     pointer-events: none !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
 }
+}
+
+@layer base {
+
+.curtain-left {
+    transform: translateX(calc(-100% - 80px));
+}
+}
+
+@layer overrides {
 
 .curtain-left {
     left: 0 !important;
-    transform: translateX(calc(-100% - 80px));
 }
+}
+
+@layer base {
+
+.curtain-right {
+    transform: translateX(calc(100% + 80px));
+}
+}
+
+@layer overrides {
 
 .curtain-right {
     right: 0 !important;
-    transform: translateX(calc(100% + 80px));
 }
 
 /* Dark Mode Curtain Styles (To Night/Dark - Deep Cosmic Nebula & Starfield) */
+}
+
+@layer base {
 .curtain-dark-left {
     background: radial-gradient(circle at 100% 50%, rgba(67, 56, 202, 0.45) 0%, transparent 65%), linear-gradient(135deg, #020617 0%, #0a0f2c 35%, #0f172a 70%, #1e1b4b 100%);
     border-right: 2px solid rgba(165, 180, 252, 0.6);
@@ -216,11 +255,7 @@ body.boost-mode .shipper-curtain-container {
 
 /* Badge Styles - Central Celestial Emblem */
 .curtain-badge {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
     transform: translate(-50%, -50%) scale(0);
-    z-index: 1000000 !important;
     width: 7.25rem;
     height: 7.25rem;
     border-radius: 9999px;
@@ -231,11 +266,23 @@ body.boost-mode .shipper-curtain-container {
     justify-content: center;
     text-align: center;
     opacity: 0;
-    pointer-events: none !important;
     will-change: transform, opacity;
+}
+}
+
+@layer overrides {
+.curtain-badge {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    z-index: 1000000 !important;
+    pointer-events: none !important;
 }
 
 /* Orbital Dashed Halo Ring (::before) */
+}
+
+@layer base {
 .curtain-badge::before {
     content: '';
     position: absolute;
@@ -354,6 +401,8 @@ body.boost-mode .shipper-curtain-container {
 }
 
 /* GPU Accelerated Smooth Celestial Animations */
+}
+
 @keyframes slideInLeft {
     0% { transform: translateX(calc(-100% - 80px)); }
     100% { transform: translateX(0); }
@@ -374,6 +423,8 @@ body.boost-mode .shipper-curtain-container {
     100% { transform: translateX(calc(100% + 80px)); }
 }
 
+@layer base {
+
 .curtain-left-closing {
     animation: slideInLeft 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -388,6 +439,7 @@ body.boost-mode .shipper-curtain-container {
 
 .curtain-right-opening {
     animation: slideOutRight 0.74s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 }
 
 @keyframes popIn {
@@ -425,12 +477,15 @@ body.boost-mode .shipper-curtain-container {
     }
 }
 
+@layer base {
+
 .badge-in {
     animation: popIn 0.62s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .badge-out {
     animation: popOut 0.52s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
 }
 
 @keyframes celestialStarlightPulse {

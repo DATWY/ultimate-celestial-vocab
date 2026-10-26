@@ -60,3 +60,7 @@ audit/
 
 # anh do npm run verify sinh ra (tai lap duoc, khong commit)
 reports/verify/
+
+# anh so sanh truoc/sau cua tools/visual_snapshot.mjs (18,5 MB, tai lap duoc)
+reports/visual/*
+!reports/visual/README.md

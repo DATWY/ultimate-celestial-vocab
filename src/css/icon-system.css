@@ -7,6 +7,8 @@
    Everything is static paint; motion only uses transform/opacity.
    ========================================================================== */
 
+@layer base {
+
 :root {
     --icon-backplate-opacity: 0.20;
     --icon-hover-backplate-opacity: 0.34;
@@ -26,12 +28,17 @@ body:not(.dark-mode) {
 
 /* Soft filled plate behind the outline. */
 .ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::before {
-    display: inline !important;
-    opacity: var(--icon-backplate-opacity) !important;
     color: var(--icon-backplate-tint);
     transform: scale(1.04);
     transform-origin: center;
     transition: opacity 0.28s ease;
+}
+}
+
+@layer overrides {
+.ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::before {
+    display: inline !important;
+    opacity: var(--icon-backplate-opacity) !important;
 }
 
 /* Primary layer overlaps the plate exactly (Phosphor glyphs are 1em wide). */
@@ -39,9 +46,12 @@ body:not(.dark-mode) {
     margin-left: -1em !important;
     opacity: 1 !important;
 }
+}
 
 @supports ((background-clip: text) or (-webkit-background-clip: text)) {
     @supports (color: color-mix(in srgb, red 50%, blue)) {
+
+@layer base {
         .ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::after,
         .ph-fill::before {
             background-image: linear-gradient(
@@ -55,10 +65,13 @@ body:not(.dark-mode) {
             -webkit-text-fill-color: transparent;
             color: currentColor;
         }
+}
     }
 }
 
 /* Action icons: lift + glow on hover, squash on press. */
+
+@layer base {
 .icon-btn i,
 .icon-btn-text i,
 .card-action-btn i,
@@ -67,12 +80,18 @@ body:not(.dark-mode) {
         transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
         filter 0.24s ease;
 }
+}
+
+@layer overrides {
 
 .icon-btn:hover i::before,
 .icon-btn-text:hover i::before,
 .card-action-btn:hover i::before {
     opacity: var(--icon-hover-backplate-opacity) !important;
 }
+}
+
+@layer base {
 
 .icon-btn:hover i::after,
 .icon-btn-text:hover i::after,
@@ -100,10 +119,14 @@ body:not(.dark-mode) {
 }
 
 /* A quiet breathing pulse for a few hero-level icons. */
+}
+
 @keyframes celestialIconBreathe {
     0%, 100% { transform: scale(1); opacity: 0.92; }
     50% { transform: scale(1.06); opacity: 1; }
 }
+
+@layer base {
 
 .manage-header-icon-pill i,
 .onboarding-hero-icon i {
@@ -128,9 +151,15 @@ body:not(.dark-mode) {
    under 4× CPU throttling. */
 .word-card .ph-fill::before,
 .word-card .ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::after {
+    color: currentColor;
+}
+}
+
+@layer overrides {
+.word-card .ph-fill::before,
+.word-card .ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::after {
     background-image: none !important;
     -webkit-text-fill-color: currentColor !important;
-    color: currentColor;
 }
 
 .word-card .ph-duotone:not(.ph-fill):not(.ph-bold):not(.ph)::before {
@@ -138,13 +167,19 @@ body:not(.dark-mode) {
 }
 
 /* Boost and reduced-motion keep the palette but drop the breathing. */
+}
+
+@layer base {
 body.boost-mode .manage-header-icon-pill i,
 body.boost-mode .onboarding-hero-icon i,
 body.boost-mode .onboarding-pill i {
     animation: none;
 }
+}
 
 @media (prefers-reduced-motion: reduce) {
+
+@layer base {
     .manage-header-icon-pill i,
     .onboarding-hero-icon i,
     .onboarding-pill i {
@@ -156,4 +191,5 @@ body.boost-mode .onboarding-pill i {
     .tts-waveform-btn i {
         transition: none;
     }
+}
 }
