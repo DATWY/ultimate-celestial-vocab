@@ -158,6 +158,12 @@ Nguồn: `src/core/srs/difficulty.js:46-69`.
 | Leech | `lapses ≥ 4` ⇒ `isLeech = true` | `constants.js:29`, `index.js:23-27` |
 | Thẻ leech vừa quên | hẹn lại **10 phút** (bước relearning), không nhồi lại ngay | `constants.js:31-33`, `index.js:240-246` |
 
+## Bảo mật — việc thủ công còn lại
+
+> **Chưa làm.** Firebase API key của project từng bị lộ trong một đoạn chat và **chưa được xoay**.
+> Các bước giới hạn referrer, xoay key, bật App Check enforce và checklist kiểm tra nằm ở
+> [`docs/SECURITY_KEY_ROTATION.md`](docs/SECURITY_KEY_ROTATION.md).
+> App Check có code sẵn nhưng **chưa enforce** — đừng đọc README này như thể đã bật.
 Nhãn "Dễ" của một thẻ mới hiện `7 ngày` vì bị trần tốt nghiệp 7 ngày — đây là hành vi có chủ đích, không phải lỗi hiển thị (kiểm bằng smoke test, xem `docs/SMOKE_TEST.md`).
 
 ---
@@ -323,7 +329,7 @@ ultimate-celestial-vocab/
 ├── scratch/                 # script thử nghiệm, chạy tay (vd. smoke-study-loop.mjs)
 ├── public/                  # fonts/ (Lexend + phosphor subset), sounds/*.mp3,
 │                            # phosphor-subset.css, icon-*, manifest, version.json
-├── docs/                    # screenshots/ + SMOKE_TEST.md
+├── docs/                    # SMOKE_TEST.md + SECURITY_KEY_ROTATION.md
 └── reports/                 # upgrade-report.html + PNG render, audit cũ
 ```
 
