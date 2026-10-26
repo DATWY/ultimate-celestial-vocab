@@ -1,6 +1,6 @@
 # SMOKE TEST — vòng học E2E trên bundle thật
 
-Tài liệu vận hành cho `scratch/smoke-study-loop.mjs`.
+Tài liệu vận hành cho `tests/e2e/study-loop.mjs` (trước đây là `scratch/smoke-study-loop.mjs`, đã chuyển vào git — T4.6).
 Đây là bài test **duy nhất** trong repo chạm vào app đang chạy thật (DOM + IndexedDB + phím thật), nên nó là lưới an toàn cuối cùng trước khi deploy.
 
 ---
@@ -17,13 +17,14 @@ Một kịch bản duy nhất, chạy không cần framework test:
 6. Mở Hub và tab từ vựng (kiểm tra UI không chết sau luồng chấm).
 7. So các giá trị đọc được với kỳ vọng và in JSON kết quả, exit code 0/1.
 
-Toàn bộ nằm trong `scratch/smoke-study-loop.mjs` (179 dòng).
+Toàn bộ nằm trong `tests/e2e/study-loop.mjs` (179 dòng — nội dung giống hệt bản `scratch/` cũ, chỉ đổi 4 dòng: đường dẫn trong comment và cách suy ra gốc repo, nên **mọi số dòng `:NN` bên dưới vẫn đúng**).
 
 ### Chạy trên `dist/` hay dev server?
 
 **Trên `dist/` thật.** Bằng chứng trong code:
 
-- `const distDir = path.join(process.cwd(), 'dist');` — `smoke-study-loop.mjs:11`
+- `const rootDir = path.resolve(path.dirname(process.argv[1] || '.'), '..', '..');` — `study-loop.mjs:10` (gốc repo suy ra từ **vị trí file**, không phải `process.cwd()`, nên chạy được từ cwd bất kỳ)
+- `const distDir = path.join(rootDir, 'dist');` — `study-loop.mjs:11`
 - Server tự viết bằng `http.createServer`, đọc file trong `distDir`, không match thì trả `dist/index.html` — `:17-27`
 - Trang được nạp bằng `Page.navigate` tới `http://localhost:5199/` — `:101`, `:105`
 - Không hề gọi `vite`, `vite preview`, hay `npm run dev`.
@@ -42,10 +43,11 @@ Hệ quả: **phải build trước**, nếu không script sẽ phục vụ `dis
 | Mạng | Script **có** gọi Firebase thật (xem cảnh báo §6) |
 | Cổng | `5199` cho HTTP server (`:12`), `9500-9579` ngẫu nhiên cho CDP (`:70`). Cả hai đều > 1024 |
 
-> **Lưu ý về nguồn gốc script:** `scratch/` nằm trong `.gitignore:44` nên `scratch/smoke-study-loop.mjs`
-> **không được track trong git** (`git ls-files scratch` trả về rỗng). Máy khác clone repo sẽ **không có**
-> file này. Nếu muốn dùng lâu dài, phải `git add -f scratch/smoke-study-loop.mjs` (hoặc chuyển sang
-> `tests/e2e/`) — xem T4.6 trong `UPGRADE_BACKLOG.md`.
+> **Nguồn gốc script:** bản gốc nằm ở `scratch/smoke-study-loop.mjs` — mà `scratch/` bị `.gitignore:44`
+> chặn, nên `git ls-files scratch` trả về rỗng và máy khác clone repo **không có** file này. T4.6 đã
+> chuyển nó thành **`tests/e2e/study-loop.mjs`** — thư mục `tests/e2e/` **không** bị ignore
+> (`git check-ignore tests/e2e/study-loop.mjs` → exit 1), nên clone sạch chạy được ngay:
+> `npm run build` → `npm run test:e2e`.
 
 Không cần `npm install` thêm gì: script chỉ dùng `node:http`, `node:fs`, `node:path`, `node:child_process`.
 
@@ -58,13 +60,15 @@ Không cần `npm install` thêm gì: script chỉ dùng `node:http`, `node:fs`,
 npm run build
 
 # 1) chế độ mặc định: thẻ NEW (không leech)
-node scratch/smoke-study-loop.mjs
+npm run test:e2e
+#    hoặc gọi trực tiếp (tương đương):
+node tests/e2e/study-loop.mjs
 
 # 2) chế độ LEECH: gieo thêm 1 thẻ lapses=4 và ưu tiên thẻ đó
 #    PowerShell:
-$env:SMOKE_LEECH=1; node scratch/smoke-study-loop.mjs; Remove-Item Env:\SMOKE_LEECH
+$env:SMOKE_LEECH=1; npm run test:e2e; Remove-Item Env:\SMOKE_LEECH
 #    bash / Git Bash:
-SMOKE_LEECH=1 node scratch/smoke-study-loop.mjs
+SMOKE_LEECH=1 node tests/e2e/study-loop.mjs
 ```
 
 Exit code: `0` = `ok: true`, `1` = có failure hoặc lỗi console.
@@ -75,6 +79,8 @@ Exit code: `0` = `ok: true`, `1` = có failure hoặc lỗi console.
 |---|---:|---|
 | mặc định (`new-card`) | **12,1 s** | `ok: true`, `errors: []`, `expectedAuthRejections: 1`, nhãn `1p/10p/10p/7 ngày` |
 | `SMOKE_LEECH=1` | **11,9 s** | `ok: true`, `errors: []`, `expectedAuthRejections: 1`, nhãn `10p/10p/1 ngày/2 ngày` |
+
+Chạy lại **từ đường dẫn mới** `tests/e2e/study-loop.mjs` (2026-10-26 12:44, Node v26.1.0, Chrome 155.0.8059.85, `dist/` build 12:43 từ HEAD `6440182`): **12,1 s** (`new-card`, exit 0) và **11,9 s** (`SMOKE_LEECH=1`, exit 0) — cùng kết quả `ok: true`, `errors: []`, `expectedAuthRejections: 1`.
 
 Con số này gần như **cố định**, vì script ngủ theo lịch cứng: 3.500 + 1.500 + 1.000 + 1.800 + 1.500 + 2×800 = **10,9 s** (`:102-146`), cộng ~1 s khởi động Chrome + nối CDP. Máy nhanh hơn không làm test nhanh hơn; máy quá chậm có thể làm bước chờ `app-ready` (tối đa 20 s, `:106`) hết hạn.
 
@@ -142,7 +148,7 @@ Vì profile Chrome là trắng, `localStorage.celestialSyncKey` chưa có ⇒ ap
 
 Hệ quả:
 
-- Mỗi lần chạy `node scratch/smoke-study-loop.mjs` có thể thêm **1 user** vào **project Firebase thật** (project cấu hình trong `.env` / fallback trong `src/core/firebase.js:56-65`).
+- Mỗi lần chạy `npm run test:e2e` có thể thêm **1 user** vào **project Firebase thật** (project cấu hình trong `.env` / fallback trong `src/core/firebase.js:56-65`).
 - Chạy 10 lần/ngày trong một tháng ⇒ hàng trăm user rác trong **Authentication**.
 - Cần dọn định kỳ trong **Firebase Console → Authentication → Users** (xoá user có email dạng `<20 ký tự>@sync.celestial-vocab.app`).
 - Muốn tránh hoàn toàn: chặn mạng của Chrome (`--host-resolver-rules` / firewall), hoặc chấp nhận `expectedAuthRejections` cao hơn và bỏ assert về Cloud.

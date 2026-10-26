@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "test:e2e": "node tests/e2e/study-loop.mjs",
     "dev": "vite",
     "build": "node tools/generate_version.js && vite build",
     "verify": "node tools/verify_performance_lifecycle.mjs && node tools/verify_version_system.mjs",
@@ -27,4 +28,3 @@
     "idb": "^8.0.3"
   }
 }
-

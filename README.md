@@ -271,6 +271,7 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 | Lệnh | Việc nó làm | Nguồn |
 |---|---|---|
 | `npm test` | Chạy 19 file test bằng `node --test` (203 test) | `package.json` → `scripts.test` |
+| `npm run test:e2e` | Smoke E2E vòng học trên **`dist/` đã build** (Chrome headless + CDP, 2 chế độ qua `SMOKE_LEECH=1`); ~12 s, exit 0/1. **Không** tự build | `tests/e2e/study-loop.mjs` (tài liệu: `docs/SMOKE_TEST.md`) |
 | `npm run dev` | Vite dev server | `scripts.dev` |
 | `npm run build` | `tools/generate_version.js` (tăng version) → `vite build` | `scripts.build` |
 | `npm run budget` | Đọc `dist/` **đã build**, in bảng thô/gzip từng file và so 4 ngưỡng; exit 1 nếu vượt. **Không** tự build | `tools/bundle_budget.mjs` |
@@ -284,8 +285,9 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 CI (`.github/workflows/ci.yml`) chạy `npm ci` → `npm test` → `npm run build` → `npm run budget`.
 
 Ngoài `package.json` còn các script trong `scratch/` và `tools/` phải gọi bằng `node` trực tiếp, ví dụ smoke test E2E:
-`node scratch/smoke-study-loop.mjs` (tài liệu: `docs/SMOKE_TEST.md`). Lưu ý `scratch/` bị `.gitignore:44`
-nên file smoke test **không** nằm trong git — clone mới sẽ không có.
+`npm run test:e2e` (hoặc `node tests/e2e/study-loop.mjs` — tài liệu: `docs/SMOKE_TEST.md`). File smoke test
+**nằm trong git** ở `tests/e2e/` (từ T4.6; bản cũ `scratch/smoke-study-loop.mjs` không được track), nên clone mới
+chạy được ngay sau `npm run build`. Gốc repo được suy ra từ vị trí file, không phụ thuộc cwd.
 
 ---
 
@@ -323,11 +325,11 @@ ultimate-celestial-vocab/
 │   ├── ui/                  # render.js, modal.js, elements.js, celestial-canvas.js, waveform.js
 │   └── css/                 # style.css, study-polish.css, transition.css,
 │                            # icon-system.css, motion-upgrade.css, fonts.css, tokens/celestial-v5.css
-├── tests/                   # 19 file .test.mjs (node:test)
+├── tests/                   # 19 file .test.mjs (node:test) + e2e/study-loop.mjs
 ├── tools/                   # build-icon-subset, bundle_budget, render_report,
 │                            # generate_version, train_fsrs7, measure_review_logs,
 │                            # simulate_intervals + các script verify_*/perf_*
-├── scratch/                 # script thử nghiệm, chạy tay (vd. smoke-study-loop.mjs)
+├── scratch/                 # script thử nghiệm, chạy tay (không được git track)
 ├── public/                  # fonts/ (Lexend + phosphor subset), sounds/*.mp3,
 │                            # phosphor-subset.css, icon-*, manifest, version.json
 ├── docs/                    # SMOKE_TEST.md + SECURITY_KEY_ROTATION.md
