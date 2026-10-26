@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "ultimate-celestial-vocab",
   "private": true,
   "version": "0.0.0",
@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "node tools/generate_version.js && vite build",
     "budget": "node tools/bundle_budget.mjs",
+    "report": "node tools/render_report.mjs",
     "preview": "vite preview",
     "train": "node tools/train_fsrs7.js",
     "version": "node tools/generate_version.js",
@@ -25,3 +26,4 @@
     "idb": "^8.0.3"
   }
 }
+

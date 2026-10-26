@@ -1,0 +1,520 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Báo cáo nâng cấp — Ultimate Celestial Vocab</title>
+<style>
+    @font-face { font-family: 'Lexend'; font-style: normal; font-weight: 300 700; font-display: block; src: url('../public/fonts/lexend-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'Lexend'; font-style: normal; font-weight: 300 700; font-display: block; src: url('../public/fonts/lexend-vietnamese.woff2') format('woff2'); unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB; }
+
+    :root {
+        --bg: #070914;
+        --panel: rgba(20, 24, 46, 0.86);
+        --panel-2: rgba(28, 32, 58, 0.7);
+        --line: rgba(126, 138, 255, 0.16);
+        --ink: #eef1ff;
+        --ink-dim: #a7aecb;
+        --ink-faint: #6f7794;
+        --violet: #8b5cf6;
+        --indigo: #6366f1;
+        --cyan: #22d3ee;
+        --green: #34d399;
+        --amber: #fbbf24;
+        --rose: #fb7185;
+        --bad: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        width: 1240px;
+        font-family: 'Lexend', 'Segoe UI', sans-serif;
+        color: var(--ink);
+        background:
+            radial-gradient(900px 600px at 12% -6%, rgba(99, 102, 241, 0.22), transparent 62%),
+            radial-gradient(800px 520px at 92% 4%, rgba(34, 211, 238, 0.14), transparent 60%),
+            radial-gradient(1000px 700px at 50% 108%, rgba(139, 92, 246, 0.18), transparent 65%),
+            var(--bg);
+        -webkit-font-smoothing: antialiased;
+    }
+    .page { width: 1240px; padding: 54px 56px 46px; position: relative; overflow: hidden; }
+    .page + .page { border-top: 1px solid var(--line); }
+    .star { position: absolute; border-radius: 50%; background: #fff; opacity: .5; }
+
+    /* ---------- header ---------- */
+    .kicker { display: flex; align-items: center; gap: 10px; font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); font-weight: 600; }
+    .kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+    h1 { font-size: 41px; line-height: 1.12; font-weight: 700; letter-spacing: -.6px; margin: 14px 0 10px; }
+    h1 .grad { background: linear-gradient(96deg, #a78bfa, #22d3ee 55%, #34d399); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .sub { font-size: 15px; color: var(--ink-dim); max-width: 900px; line-height: 1.62; }
+    h2 { font-size: 21px; font-weight: 650; letter-spacing: -.2px; display: flex; align-items: center; gap: 11px; margin-bottom: 6px; }
+    h2 .num { font-size: 12px; font-weight: 700; color: var(--violet); background: rgba(139, 92, 246, 0.14); border: 1px solid rgba(139, 92, 246, .3); padding: 3px 9px; border-radius: 999px; letter-spacing: .04em; }
+    .lead { font-size: 13.5px; color: var(--ink-dim); margin-bottom: 20px; line-height: 1.6; }
+    section { margin-top: 34px; }
+
+    /* ---------- KPI ---------- */
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 26px; }
+    .kpi { position: relative; padding: 17px 18px 16px; border-radius: 16px; background: linear-gradient(160deg, rgba(38, 42, 74, .92), rgba(19, 22, 42, .92)); border: 1px solid var(--line); overflow: hidden; }
+    .kpi::after { content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; background: linear-gradient(90deg, transparent, var(--c, var(--violet)), transparent); }
+    .kpi .label { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+    .kpi .value { font-size: 32px; font-weight: 700; letter-spacing: -.8px; margin: 7px 0 3px; display: flex; align-items: baseline; gap: 7px; }
+    .kpi .value small { font-size: 14px; font-weight: 500; color: var(--ink-dim); letter-spacing: 0; }
+    .kpi .note { font-size: 12px; color: var(--ink-dim); line-height: 1.45; }
+    .up { color: var(--green); } .down { color: var(--cyan); } .warn { color: var(--amber); } .bad { color: var(--bad); }
+
+    /* ---------- bar chart ---------- */
+    .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px 18px; }
+    .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .chart-title { font-size: 14.5px; font-weight: 600; }
+    .chart-sub { font-size: 11.5px; color: var(--ink-faint); }
+    .rows { margin-top: 16px; display: flex; flex-direction: column; gap: 15px; }
+    .row { display: grid; grid-template-columns: 176px 1fr 158px; align-items: center; gap: 14px; }
+    .row .name { font-size: 12.5px; color: var(--ink-dim); font-weight: 500; line-height: 1.3; }
+    .row .name b { display: block; color: var(--ink); font-weight: 600; font-size: 12.5px; }
+    .bars { display: flex; flex-direction: column; gap: 5px; }
+    .bar { height: 13px; border-radius: 7px; position: relative; overflow: hidden; background: rgba(255, 255, 255, .045); }
+    .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 7px; }
+    .bar.before i { background: linear-gradient(90deg, #f87171, #fb7185); box-shadow: 0 0 14px rgba(248, 113, 113, .32); }
+    .bar.after i { background: linear-gradient(90deg, #22d3ee, #34d399); box-shadow: 0 0 14px rgba(52, 211, 153, .3); }
+    .row .delta { text-align: right; font-size: 12.5px; font-weight: 650; }
+    .legend { display: flex; gap: 18px; font-size: 11.5px; color: var(--ink-dim); margin-top: 14px; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+    /* ---------- step chart ---------- */
+    .steps { display: flex; align-items: flex-end; gap: 0; margin-top: 18px; height: 168px; padding: 0 8px; }
+    .step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 9px; position: relative; }
+    .step .col { width: 66%; border-radius: 10px 10px 4px 4px; background: linear-gradient(180deg, rgba(139, 92, 246, .95), rgba(99, 102, 241, .28)); box-shadow: 0 -4px 26px rgba(139, 92, 246, .35) inset; position: relative; }
+    .step .val { font-size: 15px; font-weight: 700; }
+    .step .cap { font-size: 11px; color: var(--ink-faint); text-align: center; line-height: 1.35; height: 28px; }
+    .step .delta-tag { font-size: 10.5px; font-weight: 700; color: var(--green); background: rgba(52, 211, 153, .12); border: 1px solid rgba(52, 211, 153, .3); border-radius: 999px; padding: 1px 7px; }
+
+    /* ---------- bug cards ---------- */
+    .bugs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .bug { background: linear-gradient(158deg, rgba(36, 26, 48, .92), rgba(19, 22, 42, .94)); border: 1px solid rgba(251, 113, 133, .22); border-radius: 16px; padding: 18px 19px 16px; position: relative; overflow: hidden; }
+    .bug::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, var(--rose), rgba(251, 113, 133, .06)); }
+    .bug .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--rose); }
+    .bug h3 { font-size: 15.5px; font-weight: 650; margin: 7px 0 8px; line-height: 1.35; }
+    .bug p { font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+    .bug .fig { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 11px; border-top: 1px dashed rgba(255, 255, 255, .1); font-size: 12px; }
+    .bug .fig b { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+    .bug .fig .arrow { color: var(--ink-faint); }
+    .bug .fig .to { color: var(--green); }
+    .bug .fig .from { color: var(--bad); }
+
+    /* ---------- spread chart ---------- */
+    .spread { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .spread .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+    .spread .card .head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--ink-dim); margin-bottom: 14px; }
+    .spread .card .head b { color: var(--ink); font-size: 13px; }
+    .spread .card .big { font-size: 30px; font-weight: 700; letter-spacing: -1px; }
+    .lane { position: relative; height: 46px; margin: 14px 0 6px; }
+    .lane .track { position: absolute; left: 0; right: 0; top: 20px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .07); }
+    .lane .seg { position: absolute; top: 17px; height: 11px; border-radius: 6px; }
+    .lane .pin { position: absolute; top: 8px; width: 2px; height: 29px; background: var(--ink); opacity: .65; }
+    .lane .tagl { position: absolute; top: 34px; font-size: 10.5px; color: var(--ink-faint); white-space: nowrap; }
+    .spread .card .foot { display: block; font-size: 11.5px; color: var(--ink-faint); line-height: 1.55; }
+
+    /* ---------- checklist ---------- */
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; margin-top: 14px; }
+    .check { display: flex; gap: 11px; align-items: flex-start; font-size: 12.5px; color: var(--ink-dim); line-height: 1.5; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .check .ic { flex: 0 0 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
+    .check .ok { background: rgba(52, 211, 153, .14); color: var(--green); border: 1px solid rgba(52, 211, 153, .34); }
+    .check .todo { background: rgba(251, 191, 36, .12); color: var(--amber); border: 1px solid rgba(251, 191, 36, .32); }
+    .check b { color: var(--ink); font-weight: 600; }
+
+    /* ---------- shots ---------- */
+    .shots { display: grid; grid-template-columns: 1.28fr 1fr; gap: 16px; margin-top: 16px; }
+    .shot { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #0b0f20; }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot .cap { font-size: 11.5px; color: var(--ink-faint); padding: 9px 12px; border-top: 1px solid var(--line); }
+
+    /* ---------- timeline ---------- */
+    .tl { margin-top: 16px; display: flex; flex-direction: column; }
+    .tl .item { display: grid; grid-template-columns: 96px 30px 1fr; gap: 0 14px; }
+    .tl .sha { font-family: 'Consolas', monospace; font-size: 12px; color: var(--cyan); padding-top: 3px; text-align: right; }
+    .tl .rail { position: relative; }
+    .tl .rail::before { content: ''; position: absolute; left: 14px; top: 12px; bottom: -6px; width: 2px; background: linear-gradient(180deg, rgba(139,92,246,.5), rgba(139,92,246,.06)); }
+    .tl .item:last-child .rail::before { display: none; }
+    .tl .node { position: absolute; left: 9px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 0 3px rgba(139, 92, 246, .18), 0 0 14px rgba(139, 92, 246, .6); }
+    .tl .body { padding: 0 0 17px; }
+    .tl .body .t { font-size: 13.5px; font-weight: 600; }
+    .tl .body .d { font-size: 12px; color: var(--ink-dim); line-height: 1.55; margin-top: 3px; }
+    .tl .body .m { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--cyan); background: rgba(34, 211, 238, .1); border: 1px solid rgba(34, 211, 238, .28); border-radius: 999px; padding: 2px 9px; }
+
+    .foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-faint); }
+    .caveat { margin-top: 14px; font-size: 11.5px; color: var(--ink-faint); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ PAGE 1 ══════════════════════ -->
+<div class="page" id="p1">
+    <div class="star" style="width:2px;height:2px;left:120px;top:80px"></div>
+    <div class="star" style="width:3px;height:3px;left:980px;top:52px"></div>
+    <div class="star" style="width:2px;height:2px;left:1130px;top:210px"></div>
+    <div class="star" style="width:2px;height:2px;left:60px;top:330px;opacity:.3"></div>
+
+    <div class="kicker"><span class="dot"></span> Báo cáo nâng cấp · 26/10/2026</div>
+    <h1>Ultimate Celestial Vocab<br><span class="grad">11 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
+    <p class="sub">
+        Mọi con số dưới đây là <b>đo được</b> (script trong repo hoặc Chrome headless), không phải ước lượng.
+        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>195</b> test, và có golden test khoá toàn bộ engine FSRS
+        để lần sau ai sửa công thức là CI đỏ ngay.
+    </p>
+
+    <div class="kpis">
+        <div class="kpi" style="--c:var(--green)">
+            <div class="label">Test tự động</div>
+            <div class="value">195 <small class="up">▲ +67</small></div>
+            <div class="note">128 → 142 → 166 → 195. Gồm 50 ca golden khoá 11 trường engine.</div>
+        </div>
+        <div class="kpi" style="--c:var(--cyan)">
+            <div class="label">Precache PWA</div>
+            <div class="value">1.357 <small>KiB</small></div>
+            <div class="note">Từ 1.906,7 KiB <span class="down">▼ 29%</span> — cài app nhẹ hơn ~549 KiB.</div>
+        </div>
+        <div class="kpi" style="--c:var(--violet)">
+            <div class="label">Tổng bản build</div>
+            <div class="value">2.094 <small>KiB</small></div>
+            <div class="note">Từ 2.434,3 KiB <span class="down">▼ 14%</span> dù thêm App Check + TTS + self-host font.</div>
+        </div>
+        <div class="kpi" style="--c:var(--amber)">
+            <div class="label">Rủi ro mất dữ liệu</div>
+            <div class="value">0</div>
+            <div class="note">Không migration, không đổi schema thẻ. Thẻ Mastered đi đúng đường cũ.</div>
+        </div>
+        <div class="kpi" style="--c:var(--rose)">
+            <div class="label">Lỗi thật đã sửa</div>
+            <div class="value">6</div>
+            <div class="note">1 MiB Firestore · dự báo mất thẻ · DST lệch cột · XSS · leech giả · mã sync sai.</div>
+        </div>
+        <div class="kpi" style="--c:var(--indigo)">
+            <div class="label">Phụ thuộc bên ngoài</div>
+            <div class="value">0 <small>font</small></div>
+            <div class="note">Lexend tự host 86 KiB — bỏ 2 domain Google, offline có đúng font.</div>
+        </div>
+    </div>
+
+    <section>
+        <h2><span class="num">01</span> Nhẹ đi ở đâu, nặng lên ở đâu</h2>
+        <p class="lead">Cùng một sản phẩm, cùng tính năng (thêm 3 tính năng mới). Dài = nặng hơn.</p>
+        <div class="chart">
+            <div class="chart-head">
+                <div class="chart-title">Trước → sau, theo từng hạng mục</div>
+                <div class="chart-sub">đơn vị gốc của từng dòng (B / KiB / KB)</div>
+            </div>
+            <div class="rows">
+                <div class="row">
+                    <div class="name"><b>Font icon</b>4 weight đầy đủ → subset</div>
+                    <div class="bars">
+                        <div class="bar before"><i style="width:100%"></i></div>
+                        <div class="bar after"><i style="width:16.1%"></i></div>
+                    </div>
+                    <div class="delta down">−84% <span style="color:var(--ink-faint);font-weight:400">580→93 KB</span></div>
+                </div>
+                <div class="row">
+                    <div class="name"><b>Precache PWA</b>tải khi cài app</div>
+                    <div class="bars">
+                        <div class="bar before"><i style="width:100%"></i></div>
+                        <div class="bar after"><i style="width:71.2%"></i></div>
+                    </div>
+                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1357 KiB</span></div>
+                </div>
+                <div class="row">
+                    <div class="name"><b>Tổng dist</b>toàn bộ site</div>
+                    <div class="bars">
+                        <div class="bar before"><i style="width:100%"></i></div>
+                        <div class="bar after"><i style="width:86%"></i></div>
+                    </div>
+                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2094 KiB</span></div>
+                </div>
+                <div class="row">
+                    <div class="name"><b>reviewLogs (xấu nhất)</b>trần Firestore 1 MiB</div>
+                    <div class="bars">
+                        <div class="bar before"><i style="width:100%"></i></div>
+                        <div class="bar after"><i style="width:28%"></i></div>
+                    </div>
+                    <div class="delta down">−72% <span style="color:var(--ink-faint);font-weight:400">1180→330 KB</span></div>
+                </div>
+                <div class="row">
+                    <div class="name"><b>CSS chính</b>xoá rule chết</div>
+                    <div class="bars">
+                        <div class="bar before"><i style="width:100%"></i></div>
+                        <div class="bar after"><i style="width:96.7%"></i></div>
+                    </div>
+                    <div class="delta down">−3,3% <span style="color:var(--ink-faint);font-weight:400">423→409 KB</span></div>
+                </div>
+                <div class="row">
+                    <div class="name"><b>Entry JS (gzip)</b>chứa tính năng mới</div>
+                    <div class="bars">
+                        <div class="bar before"><i style="width:93.4%"></i></div>
+                        <div class="bar after"><i style="width:100%"></i></div>
+                    </div>
+                    <div class="delta warn">+4,3% <span style="color:var(--ink-faint);font-weight:400">76→81,4 kB</span></div>
+                </div>
+            </div>
+            <div class="legend">
+                <span><i style="background:linear-gradient(90deg,#f87171,#fb7185)"></i> trước nâng cấp</span>
+                <span><i style="background:linear-gradient(90deg,#22d3ee,#34d399)"></i> sau nâng cấp</span>
+                <span style="color:var(--ink-faint)">Dòng cuối là chỗ DUY NHẤT nặng lên — đang được tách chunk lazy.</span>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2><span class="num">02</span> Test tăng theo từng đợt</h2>
+        <p class="lead">Không phải test cho có: mỗi đợt thêm test khoá đúng hành vi vừa sửa, gồm cả test bất biến 200 tổ hợp có seed.</p>
+        <div class="chart">
+            <div class="steps">
+                <div class="step"><div class="val">128</div><div class="col" style="height:66px"></div><div class="cap">Baseline<br>trước nâng cấp</div></div>
+                <div class="step"><div class="val">142</div><div class="col" style="height:78px"></div><div class="cap">SRS leech<br>+ heuristics</div><span class="delta-tag">+14 test</span></div>
+                <div class="step"><div class="val">166</div><div class="col" style="height:100px"></div><div class="cap">Golden FSRS<br>+ dự báo 7 ngày</div><span class="delta-tag">+24 test</span></div>
+                <div class="step"><div class="val">195</div><div class="col" style="height:123px"></div><div class="cap">reviewLogs 1 MiB<br>+ TTS</div><span class="delta-tag">+29 test</span></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="foot"><span>Ultimate Celestial Vocab · báo cáo nâng cấp</span><span>trang 1 / 4</span></div>
+</div>
+
+<!-- ══════════════════════ PAGE 2 ══════════════════════ -->
+<div class="page" id="p2">
+    <div class="star" style="width:2px;height:2px;left:200px;top:120px"></div>
+    <div class="star" style="width:3px;height:3px;left:1060px;top:90px"></div>
+    <div class="star" style="width:2px;height:2px;left:80px;top:520px;opacity:.3"></div>
+
+    <h2 style="font-size:26px"><span class="num">03</span> Sáu lỗi thật — loại lỗi chỉ lộ ra sau vài tháng dùng</h2>
+    <p class="lead" style="max-width:1000px">
+        Đây là phần đáng giá nhất của đợt nâng cấp. Không lỗi nào trong số này hiện ra khi bạn bấm thử app vài phút:
+        chúng cần dữ liệu lớn, thời gian dài, hoặc điều kiện đặc biệt (múi giờ có DST, mã sync gõ sai, chuỗi chèn HTML).
+    </p>
+
+    <div class="bugs">
+        <div class="bug">
+            <div class="tag">Nghiêm trọng nhất · T2.4</div>
+            <h3>Document Firestore vượt 1 MiB → ghi lỗi vĩnh viễn</h3>
+            <p>Code cũ cắt <code>reviewLogs</code> theo số row nhưng <b>không có ngưỡng cho dictionary cardId</b>.
+                Với 10.000 id dài 96 ký tự, document phình lên <b>115% trần 1 MiB</b>. Vượt trần thì Firestore từ chối
+                <i>mọi</i> lần ghi sau đó — app không tự khỏi, người dùng chỉ thấy “không đồng bộ được”.</p>
+            <div class="fig">
+                <span class="from"><b>1.180</b> KB</span><span class="arrow">→</span>
+                <span class="to"><b>330</b> KB</span>
+                <span style="margin-left:auto;color:var(--ink-faint)">31,5% trần · cắt theo byte thật</span>
+            </div>
+        </div>
+
+        <div class="bug">
+            <div class="tag">Mất dữ liệu âm thầm · T1.6</div>
+            <h3>Thẻ biến mất khỏi biểu đồ dự báo</h3>
+            <p><code>new Date(srsDueDate)</code> với kiểu <b>chuỗi số</b> hoặc <b>Firestore Timestamp</b> cho
+                <code>Invalid Date</code> → thẻ bị bỏ qua <b>không báo gì</b>. Người dùng thấy tuần này “rảnh”
+                trong khi thật ra có thẻ phải ôn.</p>
+            <div class="fig">
+                <span class="from"><b>12</b> thẻ</span><span class="arrow">→</span>
+                <span class="to"><b>14</b> thẻ</span>
+                <span style="margin-left:auto;color:var(--ink-faint)">fixture 20 thẻ</span>
+            </div>
+        </div>
+
+        <div class="bug">
+            <div class="tag">Sai lệch địa lý · T1.6</div>
+            <h3>DST làm lệch cả tuần dự báo 1 cột</h3>
+            <p>Bucket tính bằng <code>/86400000</code>. Ngày đổi giờ dài 23h hoặc 25h → <b>mọi thẻ sau ngày đó
+                lệch 1 cột</b>, và thẻ hạn <b>+7 ngày lọt vào cột 6</b>. Việt Nam không có DST nên không thấy —
+                nhưng người dùng ở EU/US/AU đều bị.</p>
+            <div class="fig">
+                <span class="from"><b>[5,2,1,2,2,1,1]</b></span><span class="arrow">→</span>
+                <span class="to"><b>[5,2,1,2,2,2,1]</b></span>
+                <span style="margin-left:auto;color:var(--ink-faint)">Berlin 26/03</span>
+            </div>
+        </div>
+
+        <div class="bug">
+            <div class="tag">Bảo mật · T0.1 / T0.2</div>
+            <h3>Chèn HTML qua popup lịch ôn và câu hỏi hình phạt</h3>
+            <p>Nội dung do người dùng nhập (hoặc người khác chia sẻ qua mã sync) được nhét thẳng vào
+                <code>innerHTML</code>. Đã escape ở 6 điểm render + comment cảnh báo ngay tại API
+                <code>showPopup()</code> để không tái diễn.</p>
+            <div class="fig">
+                <span class="from"><b>6</b> điểm chèn</span><span class="arrow">→</span>
+                <span class="to"><b>0</b></span>
+                <span style="margin-left:auto;color:var(--ink-faint)">10 test XSS</span>
+            </div>
+        </div>
+
+        <div class="bug">
+            <div class="tag">Thuật toán · T1.1 / T1.3 / T1.4</div>
+            <h3>Thẻ mới “tốt nghiệp” quá sớm, khoảng cách 8× giữa từ dễ và từ khó</h3>
+            <p>Bấm “Nhớ” lần đầu là thẻ thành Mastered hẹn 10,9 ngày; “Dễ” hẹn 21 ngày; công thức còn thổi
+                interval lên <b>38.147 ngày</b> (104 năm). Heuristics chênh tới <b>7,97×</b> giữa “cat” và
+                “break the ice”. Badge “CỰC KHÓ” bật cho mọi thẻ khó chứ không phải thẻ đang chống lại bạn.</p>
+            <div class="fig">
+                <span class="from"><b>7,97×</b> chênh</span><span class="arrow">→</span>
+                <span class="to"><b>1,94×</b></span>
+                <span style="margin-left:auto;color:var(--ink-faint)">trần 38.147 → 365 ngày</span>
+            </div>
+        </div>
+
+        <div class="bug" style="border-color:rgba(34,211,238,.22)">
+            <div class="tag" style="color:var(--cyan)">Đồng bộ · T0.5 / T0.6</div>
+            <h3>Gõ sai mã sync lại tạo không gian rỗng mới</h3>
+            <p>Đăng nhập thất bại bị hiểu là “chưa có tài khoản” nên app <b>tự tạo</b> một không gian mới rỗng,
+                rồi báo thành công. Nút “Liên kết thiết bị” còn gọi một hàm <b>không tồn tại</b>. Nay: chỉ mã
+                do chính app sinh mới được tự tạo, mã người dùng dán thì không bao giờ.</p>
+            <div class="fig">
+                <span class="from"><b>“thành công”</b> giả</span><span class="arrow">→</span>
+                <span class="to"><b>báo lỗi thật</b> + gợi ý</span>
+                <span style="margin-left:auto;color:var(--ink-faint)">+3 test</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="foot"><span>“Đo được” — mỗi con số đều có script hoặc test sinh ra nó</span><span>trang 2 / 4</span></div>
+</div>
+
+<!-- ══════════════════════ PAGE 3 ══════════════════════ -->
+<div class="page" id="p3">
+    <div class="star" style="width:2px;height:2px;left:150px;top:100px"></div>
+    <div class="star" style="width:3px;height:3px;left:1010px;top:70px"></div>
+
+    <h2 style="font-size:26px"><span class="num">04</span> Lịch ôn: từ “nhảy cóc” sang “đúng bước”</h2>
+    <p class="lead" style="max-width:1000px">
+        Thẻ mới giờ đi đúng 3 bước ghi nhớ ngắn hạn trước khi vào lịch dài hạn — giống cách trí nhớ thật hoạt động,
+        và giống chuẩn FSRS. Khoảng cách giữa từ dễ nhất và từ khó nhất cũng được thu về mức hợp lý.
+    </p>
+
+    <div class="spread">
+        <div class="card">
+            <div class="head"><b>Khoảng cách interval lần đầu</b><span>từ dễ ↔ từ khó</span></div>
+            <div class="big down" style="color:var(--green)">1,94× <span style="font-size:13px;color:var(--ink-faint);font-weight:500">(trước 7,97×)</span></div>
+            <div class="lane">
+                <div class="track"></div>
+                <div class="seg" style="left:0;width:100%;background:linear-gradient(90deg,rgba(248,113,113,.65),rgba(248,113,113,.25));top:8px"></div>
+                <div class="pin" style="left:0"></div><div class="pin" style="left:99.6%"></div>
+                <div class="tagl" style="left:0">cat 12,6 ngày</div>
+                <div class="tagl" style="right:0">break the ice 1,58 ngày</div>
+                <div class="seg" style="left:0;width:24.3%;background:linear-gradient(90deg,rgba(52,211,153,.8),rgba(52,211,153,.3));top:24px"></div>
+                <div class="pin" style="left:0;top:20px;height:17px"></div><div class="pin" style="left:24.2%;top:20px;height:17px"></div>
+            </div>
+            <div class="foot">Hàng trên: trước · hàng dưới: sau. Từ khó vẫn được ôn sớm hơn từ dễ, chỉ không còn chênh 8 lần.</div>
+        </div>
+
+        <div class="card">
+            <div class="head"><b>Nhãn trên 4 nút chấm — thẻ mới</b><span>thay đổi hành vi</span></div>
+            <div style="display:flex;gap:8px;margin:6px 0 12px">
+                <div style="flex:1;text-align:center;background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.35);border-radius:10px;padding:8px 4px">
+                    <div style="font-size:11px;color:var(--ink-dim)">Quên</div><div style="font-weight:700;font-size:14px;color:#fca5a5">1p</div></div>
+                <div style="flex:1;text-align:center;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.32);border-radius:10px;padding:8px 4px">
+                    <div style="font-size:11px;color:var(--ink-dim)">Khó</div><div style="font-weight:700;font-size:14px;color:#fcd34d">10p</div></div>
+                <div style="flex:1;text-align:center;background:rgba(99,102,241,.16);border:1px solid rgba(99,102,241,.4);border-radius:10px;padding:8px 4px">
+                    <div style="font-size:11px;color:var(--ink-dim)">Nhớ</div><div style="font-weight:700;font-size:14px;color:#a5b4fc">10p</div></div>
+                <div style="flex:1;text-align:center;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.34);border-radius:10px;padding:8px 4px">
+                    <div style="font-size:11px;color:var(--ink-dim)">Dễ</div><div style="font-weight:700;font-size:14px;color:#6ee7b7">7 ngày</div></div>
+            </div>
+            <div class="foot"><b style="color:var(--bad);font-weight:600">Trước:</b> bấm “Nhớ” lần đầu là thẻ thành Mastered, hẹn 10,9 ngày.<br>
+                Nhãn cũ: &lt;10p · 1 ngày · 3 ngày · 7 ngày.<br>
+                <b style="color:var(--green);font-weight:600">Nay:</b> 1 phút → 10 phút → 1 ngày → tốt nghiệp, trần 7 ngày cho thẻ chưa từng trượt.</div>
+        </div>
+    </div>
+
+    <section>
+        <h2><span class="num">05</span> Bảo mật &amp; độ bền — đã làm / còn lại</h2>
+        <div class="checks">
+            <div class="check"><span class="ic ok">✓</span><span><b>CSP bỏ <code>unsafe-inline</code> khỏi <code>script-src</code></b> + chuyển thành header thật trên Hosting. Đây là lớp chặn XSS cuối cùng.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>App Check (reCAPTCHA v3) sẵn sàng</b> — chỉ cần điền site key; origin Google đã mở trong CSP để bật enforce không làm sập sync.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>Escape 6 điểm chèn HTML</b> + 10 test XSS với payload thật.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>1 MiB Firestore</b> có 3 ngưỡng + prune ở 3 chỗ, không bao giờ đụng vào card/progress.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>Golden test 50 ca × 11 trường</b> + bất biến 200 tổ hợp: đổi công thức là CI đỏ.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>Ngân sách bundle trong CI</b> (<code>npm run budget</code>): entry 82 kB · firebase 120 kB · CSS 350 kB · dist 2,7 MB.</span></div>
+            <div class="check"><span class="ic todo">!</span><span><b>Bật App Check enforce</b> — thao tác trên Console, cần monitor 48h trước (rủi ro WebView cũ).</span></div>
+            <div class="check"><span class="ic todo">!</span><span><b><code>!important</code> còn 1.624 / mục tiêu &lt;800</b> — phải refactor specificity, xoá code chết không đủ.</span></div>
+            <div class="check"><span class="ic todo">!</span><span><b>Entry gzip 99% ngân sách</b> — đang tách panel TTS sang chunk lazy.</span></div>
+            <div class="check"><span class="ic todo">!</span><span><b>Sync A↔B chưa thử với Firestore thật</b> — cần 2 tài khoản để xác nhận kéo đủ thẻ + progress.</span></div>
+        </div>
+    </section>
+
+    <div class="foot"><span>Bảo mật &amp; độ bền — 6 việc đã xong, 4 việc còn lại</span><span>trang 3 / 4</span></div>
+</div>
+
+<!-- ══════════════════════ PAGE 4 ══════════════════════ -->
+<div class="page" id="p4">
+    <div class="star" style="width:2px;height:2px;left:150px;top:100px"></div>
+    <div class="star" style="width:3px;height:3px;left:1010px;top:70px"></div>
+
+    <section style="margin-top:0">
+        <h2><span class="num">06</span> Giao diện sau nâng cấp — chụp thật từ bản build</h2>
+        <div class="shots">
+            <div class="shot">
+                <img src="assets/study-flipped.png" alt="Màn học đã lật thẻ">
+                <div class="cap">Thẻ đã lật · 4 nút chấm với nhãn mới <b>1p / 10p / 10p / 7 ngày</b> · font Lexend tự host</div>
+            </div>
+            <div class="shot">
+                <img src="assets/hub-overview.png" alt="Hub tổng quan">
+                <div class="cap">Hub tổng quan · heatmap + dự báo 7 ngày (đã sửa lỗi DST và lỗi chuỗi ngày)</div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2><span class="num">07</span> 11 commit, theo đúng thứ tự đã làm</h2>
+        <div class="tl">
+            <div class="item"><div class="sha">2390c23</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Backup 3 lớp + backlog 36 task</div>
+                <div class="d">Git bundle 42,45 MB verified · tag <code>pre-upgrade-2026-10-26</code> · branch backup · zip source.</div>
+                <div class="m">mốc quay lui được</div></div></div>
+            <div class="item"><div class="sha">b6b498a</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T0.1 + T0.2 — chặn XSS ở 6 điểm render</div>
+                <div class="d">escapeHTML ở popup lịch ôn, câu hỏi hình phạt, dedup key; 10 test mới.</div>
+                <div class="m">+10 test</div></div></div>
+            <div class="item"><div class="sha">569c509</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T1.1 + T1.2 — learning steps thật + trần 365 ngày</div>
+                <div class="d">1 phút → 10 phút → 1 ngày; trần tốt nghiệp 7 ngày cho thẻ chưa trượt; interval tối đa 365 ngày.</div>
+                <div class="m">38.147 → 365 ngày</div></div></div>
+            <div class="item"><div class="sha">f8d1ccb</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T2.1 + T2.3 + T3.3 — PWA không tự reload, cache header, SFX lazy</div>
+                <div class="d">Reload guard 24h theo version host; <code>/assets/**</code> immutable 1 năm; bỏ preload âm thanh lúc khởi động.</div>
+                <div class="m">9 test version-guard</div></div></div>
+            <div class="item"><div class="sha">066c9e5</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T0.5 + T0.6 — đồng bộ đa thiết bị dùng API thật</div>
+                <div class="d">Không tự tạo không gian khi gõ sai mã; watermark theo uid; nút liên kết gọi đúng hàm và báo số thẻ đã kéo.</div>
+                <div class="m">12 test cloud identity</div></div></div>
+            <div class="item"><div class="sha">e6d6a33</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T1.3 + T1.4 — thu biên độ heuristics + leech thật</div>
+                <div class="d">Chênh interval 7,97× → 1,94×; thẻ trượt 4 lần hẹn lại +10 phút thay vì nhồi lại ngay.</div>
+                <div class="m">+14 test</div></div></div>
+            <div class="item"><div class="sha">b9aba05</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T0.3 + T0.4 — App Check + CSP chặt</div>
+                <div class="d">CSP thành header thật; bỏ <code>unsafe-inline</code> khỏi <code>script-src</code>; App Check sẵn sàng, không nhúng debug token vào bundle prod.</div>
+                <div class="m">+4,6 kB gzip (chunk lazy)</div></div></div>
+            <div class="item"><div class="sha">862c33a</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T3.2 — xoá CSS chết</div>
+                <div class="d">504 dòng / 62 rule / 32 class grep = 0. Giữ 8 rule <code>backdrop-filter</code> vì tool verify mobile cần.</div>
+                <div class="m">−14 KB · 1778→1624 !important</div></div></div>
+            <div class="item"><div class="sha">2313e40</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T2.2 + T3.1 — self-host Lexend, subset icon font</div>
+                <div class="d">Font icon 580 → 93 KB, vẫn đủ 198 icon × 4 weight; Lexend tự host, bỏ 2 domain Google; MP3 rời precache.</div>
+                <div class="m">−559 KiB precache</div></div></div>
+            <div class="item"><div class="sha">4047255</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T1.7 + T1.6 + T3.5 — golden test, sửa dự báo, ngân sách bundle</div>
+                <div class="d">50 ca golden; sửa 2 lỗi thật của dự báo (chuỗi ngày + DST); cổng chặn bundle trong CI.</div>
+                <div class="m">+24 test</div></div></div>
+            <div class="item"><div class="sha">4122444</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T2.4 + T2.5 — chặn trần 1 MiB + TTS minh bạch</div>
+                <div class="d">reviewLogs xấu nhất 1.180 → 330 KB; chọn giọng/tốc độ, badge nguồn, fallback một lần/phiên.</div>
+                <div class="m">+29 test</div></div></div>
+        </div>
+    </section>
+
+    <div class="caveat">
+        <b style="color:var(--ink-dim)">Những gì mình KHÔNG tuyên bố:</b> chưa test đồng bộ A↔B với Firestore thật (cần 2 tài khoản);
+        chưa bật App Check enforce; screen reader thật (NVDA/VoiceOver) và iPhone thật chưa test;
+        đo hiệu năng trên máy thật chưa chạy lại sau các thay đổi. Entry bundle nặng thêm 4,3% gzip vì có thêm tính năng — đang tách lazy,
+        không phải đã xong.
+    </div>
+
+    <div class="foot"><span>Ultimate Celestial Vocab · 195/195 test · cây làm việc sạch</span><span>trang 4 / 4</span></div>
+</div>
+
+</body>
+</html>
+
+
