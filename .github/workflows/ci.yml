@@ -27,3 +27,8 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      # T3.5 — cổng chặn bundle tăng cân: đọc dist/ vừa build, so với ngân sách
+      # khai báo trong tools/bundle_budget.mjs; vượt ngưỡng ⇒ exit 1 ⇒ CI đỏ.
+      - name: Check bundle budget
+        run: npm run budget

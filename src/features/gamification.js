@@ -919,46 +919,140 @@ export function buildForecastWordsHtml(words) {
     return words.map(w => `<span style="display:inline-block; padding: 6px 12px; background: rgba(138,43,226,0.15); border: 1px solid rgba(138,43,226,0.3); border-radius: 8px; margin: 4px; font-size: 0.95rem; font-weight: 500; color: var(--primary-color)">${escapeHTML(w)}</span>`).join('');
 }
 
+// ─── T1.6 — Dự báo ôn tập 7 ngày: phần TÍNH TOÁN & NHÃN là hàm thuần ─────────
+// Trước T1.6 toàn bộ phép đếm nằm lẫn trong renderForecast() nên không thể test:
+// mọi lỗi bucket (múi giờ / DST / kiểu dữ liệu srsDueDate) chỉ hiện ra trên UI.
+// Từ T1.6: buildReviewForecast() lo số liệu, getForecastStatusLabel() lo nhãn,
+// renderForecast() chỉ dựng DOM. Test hồi quy: tests/forecast.test.mjs.
+export const FORECAST_DAYS = 7;
+/** 2 cột đầu là "hôm nay"/"ngày mai"; 5 cột sau là thứ trong tuần. */
+export const FORECAST_FIXED_LABELS = ['H.Nay', 'N.Mai'];
+export const VI_WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+/**
+ * Chỉ số NGÀY LỊCH địa phương (số nguyên ngày kể từ 1970-01-01).
+ * Dựng lại mốc bằng UTC(y, m, d) nên hiệu hai chỉ số luôn là bội số chính xác
+ * của 24h: không phụ thuộc giờ trong ngày, và không lệch cột vào những ngày chỉ
+ * dài 23h/25h vì DST. (Bản cũ: Math.floor((hạn0h - hômNay0h)/86400000) ⇒ đúng
+ * ngày đổi giờ, "ngày mai" bị đếm vào "H.Nay" và cả tuần lệch 1 cột.)
+ * @param {number} ms - Mốc thời gian (epoch ms)
+ * @returns {number} Số nguyên ngày lịch địa phương
+ */
+function localDayIndex(ms) {
+    const d = new Date(ms);
+    return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+}
+
+/**
+ * Chuẩn hoá srsDueDate về epoch ms. Chấp nhận number (chuẩn), chuỗi số (backup
+ * JSON/TSV cũ), Date, và Firestore Timestamp {seconds, nanoseconds}. Trả về NaN
+ * khi không đọc được — bản cũ đưa thẳng chuỗi vào `new Date(...)`, ra Invalid
+ * Date, rồi thẻ bị bỏ âm thầm khỏi mọi cột dự báo.
+ * @param {number|string|Date|{seconds:number, nanoseconds?:number}} value
+ * @returns {number} epoch ms hoặc NaN
+ */
+function toDueMillis(value) {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const asNumber = Number(value);
+        return Number.isFinite(asNumber) ? asNumber : Date.parse(value);
+    }
+    if (value instanceof Date) return value.getTime();
+    if (value && typeof value.seconds === 'number') {
+        return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6);
+    }
+    return NaN;
+}
+
+/**
+ * Đếm số thẻ đến hạn theo từng ngày trong 7 ngày tới (hàm thuần, không đụng DOM).
+ *
+ * Quy ước bucket — giống hệt cách hàng đợi ôn tập thật xử lý hạn:
+ *   • cột 0 = "H.Nay": mọi thẻ quá hạn + thẻ đến hạn bất kỳ lúc nào trong hôm nay;
+ *   • cột 1..6 = ngày mai … +6 ngày, tính theo NGÀY LỊCH địa phương;
+ *   • thẻ đến hạn từ +7 ngày trở ra: chưa vào cửa sổ, không đếm;
+ *   • thẻ New (srsDueDate = null) và thẻ đã xoá: không đếm (chưa có lịch FSRS).
+ *
+ * `skipped` = số thẻ CÓ srsDueDate nhưng không đọc được (dữ liệu hỏng): bị loại
+ * khỏi biểu đồ nhưng vẫn đếm được để lỗi dữ liệu không biến mất âm thầm như bản cũ.
+ *
+ * @param {Array<Object>} vocabulary - Danh sách thẻ
+ * @param {number} [now=Date.now()] - Mốc "bây giờ" (tiêm được để test tất định)
+ * @returns {{counts:number[], words:string[][], labels:string[], total:number,
+ *            average:number, averageLabel:string, peak:number, skipped:number}}
+ */
+export function buildReviewForecast(vocabulary, now = Date.now()) {
+    const counts = Array(FORECAST_DAYS).fill(0);
+    const words = Array.from({ length: FORECAST_DAYS }, () => []);
+    const todayIndex = localDayIndex(now);
+    let skipped = 0;
+
+    (Array.isArray(vocabulary) ? vocabulary : []).forEach(word => {
+        if (!word || word.isDeleted) return;
+        const raw = word.srsDueDate;
+        // Thẻ New / thẻ vừa tạo: chưa có lịch FSRS ⇒ không thuộc cột nào (bình thường).
+        if (raw === null || raw === undefined || raw === '') return;
+
+        const dueMs = toDueMillis(raw);
+        if (!Number.isFinite(dueMs)) { skipped++; return; }
+
+        const diffDays = localDayIndex(dueMs) - todayIndex;
+        if (diffDays > FORECAST_DAYS - 1) return; // quá 7 ngày: chưa vào cửa sổ
+        const bucket = diffDays <= 0 ? 0 : diffDays; // quá hạn gộp chung "H.Nay"
+        counts[bucket]++;
+        words[bucket].push(word.english);
+    });
+
+    const labels = [...FORECAST_FIXED_LABELS];
+    const base = new Date(now);
+    for (let i = 2; i < FORECAST_DAYS; i++) {
+        // Dựng ngày bằng (y, m, d + i) theo giờ địa phương: tự xử lý cuối tháng,
+        // và getDay() không bị lệch khi ngày đó là ngày đổi giờ DST.
+        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+        labels.push(VI_WEEKDAY_LABELS[d.getDay()]);
+    }
+
+    const total = counts.reduce((a, b) => a + b, 0);
+    const average = total / FORECAST_DAYS;
+    // Nhãn "TB x/ngày": dưới 1 thì giữ 1 số lẻ (0.4) để không bị làm tròn thành 0.
+    const averageLabel = average > 0 && average < 1 ? average.toFixed(1) : String(Math.round(average));
+
+    return { counts, words, labels, total, average, averageLabel, peak: Math.max(...counts), skipped };
+}
+
+/**
+ * Nhãn trạng thái tải của hôm nay (hàm thuần) — chuỗi hiển thị giữ nguyên như cũ.
+ * @param {number[]} counts - 7 cột đếm của buildReviewForecast()
+ * @param {number} average - Trung bình 7 ngày
+ * @returns {{kind:'normal'|'peak', label:string, title:string}}
+ */
+export function getForecastStatusLabel(counts, average) {
+    const todayCount = counts[0];
+    const maxWorkload = Math.max(...counts);
+    if (todayCount === 0) {
+        return { kind: 'normal', label: '✓ Thảnh thơi', title: 'Không có từ nào đến hạn hôm nay' };
+    }
+    if (todayCount === maxWorkload) {
+        return { kind: 'peak', label: '⚠ Đỉnh tải', title: 'Hôm nay là ngày có khối lượng ôn tập cao nhất tuần' };
+    }
+    if (todayCount > average) {
+        return { kind: 'peak', label: '⚡ Cao tải', title: 'Khối lượng ôn tập trên mức trung bình' };
+    }
+    return { kind: 'normal', label: '✓ Tải nhẹ', title: 'Khối lượng ôn tập ở mức nhẹ và cân bằng' };
+}
+
 function renderForecast(vocabulary, isBackgroundUpdate = false) {
     if (!DOM.forecastChart) return;
     DOM.forecastChart.innerHTML = '';
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-
-    const forecastData = Array(7).fill(0);
-    const forecastWords = Array(7).fill(null).map(() => []); // Lưu danh sách từ vựng
-    
-    vocabulary.forEach(word => {
-        if (!word.isDeleted && word.srsDueDate) {
-            const dueDate = new Date(word.srsDueDate);
-            dueDate.setHours(0, 0, 0, 0);
-            
-            const diffTime = dueDate.getTime() - today.getTime();
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays <= 0) {
-                forecastData[0]++;
-                forecastWords[0].push(word.english);
-            } else if (diffDays < 7) {
-                forecastData[diffDays]++;
-                forecastWords[diffDays].push(word.english);
-            }
-        }
-    });
+    const forecast = buildReviewForecast(vocabulary);
+    const forecastData = forecast.counts;
+    const forecastWords = forecast.words;
+    const dayLabels = forecast.labels;
 
     const maxCount = Math.max(...forecastData, 1); // Avoid div by 0
+    const avgCount = forecast.average;
 
-    const dayLabels = ['H.Nay', 'N.Mai'];
-    for(let i=2; i<7; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const vnDay = d.getDay();
-        const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-        dayLabels.push(days[vnDay]);
-    }
-
-    const avgCount = forecastData.reduce((a, b) => a + b, 0) / 7;
     // Tỷ lệ trần cột 82% để số đếm trên đỉnh cột không va chạm với viền trên
     const maxBarScale = 82;
     const avgHeightPercent = maxCount > 0 ? (avgCount / maxCount) * maxBarScale : 0;
@@ -1029,22 +1123,10 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
     }
     if (summaryStrip) {
         const todayCount = forecastData[0];
-        const maxWorkload = Math.max(...forecastData);
-        const isPeak = todayCount === maxWorkload && todayCount > 0;
-        const avgDisplay = avgCount > 0 && avgCount < 1 ? avgCount.toFixed(1) : Math.round(avgCount);
+        const status = getForecastStatusLabel(forecastData, avgCount);
+        const pillHtml = `<span class="forecast-pill-${status.kind}" title="${status.title}">${status.label}</span>`;
 
-        let pillHtml = '';
-        if (todayCount === 0) {
-            pillHtml = `<span class="forecast-pill-normal" title="Không có từ nào đến hạn hôm nay">✓ Thảnh thơi</span>`;
-        } else if (isPeak) {
-            pillHtml = `<span class="forecast-pill-peak" title="Hôm nay là ngày có khối lượng ôn tập cao nhất tuần">⚠ Đỉnh tải</span>`;
-        } else if (todayCount > avgCount) {
-            pillHtml = `<span class="forecast-pill-peak" title="Khối lượng ôn tập trên mức trung bình">⚡ Cao tải</span>`;
-        } else {
-            pillHtml = `<span class="forecast-pill-normal" title="Khối lượng ôn tập ở mức nhẹ và cân bằng">✓ Tải nhẹ</span>`;
-        }
-
-        summaryStrip.innerHTML = `<span>Hôm nay: <strong>${todayCount} từ</strong></span> ${pillHtml} <span>TB: <strong>${avgDisplay}/ngày</strong></span>`;
+        summaryStrip.innerHTML = `<span>Hôm nay: <strong>${todayCount} từ</strong></span> ${pillHtml} <span>TB: <strong>${forecast.averageLabel}/ngày</strong></span>`;
     }
 
     // Gọi animation
