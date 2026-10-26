@@ -74,7 +74,12 @@ async function main() {
         await shot(c, 'flipped');
 
         await sleep(1400);
-        await c.eval(`document.getElementById('shortcuts-menu-btn')?.click(); return true;`);
+        // Nút #shortcuts-menu-btn đã bị gỡ theo yêu cầu người dùng: bảng phím
+        // tắt chỉ còn mở bằng phím "?" (giữ nguyên phím tắt, chỉ bỏ nút).
+        await c.eval(`
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true, cancelable: true }));
+            return true;
+        `);
         await sleep(650);
         await shot(c, 'shortcuts-modal');
         const keyboardHelp = await c.eval(`

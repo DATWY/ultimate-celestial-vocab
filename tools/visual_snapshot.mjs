@@ -370,7 +370,9 @@ const DOM_SPEC = [
     { selector: '.group-filter', max: 1 },
     { selector: '.group-actions', max: 1 },
     { selector: '.group-utilities', max: 1 },
-    { selector: '#tts-settings-group', max: 1 },
+    { selector: '#tts-settings-btn', max: 1 },
+    { selector: '#tts-settings-modal', max: 1 },
+    { selector: '#tts-source-select', max: 1 },
     { selector: '#tts-voice-select', max: 1 },
     { selector: '#tts-rate-select', max: 1 },
     { selector: '#main-flashcard-view', max: 1 },
@@ -386,7 +388,6 @@ const DOM_SPEC = [
     { selector: '#stats-area', max: 1 },
     { selector: '.celestial-stats-dock', max: 1 },
     { selector: '.dock-chips-row', max: 1 },
-    { selector: '.review-cap-control', max: 1 },
     { selector: '#manage-modal', max: 1 },
     { selector: '.manage-panel', max: 1 },
     { selector: '.manage-panel-header', max: 1 },
@@ -430,7 +431,9 @@ const SAFE_AUDIT_SELECTORS = [
     '#toggle-taskbar-btn',
     '#taskbar-menu',
     '.settings-controls',
-    '#tts-settings-group',
+    '#tts-settings-btn',
+    '#tts-settings-modal',
+    '#tts-source-select',
     '#tts-voice-select',
     '#tts-rate-select',
     '#main-flashcard-view',
@@ -676,14 +679,24 @@ async function runStateSequence(c, origin, viewport, fileBase, notch, diagnostic
 
     await click(c, '#close-manage-modal-btn', 550);
     await waitFor(c, `return document.getElementById('manage-modal')?.classList.contains('hidden');`, 8000, 'đóng Hub');
-    await waitFor(c, `return Boolean(document.getElementById('tts-settings-group'));`, 10000, 'panel TTS mount');
+    // UI-FIX: cài đặt giọng/tốc độ giờ nằm trong modal, mở bằng nút trên header.
+    // Trên mobile header group bị gấp vào #taskbar-menu nên mở menu trước.
     if (viewport.width <= 1000) {
         const menuOpen = await c.eval(`return document.getElementById('taskbar-menu')?.classList.contains('show');`);
         if (!menuOpen) await click(c, '#toggle-taskbar-btn', 450);
-        await waitFor(c, `return document.getElementById('taskbar-menu')?.classList.contains('show');`, 5000, 'menu TTS mở');
+        await waitFor(c, `return document.getElementById('taskbar-menu')?.classList.contains('show');`, 5000, 'menu công cụ mở');
     }
-    await sleep(500);
+    await waitFor(c, `return Boolean(document.getElementById('tts-settings-modal'));`, 10000, 'modal TTS mount');
+    await click(c, '#tts-settings-btn', 550);
+    await waitFor(c, `
+        const modal = document.getElementById('tts-settings-modal');
+        return modal && !modal.classList.contains('hidden') &&
+            document.getElementById('tts-voice-select')?.closest('#tts-settings-modal') !== null;
+    `, 8000, 'modal TTS mở');
+    await sleep(450);
     await capture(c, fileBase, 'tts-panel', viewport.name, notch, diagnostics);
+    await click(c, '#close-tts-settings-modal-btn', 550);
+    await waitFor(c, `return document.getElementById('tts-settings-modal')?.classList.contains('hidden');`, 8000, 'đóng modal TTS');
 
     if (viewport.width <= 1000) {
         const menuOpen = await c.eval(`return document.getElementById('taskbar-menu')?.classList.contains('show');`);

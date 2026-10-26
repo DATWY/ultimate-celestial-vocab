@@ -41,25 +41,6 @@
          vì ~9.000). Font .woff2 self-host tại /fonts/ nên icon không phụ thuộc
          CDN bên ngoài (unpkg) — kể cả khi offline qua service worker. -->
     <link rel="stylesheet" href="/phosphor-subset.css">
-    <style>
-        @media (min-width: 1001px) {
-            .review-cap-control {
-                position: absolute;
-                top: calc(100% + 6px);
-                right: 18px;
-                z-index: 90;
-                padding: 6px 10px;
-                border-radius: 12px;
-                background: rgba(30, 41, 59, 0.92);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
-            }
-            body:not(.dark-mode) .review-cap-control {
-                background: rgba(255, 255, 255, 0.96);
-                border-color: rgba(0, 0, 0, 0.08);
-            }
-        }
-    </style>
 </head>
 
 <body class="focus-study">
@@ -108,9 +89,6 @@
                                 <!-- Populated dynamically -->
                             </div>
                         </div>
-                        <select id="main-topic-filter" class="hidden-topic-select" title="Chọn chủ đề học" aria-label="Chọn chủ đề học">
-                            <option value="all">📚 Tất cả chủ đề</option>
-                        </select>
                     </div>
                     <button id="manual-sync-btn" class="icon-btn" title="Đồng bộ Cloud" aria-label="Đồng bộ Cloud">
                         <i class="ph-duotone ph-arrows-clockwise"></i>
@@ -170,10 +148,6 @@
                         <i class="ph-duotone ph-lightning"></i>
                         <span class="btn-label">Tăng Tốc (Boost)</span>
                     </button>
-                    <button id="shortcuts-menu-btn" class="icon-btn shortcuts-menu-btn" title="Phím tắt (?)" aria-label="Xem phím tắt" aria-keyshortcuts="?">
-                        <i class="ph-duotone ph-keyboard"></i>
-                        <span class="btn-label">Phím tắt</span>
-                    </button>
                     <button id="toggle-dark-mode-btn" class="icon-btn" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
                         <i class="ph-duotone ph-moon-stars"></i>
                         <span class="btn-label">Giao diện Tối/Sáng</span>
@@ -182,14 +156,20 @@
                         <i class="ph-duotone ph-speaker-high"></i>
                         <span class="btn-label">Bật/Tắt Âm thanh</span>
                     </button>
-                    <div class="review-cap-control" title="Giới hạn tổng số lượt ôn (thẻ mới + thẻ đến hạn) mỗi ngày — từ 50 đến 500" style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
-                        <label for="max-reviews-per-day" style="font-size:11px;opacity:.8;white-space:nowrap;">Giới hạn lượt ôn mỗi ngày</label>
-                        <input type="number" id="max-reviews-per-day" min="50" max="500" step="10" value="200" inputmode="numeric" aria-label="Giới hạn lượt ôn mỗi ngày (50–500)" title="Phạm vi 50–500" style="width:58px;font:inherit;font-size:12px;color:inherit;background:transparent;border:1px solid rgba(148,163,184,.45);border-radius:8px;padding:3px 4px;">
-                        <span class="cap-hint" style="font-size:10px;opacity:.65;white-space:nowrap;">50–500</span>
-                    </div>
+                    <!-- Cài đặt giọng đọc & tốc độ: mở modal #tts-settings-modal
+                         (không còn 2 <select> trần trong header). -->
+                    <button id="tts-settings-btn" class="icon-btn" title="Giọng đọc & tốc độ" aria-label="Cài đặt giọng đọc và tốc độ">
+                        <i class="ph-duotone ph-sliders-horizontal"></i>
+                    </button>
                 </div>
             </div>
         </header>
+
+        <!-- Select ẩn giữ tương thích state/sync của bộ lọc chủ đề (không hiển thị,
+             đặt ngoài <header> để header không còn <select> nào). -->
+        <select id="main-topic-filter" class="hidden-topic-select" title="Chọn chủ đề học" aria-label="Chọn chủ đề học">
+            <option value="all">📚 Tất cả chủ đề</option>
+        </select>
 
         <!-- === MAIN FLASHCARD/TYPING AREA === -->
         <main id="main-flashcard-view" class="main-content">

@@ -1,10 +1,12 @@
 // T2.5 — TTS minh bạch: proxy lỗi → fallback giọng máy + chỉ cảnh báo MỘT lần.
+// UI-FIX — thêm nguồn giọng ('cloud' | 'device'): chọn 'device' thì KHÔNG gọi
+// proxy, phát thẳng bằng Web Speech đúng giọng/tốc độ đã chọn.
 // Không cần DOM thật: dùng bộ đếm trong getTtsDiagnostics() + speechSynthesis giả.
 import 'fake-indexeddb/auto';
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { initAppDB, getSettingFromDB } from '../src/core/idb.js';
-import { setTtsRate, setTtsVoice, getTtsSettings, normalizeTtsRate, TTS_RATE_MIN, TTS_RATE_MAX } from '../src/core/state.js';
+import { initAppDB, getSettingFromDB, saveSettingToDB } from '../src/core/idb.js';
+import { setTtsRate, setTtsVoice, setTtsSource, getTtsSettings, loadTtsSettings, getState, normalizeTtsRate, TTS_RATE_MIN, TTS_RATE_MAX } from '../src/core/state.js';
 
 // ─── Giả lập môi trường trình duyệt TỐI THIỂU ───────────────────────────────
 const spoken = [];
@@ -152,12 +154,93 @@ test('giọng đọc: chọn đúng giọng theo voiceURI, giọng lạ → tự
 });
 
 test('cấu hình TTS lưu vào settings hiện có (IndexedDB key ttsSettings)', async () => {
+    await setTtsSource('cloud');
     await setTtsVoice('voice-us');
     await setTtsRate(1.2);
     const saved = await getSettingFromDB('ttsSettings');
-    assert.deepEqual(saved, { voice: 'voice-us', rate: 1.2 });
-    assert.deepEqual(getTtsSettings(), { voice: 'voice-us', rate: 1.2 });
+    assert.deepEqual(saved, { voice: 'voice-us', rate: 1.2, source: 'cloud' });
+    assert.deepEqual(getTtsSettings(), { voice: 'voice-us', rate: 1.2, source: 'cloud' });
 });
+
+// ─── UI-FIX: nguồn giọng 'device' vs 'cloud' ───────────────────────────────
+test("nguồn 'device': KHÔNG gọi proxy, phát thẳng giọng máy đúng giọng + tốc độ", async () => {
+    let fetches = 0;
+    fetchImpl = async () => { fetches++; throw new Error('không được gọi proxy'); };
+    sound.resetTtsDiagnostics();
+    spoken.length = 0;
+    await setTtsSource('device');
+    await setTtsVoice('voice-gb');
+    await setTtsRate(0.9);
+    try {
+        await sound.speakText('skeptical');
+        assert.equal(fetches, 0, 'nguồn device không được fetch proxy');
+        assert.equal(spoken.length, 1);
+        assert.equal(spoken[0].text, 'skeptical');
+        assert.equal(spoken[0].voice.voiceURI, 'voice-gb', 'phải dùng đúng giọng máy đã chọn');
+        assert.equal(spoken[0].rate, 0.9);
+        const diag = sound.getTtsDiagnostics();
+        assert.equal(diag.proxyFailures, 0);
+        assert.equal(diag.lastSource, 'native');
+
+        // Preload nền cũng không được đụng proxy khi người dùng chọn offline.
+        await sound.preloadAudio('another-word');
+        assert.equal(fetches, 0, 'preloadAudio phải bỏ qua khi nguồn device');
+    } finally {
+        await setTtsSource('cloud');
+    }
+});
+
+test("nguồn 'device': đổi giọng máy → lần phát KẾ TIẾP dùng đúng giọng mới", async () => {
+    let fetches = 0;
+    fetchImpl = async () => { fetches++; throw new Error('không được gọi proxy'); };
+    sound.resetTtsDiagnostics();
+    spoken.length = 0;
+    await setTtsSource('device');
+    try {
+        await setTtsVoice('voice-us');
+        await sound.speakText('first');
+        assert.equal(spoken.at(-1).voice.voiceURI, 'voice-us');
+
+        await setTtsVoice('voice-gb');
+        await sound.speakText('second');
+        assert.equal(spoken.at(-1).voice.voiceURI, 'voice-gb', 'đổi giọng phải có tác dụng ở lần phát kế tiếp');
+        assert.equal(fetches, 0);
+        assert.equal(spoken.length, 2);
+    } finally {
+        await setTtsSource('cloud');
+    }
+});
+
+test("nguồn 'cloud': vẫn thử proxy trước như cũ, lỗi mới fallback giọng máy", async () => {
+    let fetches = 0;
+    fetchImpl = async () => { fetches++; throw new Error('offline'); };
+    sound.resetTtsDiagnostics();
+    spoken.length = 0;
+    await setTtsSource('cloud');
+    await setTtsVoice('voice-us');
+    await sound.speakText('cloud-first');
+    assert.equal(fetches, 1, 'nguồn cloud phải đi qua proxy trước');
+    assert.equal(spoken.length, 1, 'proxy lỗi ⇒ fallback giọng máy');
+    assert.equal(sound.getTtsDiagnostics().proxyFailures, 1);
+});
+
+test("ttsSettings cũ thiếu 'source' vẫn đọc được (⇒ cloud); source rác cũng về cloud", async () => {
+    await saveSettingToDB('ttsSettings', { voice: 'voice-us', rate: 1.1 });
+    await loadTtsSettings();
+    assert.deepEqual(getTtsSettings(), { voice: 'voice-us', rate: 1.1, source: 'cloud' });
+    assert.equal(getState().ttsSource, 'cloud');
+
+    await saveSettingToDB('ttsSettings', { voice: '', rate: 1, source: 'rác' });
+    await loadTtsSettings();
+    assert.equal(getTtsSettings().source, 'cloud');
+
+    await saveSettingToDB('ttsSettings', { voice: '', rate: 1, source: 'device' });
+    await loadTtsSettings();
+    assert.equal(getTtsSettings().source, 'device');
+    assert.equal(getState().ttsSource, 'device', 'getState() phải thấy live binding mới');
+    await setTtsSource('cloud');
+});
+
 
 test('danh sách giọng cho UI lấy từ speechSynthesis.getVoices()', () => {
     const list = sound.listTtsVoices();
@@ -206,9 +289,10 @@ test('TTS đang tắt (soundMode off/sfx) thì không phát và không cảnh b�
     }
 });
 
-// ─── Panel cấu hình: DOM tối thiểu (không cần jsdom) ────────────────────────
+// ─── Modal cấu hình: DOM tối thiểu (không cần jsdom) ────────────────────────
 function installDomStub() {
     const root = { children: [] };
+    let doc = null;
     const all = () => {
         const out = [];
         const walk = node => { for (const child of node.children || []) { out.push(child); walk(child); } };
@@ -219,6 +303,7 @@ function installDomStub() {
         const el = {
             tagName: String(tag || 'div').toUpperCase(), id: '', className: '', title: '',
             children: [], style: { cssText: '' }, listeners: {}, textContent: '',
+            ownerDocument: doc,
             setAttribute(name, value) { el[`attr:${name}`] = value; },
             appendChild(child) { child.parentElement = el; el.children.push(child); return child; },
             append(...nodes) { nodes.forEach(node => el.appendChild(node)); },
@@ -239,40 +324,63 @@ function installDomStub() {
         });
         return el;
     };
+    const body = makeEl('body');
     const host = makeEl('div');
+    host.id = 'taskbar-menu';
     host.className = 'header-group group-utilities';
-    host.parentElement = root;
-    root.children.push(host);
-    const doc = {
-        createElement: makeEl,
+    body.appendChild(host);
+    root.children.push(body);
+    doc = {
+        body,
+        createElement: tag => { const el = makeEl(tag); el.ownerDocument = doc; return el; },
         getElementById: id => all().find(el => el.id === id) || null,
         querySelector: selector => (String(selector).includes('group-utilities') ? host : null),
+        querySelectorAll: () => [],
         addEventListener() {}
     };
     for (const el of all()) el.ownerDocument = doc;
     globalThis.document = doc;
-    return { doc, host, fixOwners: () => { for (const el of all()) el.ownerDocument = doc; } };
+    return { doc, body, host };
 }
 
-test('panel giọng/tốc độ: gắn vào khối settings có sẵn, nạp option và lưu lựa chọn', async () => {
+/** Đi xuống cây con của stub để kiểm "control nằm TRONG modal". */
+function stubContains(parent, child) {
+    for (const node of parent.children || []) {
+        if (node === child) return true;
+        if (stubContains(node, child)) return true;
+    }
+    return false;
+}
+
+test('modal giọng/tốc độ: dựng trong body, đủ 3 select + badge, đổi là lưu', async () => {
     const dom = installDomStub();
+    const fetchBefore = fetchImpl;
     try {
-        // sound.mountTtsSettingsUI() giờ trả Promise: code dựng DOM của panel đã
-        // tách sang chunk lazy src/features/ttsSettings.js (giảm entry bundle),
-        // nên phải await trước khi assert. Hợp đồng của test KHÔNG đổi: panel phải
-        // nằm TRONG khối settings có sẵn, không tạo container ngoài.
-        const group = await sound.mountTtsSettingsUI();
-        assert.ok(group, 'phải gắn được vào #taskbar-menu .group-utilities');
-        assert.equal(dom.host.children.length, 1, 'không tạo thêm khối ngoài panel settings');
-        assert.equal(group.className.includes('header-group'), false, 'không lồng .header-group (CSS mobile sẽ ép width/height)');
+        const modal = await sound.mountTtsSettingsUI();
+        assert.ok(modal, 'phải mount được modal cài đặt');
+        assert.equal(modal.id, 'tts-settings-modal');
+        assert.equal(dom.body.children.includes(modal), true, 'modal phải append trực tiếp vào body');
+        assert.equal(dom.host.children.length, 0, 'header KHÔNG còn control TTS nào');
 
         const voiceSelect = dom.doc.getElementById('tts-voice-select');
         const rateSelect = dom.doc.getElementById('tts-rate-select');
-        assert.ok(voiceSelect && rateSelect);
-        // options được tạo SAU khi append → đồng bộ ownerDocument cho stub
-        dom.fixOwners();
+        const sourceSelect = dom.doc.getElementById('tts-source-select');
+        assert.ok(voiceSelect && rateSelect && sourceSelect, 'phải có đủ nguồn/giọng/tốc độ');
+        for (const control of [voiceSelect, rateSelect, sourceSelect]) {
+            assert.ok(stubContains(modal, control), `${control.id} phải nằm TRONG modal`);
+        }
+        const hint = dom.doc.getElementById('tts-voice-hint');
+        assert.ok(hint, 'phải có hint giải thích nguồn giọng');
+
+        await setTtsSource('cloud');
+        await setTtsVoice('');
+        await setTtsRate(1.0);
         sound.refreshTtsSettingsUI();
 
+        assert.deepEqual(sourceSelect.options.map(option => option.value), ['cloud', 'device']);
+        assert.equal(sourceSelect.value, 'cloud');
+        assert.equal(voiceSelect.disabled, true, 'nguồn cloud ⇒ giọng máy bị vô hiệu hoá');
+        assert.match(hint.textContent, /giọng Cloud/i);
         assert.equal(voiceSelect.options.length, 1 + voices.length, 'option "tự động" + mọi giọng máy');
         assert.equal(voiceSelect.options[0].value, '');
         assert.equal(voiceSelect.options[1].value, 'voice-us');
@@ -280,28 +388,44 @@ test('panel giọng/tốc độ: gắn vào khối settings có sẵn, nạp opt
         assert.equal(rateSelect.options[0].value, '0.6');
         assert.equal(rateSelect.options.at(-1).value, '1.4');
         assert.ok(dom.doc.getElementById('tts-source-badge'), 'phải có badge cho biết nguồn giọng');
+        assert.ok(dom.doc.getElementById('tts-test-btn'), 'phải có nút Nghe thử');
 
-        await setTtsVoice('voice-gb');
-        await setTtsRate(1.2);
-        sound.refreshTtsSettingsUI();
-        assert.equal(voiceSelect.value, 'voice-gb', 'UI phản ánh đúng giọng đã lưu');
-        assert.equal(rateSelect.value, '1.2');
+        // Đổi nguồn sang giọng máy: select giọng mở khoá, settings lưu ngay.
+        sourceSelect.value = 'device';
+        sourceSelect.fire('change');
+        await tick();
+        assert.equal(getTtsSettings().source, 'device', 'đổi nguồn phải lưu vào settings');
+        assert.equal(voiceSelect.disabled, false, 'nguồn device ⇒ chọn giọng được');
+        assert.match(hint.textContent, /giọng máy/i);
 
-        voiceSelect.value = 'voice-us';
+        voiceSelect.value = 'voice-gb';
         voiceSelect.fire('change');
         await tick();
-        assert.equal(getTtsSettings().voice, 'voice-us', 'đổi giọng trên UI phải lưu vào settings');
+        assert.equal(getTtsSettings().voice, 'voice-gb', 'đổi giọng trên UI phải lưu vào settings');
 
-        rateSelect.value = '0.8';
+        rateSelect.value = '1.2';
         rateSelect.fire('change');
         await tick();
-        assert.equal(getTtsSettings().rate, 0.8, 'đổi tốc độ trên UI phải lưu vào settings');
-        assert.deepEqual(await getSettingFromDB('ttsSettings'), { voice: 'voice-us', rate: 0.8 });
+        assert.equal(getTtsSettings().rate, 1.2, 'đổi tốc độ trên UI phải lưu vào settings');
+        assert.deepEqual(await getSettingFromDB('ttsSettings'), { voice: 'voice-gb', rate: 1.2, source: 'device' });
 
-        await sound.mountTtsSettingsUI();
-        assert.equal(dom.host.children.length, 1, 'mount lần 2 không nhân đôi panel');
+        // Đúng lỗi người dùng báo: đổi giọng máy phải nghe thấy ở lần phát kế tiếp.
+        let fetches = 0;
+        fetchImpl = async () => { fetches++; throw new Error('không được gọi proxy'); };
+        sound.resetTtsDiagnostics();
+        spoken.length = 0;
+        await sound.speakText('skeptical');
+        assert.equal(fetches, 0, 'nguồn device không được gọi proxy');
+        assert.equal(spoken.at(-1).voice.voiceURI, 'voice-gb');
+        assert.equal(spoken.at(-1).rate, 1.2);
+
+        // Mount lần 2 không nhân đôi modal.
+        const again = await sound.mountTtsSettingsUI();
+        assert.equal(again, modal);
+        assert.equal(dom.body.children.filter(el => el.id === 'tts-settings-modal').length, 1);
+        await setTtsSource('cloud');
     } finally {
+        fetchImpl = fetchBefore;
         delete globalThis.document;
     }
 });
-

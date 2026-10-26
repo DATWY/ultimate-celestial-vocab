@@ -7,7 +7,7 @@ import { DOM } from './ui/elements.js';
 import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
-import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming, getReviewCapSettings, setMaxReviewsPerDay } from './core/queue.js';
+import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { playSound, speakText } from './core/sound.js';
@@ -292,16 +292,13 @@ function harmonizeAnimeTimeline() {
 }
 harmonizeAnimeTimeline();
 
-// ─── T1.5: ô "Giới hạn lượt ôn mỗi ngày" ────────────────────────────────────
-function syncReviewCapInput() {
-    const input = document.getElementById('max-reviews-per-day');
-    if (input) input.value = String(getReviewCapSettings().maxReviewsPerDay);
-    return input;
-}
-
-/** Áp cap mới NGAY: lưu settings → dựng lại queue → cập nhật dock/màn hình. */
+// ─── T1.5: cap lượt ôn/ngày — CHỈ còn phản ứng với settings đã lưu ──────────
+// UI-FIX: ô nhập giới hạn lượt ôn trong header đã bị bỏ (người dùng phàn nàn nó
+// tràn khỏi header). Logic cap trong core/queue.js giữ nguyên: giá trị vẫn đến
+// từ settings đã lưu / Cloud, và pill "Còn X lượt ôn hôm nay" vẫn cập nhật theo.
+// Không còn UI đổi cap trong app.
+/** Áp cap mới (vd. Cloud vừa merge) NGAY: dựng lại queue → cập nhật dock/màn hình. */
 function refreshAfterReviewCapChange() {
-    syncReviewCapInput();
     buildReviewQueue();
     if (getState().currentCardIndex < 0) displayCard(getNextCardToReview());
     else updateStats();
@@ -372,12 +369,7 @@ export function setupEventListeners() {
         }
     };
 
-    // T1.5: control cap lượt ôn/ngày + cập nhật khi Cloud kéo cấu hình mới về.
-    const reviewCapInput = syncReviewCapInput();
-    reviewCapInput?.addEventListener('change', async () => {
-        reviewCapInput.value = String(await setMaxReviewsPerDay(reviewCapInput.value));
-        refreshAfterReviewCapChange();
-    });
+    // T1.5: cập nhật khi Cloud kéo cấu hình cap mới về (không còn ô nhập trong header).
     document.addEventListener('review-cap:updated', refreshAfterReviewCapChange);
 
     // (Đóng menu khi click ngoài đã xử lý ở listener capture phía trên —
@@ -1080,8 +1072,7 @@ export function setupEventListeners() {
     DOM.closeAddEditModalBtn?.addEventListener('click', () => closeModal(DOM.addEditModal));
     DOM.addEditOverlay?.addEventListener('click', () => closeModal(DOM.addEditModal));
 
-    // Keyboard shortcut cheat-sheet
-    DOM.shortcutsMenuBtn?.addEventListener('click', openShortcutsModal);
+    // Keyboard shortcut cheat-sheet (chỉ mở bằng phím "?" — nút trên header đã bỏ)
     DOM.closeShortcutsModalBtn?.addEventListener('click', () => closeModal(DOM.shortcutsModal));
     DOM.shortcutsOverlay?.addEventListener('click', () => closeModal(DOM.shortcutsModal));
     DOM.cancelEditBtn?.addEventListener('click', cancelEdit);

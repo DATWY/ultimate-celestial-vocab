@@ -31,7 +31,7 @@ const PUBLIC_API = [
     'incrementDueCardsDone', 'incrementLearningCardsDone', 'incrementNewCardsDone',
     'isCardLeech', 'isDayStreakQualified', 'isInitialSyncDone', 'isPreviewMode',
     'loadTtsSettings', 'loadVocabulary', 'logActivity', 'measureReviewLogBytes',
-    'mergeReviewLogs', 'normalizeTtsRate', 'normalizeTtsVoice', 'popLastReviewLog',
+    'mergeReviewLogs', 'normalizeTtsRate', 'normalizeTtsSource', 'normalizeTtsVoice', 'popLastReviewLog',
     'prepareProgress', 'prepareReviewLogsForCloud', 'pruneReviewLogs', 'pushCardToVocabulary',
     'reconcileStreakFreeze', 'recordQuizAnswer', 'recordReviewResult', 'removeReviewLog',
     'revertGamificationAfterUndo', 'saveDailyStats', 'saveGamification', 'saveOneWord',
@@ -39,10 +39,10 @@ const PUBLIC_API = [
     'setAllTags', 'setCurrentCardIndex', 'setCurrentTopicFilter', 'setDailyStats',
     'setGamification', 'setInitialSyncDone', 'setIsBoostMode', 'setIsDarkMode', 'setIsFlipped',
     'setIsTransitioning', 'setIsTypingMode', 'setLastReviewSnapshot', 'setPreviewMode',
-    'setReviewLogs', 'setReviewQueue', 'setSoundMode', 'setTtsRate', 'setTtsVoice',
+    'setReviewLogs', 'setReviewQueue', 'setSoundMode', 'setTtsRate', 'setTtsSource', 'setTtsVoice',
     'setTypingFilter', 'setUserFsrs7Params', 'setUserSrsParams', 'setVocabulary', 'setXP',
     'shouldCardUseTyping', 'syncStreakFromHeatmap', 'toCloudReviewLogPayload',
-    'toggleStarOnCurrentCard', 'trackEvent', 'unlockBadge', 'updateCardInVocabulary',
+    'toggleStarOnCurrentCard', 'trackEvent', 'ttsSource', 'unlockBadge', 'updateCardInVocabulary',
     'utf8ByteLength',
 ];
 
@@ -84,7 +84,9 @@ function resolveInCluster(fromFile, spec) {
 test('T4.5b — barrel state.js giữ đúng bộ API công khai (không rơi, không đổi tên)', async () => {
     const stateModule = await import('../src/core/state.js');
     assert.deepEqual(Object.keys(stateModule).sort(), [...PUBLIC_API].sort());
-    assert.equal(Object.keys(stateModule).length, 93);
+    // 93 → 96 (UI-FIX): thêm ttsSource / normalizeTtsSource / setTtsSource để
+    // modal giọng đọc chọn được nguồn Cloud vs giọng máy (live binding + lưu).
+    assert.equal(Object.keys(stateModule).length, 96);
 });
 
 test('T4.5b — mọi module con đều được barrel re-export, không trùng tên giữa 2 module', async () => {
@@ -128,8 +130,12 @@ test('T4.5b — live binding sống thật: setter ở module con thì getState(
     const state = await import('../src/core/state.js');
 
     await state.setTtsRate(1.0);
-    assert.deepEqual(state.getTtsSettings(), { voice: state.getTtsSettings().voice, rate: 1 });
+    const ttsSettings = state.getTtsSettings();
+    assert.equal(typeof ttsSettings.voice, 'string');
+    assert.equal(ttsSettings.rate, 1);
+    assert.ok(['cloud', 'device'].includes(ttsSettings.source), 'getTtsSettings phải có source');
     assert.equal(state.getState().ttsRate, 1);
+    assert.equal(state.getState().ttsSource, ttsSettings.source, 'getState phải thấy live binding ttsSource');
 
     state.setVocabulary([
         { id: 'a', english: 'alpha', srsStatus: 'New', tags: [] },

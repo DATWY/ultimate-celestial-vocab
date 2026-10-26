@@ -3,7 +3,7 @@
 // setTtsVoice/setTtsRate/TTS_RATE_MIN/TTS_RATE_MAX chỉ phục vụ panel cài đặt
 // giọng đọc → đã chuyển sang features/ttsSettings.js (chunk lazy). Entry chỉ
 // còn nhu cầu đọc state + chuẩn hoá tốc độ cho đường phát âm thanh.
-import { getState, normalizeTtsRate } from './state.js';
+import { getState, normalizeTtsRate, normalizeTtsSource } from './state.js';
 import { openDB } from 'idb';
 
 // Không import tĩnh modal.js: sound <-> modal <-> render là vòng import.
@@ -110,7 +110,9 @@ function readTtsSettings() {
     try { state = typeof getState === 'function' ? getState() : null; } catch (_) { state = null; }
     return {
         voice: typeof state?.ttsVoice === 'string' ? state.ttsVoice : '',
-        rate: normalizeTtsRate(state?.ttsRate)
+        rate: normalizeTtsRate(state?.ttsRate),
+        // 'device' = người dùng chọn giọng máy: KHÔNG gọi proxy Cloud.
+        source: normalizeTtsSource(state?.ttsSource)
     };
 }
 
@@ -1257,10 +1259,10 @@ export function initializeSound() {
     // element chỉ được tạo khi buffer chưa sẵn sàng. Tránh tải trùng 164 kB.
     sounds = {};
     installAudioUnlock();
-    // T2.5: gắn cấu hình giọng/tốc độ vào panel công cụ có sẵn (JS, không sửa HTML).
-    // Panel nằm ở chunk lazy (features/ttsSettings.js) → chỉ tải khi cần; lệnh
-    // dưới đây khởi động việc tải (fire-and-forget) và cài trigger cho lần mở
-    // menu đầu tiên, nên panel vẫn xuất hiện dù chunk về muộn hơn lúc boot.
+    // UI-FIX: cài đặt giọng/tốc độ nằm trong MODAL riêng (không còn 2 <select>
+    // trần trong header). Chunk lazy dựng modal (append vào body) và nút
+    // #tts-settings-btn trên header là cửa vào; gọi ở đây để chunk + modal sẵn
+    // sàng trước lần bấm đầu tiên (hành vi tải giống bản trước).
     mountTtsSettingsUI();
     installTtsPanelTrigger();
     // KHÔNG preload MP3 ở đây (T3.3): mở app không phát sinh request âm thanh.
@@ -1419,6 +1421,14 @@ export async function speakText(text, rate = null) {
     const settings = readTtsSettings();
     // Tốc độ: tham số truyền vào (nếu có) > cấu hình người dùng > 1.0.
     const effectiveRate = normalizeTtsRate(rate ?? settings.rate);
+
+    // Người dùng chọn "Giọng máy của thiết bị" ⇒ đi THẲNG vào Web Speech:
+    // không fetch proxy, không audio Cloud, nên giọng đã chọn mới thực sự nghe thấy.
+    if (settings.source === 'device') {
+        fallbackNativeTTS(text, effectiveRate);
+        return;
+    }
+
     const requestId = ++_speakRequestId;
     const player = getSpeechElement();
 
@@ -1463,6 +1473,9 @@ export async function speakText(text, rate = null) {
 export async function preloadAudio(text) {
     if (!text) return;
     if (!isTtsAllowed()) return;
+    // Nguồn 'device' là chế độ offline: đừng tải trước audio Cloud sau lưng
+    // người dùng (vừa vô ích vừa tạo request tới proxy họ không muốn).
+    if (readTtsSettings().source === 'device') return;
     try {
         await getAudioDataURL(text);
     } catch (error) {
@@ -1470,13 +1483,11 @@ export async function preloadAudio(text) {
     }
 }
 
-// ─── T2.5: PANEL CẤU HÌNH TTS — CẦU NỐI MỎNG SANG CHUNK LAZY ────────────────
-// Toàn bộ DOM/option của panel (2 <select> giọng + tốc độ, badge nguồn, style
-// inline, populate danh sách giọng) đã chuyển sang features/ttsSettings.js để
-// KHÔNG nằm trong entry bundle (ngân sách CI 82 kB gzip của
-// tools/bundle_budget.mjs — không nới ngưỡng). Ở đây chỉ còn cầu nối: dynamic
-// import + cache promise, nhờ vậy mọi call-site cũ (initializeSound, nút mở
-// menu công cụ, test) không phải sửa.
+// ─── T2.5: CẤU HÌNH TTS — CẦU NỐI MỎNG SANG CHUNK LAZY ─────────────────────
+// Toàn bộ DOM của modal cài đặt (nguồn giọng + giọng máy + tốc độ, badge,
+// populate danh sách giọng) nằm ở features/ttsSettings.js để KHÔNG vào entry
+// bundle (ngân sách CI 82 kB gzip của tools/bundle_budget.mjs — không nới
+// ngưỡng). Ở đây chỉ còn cầu nối: dynamic import + cache promise.
 let _ttsUiPromise = null;
 let _ttsUiModule = null;
 
@@ -1497,10 +1508,9 @@ function loadTtsSettingsModule() {
 }
 
 /**
- * Trả về Promise<HTMLElement|null> (panel) thay cho bản đồng bộ trước đây — code
- * panel giờ nằm ở chunk riêng nên không thể dựng DOM ngay trong call stack.
- * Call-site trong app đều fire-and-forget nên không phải await. mount lần 2 chỉ
- * refresh, không nhân đôi panel (giữ nguyên hành vi cũ).
+ * Trả về Promise<HTMLElement|null> (modal) — code dựng DOM nằm ở chunk riêng
+ * nên không thể dựng ngay trong call stack. Call-site trong app đều
+ * fire-and-forget nên không phải await. mount lần 2 chỉ refresh, không nhân đôi.
  */
 export function mountTtsSettingsUI() {
     return loadTtsSettingsModule()
@@ -1512,24 +1522,37 @@ export function mountTtsSettingsUI() {
 }
 
 /**
- * Đồng bộ panel với state (mở menu / voiceschanged / vừa đổi cài đặt).
- * Panel chưa mount hoặc chunk chưa nạp ⇒ no-op an toàn, KHÔNG throw — đúng hành
- * vi cũ (trước đây hàm này return sớm khi không thấy #tts-settings-group).
+ * Đồng bộ UI trong modal với state (voiceschanged / vừa đổi cài đặt / mở modal).
+ * Modal chưa mount hoặc chunk chưa nạp ⇒ no-op an toàn, KHÔNG throw.
  */
 export function refreshTtsSettingsUI() {
     if (_ttsUiModule) _ttsUiModule.refreshTtsSettingsUI();
 }
 
 /**
- * Lần mở menu công cụ = thời điểm chắc chắn settings đã nạp xong, đồng thời là
- * lưới an toàn khi chunk ttsSettings chưa về kịp lúc boot (mạng chậm): trigger
- * nằm ở entry nên panel vẫn xuất hiện ngay lần mở menu đầu tiên.
+ * Mở modal "Giọng đọc & tốc độ" (UI-FIX: thay 2 <select> trần trong header).
+ * Chunk chưa về kịp thì nạp rồi mở — cùng một promise cache với mount.
+ */
+export function openTtsSettingsModal() {
+    return loadTtsSettingsModule()
+        .then(module => (module ? module.openTtsSettingsModal() : null))
+        .catch(error => {
+            console.error('[TTS] Modal cài đặt giọng đọc lỗi khi mở:', error);
+            return null;
+        });
+}
+
+/**
+ * Header có nút riêng `#tts-settings-btn` (index.html) → mở modal. Gắn MỘT lần.
+ * `mountTtsSettingsUI()` vẫn chạy lúc boot để chunk + modal sẵn sàng và để
+ * `voiceschanged` được lắng nghe; ở đây chỉ là cửa vào.
  */
 function installTtsPanelTrigger() {
     if (typeof document === 'undefined') return;
-    const toggle = document.getElementById('toggle-taskbar-btn');
-    if (!toggle) return;
-    toggle.addEventListener('click', () => { mountTtsSettingsUI(); });
+    const trigger = document.getElementById('tts-settings-btn');
+    if (!trigger || trigger.dataset.ttsTriggerBound === '1') return;
+    trigger.dataset.ttsTriggerBound = '1';
+    trigger.addEventListener('click', () => { openTtsSettingsModal(); });
 }
 
 // ─── AUDIO CACHE INDEX & LAZY PRELOADER ───────────────────────────────────

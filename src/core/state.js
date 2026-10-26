@@ -51,7 +51,7 @@ import { getLocalDateString } from './utils/date.js';
 import { vocabulary, setVocabulary, resetVocabulary, rebuildVocabIndex, getVocabById, updateCardInVocabulary } from './state/vocabulary.js';
 import { pruneReviewLogs } from './state/review-log-prune.js';
 import { gamification as _gamification, dailyStats as _dailyStats, setGamification, setDailyStats } from './state/progress-store.js';
-import { ttsVoice, ttsRate, loadTtsSettings } from './state/tts-settings.js';
+import { ttsVoice, ttsRate, ttsSource, loadTtsSettings } from './state/tts-settings.js';
 import { skipPersistence } from './state/preview-mode.js';
 import { safeUpdateStats, safeShowPopup, safeShowToast } from './state/ui-notify.js';
 import { isCardLeech, isHardCard, isLearningCard, isLongWord, matchesTypingFilter } from './state/typing-filter.js';
@@ -110,6 +110,7 @@ export const getState = () => ({
     soundMode: _soundMode,
     ttsVoice: ttsVoice,
     ttsRate: ttsRate,
+    ttsSource: ttsSource,
     isTypingMode: _isTypingMode,
     typingFilter: _typingFilter,
     currentTopicFilter: _currentTopicFilter,
@@ -577,10 +578,13 @@ export {
     TTS_RATE_DEFAULT,
     normalizeTtsRate,
     normalizeTtsVoice,
+    normalizeTtsSource,
     getTtsSettings,
     loadTtsSettings,
     setTtsVoice,
-    setTtsRate
+    setTtsRate,
+    setTtsSource,
+    ttsSource
 } from './state/tts-settings.js';
 export {
     MIN_STREAK_DAILY_REVIEWS,
