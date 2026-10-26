@@ -1,6 +1,6 @@
 // --- START OF FILE sound.js (FINAL & CORRECT ARCHITECTURE: DATA URL + SYNTH FALLBACK) ---
 
-import { getState } from './state.js';
+import { getState, setTtsVoice, setTtsRate, normalizeTtsRate, TTS_RATE_MIN, TTS_RATE_MAX } from './state.js';
 import { openDB } from 'idb';
 
 // Không import tĩnh modal.js: sound <-> modal <-> render là vòng import.
@@ -19,21 +19,150 @@ const STORE_NAME = 'tts-data-urls';
 // === KHỞI TẠO BIẾN ===
 let sounds = {};
 let dbPromise;
-let currentUtterance = typeof Audio !== 'undefined' ? new Audio() : null;
-// Hiệu ứng nút loa bám đúng thời điểm phát thật: 'playing' bật, kết thúc/pause
-// tắt — thay cho animation thời lượng cố định chạy lệch với độ dài audio.
-if (currentUtterance) {
+
+/**
+ * Tạo Audio element cho TTS + gắn hiệu ứng nút loa bám đúng thời điểm phát thật:
+ * 'playing' bật, kết thúc/pause tắt — thay cho animation thời lượng cố định.
+ */
+function createSpeechElement() {
+    if (typeof Audio === 'undefined') return null;
+    const el = new Audio();
     const setWaveform = (playing) => {
         import('../ui/waveform.js')
             .then(w => w.setWaveformPlaying(playing))
             .catch(() => {});
     };
-    currentUtterance.addEventListener('playing', () => setWaveform(true));
-    currentUtterance.addEventListener('ended', () => setWaveform(false));
-    currentUtterance.addEventListener('pause', () => setWaveform(false));
-    currentUtterance.addEventListener('error', () => setWaveform(false));
+    el.addEventListener('playing', () => setWaveform(true));
+    el.addEventListener('ended', () => setWaveform(false));
+    el.addEventListener('pause', () => setWaveform(false));
+    el.addEventListener('error', () => setWaveform(false));
+    return el;
+}
+
+let currentUtterance = createSpeechElement();
+/** Audio element tạo muộn (môi trường không có Audio ngay lúc import, ví dụ test). */
+function getSpeechElement() {
+    if (!currentUtterance) currentUtterance = createSpeechElement();
+    return currentUtterance;
 }
 let _speakRequestId = 0;
+
+// ===== T2.5 — TTS MINH BẠCH + CẤU HÌNH (giọng / tốc độ) =====
+// Proxy Google Apps Script có thể chết vì mạng / CSP / HTTP khác 200. Khi đó ta
+// rơi về giọng máy (Web Speech) và nói rõ MỘT lần cho người dùng biết — không
+// spam toast mỗi lần bấm loa. Bộ đếm dưới đây là nguồn sự thật cho test + cho
+// badge "nguồn giọng đang dùng" trong panel công cụ.
+const TTS_DIAG = {
+    proxyFailures: 0,
+    fallbackPlays: 0,
+    noticesShown: 0,
+    noticeShown: false,
+    lastError: '',
+    lastSource: 'unknown' // 'cloud' | 'native' | 'none' | 'unknown'
+};
+
+export function getTtsDiagnostics() {
+    return { ...TTS_DIAG, settings: readTtsSettings(), voiceCount: listTtsVoices().length };
+}
+
+/** Dùng cho test / chẩn đoán: xoá bộ đếm nhưng giữ nguyên cấu hình TTS. */
+export function resetTtsDiagnostics() {
+    TTS_DIAG.proxyFailures = 0;
+    TTS_DIAG.fallbackPlays = 0;
+    TTS_DIAG.noticesShown = 0;
+    TTS_DIAG.noticeShown = false;
+    TTS_DIAG.lastError = '';
+    TTS_DIAG.lastSource = 'unknown';
+}
+
+function getSpeechSynthesisApi() {
+    if (typeof window !== 'undefined' && window.speechSynthesis) return window.speechSynthesis;
+    if (typeof globalThis !== 'undefined' && globalThis.speechSynthesis) return globalThis.speechSynthesis;
+    return null;
+}
+
+function getSpeechUtteranceCtor() {
+    if (typeof window !== 'undefined' && typeof window.SpeechSynthesisUtterance === 'function') return window.SpeechSynthesisUtterance;
+    if (typeof globalThis !== 'undefined' && typeof globalThis.SpeechSynthesisUtterance === 'function') return globalThis.SpeechSynthesisUtterance;
+    return null;
+}
+
+/** Danh sách giọng máy khả dụng (rỗng khi trình duyệt chưa nạp xong danh sách giọng). */
+export function listTtsVoices() {
+    const synth = getSpeechSynthesisApi();
+    try {
+        return (synth?.getVoices?.() || []).map(voice => ({
+            uri: voice.voiceURI || voice.name || '',
+            name: voice.name || voice.voiceURI || '',
+            lang: voice.lang || ''
+        }));
+    } catch (_) {
+        return [];
+    }
+}
+
+/** Cấu hình TTS hiện tại — đọc thẳng từ state (settings store là nguồn duy nhất). */
+function readTtsSettings() {
+    let state = null;
+    try { state = typeof getState === 'function' ? getState() : null; } catch (_) { state = null; }
+    return {
+        voice: typeof state?.ttsVoice === 'string' ? state.ttsVoice : '',
+        rate: normalizeTtsRate(state?.ttsRate)
+    };
+}
+
+/** Chọn giọng: ưu tiên đúng giọng người dùng chọn, rồi tới giọng tiếng Anh đầu tiên. */
+function pickTtsVoice(synth, preferred) {
+    let voices = [];
+    try { voices = synth?.getVoices?.() || []; } catch (_) { voices = []; }
+    if (!voices.length) return null;
+    const wanted = String(preferred || '').trim();
+    if (wanted) {
+        const exact = voices.find(voice => voice.voiceURI === wanted || voice.name === wanted);
+        if (exact) return exact;
+    }
+    return voices.find(voice => /^en[-_]/i.test(voice.lang || ''))
+        || voices.find(voice => /^en/i.test(voice.lang || ''))
+        || null;
+}
+
+/** Cảnh báo MỘT lần / phiên (dù người dùng bấm loa bao nhiêu lần). */
+function notifyTtsOnce(kind) {
+    if (TTS_DIAG.noticeShown) return false;
+    TTS_DIAG.noticeShown = true;
+    TTS_DIAG.noticesShown++;
+    if (kind === 'unavailable') {
+        showToastAsync(
+            'Chưa có giọng đọc',
+            'Trình duyệt/thiết bị này không phát được âm thanh từ vựng. Bạn vẫn học bình thường, chỉ là không có tiếng.',
+            'ph-speaker-slash'
+        );
+    } else {
+        showToastAsync(
+            'Đang dùng giọng mặc định của máy',
+            'Giọng đọc Cloud tạm thời không dùng được. Mở menu công cụ để chọn giọng/tốc độ, hoặc thử lại khi mạng ổn định.',
+            'ph-info'
+        );
+    }
+    return true;
+}
+
+/** Badge "nguồn giọng đang dùng" trong panel công cụ (nếu panel đã được gắn). */
+function updateTtsSourceBadge() {
+    if (typeof document === 'undefined') return;
+    const badge = document.getElementById('tts-source-badge');
+    if (!badge) return;
+    const label = TTS_DIAG.lastSource === 'cloud'
+        ? 'Cloud'
+        : TTS_DIAG.lastSource === 'native'
+            ? 'Giọng máy'
+            : TTS_DIAG.lastSource === 'none' ? 'Không có' : '—';
+    if (badge.textContent !== label) badge.textContent = label;
+    badge.title = TTS_DIAG.lastSource === 'cloud'
+        ? 'Âm thanh lấy từ proxy Google TTS'
+        : 'Đang đọc bằng giọng mặc định của trình duyệt (Web Speech)';
+}
+
 let audioCtx = null;
 let masterGainNode = null;   // bus chung cho sample + synth
 let synthGainNode = null;    // bus riêng để cân bằng synth với sample
@@ -1119,6 +1248,9 @@ export function initializeSound() {
     // element chỉ được tạo khi buffer chưa sẵn sàng. Tránh tải trùng 164 kB.
     sounds = {};
     installAudioUnlock();
+    // T2.5: gắn cấu hình giọng/tốc độ vào panel công cụ có sẵn (JS, không sửa HTML).
+    mountTtsSettingsUI();
+    attachTtsUiListeners();
     // KHÔNG preload MP3 ở đây (T3.3): mở app không phát sinh request âm thanh.
     // Sample chỉ được tải/giải mã sau tương tác đầu tiên hoặc sau 3 s rảnh —
     // xem scheduleSfxWarmUp(). Người dùng đã tắt âm thanh hoặc chỉ dùng TTS
@@ -1206,6 +1338,8 @@ async function getAudioDataURL(text) {
 
         return getCachedBlobUrl(text, blob);
     } catch (error) {
+        TTS_DIAG.proxyFailures++;
+        TTS_DIAG.lastError = String(error?.message || error);
         console.error('TTS Fetch Error:', error);
         throw new Error(`Không thể lấy âm thanh: ${error.message}`);
     }
@@ -1222,38 +1356,68 @@ function isTtsAllowed() {
 }
 
 /**
- * Fallback dùng Web Speech API native của trình duyệt.
+ * Fallback dùng Web Speech API native của trình duyệt (giọng máy).
+ * Tôn trọng cấu hình người dùng: giọng đã chọn (ttsVoice) + tốc độ (ttsRate).
+ * @returns {boolean} true nếu đã thực sự gọi được giọng máy.
  */
-function fallbackNativeTTS(text, rate = 1.0) {
-    if (!isTtsAllowed()) return;
-    if ('speechSynthesis' in window) {
-        try {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = rate;
-            utterance.onstart = () => import('../ui/waveform.js')
-                .then(w => w.setWaveformPlaying(true)).catch(() => {});
-            utterance.onend = utterance.onerror = () => import('../ui/waveform.js')
-                .then(w => w.setWaveformPlaying(false)).catch(() => {});
-            window.speechSynthesis.speak(utterance);
-        } catch (e) {
-            console.error('Web Speech API Fallback Error:', e);
-        }
+function fallbackNativeTTS(text, rate = null) {
+    if (!isTtsAllowed()) return false;
+    const synth = getSpeechSynthesisApi();
+    const UtteranceCtor = getSpeechUtteranceCtor();
+    if (!synth || typeof synth.speak !== 'function' || !UtteranceCtor) {
+        TTS_DIAG.lastSource = 'none';
+        updateTtsSourceBadge();
+        notifyTtsOnce('unavailable');
+        return false;
+    }
+    try {
+        synth.cancel();
+        const settings = readTtsSettings();
+        const effectiveRate = normalizeTtsRate(rate ?? settings.rate);
+        const utterance = new UtteranceCtor(text);
+        const voice = pickTtsVoice(synth, settings.voice);
+        utterance.lang = (voice && voice.lang) || 'en-US';
+        utterance.rate = effectiveRate;
+        if (voice) utterance.voice = voice;
+        utterance.onstart = () => import('../ui/waveform.js')
+            .then(w => w.setWaveformPlaying(true)).catch(() => {});
+        utterance.onend = utterance.onerror = () => import('../ui/waveform.js')
+            .then(w => w.setWaveformPlaying(false)).catch(() => {});
+        synth.speak(utterance);
+        TTS_DIAG.fallbackPlays++;
+        TTS_DIAG.lastSource = 'native';
+        updateTtsSourceBadge();
+        return true;
+    } catch (e) {
+        TTS_DIAG.lastSource = 'none';
+        updateTtsSourceBadge();
+        console.warn('[TTS] Không phát được giọng máy:', e?.message || e);
+        return false;
     }
 }
 
 /**
  * Hàm phát âm thanh từ vựng chính.
+ * @param {string} text
+ * @param {number|null} rate  null/undefined = dùng ttsRate trong settings (0.6–1.4)
  */
-export async function speakText(text, rate = 1.0) {
+export async function speakText(text, rate = null) {
     if (!text) return;
     if (!isTtsAllowed()) return;
-    if (!currentUtterance) return;
+    const settings = readTtsSettings();
+    // Tốc độ: tham số truyền vào (nếu có) > cấu hình người dùng > 1.0.
+    const effectiveRate = normalizeTtsRate(rate ?? settings.rate);
     const requestId = ++_speakRequestId;
+    const player = getSpeechElement();
 
-    if (!currentUtterance.paused) {
-        currentUtterance.pause();
+    if (!player) {
+        // Không có HTMLAudioElement → đi thẳng vào giọng máy (nếu trình duyệt có).
+        fallbackNativeTTS(text, effectiveRate);
+        return;
+    }
+
+    if (!player.paused) {
+        try { player.pause(); } catch (_) {}
     }
 
     try {
@@ -1261,18 +1425,23 @@ export async function speakText(text, rate = 1.0) {
         // Người dùng có thể đã tắt TTS hoặc bấm từ khác trong lúc chờ proxy.
         if (requestId !== _speakRequestId || !isTtsAllowed()) return;
 
-        currentUtterance.src = safeDataURL;
-        currentUtterance.playbackRate = rate;
-        currentUtterance.currentTime = 0;
+        player.src = safeDataURL;
+        player.playbackRate = effectiveRate;
+        player.currentTime = 0;
 
         // Hiệu ứng nút loa do sự kiện 'playing' của Audio tự bật (xem listeners
-        // cạnh phần khai báo currentUtterance) — đúng lúc tiếng thật cất lên.
-        await currentUtterance.play();
+        // cạnh phần khai báo audio element) — đúng lúc tiếng thật cất lên.
+        await player.play();
+        TTS_DIAG.lastSource = 'cloud';
+        updateTtsSourceBadge();
 
     } catch (error) {
         if (requestId !== _speakRequestId) return;
         console.warn('Speech Proxy / Audio playback error, using Web Speech API fallback:', error.message);
-        fallbackNativeTTS(text, rate);
+        // Minh bạch: chỉ báo MỘT lần, và chỉ khi chính người dùng vừa bấm loa
+        // (các lượt preload nền lỗi không làm phiền họ).
+        notifyTtsOnce('proxy');
+        fallbackNativeTTS(text, effectiveRate);
     }
 }
 
@@ -1286,6 +1455,128 @@ export async function preloadAudio(text) {
         await getAudioDataURL(text);
     } catch (error) {
         console.warn(`Failed to prefetch audio for "${text}":`, error.message);
+    }
+}
+
+// ─── T2.5: PANEL CẤU HÌNH TTS (thêm bằng JS, KHÔNG sửa index.html) ─────────
+const TTS_UI_ID = 'tts-settings-group';
+// Style tối thiểu bằng inline (không đụng src/css/**): trong suốt, kế thừa màu
+// chữ của pill settings để hợp cả light lẫn dark mode.
+const TTS_CONTROL_STYLE = 'font:inherit;font-size:12px;color:inherit;background:transparent;'
+    + 'border:1px solid rgba(148,163,184,.45);border-radius:8px;padding:3px 4px;';
+
+/** Nạp danh sách giọng máy vào <select> đã tồn tại (không tạo select mới mỗi lần). */
+function populateTtsVoiceSelect(select, selected) {
+    if (!select || !select.ownerDocument) return;
+    const doc = select.ownerDocument;
+    const voices = listTtsVoices();
+    const desired = [''].concat(voices.map(voice => voice.uri));
+    const current = [...select.options].map(option => option.value);
+    const unchanged = current.length === desired.length && desired.every((uri, i) => uri === current[i]);
+    if (!unchanged) {
+        while (select.firstChild) select.removeChild(select.firstChild);
+        const auto = doc.createElement('option');
+        auto.value = '';
+        auto.textContent = 'Giọng máy: tự động';
+        select.appendChild(auto);
+        for (const voice of voices) {
+            const option = doc.createElement('option');
+            option.value = voice.uri;
+            option.textContent = voice.lang ? `${voice.name} (${voice.lang})` : voice.name;
+            select.appendChild(option);
+        }
+    }
+    select.value = desired.includes(selected) ? selected : '';
+}
+
+/** Đồng bộ UI với state (mở menu công cụ / voiceschanged / vừa đổi cài đặt). */
+export function refreshTtsSettingsUI() {
+    if (typeof document === 'undefined') return;
+    if (!document.getElementById(TTS_UI_ID)) return;
+    const { voice, rate } = readTtsSettings();
+    populateTtsVoiceSelect(document.getElementById('tts-voice-select'), voice);
+    const rateSelect = document.getElementById('tts-rate-select');
+    if (rateSelect && rateSelect.value !== String(rate)) rateSelect.value = String(rate);
+    updateTtsSourceBadge();
+}
+
+/**
+ * Gắn khối "Giọng đọc" vào panel settings CÓ SẴN (#taskbar-menu → .group-utilities).
+ * Chỉ dùng phần tử do JS tạo, không thêm dòng nào vào index.html.
+ */
+export function mountTtsSettingsUI() {
+    if (typeof document === 'undefined') return null;
+    const existing = document.getElementById(TTS_UI_ID);
+    if (existing) {
+        refreshTtsSettingsUI();
+        return existing;
+    }
+    const host = document.querySelector('#taskbar-menu .header-group.group-utilities')
+        || document.getElementById('taskbar-menu');
+    if (!host) return null;
+
+    // KHÔNG dùng class .header-group cho khối này: CSS mobile
+    // `#taskbar-menu .header-group > *` sẽ ép width/height 100% lên các control con.
+    const group = document.createElement('div');
+    group.id = TTS_UI_ID;
+    group.className = 'tts-settings-group';
+    group.title = 'Giọng đọc tiếng Anh + tốc độ (áp dụng cho lần phát âm kế tiếp)';
+    group.style.cssText = 'display:flex;flex-direction:row;align-items:center;gap:5px;min-width:0;';
+
+    const voiceSelect = document.createElement('select');
+    voiceSelect.id = 'tts-voice-select';
+    voiceSelect.setAttribute('aria-label', 'Chọn giọng đọc');
+    voiceSelect.title = 'Giọng đọc của máy (dùng khi giọng Cloud không khả dụng)';
+    voiceSelect.style.cssText = `${TTS_CONTROL_STYLE}max-width:128px;`;
+    voiceSelect.addEventListener('change', () => {
+        setTtsVoice(voiceSelect.value).then(() => refreshTtsSettingsUI()).catch(() => {});
+    });
+
+    const rateSelect = document.createElement('select');
+    rateSelect.id = 'tts-rate-select';
+    rateSelect.setAttribute('aria-label', 'Tốc độ đọc');
+    rateSelect.title = 'Tốc độ đọc (0.6× – 1.4×)';
+    rateSelect.style.cssText = TTS_CONTROL_STYLE;
+    for (let step = Math.round(TTS_RATE_MIN * 10); step <= Math.round(TTS_RATE_MAX * 10); step++) {
+        const value = step / 10;
+        const option = document.createElement('option');
+        option.value = String(value);
+        option.textContent = `${value.toFixed(1)}×`;
+        rateSelect.appendChild(option);
+    }
+    rateSelect.addEventListener('change', () => {
+        setTtsRate(rateSelect.value).then(saved => { refreshTtsSettingsUI(); return saved; }).catch(() => {});
+    });
+
+    const badge = document.createElement('span');
+    badge.id = 'tts-source-badge';
+    badge.className = 'tts-source-badge';
+    badge.style.cssText = 'font-size:11px;opacity:.75;white-space:nowrap;';
+    badge.textContent = '—';
+
+    group.append(voiceSelect, rateSelect, badge);
+    host.appendChild(group);
+    refreshTtsSettingsUI();
+    return group;
+}
+
+let _ttsUiListenersAttached = false;
+function attachTtsUiListeners() {
+    if (_ttsUiListenersAttached || typeof document === 'undefined') return;
+    _ttsUiListenersAttached = true;
+    try {
+        const synth = getSpeechSynthesisApi();
+        if (synth && typeof synth.addEventListener === 'function') {
+            synth.addEventListener('voiceschanged', () => refreshTtsSettingsUI());
+        }
+    } catch (_) {}
+    // Mở menu công cụ = thời điểm chắc chắn state đã nạp xong settings.
+    const toggle = document.getElementById('toggle-taskbar-btn');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            if (document.getElementById(TTS_UI_ID)) refreshTtsSettingsUI();
+            else mountTtsSettingsUI();
+        });
     }
 }
 

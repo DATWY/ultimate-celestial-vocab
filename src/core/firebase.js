@@ -33,7 +33,8 @@ import { getStorage } from 'firebase/storage';
 import {
     getState, setVocabulary, saveVocabulary, setAllTags, isPreviewMode,
     calculateStreakFromHeatmap, reconcileStreakFreeze, setInitialSyncDone,
-    syncStreakFromHeatmap, getLocalDateString
+    syncStreakFromHeatmap, getLocalDateString,
+    pruneReviewLogs
 } from './state.js';
 import { buildReviewQueue, getNextCardToReview } from './queue.js';
 
@@ -1029,40 +1030,81 @@ export async function syncUserSettings() {
     }
 }
 
+// ===== T2.4 — reviewLogs: chống chạm trần 1 MiB của Firestore =====
+// Trần cứng của Firestore là 1 MiB/document, vượt là ghi lỗi VĨNH VIỄN. Document
+// log nằm RIÊNG (users/{uid}/state/reviewLogs) nên vocabulary + progress +
+// gamification + settings luôn là document khác — log hỏng không kéo theo chúng.
+// Ngưỡng an toàn 700 KB là LƯỚI THỨ HAI: pruneReviewLogs đã chặn ở 400 KB nên
+// bình thường nhánh này không chạy; nếu chạy (dữ liệu bất thường, sau này nới
+// ngưỡng prune) thì chỉ log bị cắt thêm, sync vẫn thành công.
+const REVIEW_LOG_SAFE_BYTES = 700_000;
+let _reviewLogOversizeWarned = false;
+let _reviewLogFailureWarned = false;
+
+/** Chuẩn hoá document log đọc từ Cloud (row có thể là chuỗi JSON do bản cũ ghi). */
+function normalizeRemoteReviewLogs(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    return {
+        dict: Array.isArray(source.dict) ? source.dict : [],
+        deletedIds: Array.isArray(source.deletedIds) ? source.deletedIds : [],
+        logs: (Array.isArray(source.logs) ? source.logs : []).map(row => {
+            if (Array.isArray(row)) return row;
+            if (typeof row === 'string' && row.startsWith('[')) {
+                try { return JSON.parse(row); } catch (_) { return []; }
+            }
+            return String(row).split(',').map((part, index) => index < 5 ? Number(part) : part);
+        })
+    };
+}
+
 async function syncReviewLogs(uid) {
     if (isPreviewMode()) return;
     const state = await import('./state.js');
-    const local = JSON.parse(JSON.stringify(getState().reviewLogs || { dict: [], logs: [] }));
+    // (1) Cắt TRƯỚC khi upload: log local có thể tới 10.000 entry.
+    const localPruned = pruneReviewLogs(getState().reviewLogs || { dict: [], logs: [] });
     const ref = userDoc(uid, STATE_SUBCOLLECTION, 'reviewLogs');
-    const merged = await runTransaction(db, async transaction => {
-        const snap = await transaction.get(ref);
-        const raw = snap.exists() ? snap.data() : { dict: [], logs: [] };
-        const remote = {
-            ...raw,
-            logs: (raw.logs || []).map(row => {
-                if (Array.isArray(row)) return row;
-                if (typeof row === 'string' && row.startsWith('[')) {
-                    try { return JSON.parse(row); } catch (_) { return []; }
+    const meta = { _lastModifiedBy: getDeviceId(), _ownerUid: uid };
+    let written = null;
+    try {
+        written = await runTransaction(db, async transaction => {
+            const snap = await transaction.get(ref);
+            const merged = state.mergeReviewLogs(normalizeRemoteReviewLogs(snap.exists() ? snap.data() : null), localPruned);
+            // (2) Cắt ngay trên bản merge — đây chính là payload sắp ghi. Nếu
+            // payload thật vượt ngưỡng an toàn, cắt thêm log (giữ entry mới
+            // nhất) nhưng KHÔNG bỏ sync; phần lõi nằm ở document khác nên vẫn ghi.
+            const prepared = state.prepareReviewLogsForCloud(merged, {
+                meta,
+                safeBytes: REVIEW_LOG_SAFE_BYTES,
+                onOversize: ({ before, bytes, snapshot }) => {
+                    if (_reviewLogOversizeWarned) return;
+                    _reviewLogOversizeWarned = true;
+                    console.warn(
+                        `⚠️ [reviewLogs] Payload ${Math.round(before.bytes / 1024)} KB > ngưỡng an toàn `
+                        + `${Math.round(REVIEW_LOG_SAFE_BYTES / 1024)} KB → chỉ ghi ${snapshot.logs.length}/${before.entries} entry `
+                        + `(${Math.round(bytes / 1024)} KB). Vocabulary/progress vẫn đồng bộ bình thường.`
+                    );
                 }
-                return String(row).split(',').map((part, index) => index < 5 ? Number(part) : part);
-            })
-        };
-        const result = state.mergeReviewLogs(remote, local);
-        const cloudLogs = result.logs.slice(-3000);
-        const cloudDeletedIds = (result.deletedIds || []).slice(-500);
-        transaction.set(ref, {
-            dict: result.dict,
-            logs: cloudLogs.map(row => JSON.stringify(row)),
-            deletedIds: cloudDeletedIds,
-            _lastModifiedBy: getDeviceId(),
-            _ownerUid: uid
+            });
+            transaction.set(ref, prepared.payload);
+            return prepared.snapshot;
         });
-        return result;
-    });
-    const current = state.mergeReviewLogs(merged, getState().reviewLogs);
+    } catch (error) {
+        // KHÔNG throw: các document lõi (vocabulary, gamification, dailyStats,
+        // settings) đã ghi xong ở lượt riêng. Log chỉ là thống kê — hỏng log
+        // không được phép biến cả lượt sync thành "Lỗi đồng bộ".
+        if (!_reviewLogFailureWarned) {
+            _reviewLogFailureWarned = true;
+            console.warn('[reviewLogs] Bỏ qua đồng bộ log thống kê (dữ liệu học vẫn an toàn):', error?.message || error);
+        }
+        if (isQuotaError(error)) tripQuotaBreaker();
+        return;
+    }
+    // (3) SAU pull/merge: chuẩn hoá lại trước khi áp vào state để document không
+    // phình tích luỹ dần qua nhiều vòng đồng bộ.
+    const current = pruneReviewLogs(state.mergeReviewLogs(written, getState().reviewLogs));
     state.setReviewLogs(current);
     const saved = await saveReviewLogsToDB(current);
-    state.setReviewLogs(state.mergeReviewLogs(state.getState().reviewLogs, saved));
+    state.setReviewLogs(pruneReviewLogs(state.mergeReviewLogs(state.getState().reviewLogs, saved)));
 }
 
 let _progressSyncPromise = null;
