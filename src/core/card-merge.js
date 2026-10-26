@@ -1,4 +1,6 @@
 // Keep editorial changes, review state and flags on independent clocks.
+import { LEECH_LAPSE_THRESHOLD } from './srs/constants.js';
+
 export function toMillis(value) {
     let millis = 0;
     try {
@@ -16,7 +18,7 @@ const CONTENT = ['english', 'vietnamese', 'pronunciation', 'type', 'example', 'e
     'exampleVi', 'notes', 'synonyms', 'antonyms', 'collocations', 'audio', 'tags'];
 const MEMORY = ['srsStatus', 'srsDueDate', 'srsInterval', 'srsEaseFactor', 'stability',
     'stabilityShort', 'difficulty', 'reps', 'lapses', 'lastReviewDate', 'consecutiveCorrect',
-    'learningStep', 'anchor', 'modality'];
+    'learningStep', 'anchor', 'modality', 'isLeech'];
 
 export function normalizeCard(card) {
     if (!card) return card;
@@ -38,6 +40,11 @@ export function normalizeCard(card) {
     }
     normalized.srsStatus = ['New', 'Learning', 'Mastered'].includes(card.srsStatus) ? card.srsStatus : 'New';
     for (const key of ['reps', 'lapses', 'learningStep']) normalized[key] = Math.min(100000000, Math.max(0, Math.trunc(Number(card[key]) || 0)));
+    // T1.4: cờ leech là dữ liệu BỘ NHỚ (đi cùng lapses), merge theo đồng hồ srsUpdatedAt.
+    // Luôn suy lại được từ lapses nên thẻ đến từ máy chạy bản cũ (chưa có field) hoặc
+    // thẻ nhập từ TSV vẫn có cờ đúng ngay sau khi normalize.
+    normalized.isLeech = card.isLeech === true || card.isLeech === 1 || card.isLeech === 'true'
+        || normalized.lapses >= LEECH_LAPSE_THRESHOLD;
     normalized.srsInterval = Math.min(36500, Math.max(0, Number(card.srsInterval) || 0));
     for (const [key, min, max] of [['difficulty', 1, 10], ['stability', .01, 36500], ['stabilityShort', .01, 36500]]) {
         if (card[key] != null) normalized[key] = Number.isFinite(Number(card[key])) ? Math.min(max, Math.max(min, Number(card[key]))) : undefined;

@@ -16,6 +16,22 @@ export const MAX_GRADUATION_INTERVAL_DAYS = 7;
 // Đơn vị: mili-giây. index.js dùng trực tiếp mảng này để tính srsDueDate/srsInterval.
 export const LEARNING_STEPS_MS = [60_000, 600_000, 86_400_000];
 
+// ─── T1.3 — hệ số heuristics tác động lên D0 ────────────────────────────────
+// Giữ nguyên độ "nhạy" 0.5 của công thức cũ (D0 = initDifficulty(rating) + bias × 0.5).
+// Trước T1.3 bias chạy tới ±3.0 ⇒ D0 bị đẩy ±1.5 (thẻ dễ rơi sát D_MIN = 1).
+// Từ T1.3 bias chỉ còn ±0.5 (heuristics.js) ⇒ D0 chỉ lệch ±0.25, tức thu 6× —
+// đúng bằng mức thu của chính bias, không đụng vào công thức FSRS nào.
+export const D0_BIAS_SCALE = 0.5;
+
+// ─── T1.4 — Leech (thẻ "chống lại bạn") ─────────────────────────────────────
+// Đã quên >= 4 lần ⇒ không nhồi lại ngay trong phiên (massed practice chỉ tạo
+// cảm giác thuộc giả), thay bằng một bước relearning 10 phút rồi mới gặp lại.
+export const LEECH_LAPSE_THRESHOLD = 4;
+// Bước relearning của thẻ leech = 10 phút (đúng bước thứ 2 trong LEARNING_STEPS_MS).
+export const LEECH_RELEARNING_INTERVAL_MS = 600_000;
+// Bước học tương ứng với bước relearning ở trên (dùng cho learningStep của thẻ leech).
+export const LEECH_RELEARNING_STEP = 1;
+
 // Memory-state clamp bounds from FSRS-7 (fsrs-rs / srs-benchmark)
 export const S_MIN = 0.01;
 export const S_MAX = 36500.0; // 100 years in days

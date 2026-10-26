@@ -1,6 +1,6 @@
 // src/core/srs/index.js — FSRS-7 Dual-Stability Engine Coordinator
 
-import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS, LEARNING_STEPS_MS } from './constants.js';
+import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS, LEARNING_STEPS_MS, D0_BIAS_SCALE, LEECH_LAPSE_THRESHOLD, LEECH_RELEARNING_INTERVAL_MS, LEECH_RELEARNING_STEP } from './constants.js';
 import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton } from './forgetting.js';
 import { initDifficulty, nextDifficulty } from './difficulty.js';
 import { nextStability } from './stability.js';
@@ -10,6 +10,21 @@ import { nextRevision } from '../card-merge.js';
 
 const DAY_MS = 86400000;
 const FINAL_LEARNING_STEP = LEARNING_STEPS_MS.length - 1; // 2 => bước 1 ngày
+
+/**
+ * T1.4 — Thẻ có phải LEECH (từ "chống lại bạn") hay không.
+ * Cờ `isLeech` được engine ghi vào state (lapses >= LEECH_LAPSE_THRESHOLD) để merge
+ * được giữa các thiết bị. Thẻ cũ / thẻ nhập từ TSV / thẻ đến từ máy chạy bản cũ có
+ * thể thiếu cờ, nên luôn suy ra lại từ `lapses` — hai nguồn không bao giờ lệch nhau.
+ *
+ * @param {Object} card
+ * @returns {boolean}
+ */
+export function isLeechCard(card) {
+    if (!card) return false;
+    if (card.isLeech === true) return true;
+    return (Number(card.lapses) || 0) >= LEECH_LAPSE_THRESHOLD;
+}
 
 /**
  * Đọc bước học hiện tại của thẻ. Thẻ cũ thiếu trường (undefined/null/NaN) => bước 0.
@@ -126,8 +141,10 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         const sMult = getStabilityMultiplier(hBias);
         const ratingIdx = Math.min(4, Math.max(1, rating)) - 1;
 
+        // T1.3: bias đã bị thu về ±0.5 (heuristics.js) nên D0 chỉ nhích tối đa ±0.25
+        // thay vì ±1.5 như trước (trước: bias ±3.0 × 0.5). Công thức FSRS không đổi.
         const baseS = w[ratingIdx] * sMult;
-        const baseD = initDifficulty(rating, w) + hBias * 0.5;
+        const baseD = initDifficulty(rating, w) + hBias * D0_BIAS_SCALE;
 
         newState.difficulty = Math.min(D_MAX, Math.max(D_MIN, baseD));
         newState.stability = Math.min(S_MAX, Math.max(S_MIN, baseS));
@@ -216,7 +233,18 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
     }
 
     let nextIntervalDays;
-    if (wasInLearningPhase) {
+    // T1.4 — Cờ leech phải được cập nhật TRƯỚC khi quyết định lịch, vì thẻ vừa trượt
+    // lần thứ 4 phải được đối xử như leech ngay trong chính lượt đó.
+    newState.isLeech = (Number(newState.lapses) || 0) >= LEECH_LAPSE_THRESHOLD;
+
+    if (rating === 1 && newState.isLeech) {
+        // 7b-leech. T1.4: KHÔNG nhồi lại ngay (massed practice chỉ tạo "thuộc giả").
+        // Hẹn lại sau 10 phút (một bước relearning thật) để người học phải quên đi một
+        // chút rồi mới gặp lại; UI sẽ gắn badge "CỰC KHÓ" khi thẻ hiện lại.
+        newState.srsStatus = 'Learning';
+        newState.learningStep = LEECH_RELEARNING_STEP;
+        nextIntervalDays = LEECH_RELEARNING_INTERVAL_MS / DAY_MS;
+    } else if (wasInLearningPhase) {
         // 7b. LEARNING STEPS (T1.1): 1 phút → 10 phút → 1 ngày → mới tốt nghiệp Mastered.
         //     Chỉ override lịch; S/S_short/D/reps/lapses/srsUpdatedAt vẫn cập nhật như trên.
         const schedule = scheduleLearningStep(readLearningStep(card), rating, fsrsIntervalDays, {
@@ -227,7 +255,8 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         newState.learningStep = schedule.learningStep;
         nextIntervalDays = schedule.intervalDays;
     } else if (rating === 1) {
-        // 7c. Failed card: schedule immediate review in the active session
+        // 7c. Thẻ (chưa leech) vừa trượt: hẹn gặp lại ngay trong phiên đang học.
+        //     Riêng thẻ leech đã được nhánh 7b-leech chặn lại với bước relearning 10 phút.
         nextIntervalDays = 0;
         newState.srsStatus = 'Learning';
         // Thẻ vừa trượt phải leo lại thang bước học từ đầu (không giữ bước cũ để "tốt nghiệp lại" ngay).
@@ -345,9 +374,15 @@ export function predictNextIntervals(card, modality = 'en-vi') {
             const { newState } = calculateNextSrsState(card, rating, modality, 0, null, true);
             // Nút chấm không được hứa quá 365 ngày (dự báo cũng phải chịu cùng trần với lịch thật).
             const cappedDays = Math.min(MAX_INTERVAL_DAYS, newState.srsInterval);
-            predictions[rating] = inLearningPhase
-                ? formatLearningPreview(cappedDays)
-                : formatIntervalPreview(cappedDays);
+            // T1.4: thẻ leech vừa trượt được hẹn đúng 10 phút (bước relearning), nên nhãn
+            // nút "Quên" phải nói "10p" chứ không phải "<10p" / "<1h" gây hiểu sai.
+            if (rating === 1 && isLeechCard(card)) {
+                predictions[rating] = formatLearningPreview(LEECH_RELEARNING_INTERVAL_MS / DAY_MS);
+            } else {
+                predictions[rating] = inLearningPhase
+                    ? formatLearningPreview(cappedDays)
+                    : formatIntervalPreview(cappedDays);
+            }
         } catch (e) {
             predictions[rating] = fallback[rating];
         }

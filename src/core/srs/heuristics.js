@@ -10,6 +10,29 @@
 
 import { isCommonWord } from './frequency-data.js';
 
+// ─── T1.3 — BIÊN ĐỘ CỦA HEURISTICS (thu hẹp, KHÔNG đổi hướng) ────────────────
+// Heuristics là "đặc sản" của app: nó đoán độ khó của một TỪ trước khi người học
+// chạm vào thẻ, rồi nhích S0/D0 của FSRS. Nhưng trước T1.3 biên độ quá rộng:
+//   • bias ∈ [-3.0, +3.0]  ⇒ D0 lệch ±1.5 (thẻ dễ rơi xuống sát D_MIN = 1)
+//   • multiplier ∈ [0.7, 1.3] ⇒ S0 lệch ±30%
+// Kết quả: interval lần đầu giữa "cat" và "break the ice" lệch tới ~8×, trong khi
+// khác biệt THẬT về độ khó chỉ nên là vài chục phần trăm. Từ T1.3:
+//   • bias ∈ [-0.5, +0.5] (index.js vẫn nhân 0.5 như cũ ⇒ D0 lệch tối đa ±0.25)
+//   • multiplier ∈ [0.85, 1.15] ⇒ S0 lệch tối đa ±15%
+// Hướng giữ nguyên: từ càng khó (bias dương) ⇒ S0 càng nhỏ, D0 càng cao.
+export const DIFFICULTY_BIAS_MIN = -0.5;
+export const DIFFICULTY_BIAS_MAX = 0.5;
+export const STABILITY_MULT_MIN = 0.85;
+export const STABILITY_MULT_MAX = 1.15;
+
+// Tổng bias thô của code cũ chạy trong khoảng [-3, +4.5] (idiom + chữ dài + nhiều âm tiết).
+// Chia cho 6 để đưa về đúng biên độ ±0.5 (rồi vẫn kẹp lại cho chắc).
+const RAW_BIAS_SCALE = 6;
+// bias -0.5 (rất dễ) → ×1.15 · bias 0 (trung tính) → ×1.00 · bias +0.5 (rất khó) → ×0.85
+const STABILITY_MULT_SLOPE = 0.3;
+
+const clampBias = (value) => Math.min(DIFFICULTY_BIAS_MAX, Math.max(DIFFICULTY_BIAS_MIN, value));
+
 /**
  * Ước lượng số âm tiết của một từ tiếng Anh.
  * Sử dụng phương pháp đếm nhóm nguyên âm liên tiếp (vowel cluster).
@@ -52,7 +75,7 @@ function estimateSyllables(word) {
  * @param {string} card.english - Từ/cụm từ tiếng Anh
  * @param {string} [card.type] - Loại từ (noun, verb, idiom, phrasal verb, ...)
  * @param {string[]} [card.tags] - Tags của thẻ
- * @returns {number} bias - Giá trị từ -3.0 đến +3.0
+ * @returns {number} bias - Giá trị trong [-0.5, +0.5] (T1.3)
  */
 export function getDifficultyBias(card) {
     if (!card || !card.english) return 0;
@@ -103,8 +126,9 @@ export function getDifficultyBias(card) {
         bias -= 1.5;
     }
 
-    // Clamp bias trong khoảng [-3.0, +3.0] để tránh cực đoan
-    return Math.min(3.0, Math.max(-3.0, bias));
+    // T1.3: nén tổng thô về biên độ ±0.5 (giữ nguyên thứ tự: từ khó hơn vẫn bias lớn hơn).
+    // Các trọng số phía trên KHÔNG đổi — chỉ có biên độ đầu ra bị thu lại.
+    return clampBias(bias / RAW_BIAS_SCALE);
 }
 
 /**
@@ -112,12 +136,14 @@ export function getDifficultyBias(card) {
  * Từ dễ (bias âm) → S cao hơn (ôn muộn hơn vì dễ nhớ)
  * Từ khó (bias dương) → S thấp hơn (ép ôn sớm hơn vì dễ quên)
  * 
- * @param {number} bias - Giá trị bias từ getDifficultyBias() ([-3.0, +3.0])
- * @returns {number} multiplier - Hệ số nhân cho S (0.5 đến 1.5)
+ * @param {number} bias - Giá trị bias từ getDifficultyBias() (T1.3: [-0.5, +0.5])
+ * @returns {number} multiplier - Hệ số nhân cho S (T1.3: [0.85, 1.15])
  */
 export function getStabilityMultiplier(bias) {
-    // bias = -3 → mult = 1.3 (Từ rất dễ: S tăng 30%, ôn muộn hơn)
-    // bias =  0 → mult = 1.0 (Trung tính: không thay đổi)
-    // bias = +3 → mult = 0.7 (Từ rất khó: S giảm 30%, ôn sớm hơn)
-    return Math.max(0.5, Math.min(1.5, 1 - bias * 0.1));
+    // bias = -0.5 → mult = 1.15 (Từ rất dễ: S tăng 15%, ôn muộn hơn)
+    // bias =  0.0 → mult = 1.00 (Trung tính: không thay đổi)
+    // bias = +0.5 → mult = 0.85 (Từ rất khó: S giảm 15%, ôn sớm hơn)
+    const safeBias = clampBias(Number.isFinite(Number(bias)) ? Number(bias) : 0);
+    const multiplier = 1 - safeBias * STABILITY_MULT_SLOPE;
+    return Math.min(STABILITY_MULT_MAX, Math.max(STABILITY_MULT_MIN, multiplier));
 }

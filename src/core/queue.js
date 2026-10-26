@@ -1,5 +1,6 @@
 import { getState, setReviewQueue, ensureDailyStats } from './state.js';
 import { getLocalDateString } from './utils/date.js';
+import { isLeechCard } from './srs/index.js';
 
 const INTERLEAVE_OFFSET = 5;
 const MAX_NEW_PER_DAY_INITIAL = 15;
@@ -236,6 +237,11 @@ export function insertCardForLearningStep(cardIndex) {
     
     // SỬA LỖI KB 3.2: Kiểm tra chống chèn trùng lặp thẻ vào hàng đợi
     if (currentReviewQueue.includes(cardIndex)) return;
+
+    // T1.4: thẻ LEECH (đã quên >= 4 lần) không bao giờ được nhồi lại ngay trong phiên.
+    // Engine đã hẹn nó +10 phút; chặn ở đây để kể cả khi nơi gọi bỏ qua mốc thời gian
+    // thì thẻ vẫn không quay về vị trí thứ 5 như massed practice cũ.
+    if (isLeechCard(vocabulary?.[cardIndex])) return;
 
     // T1.1: chỉ chèn lại khi hạn của thẻ đã tới. Thẻ còn đang trong bước 10 phút / 1 ngày
     // KHÔNG được hiện lại ngay; buildReviewQueue sẽ nhặt nó khi srsDueDate tới.

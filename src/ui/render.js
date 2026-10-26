@@ -15,7 +15,7 @@ import { animateFlip, animateNumber } from '../core/animations.js';
 import { isFuzzySearchMatch } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { nextRevision } from '../core/card-merge.js';
-import { predictNextIntervals } from '../core/srs/index.js';
+import { predictNextIntervals, isLeechCard } from '../core/srs/index.js';
 import { startTypingTimer } from '../features/typing.js';
 
 export function updateUndoButtonState() {
@@ -378,10 +378,14 @@ export function displayCard(index, preserveFlipState = false) {
     const isTypingCard = shouldCardUseTyping(cardData);
     const { typingFilter } = getState();
 
-    // Chỉ nhận diện từ CỰC KHÓ (Extremely Hard / Leech):
-    // 1. Độ khó FusionSRS cực cao (Difficulty >= 8.5)
-    // 2. HOẶC đã từng bị quên từ 3 lần trở lên (lapses >= 3)
-    const isHardWord = isCardLeech(cardData) ||
+    // T1.4 — Badge "CỰC KHÓ" giờ chỉ dành cho thẻ LEECH thật (engine ghi cờ isLeech khi
+    // lapses >= 4). Trước T1.4 badge bật cho cả thẻ D >= 8.5 hoặc lapses >= 3, nên gần như
+    // thẻ nào hơi khó cũng bị gắn nhãn và cảnh báo mất giá trị.
+    const isLeechWord = isLeechCard(cardData);
+    // Glow / nhãn "deep focus" của câu ví dụ giữ nguyên phạm vi cũ (rộng hơn badge)
+    // để không làm mất tín hiệu trực quan đã có trước T1.4.
+    const isHardWord = isLeechWord ||
+                       isCardLeech(cardData) ||
                        (cardData.difficulty !== undefined && cardData.difficulty >= 8.5) || 
                        (cardData.lapses !== undefined && cardData.lapses >= 3);
 
@@ -394,7 +398,12 @@ export function displayCard(index, preserveFlipState = false) {
     
     // Hard badge & card glow (Chỉ hiện cho từ Cực Khó khi không ở giao diện gõ)
     DOM.flashcard?.classList.toggle('is-hard-card', isHardWord);
-    DOM.cardHardBadge?.classList.toggle('hidden', !isHardWord || isTypingCard);
+    DOM.cardHardBadge?.classList.toggle('hidden', !isLeechWord || isTypingCard);
+    if (isLeechWord && DOM.cardHardBadge) {
+        // T1.4: gợi ý nhẹ ngay trên badge (không thêm modal, không sửa index.html).
+        DOM.cardHardBadge.title = 'Từ này đang chống lại bạn (đã quên ≥ 4 lần). '
+            + 'Thử đổi cách học: viết một câu với từ này hoặc nghe phát âm trước khi lật thẻ.';
+    }
 
     const starIcon = DOM.starBtn?.querySelector('i');
     if (starIcon) starIcon.className = cardData.isStarred ? 'ph-fill ph-star' : 'ph ph-star';
