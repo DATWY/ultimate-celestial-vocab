@@ -7,7 +7,7 @@ import { DOM } from './ui/elements.js';
 import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
-import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
+import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming, getReviewCapSettings, setMaxReviewsPerDay } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { setupIOEventListeners, handleApplySyncKey, handleCopySyncKey } from './features/io.js';
@@ -284,6 +284,21 @@ function harmonizeAnimeTimeline() {
 }
 harmonizeAnimeTimeline();
 
+// ─── T1.5: ô "Giới hạn lượt ôn mỗi ngày" ────────────────────────────────────
+function syncReviewCapInput() {
+    const input = document.getElementById('max-reviews-per-day');
+    if (input) input.value = String(getReviewCapSettings().maxReviewsPerDay);
+    return input;
+}
+
+/** Áp cap mới NGAY: lưu settings → dựng lại queue → cập nhật dock/màn hình. */
+function refreshAfterReviewCapChange() {
+    syncReviewCapInput();
+    buildReviewQueue();
+    if (getState().currentCardIndex < 0) displayCard(getNextCardToReview());
+    else updateStats();
+}
+
 export function setupEventListeners() {
     harmonizeAnimeTimeline();
     // Pre-warm gamification chunk to ensure overview counter animations settle within steady-state window
@@ -348,6 +363,14 @@ export function setupEventListeners() {
             DOM.toggleTaskbarBtn.querySelector('i').className = 'ph-duotone ph-list';
         }
     };
+
+    // T1.5: control cap lượt ôn/ngày + cập nhật khi Cloud kéo cấu hình mới về.
+    const reviewCapInput = syncReviewCapInput();
+    reviewCapInput?.addEventListener('change', async () => {
+        reviewCapInput.value = String(await setMaxReviewsPerDay(reviewCapInput.value));
+        refreshAfterReviewCapChange();
+    });
+    document.addEventListener('review-cap:updated', refreshAfterReviewCapChange);
 
     // (Đóng menu khi click ngoài đã xử lý ở listener capture phía trên —
     // bỏ listener trùng lặp thứ hai để mỗi click chỉ chạy một lần.)

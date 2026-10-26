@@ -41,6 +41,25 @@
          vì ~9.000). Font .woff2 self-host tại /fonts/ nên icon không phụ thuộc
          CDN bên ngoài (unpkg) — kể cả khi offline qua service worker. -->
     <link rel="stylesheet" href="/phosphor-subset.css">
+    <style>
+        @media (min-width: 1001px) {
+            .review-cap-control {
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 18px;
+                z-index: 90;
+                padding: 6px 10px;
+                border-radius: 12px;
+                background: rgba(30, 41, 59, 0.92);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
+            }
+            body:not(.dark-mode) .review-cap-control {
+                background: rgba(255, 255, 255, 0.96);
+                border-color: rgba(0, 0, 0, 0.08);
+            }
+        }
+    </style>
 </head>
 
 <body class="focus-study">
@@ -163,6 +182,11 @@
                         <i class="ph-duotone ph-speaker-high"></i>
                         <span class="btn-label">Bật/Tắt Âm thanh</span>
                     </button>
+                    <div class="review-cap-control" title="Giới hạn tổng số lượt ôn (thẻ mới + thẻ đến hạn) mỗi ngày — từ 50 đến 500" style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                        <label for="max-reviews-per-day" style="font-size:11px;opacity:.8;white-space:nowrap;">Giới hạn lượt ôn mỗi ngày</label>
+                        <input type="number" id="max-reviews-per-day" min="50" max="500" step="10" value="200" inputmode="numeric" aria-label="Giới hạn lượt ôn mỗi ngày (50–500)" title="Phạm vi 50–500" style="width:58px;font:inherit;font-size:12px;color:inherit;background:transparent;border:1px solid rgba(148,163,184,.45);border-radius:8px;padding:3px 4px;">
+                        <span class="cap-hint" style="font-size:10px;opacity:.65;white-space:nowrap;">50–500</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -468,12 +492,15 @@
                 </div>
 
                 <!-- Bottom Row: Filter & Total Metadata Pills -->
-                <div class="dock-meta-row">
+                <div class="dock-meta-row" style="flex-wrap:wrap;">
                     <span class="meta-pill"><i class="ph-bold ph-cards"></i> Tổng: <strong id="stat-total">0</strong></span>
                     <span class="meta-pill"><i class="ph-bold ph-funnel"></i> Đang lọc: <strong id="stat-filtered">0</strong></span>
                     <span class="meta-pill"><i class="ph-bold ph-sparkle"></i> Từ mới: <strong id="stat-new">0</strong></span>
                     <span class="meta-pill meta-accuracy" id="meta-accuracy" title="Tỷ lệ trả lời đúng trong ngày">
                         <i class="ph-bold ph-target"></i> Đúng: <strong id="stat-accuracy">—</strong>
+                    </span>
+                    <span class="meta-pill meta-review-cap" id="meta-review-cap" title="Số lượt ôn còn lại hôm nay (thẻ mới + thẻ đến hạn)">
+                        <i class="ph-bold ph-arrows-clockwise"></i> Còn <strong id="stat-review-remaining">—</strong> lượt ôn hôm nay
                     </span>
                     <span class="meta-pill combo-pill hidden" id="combo-pill" title="Chuỗi trả lời đúng liên tiếp">
                         <i class="ph-fill ph-fire"></i> Combo ×<strong id="stat-combo">0</strong>

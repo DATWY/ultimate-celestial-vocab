@@ -36,7 +36,10 @@ import {
     syncStreakFromHeatmap, getLocalDateString,
     pruneReviewLogs
 } from './state.js';
-import { buildReviewQueue, getNextCardToReview } from './queue.js';
+import {
+    buildReviewQueue, getNextCardToReview,
+    getReviewCapSettings, mergeReviewCapSettings, setMaxReviewsPerDay
+} from './queue.js';
 
 // Dynamic UI loader to avoid circular dependencies core <-> UI and server/test crashes
 async function getUI() {
@@ -1009,20 +1012,39 @@ export async function syncUserSettings() {
     if (!user) return;
     const state = await import('./state.js');
     const current = state.getState();
+    // T1.5: cap lượt ôn/ngày là field riêng, LWW bằng updatedAt (không trộn với
+    // phiên bản tham số FSRS). Nhờ vậy nó sống qua reload + đồng bộ nhiều máy.
+    const localCap = getReviewCapSettings();
     const local = {
         userFsrs7Params: current.userFsrs7Params || null,
         userFsrs7TrainedAt: current.userFsrs7TrainedAt || 0,
-        trainedAt: current.userFsrs7TrainedAt || 0
+        trainedAt: current.userFsrs7TrainedAt || 0,
+        reviewCap: localCap
     };
     const ref = userDoc(user.uid, STATE_SUBCOLLECTION, 'settings');
-    const merged = await runTransaction(db, async transaction => {
+    const outcome = await runTransaction(db, async transaction => {
         const snap = await transaction.get(ref);
-        const result = mergeLearningSettings(local, snap.exists() ? snap.data() : null);
-        if (result.trainedAt) {
+        const remote = snap.exists() ? snap.data() : null;
+        const result = mergeLearningSettings(local, remote);
+        const mergedCap = mergeReviewCapSettings(localCap, remote?.reviewCap);
+        result.reviewCap = mergedCap;
+        const capWonByRemote = mergedCap.updatedAt > localCap.updatedAt;
+        const capNeedsWrite = mergedCap.updatedAt > 0 && !capWonByRemote && (
+            !remote?.reviewCap
+            || remote.reviewCap.updatedAt !== mergedCap.updatedAt
+            || remote.reviewCap.maxReviewsPerDay !== mergedCap.maxReviewsPerDay
+        );
+        if (result.trainedAt || capNeedsWrite) {
             transaction.set(ref, { ...result, version: '7.0', _lastModifiedBy: getDeviceId(), _ownerUid: user.uid });
         }
-        return result;
+        return { result, capWonByRemote };
     });
+    const merged = outcome.result;
+    if (outcome.capWonByRemote) {
+        await setMaxReviewsPerDay(merged.reviewCap.maxReviewsPerDay, merged.reviewCap.updatedAt);
+        buildReviewQueue();
+        document.dispatchEvent(new CustomEvent('review-cap:updated'));
+    }
     if (state.getState().userFsrs7TrainedAt !== current.userFsrs7TrainedAt) return;
     if (merged.trainedAt > local.trainedAt) {
         await state.setUserFsrs7Params(merged.userFsrs7Params, merged.trainedAt);

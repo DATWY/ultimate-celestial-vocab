@@ -1,6 +1,8 @@
 import { getState, setReviewQueue, ensureDailyStats } from './state.js';
 import { getLocalDateString } from './utils/date.js';
 import { isLeechCard } from './srs/index.js';
+import { getSettingFromDB, saveSettingToDB } from './idb.js';
+import { skipPersistence } from './state/preview-mode.js';
 
 const INTERLEAVE_OFFSET = 5;
 const MAX_NEW_PER_DAY_INITIAL = 15;
@@ -9,6 +11,127 @@ const CRAMMING_MAX = 10;
 const DAYS_TO_MS = 24 * 60 * 60 * 1000;
 // Thẻ vừa chấm chỉ được chèn lại ngay khi hạn của nó đã tới (sai số 10s do nhịp UI).
 const LEARNING_REINSERT_GRACE_MS = 10000;
+
+// ─── T1.5 — CAP SỐ LƯỢT ÔN / NGÀY ────────────────────────────────────────────
+// Hai cap ĐỘC LẬP nhưng không cộng vượt trần:
+//   • computeDailyNewLimit() giới hạn riêng thẻ MỚI (5–40/ngày, giữ nguyên).
+//   • maxReviewsPerDay giới hạn tổng lượt của hai nhóm được đếm vào ngân sách:
+//     thẻ mới + thẻ Mastered đến hạn (dailyStats.newCardsDoneToday +
+//     dailyStats.dueDoneToday).
+// Thẻ Learning sub-day (1p/10p) KHÔNG bị cap: chặn chúng sẽ phá đúng lịch
+// 1p/10p mà T1.1 vừa dựng. Vì vậy cap chỉ cắt buckets.due (+ phần thẻ mới dùng
+// chung ngân sách), không cắt buckets.learning.
+export const REVIEW_CAP_SETTINGS_KEY = 'reviewCapSettings';
+export const MAX_REVIEWS_PER_DAY_DEFAULT = 200;
+export const MAX_REVIEWS_PER_DAY_MIN = 50;
+export const MAX_REVIEWS_PER_DAY_MAX = 500;
+
+let _maxReviewsPerDay = MAX_REVIEWS_PER_DAY_DEFAULT;
+let _reviewCapUpdatedAt = 0;
+
+/** Chuẩn hoá cấu hình: thiếu/rác → 200; số hợp lệ → kẹp [50, 500], làm tròn. */
+export function normalizeMaxReviewsPerDay(value) {
+    if ((typeof value !== 'number' && typeof value !== 'string')
+        || (typeof value === 'string' && !value.trim())) return MAX_REVIEWS_PER_DAY_DEFAULT;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return MAX_REVIEWS_PER_DAY_DEFAULT;
+    return Math.min(MAX_REVIEWS_PER_DAY_MAX, Math.max(MAX_REVIEWS_PER_DAY_MIN, Math.round(numeric)));
+}
+
+function normalizeReviewCapTimestamp(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+}
+
+function readReviewCapSettings(settings) {
+    return {
+        maxReviewsPerDay: normalizeMaxReviewsPerDay(settings?.maxReviewsPerDay),
+        updatedAt: normalizeReviewCapTimestamp(settings?.updatedAt)
+    };
+}
+
+export function getReviewCapSettings() {
+    return { maxReviewsPerDay: _maxReviewsPerDay, updatedAt: _reviewCapUpdatedAt };
+}
+
+/** LWW theo updatedAt — dùng chung cho IDB reload và document settings trên Cloud. */
+export function mergeReviewCapSettings(local, remote) {
+    const a = readReviewCapSettings(local);
+    const b = readReviewCapSettings(remote);
+    return b.updatedAt && (!a.updatedAt || b.updatedAt > a.updatedAt) ? b : a;
+}
+
+async function persistReviewCapSettings() {
+    if (skipPersistence()) return;
+    await saveSettingToDB(REVIEW_CAP_SETTINGS_KEY, getReviewCapSettings()).catch(() => {});
+}
+
+/** Đọc lại cap đã lưu (gọi trong loadVocabulary, giống loadTtsSettings). */
+export async function loadReviewCapSettings() {
+    const saved = await getSettingFromDB(REVIEW_CAP_SETTINGS_KEY).catch(() => null);
+    if (saved) {
+        const loaded = readReviewCapSettings(saved);
+        _maxReviewsPerDay = loaded.maxReviewsPerDay;
+        _reviewCapUpdatedAt = loaded.updatedAt;
+    }
+    return getReviewCapSettings();
+}
+
+export async function setMaxReviewsPerDay(value, updatedAt = Date.now()) {
+    _maxReviewsPerDay = normalizeMaxReviewsPerDay(value);
+    _reviewCapUpdatedAt = normalizeReviewCapTimestamp(updatedAt) || Date.now();
+    await persistReviewCapSettings();
+    return _maxReviewsPerDay;
+}
+
+/**
+ * Ngân sách còn lại của ngày. `used` = thẻ mới đã chấm đạt + thẻ Mastered đến
+ * hạn đã chấm đạt. Thẻ Learning sub-day không nằm trong ngân sách này.
+ */
+export function getReviewBudget(dailyStats = getState().dailyStats) {
+    const state = getState();
+    const limit = _maxReviewsPerDay;
+    const used = Math.max(0, Math.floor(Number(dailyStats?.dueDoneToday) || 0))
+        + Math.max(0, Math.floor(Number(dailyStats?.newCardsDoneToday) || 0));
+    // Thẻ đang mở trước mặt là một lượt ĐANG học: nếu rebuild queue lúc này
+    // (Cloud sync, đổi topic, đổi cap...) mà không giữ chỗ, nó sẽ cộng thêm
+    // một thẻ nữa và tổng ngày vượt trần đúng 1 thẻ.
+    const current = state.vocabulary?.[state.currentCardIndex];
+    const today = getLocalDateString();
+    const reserved = current && !current.isDeleted && current.srsStatus === 'Mastered'
+        && !(current.lastReviewDate && getLocalDateString(current.lastReviewDate) === today)
+        && current.srsDueDate && current.srsDueDate <= new Date().setHours(23, 59, 59, 999) ? 1 : 0;
+    return { limit, used, reserved, remaining: Math.max(0, limit - used - reserved) };
+}
+
+/** Các thẻ Mastered đang đến hạn (đúng predicate của buildReviewQueue). */
+function collectDueMasteredIndexes(vocabulary, filterLowerCase, now = Date.now()) {
+    const endOfDay = new Date(now).setHours(23, 59, 59, 999);
+    const todayStr = getLocalDateString(now);
+    const due = [];
+    for (let i = 0; i < vocabulary.length; i++) {
+        const word = vocabulary[i];
+        if (!word || word.isDeleted || word.srsStatus !== 'Mastered') continue;
+        if (!cardMatchesTopic(word, filterLowerCase)) continue;
+        if (word.lastReviewDate && getLocalDateString(word.lastReviewDate) === todayStr) continue;
+        if (!word.srsDueDate || word.srsDueDate <= endOfDay) due.push(i);
+    }
+    return due;
+}
+
+/**
+ * Trạng thái cap cho UI. `deferredDue` = số thẻ đến hạn CHƯA được nạp
+ * (vẫn due, không đổi hạn) — dùng cho câu "còn N thẻ đến hạn, mai học tiếp".
+ */
+export function getReviewCapStatus() {
+    const state = getState();
+    const budget = getReviewBudget(state.dailyStats);
+    const queued = new Set(state.currentReviewQueue || []);
+    const filter = (state.currentTopicFilter || 'all').trim().toLowerCase();
+    const deferredDue = collectDueMasteredIndexes(state.vocabulary || [], filter)
+        .filter(index => !queued.has(index)).length;
+    return { ...budget, deferredDue, reached: !budget.remaining && deferredDue > 0 };
+}
 
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -179,9 +302,16 @@ export function buildReviewQueue() {
     buckets.learning = orderLearningByDue(vocabulary, buckets.learning);
     shuffleArray(buckets.due);
     shuffleArray(buckets.new);
-    
-    let newToAdd = buckets.new.slice(0, newCardsRemaining);
-    let newQueue = [...buckets.learning, ...buckets.due, ...newToAdd];
+
+    // T1.5 — hai cap độc lập nhưng tổng không vượt maxReviewsPerDay:
+    //   thẻ mới vẫn được phần của cap riêng (không bị cap lượt ôn cắt riêng),
+    //   thẻ đến hạn dùng phần ngân sách còn lại. Thẻ Learning sub-day nằm ngoài
+    //   ngân sách nên luôn được nạp đủ.
+    const reviewBudget = getReviewBudget(dailyStats);
+    const newToAddCount = Math.min(buckets.new.length, newCardsRemaining, reviewBudget.remaining);
+    const dueToAddCount = Math.min(buckets.due.length, Math.max(0, reviewBudget.remaining - newToAddCount));
+    const deferredDue = buckets.due.length - dueToAddCount;
+    let newQueue = [...buckets.learning, ...buckets.due.slice(0, dueToAddCount), ...buckets.new.slice(0, newToAddCount)];
     
     // LEARN AHEAD: chỉ nạp thẻ Đang học ĐÃ tới hạn.
     // Từ T1.1 thẻ Learning có bước 1 phút / 10 phút; nạp sớm sẽ vô hiệu hoá bước học
@@ -198,7 +328,7 @@ export function buildReviewQueue() {
     }
     
     setReviewQueue(newQueue);
-    console.log(`Hàng đợi ôn tập đã tạo: ${newQueue.length} thẻ. (Giới hạn từ mới hôm nay: ${dailyLimit}, còn lại: ${newCardsRemaining})`);
+    console.log(`Hàng đợi ôn tập đã tạo: ${newQueue.length} thẻ. (Giới hạn từ mới hôm nay: ${dailyLimit}, còn lại: ${newCardsRemaining}; giới hạn lượt ôn: ${reviewBudget.limit}, đã dùng: ${reviewBudget.used}, hoãn ${deferredDue} thẻ đến hạn)`);
 }
 
 export function getNextCardToReview() {

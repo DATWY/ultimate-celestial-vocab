@@ -340,6 +340,10 @@ export async function loadVocabulary() {
     // T2.5: giọng + tốc độ TTS (cùng store settings, không tạo store mới).
     await loadTtsSettings();
 
+    // T1.5: cap lượt ôn/ngày (settings key `reviewCapSettings`). Nạp ĐỘNG vì
+    // queue.js import state.js — import tĩnh ngược lại sẽ tạo vòng.
+    await import('./queue.js').then(m => m.loadReviewCapSettings()).catch(() => {});
+
 
 
     console.log(`Loaded: ${vocabulary.length} words from IDB.`);

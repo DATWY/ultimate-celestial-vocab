@@ -2,7 +2,7 @@ import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
 import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
 import { playSound, ensureAudioForWords, applySoundMode } from '../core/sound.js';
-import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards } from '../core/queue.js';
+import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus } from '../core/queue.js';
 // modal.js được nạp động: render <-> modal là vòng import lớn nhất của app.
 // Gọi UI modal không cần đồng bộ, nên nạp động vừa phá vòng vừa giảm entry chunk.
 let _modalModulePromise = null;
@@ -291,6 +291,10 @@ export function displayCard(index, preserveFlipState = false) {
             const withAccuracy = (text) => dayAccuracy === null
                 ? text
                 : `${text} Độ chính xác hôm nay: ${dayAccuracy}%.`;
+            // T1.5: cap lượt ôn/ngày. Khi chạm trần, thẻ due bị hoãn vẫn giữ nguyên
+            // hạn — câu dưới đây nói đúng lý do người dùng không thấy thêm thẻ.
+            const reviewCap = getReviewCapStatus();
+            const capTagline = `Đã đạt giới hạn ${reviewCap.limit} lượt hôm nay — còn ${reviewCap.deferredDue} thẻ đến hạn, mai học tiếp.`;
 
             // Cập nhật các chip chiến tích
             if (DOM.victoryStreakVal) DOM.victoryStreakVal.textContent = `${streakCount} ngày`;
@@ -301,7 +305,11 @@ export function displayCard(index, preserveFlipState = false) {
 
             if (pendingLearning.length > 0) {
                 if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "CỦNG CỐ TRÍ NHỚ!";
-                if (DOM.victoryTagline) DOM.victoryTagline.textContent = withAccuracy(`Bạn còn ${pendingLearning.length} từ đang trong bước ghi nhớ ngắn hạn.`);
+                if (DOM.victoryTagline) {
+                    DOM.victoryTagline.textContent = withAccuracy(reviewCap.reached
+                        ? `Bạn còn ${pendingLearning.length} từ đang trong bước ghi nhớ ngắn hạn. ${capTagline}`
+                        : `Bạn còn ${pendingLearning.length} từ đang trong bước ghi nhớ ngắn hạn.`);
+                }
                 if (DOM.noCardText) DOM.noCardText.textContent = "Lộ trình FSRS đã sẵn sàng. Bạn có thể bấm tiếp tục để học dứt điểm các từ này trước khi hoàn tất mục tiêu hôm nay.";
                 DOM.smartCrammingActions?.classList.remove('hidden');
                 if (DOM.btnSmartCramming) {
@@ -317,6 +325,11 @@ export function displayCard(index, preserveFlipState = false) {
                         </div>
                     `;
                 }
+            } else if (reviewCap.reached) {
+                if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "ĐÃ ĐẠT GIỚI HẠN HÔM NAY!";
+                if (DOM.victoryTagline) DOM.victoryTagline.textContent = withAccuracy(capTagline);
+                DOM.smartCrammingActions?.classList.add('hidden');
+                if (DOM.finalDayRestState) DOM.finalDayRestState.classList.remove('hidden');
             } else if (cramCards.length > 0) {
                 if (DOM.victoryHeadline) DOM.victoryHeadline.textContent = "XUẤT SẮC HOÀN THÀNH!";
                 if (DOM.victoryTagline) DOM.victoryTagline.textContent = withAccuracy("Bạn đã hoàn thành xuất sắc toàn bộ mục tiêu từ vựng hôm nay.");
@@ -709,6 +722,11 @@ export function updateStats() {
             ? `Đúng ${correctToday}/${answeredToday} lượt hôm nay`
             : 'Chưa có lượt ôn nào hôm nay';
     }
+
+    // T1.5: "còn X lượt hôm nay" — minh bạch ngân sách thẻ mới + thẻ đến hạn.
+    const reviewBudget = getReviewBudget(todayStats);
+    const reviewRemainingEl = document.getElementById('stat-review-remaining');
+    if (reviewRemainingEl) reviewRemainingEl.textContent = Math.max(0, reviewBudget.limit - reviewBudget.used);
 
     const comboCount = getState().gamification?.consecutiveCorrect || 0;
     if (DOM.comboPill) {
