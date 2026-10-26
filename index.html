@@ -9,7 +9,17 @@
     <meta property="og:title" content="Ultimate Celestial Vocab ✨">
     <meta property="og:description" content="Ứng dụng học từ vựng tiếng Anh theo thuật toán lặp lại ngắt quãng FSRS-7 tối ưu">
     <meta property="og:type" content="website">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://unpkg.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; worker-src 'self' blob:;">
+    <!-- CSP (T0.4): script-src KHÔNG còn 'unsafe-inline' — app không có inline
+         script/handler nào, nên đây là lớp chặn XSS cuối cùng. style-src vẫn phải
+         giữ 'unsafe-inline' vì template render dùng style="..." inline.
+         Bản chính thức nằm ở firebase.json (hosting.headers); meta này là dự phòng
+         (vd. khi chạy preview/dev hoặc host khác). Sửa CSP thì sửa CẢ HAI nơi.
+         App Check reCAPTCHA v3: đã mở sẵn https://www.google.com/recaptcha/ cho
+         script-src + frame-src và https://www.google.com cho connect-src, nên chỉ
+         cần điền VITE_FIREBASE_APPCHECK_SITE_KEY là dùng được, không phải sửa CSP.
+         frame-ancestors KHÔNG đặt trong meta (Chrome bỏ qua + log cảnh báo mỗi lần
+         load); nó chỉ có hiệu lực ở header của firebase.json. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.google.com/recaptcha/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://script.google.com https://script.googleusercontent.com https://www.google.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src https://www.google.com/recaptcha/; object-src 'none'; base-uri 'self'; form-action 'self'">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">

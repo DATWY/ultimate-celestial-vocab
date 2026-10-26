@@ -20,6 +20,7 @@ import { mergeProgress } from './progress-merge.js';
 import { prepareProgress, acceptProgress } from './state.js';
 
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import {
     initializeFirestore, getFirestore, collection, getDocs, doc, query, where,
@@ -63,6 +64,56 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// ===== APP CHECK (T0.3) =====
+// App Check gắn token reCAPTCHA v3 vào MỌI request Firestore/Auth. Khi bật
+// "Enforce" trên Console, apiKey nằm trong bundle không còn đủ để người lạ đọc/
+// ghi dữ liệu: request không kèm token hợp lệ sẽ bị 403.
+// Việc bật enforce là thao tác trên Firebase Console, KHÔNG làm ở code.
+const APP_CHECK_SITE_KEY = import.meta.env?.VITE_FIREBASE_APPCHECK_SITE_KEY || '';
+
+/**
+ * Khởi tạo App Check TRƯỚC Firestore/Auth: Firebase chỉ gắn App Check vào client
+ * được tạo SAU thời điểm này, nên thứ tự khởi tạo quan trọng.
+ * - Node (`npm test`) không có window → bỏ qua hoàn toàn, không ném lỗi.
+ * - Thiếu site key → app vẫn chạy offline-first bình thường, cảnh báo đúng 1 lần.
+ * - Mọi lỗi khởi tạo đều bị nuốt: App Check hỏng không được phép làm chết app.
+ */
+function initAppCheck(appInstance) {
+    if (typeof window === 'undefined') return null;
+    if (!APP_CHECK_SITE_KEY) {
+        console.warn(
+            '⚠️ [App Check] Thiếu VITE_FIREBASE_APPCHECK_SITE_KEY — đang chạy KHÔNG có App Check. '
+            + 'Lấy site key tại Firebase Console → App Check → ứng dụng web → reCAPTCHA v3, '
+            + 'thêm vào .env rồi build lại.'
+        );
+        return null;
+    }
+    try {
+        // Dev: reCAPTCHA v3 không chạy được trên localhost chưa đăng ký domain, nên
+        // cho phép dùng debug token (Console → App Check → Quản lý token gỡ lỗi).
+        // `import.meta.env.DEV` (không optional chain) để Vite thay bằng `false`
+        // trong build production và loại bỏ hẳn nhánh này — debug token không bao
+        // giờ bị nhúng vào bundle prod.
+        if (import.meta.env.DEV) {
+            const debugToken = import.meta.env.VITE_FIREBASE_APPCHECK_DEBUG_TOKEN;
+            if (debugToken && typeof self !== 'undefined') {
+                self.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
+            }
+        }
+        return initializeAppCheck(appInstance, {
+            provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
+            isTokenAutoRefreshEnabled: true
+        });
+    } catch (error) {
+        console.warn('⚠️ [App Check] Không khởi tạo được, app chạy tiếp không App Check:',
+            error?.code || error?.message || error);
+        return null;
+    }
+}
+
+export const appCheck = initAppCheck(app);
+
 let _auth = null;
 try {
     _auth = getAuth(app);
