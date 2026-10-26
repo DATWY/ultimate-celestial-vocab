@@ -69,7 +69,7 @@ export function setupIOEventListeners() {
         const button = event.currentTarget;
         const status = document.getElementById('optimizer-feedback');
         button.disabled = true;
-        status.textContent = 'Đang tối ưu trên máy… có thể mất 20–30 giây vì dò sâu hơn. Bạn vẫn tiếp tục dùng ứng dụng được.';
+        status.textContent = 'Đang tối ưu trên máy… có thể mất 30–60 giây (chạy gradient trên toàn bộ lịch sử). Bạn vẫn tiếp tục dùng ứng dụng được.';
         try {
             const { runOptimizer, optimizerMessage } = await import('../core/srs/worker-manager.js');
             const result = await runOptimizer();
