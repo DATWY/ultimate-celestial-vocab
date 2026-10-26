@@ -4,7 +4,7 @@ import { planVocabularyImport } from '../core/import-plan.js';
 
 import { DOM } from '../ui/elements.js';
 import { getState, setVocabulary, setAllTags, saveVocabulary, trackEvent } from '../core/state.js';
-import { showPopup, showConfirmation, closeModal, openModal } from '../ui/modal.js';
+import { showPopup, showConfirmation, showToast, closeModal, openModal } from '../ui/modal.js';
 import { populateTopicFilters, updatePanelWordList, displayCard } from '../ui/render.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 import { playSound } from '../core/sound.js';
@@ -66,9 +66,8 @@ export function setupIOEventListeners() {
         checkAppVersion({ isManual: true });
     });
 
-    // Sự kiện Đồng bộ đa thiết bị
-    document.getElementById('copy-sync-key-btn')?.addEventListener('click', handleCopySyncKey);
-    document.getElementById('apply-sync-key-btn')?.addEventListener('click', handleApplySyncKey);
+    // Sự kiện Đồng bộ đa thiết bị: nút copy/apply do events.js bảo đảm chỉ bind
+    // MỘT lần (setupCloudVaultControls) để bấm không chạy hai handler chồng nhau.
     document.getElementById('download-all-audio-btn')?.addEventListener('click', handleDownloadAllAudio);
 
     DOM.importFile?.addEventListener('change', handleFileSelect);
@@ -419,52 +418,190 @@ export async function handleCopySyncKey() {
     }
 }
 
+// ─── LIÊN KẾT KHÔNG GIAN ĐỒNG BỘ (2 BƯỚC) ───────────────────────────────────
+
+const SYNC_KEY_INVALID_MESSAGE = 'Mã không đúng hoặc không tồn tại. Kiểm tra lại 20 ký tự.';
+const SYNC_KEY_FORMAT_MESSAGE = 'Mã đồng bộ phải gồm 16–40 ký tự chữ và số.';
+const CREATE_SPACE_BUTTON_ID = 'sync-key-create-space-btn';
+
+// Chặn trường hợp một thao tác bị kích hoạt hai lần (double click / listener trùng).
+let _isApplyingSyncKey = false;
+
+function setSyncKeyStatus(statusEl, text) {
+    if (statusEl) statusEl.textContent = text;
+}
+
+function clearCreateSpaceButton() {
+    if (typeof document === 'undefined') return;
+    document.getElementById(CREATE_SPACE_BUTTON_ID)?.remove();
+}
+
+/** Đổi nhãn nút sang trạng thái đang xử lý và luôn khôi phục lại sau khi xong. */
+async function withBusyButton(button, busyHtml, task) {
+    if (!button) return task();
+    const originalHtml = button.innerHTML;
+    const wasDisabled = button.disabled;
+    button.disabled = true;
+    button.innerHTML = busyHtml;
+    try {
+        return await task();
+    } finally {
+        if (button.isConnected) {
+            button.disabled = wasDisabled;
+            button.innerHTML = originalHtml;
+        }
+    }
+}
+
+function describeSyncFailure(result) {
+    switch (result?.reason) {
+        case 'offline': return 'Không có kết nối mạng. Dữ liệu vẫn an toàn trên máy, hãy thử lại khi có mạng.';
+        case 'quota': return 'Hạn mức Cloud tạm thời đã hết. Vui lòng thử lại sau.';
+        case 'auth': return 'Không đăng nhập được không gian đồng bộ vừa liên kết.';
+        case 'blocked': return 'Đồng bộ đang bị chặn trên thiết bị này.';
+        default: return result?.error || 'Đồng bộ Cloud thất bại. Vui lòng thử lại.';
+    }
+}
+
+/**
+ * Đăng nhập không gian mới rồi kéo toàn bộ dữ liệu về bằng smartSync thật.
+ * Chỉ báo thành công sau khi smartSync chạy xong; lỗi được ném ra cho caller.
+ */
+async function linkSyncKeySpace({ key, createIfMissing, applyInput, statusEl }) {
+    const module = await import('../core/firebase.js');
+    await module.applySyncKey(key, { createIfMissing });
+    setSyncKeyStatus(statusEl, 'Đã liên kết. Đang đồng bộ dữ liệu...');
+
+    const result = await module.smartSync({ forceFullPull: true, isManual: true });
+    if (result?.ok === false && result.reason !== 'busy') {
+        throw Object.assign(new Error(describeSyncFailure(result)), { code: 'sync/incomplete' });
+    }
+
+    const pulled = result?.pulledCardCount || 0;
+    await updateSyncKeyUI();
+    if (applyInput) applyInput.value = '';
+    setSyncKeyStatus(statusEl, pulled > 0
+        ? `Đã liên kết và đồng bộ xong. Đã kéo ${pulled.toLocaleString('vi-VN')} thẻ từ Cloud.`
+        : 'Đã liên kết và đồng bộ xong.');
+    playSound('complete');
+    showToast(
+        'Liên kết thiết bị thành công',
+        pulled > 0
+            ? `Đã kéo ${pulled.toLocaleString('vi-VN')} thẻ và hợp nhất tiến độ học từ Cloud.`
+            : 'Thiết bị đã dùng chung không gian đồng bộ mới.',
+        'ph-cloud-check'
+    );
+    return { pulled, result };
+}
+
+/**
+ * Nút phụ chỉ xuất hiện SAU KHI đăng nhập bằng mã thất bại. Không bao giờ tự
+ * tạo không gian mới khi người dùng chưa bấm nút này.
+ */
+function showCreateSpaceButton({ key, applyInput, statusEl }) {
+    clearCreateSpaceButton();
+    if (typeof document === 'undefined') return null;
+    const group = document.getElementById('apply-sync-key-btn')?.closest('.sync-input-button-group');
+    if (!group) return null;
+
+    const button = document.createElement('button');
+    button.id = CREATE_SPACE_BUTTON_ID;
+    button.type = 'button';
+    button.className = 'sync-action-btn sync-link-btn';
+    button.style.marginTop = '10px';
+    button.style.width = '100%';
+    button.innerHTML = '<i class="ph-bold ph-plus-circle"></i> <span>Tạo không gian mới với mã này</span>';
+    button.addEventListener('click', () => {
+        showConfirmation(
+            'Tạo không gian mới với mã này?\n\nMã đồng bộ là chìa khoá DUY NHẤT để mở không gian đó. Nếu gõ sai một ký tự, bạn sẽ tạo một kho rỗng và không thấy dữ liệu cũ. Hãy sao lưu mã trước khi tiếp tục.',
+            () => {
+                void attemptSyncKeyLink({
+                    key,
+                    createIfMissing: true,
+                    applyInput,
+                    statusEl,
+                    button,
+                    busyHtml: '<i class="ph-bold ph-spinner animate-spin"></i> <span>Đang tạo không gian...</span>'
+                });
+            }
+        );
+    });
+    group.insertAdjacentElement('afterend', button);
+    return button;
+}
+
+async function attemptSyncKeyLink({ key, createIfMissing, applyInput, statusEl, button, busyHtml }) {
+    if (_isApplyingSyncKey) return false;
+    _isApplyingSyncKey = true;
+    try {
+        await withBusyButton(button, busyHtml, () => linkSyncKeySpace({ key, createIfMissing, applyInput, statusEl }));
+        clearCreateSpaceButton();
+        return true;
+    } catch (error) {
+        console.error('Lỗi khi liên kết mã đồng bộ:', error);
+        const invalidKey = error?.code === 'sync/invalid-key';
+        const message = invalidKey ? SYNC_KEY_INVALID_MESSAGE : (error?.message || 'Không thể liên kết mã đồng bộ. Vui lòng thử lại.');
+        setSyncKeyStatus(statusEl, message);
+        showPopup(message, 'error');
+        // Chỉ mời "tạo không gian mới" khi mã đúng định dạng nhưng chưa có tài khoản.
+        if (invalidKey && !createIfMissing) {
+            showCreateSpaceButton({ key, applyInput, statusEl });
+        }
+        return false;
+    } finally {
+        _isApplyingSyncKey = false;
+    }
+}
+
 /**
  * Xử lý ghép đôi thiết bị mới bằng mã đồng bộ.
+ * Bước 1: thử đăng nhập không gian có sẵn. Bước 2 (chỉ khi bước 1 thất bại):
+ * người dùng có thể chủ động bấm "Tạo không gian mới với mã này".
  */
-export async function handleApplySyncKey() {
-    const applyInput = document.getElementById('sync-key-apply-input');
-    const applyBtn = document.getElementById('apply-sync-key-btn');
-    if (!applyInput) return;
+export async function handleApplySyncKey(options = {}) {
+    if (typeof document === 'undefined') return;
+    const applyInput = options.input || document.getElementById('sync-key-apply-input');
+    const applyBtn = options.button || document.getElementById('apply-sync-key-btn');
+    const statusEl = options.statusElement || document.getElementById('sync-key-status');
+    const rawKey = (applyInput?.value || '').trim();
 
-    const rawKey = applyInput.value.trim();
     if (!rawKey) {
+        setSyncKeyStatus(statusEl, 'Vui lòng nhập mã đồng bộ từ thiết bị khác.');
         showPopup('Vui lòng nhập mã đồng bộ từ thiết bị khác.', 'warning');
-        applyInput.focus();
+        applyInput?.focus();
+        return;
+    }
+
+    clearCreateSpaceButton();
+    let module = null;
+    try {
+        module = await import('../core/firebase.js');
+    } catch (error) {
+        console.error('Cloud chưa sẵn sàng:', error);
+        const message = 'Cloud chưa sẵn sàng. Hãy kiểm tra kết nối mạng rồi thử lại.';
+        setSyncKeyStatus(statusEl, message);
+        showPopup(message, 'error');
+        return;
+    }
+    const key = module.normalizeSyncKey(rawKey);
+    if (!key) {
+        setSyncKeyStatus(statusEl, SYNC_KEY_FORMAT_MESSAGE);
+        showPopup(SYNC_KEY_FORMAT_MESSAGE, 'warning');
+        applyInput?.focus();
         return;
     }
 
     showConfirmation(
         "Bạn có chắc muốn liên kết với mã đồng bộ này?\n\nKho từ vựng của thiết bị sẽ kết nối và hợp nhất hai chiều (Smart Merge) với tài khoản tương ứng.",
-        async () => {
-            const originalHtml = applyBtn ? applyBtn.innerHTML : '';
-            if (applyBtn) {
-                applyBtn.disabled = true;
-                applyBtn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> <span>Đang liên kết...</span>';
-            }
-
-            try {
-                const { applySyncKey } = await import('../core/firebase.js');
-                await applySyncKey(rawKey);
-
-                await updateSyncKeyUI();
-                applyInput.value = '';
-
-                // Kích hoạt đồng bộ kéo toàn bộ dữ liệu từ đám mây về
-                const sync = await import('../core/sync.js');
-                await sync.triggerFullSync?.({ forcePull: true });
-
-                playSound('complete');
-                showPopup('Liên kết thiết bị thành công! Dữ liệu đang được đồng bộ và hợp nhất.', 'success');
-            } catch (err) {
-                console.error('Lỗi khi liên kết mã đồng bộ:', err);
-                showPopup(err?.message || 'Không thể liên kết mã đồng bộ. Vui lòng kiểm tra lại mã hoặc kết nối mạng.', 'error');
-            } finally {
-                if (applyBtn) {
-                    applyBtn.disabled = false;
-                    applyBtn.innerHTML = originalHtml;
-                }
-            }
+        () => {
+            void attemptSyncKeyLink({
+                key,
+                createIfMissing: false,
+                applyInput,
+                statusEl,
+                button: applyBtn,
+                busyHtml: '<i class="ph-bold ph-spinner animate-spin"></i> <span>Đang liên kết...</span>'
+            });
         }
     );
 }

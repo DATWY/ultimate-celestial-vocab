@@ -10,7 +10,7 @@ import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, record
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
-import { setupIOEventListeners } from './features/io.js';
+import { setupIOEventListeners, handleApplySyncKey, handleCopySyncKey } from './features/io.js';
 import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
@@ -1168,36 +1168,14 @@ function setupCloudVaultControls() {
     document.getElementById('tab-data-io')?.addEventListener('click', refreshKey);
     keyInput?.addEventListener('focus', refreshKey);
 
-    copyBtn?.addEventListener('click', async () => {
-        const value = (keyInput?.value || '').trim();
-        if (!value) { setStatus('Chưa có mã đồng bộ để sao chép.'); return; }
-        try {
-            await navigator.clipboard.writeText(value.replace(/-/g, ''));
-            setStatus('Đã sao chép mã. Dán sang thiết bị khác để liên kết.');
-        } catch (_) {
-            keyInput?.select();
-            setStatus('Hãy nhấn Ctrl+C để sao chép mã đang chọn.');
-        }
+    // Một listener duy nhất cho mỗi nút: logic thật nằm trong io.js để tránh
+    // hai handler chồng nhau (trước đây io.js và events.js cùng bind nút này).
+    copyBtn?.addEventListener('click', () => {
+        void handleCopySyncKey();
     });
 
     applyBtn?.addEventListener('click', () => {
-        const raw = (applyInput?.value || '').trim();
-        if (!raw) { setStatus('Hãy nhập mã đồng bộ từ thiết bị khác.'); return; }
-        showConfirmation('Liên kết thiết bị này với không gian đồng bộ khác? Kho từ vựng trên máy vẫn được giữ và sẽ gộp vào không gian mới.', async () => {
-            setStatus('Đang liên kết...');
-            try {
-                const module = await import('./core/firebase.js');
-                await module.applySyncKey(raw);
-                setStatus('Đã liên kết. Đang đồng bộ dữ liệu...');
-                await module.smartSync({ forceFullPull: true, isManual: true });
-                refreshKey();
-                setStatus('Đã liên kết và đồng bộ xong.');
-                showToast('Liên kết thành công', 'Thiết bị đã dùng chung không gian đồng bộ mới.', 'ph-cloud-check');
-            } catch (error) {
-                setStatus(error?.message || 'Không liên kết được.');
-                showToast('Liên kết thất bại', error?.message || 'Kiểm tra mã và kết nối mạng.', 'ph-warning-circle');
-            }
-        });
+        void handleApplySyncKey({ input: applyInput, button: applyBtn, statusElement: statusEl });
     });
 
     audioBtn?.addEventListener('click', async () => {
