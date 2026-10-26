@@ -59,7 +59,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T1.5 | `[ ]` | — | Không tồn tại `maxReviewsPerDay`; chỉ có giới hạn thẻ **mới**/ngày (`computeDailyNewLimit`, `queue.js:133`) |
 | T1.6 | `[x]` | `4047255` | sửa 2 lỗi dự báo (srsDueDate → `Invalid Date`; bucket lệch ngày DST); `forecast.test.mjs` **20/20** |
 | T1.7 | `[x]` | `4047255` | `golden-fsrs.test.mjs` **4/4** (theo commit: 50 kịch bản × 11 trường + fuzz khoá + 200 tổ hợp PRNG) |
-| T1.8 | `[ ]` | — | Câu sai ngữ pháp vẫn còn: `src/core/state.js:1595` — *"Courage is going on when you do not have strength."* |
+| T1.8 | `[x]` | commit P5b | 10/10 câu ví dụ mẫu đã review; sửa 2 câu: `resilience` ("Courage is going on when you do not have strength." → "Her resilience helped her rebuild a life after the flood.") và `meticulous` (bớt lặp "preserving the precision"). **Phần dịch VI cho câu ví dụ KHÔNG làm được**: schema thẻ chỉ có `example`, không có field `exampleVi` → cần task riêng nếu muốn |
 | T2.1 | `[x]` | `f8d1ccb` | `RELOAD_GUARD_WINDOW_MS = 24h` (`versionCheck.js:25`), offline không làm gì, xoá cache theo allowlist; `version-guard.test.mjs` **9/9** |
 | T2.2 | `[x]` | `2313e40` | **0** tham chiếu `fonts.googleapis.com` / `fonts.gstatic.com` trong `index.html` và CSP; 3 woff2 = **87.996 B** (`src/css/fonts.css`) |
 | T2.3 | `[x]` | `f8d1ccb` | `/assets/**` + `/fonts/**` immutable 1 năm, `/index.html` + `/` no-cache, `/version.json` no-store (`firebase.json:29-83`) |
@@ -190,7 +190,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 - **DoD:** refactor SRS làm lệch 1% là test đỏ.
 - **Verify:** `npm test`.
 
-### [ ] T1.8 — Sửa học liệu mẫu · 1 h
+### [x] T1.8 — Sửa học liệu mẫu · 1 h
 - **Chạm:** `src/core/state.js:1342-1370` (demo vocab), `docs/` nếu có mẫu
 - **Làm:** ví dụ câu tiếng Anh tự nhiên (đã phát hiện: "Courage is going on when you do not have strength." sai ngữ pháp), thêm bản dịch VI cho câu ví dụ.
 - **DoD:** 10/10 câu ví dụ được review, có nghĩa VI.
