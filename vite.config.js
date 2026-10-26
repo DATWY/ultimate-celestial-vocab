@@ -110,11 +110,20 @@ export default defineConfig({
         ]
       },
       manifest: {
+        // T5.1: sửa theo thực tế app — giao diện là tiếng Việt và nền tối #0f172a
+        // (--bg-color-dark trong style.css:45). Trước đây manifest ghi lang "en" và
+        // background "#ffffff" nên khi cài PWA có một nháy trắng trước khi app tối hiện ra.
+        id: "/",
         name: "Ultimate Celestial Vocab",
         short_name: "Celestial",
+        description: "Học từ vựng tiếng Anh bằng FSRS-7: lặp lại ngắt quãng, ôn đúng lúc sắp quên, hoạt động offline.",
+        lang: "vi",
+        dir: "ltr",
         start_url: "/",
+        scope: "/",
         display: "standalone",
-        background_color: "#ffffff",
+        orientation: "any",
+        background_color: "#0f172a",
         theme_color: "#8a2be2",
         icons: [
           {
