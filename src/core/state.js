@@ -1,15 +1,65 @@
+// src/core/state.js — STORE + BARREL của toàn bộ state ứng dụng.
+//
+// T4.5b: file gốc 1.621 dòng / 91 export đã được tách theo ranh giới rõ ràng.
+// File này giữ lại ĐÚNG hai vai trò:
+//   1. STORE: các cờ UI + con trỏ hàng đợi + reviewLogs + phiên ôn hiện tại, và
+//      các hàm đọc/ghi IndexedDB cho vocabulary (nơi cần cả 3 mảng cùng lúc).
+//   2. BARREL: re-export nguyên vẹn mọi tên công khai cũ từ các module con,
+//      nên KHÔNG call-site nào phải sửa (import { x } from '../core/state.js').
+//
+// Bản đồ module con — src/core/state/:
+//   review-log-prune.js  cắt tỉa/đo/đóng gói reviewLogs (hàm thuần lá, 0 import)
+//   vocabulary.js        mảng từ vựng + chỉ mục id→index
+//   progress-store.js    hai object gốc gamification + dailyStats (live binding)
+//   gamification.js      XP, chuỗi ngày, huy hiệu, thống kê ngày (mutate 2 object trên)
+//   streak.js            toán thuần của chuỗi (ngày đủ điều kiện, chuỗi dài nhất)
+//   tts-settings.js      giọng + tốc độ TTS (khoá settings `ttsSettings`)
+//   preview-mode.js      cờ xem trước + skipPersistence()
+//   typing-filter.js     vị từ thuần cho bộ lọc gõ phím
+//   ui-notify.js         cầu nối lười sang tầng UI (stats/toast/popup)
+//   demo-seed.js         dữ liệu 10 thẻ mẫu cho kho kiểm thử (?audit=1)
+//
+// Vì sao `_gamification` / `_dailyStats` ở đây lại là tên có gạch dưới? Chúng
+// được IMPORT (alias) từ progress-store.js — cùng một object, cùng một binding
+// sống. Giữ đúng tên cũ để thân hàm revertGamificationAfterUndo (mà
+// tests/reliability.test.mjs đọc trực tiếp từ file này) không phải sửa một chữ.
+//
+// Những gì CỐ Ý để lại đây — xem báo cáo T4.5b (mục "không tách được"):
+//   • reviewLogs: tests/reliability.test.mjs trích hàm removeReviewLog() từ
+//     chính file này rồi chạy trong VM với `let _reviewLogs = ...` ⇒ state và
+//     hàm ghi log phải nằm cùng file.
+//   • revertGamificationAfterUndo: cùng lý do (test trích hàm + truyền
+//     _gamification/_dailyStats giả). Tách sang module gamification.js sẽ làm
+//     test đỏ dù hành vi không đổi.
+//
+// SỐ ĐO THẬT của T4.5b (cùng máy, cùng commit, `npm run build` + `npm run budget`):
+//   entry trước: 247.804 B raw / 80.674 B gzip — sau: 246.430 B / 80.668 B gzip.
+// Tức mã nguồn nhỏ đi 1.374 B nhưng gzip gần như đứng yên: mọi thứ trong src/
+// nằm chung MỘT chunk, và 9 chỗ `await import('./state.js')` buộc Rollup dựng
+// đủ 93 tên của namespace ngay trong entry ⇒ tách file KHÔNG tree-shake được gì.
+// Muốn entry gzip giảm thật thì phải bỏ kiểu import namespace đó ở nơi gọi
+// (ngoài phạm vi T4.5b) hoặc xoá 25 export không ai dùng (trái yêu cầu giữ API).
+
 import { compressLogs as compressReviewLogs, mergeReviewLogs as mergeLogSnapshots } from './review-log-merge.js';
-import { getDeviceId } from './device.js';
-import { saveReviewLogsToDB } from './idb.js';
-import { rolloverDailyStats } from './daily-stats.js';
 import { normalizeCard, mergeCardFields, nextRevision } from './card-merge.js';
-import { initializeProgress, captureProgress, mergeProgress } from './progress-merge.js';
+import { initializeProgress } from './progress-merge.js';
 import { validFsrs7Params } from './srs/constants.js';
-import { saveProgressToDB } from './idb.js';
 import { announceSyncStatus } from './sync-status.js';
+import { saveReviewLogsToDB } from './idb.js';
 import { initAppDB, getAllVocabularyFromDB, saveAllVocabularyToDB, saveWordToDB, getSettingFromDB, saveSettingToDB, isIsolatedStorage } from './idb.js';
-import { getLocalDateString, getOffsetDateString } from './utils/date.js';
+import { getLocalDateString } from './utils/date.js';
+import { vocabulary, setVocabulary, resetVocabulary, rebuildVocabIndex, getVocabById, updateCardInVocabulary } from './state/vocabulary.js';
+import { pruneReviewLogs } from './state/review-log-prune.js';
+import { gamification as _gamification, dailyStats as _dailyStats, setGamification, setDailyStats } from './state/progress-store.js';
+import { ttsVoice, ttsRate, loadTtsSettings } from './state/tts-settings.js';
+import { skipPersistence } from './state/preview-mode.js';
+import { safeUpdateStats, safeShowPopup, safeShowToast } from './state/ui-notify.js';
+import { isCardLeech, isHardCard, isLearningCard, isLongWord, matchesTypingFilter } from './state/typing-filter.js';
+import { ensureDailyStats, checkStreakStatusOnLoad, saveDailyStats, saveGamification, syncStreakFromHeatmap } from './state/gamification.js';
 export { getLocalDateString, getOffsetDateString } from './utils/date.js';
+
+/** Bí danh giữ đúng tên `updateStats()` mà revertGamificationAfterUndo() gọi. */
+const updateStats = safeUpdateStats;
 
 // Cloud sync nạp MUỘN: state.js nằm trong entry chunk, nếu import tĩnh sync.js
 // thì firebase (547 kB) lại quay vào critical path. Chỉ nạp khi thực sự có thẻ
@@ -19,60 +69,6 @@ function queueCardSync(card) {
     if (typeof window === 'undefined' || !card || !card.id) return;
     if (!_syncModulePromise) _syncModulePromise = import('./sync.js');
     _syncModulePromise.then(m => m.syncCardToFirebase?.(card)).catch(() => {});
-}
-
-let _renderModulePromise = null;
-function getRenderModule() {
-    if (!_renderModulePromise) _renderModulePromise = import('../ui/render.js');
-    return _renderModulePromise;
-}
-
-// Gộp nhiều lần gọi stats trong cùng một frame thành 1 lần render.
-let _statsFrameHandle = 0;
-function safeUpdateStats() {
-    if (typeof window === 'undefined' || _statsFrameHandle) return;
-    const run = () => {
-        _statsFrameHandle = 0;
-        getRenderModule().then(m => m.updateStats?.()).catch(() => {});
-    };
-    if (typeof requestAnimationFrame === 'function') {
-        _statsFrameHandle = requestAnimationFrame(run);
-    } else {
-        _statsFrameHandle = setTimeout(run, 0);
-    }
-}
-function updateStats() {
-    safeUpdateStats();
-}
-
-function safeShowPopup(message, type = 'info') {
-    if (typeof window !== 'undefined') {
-        import('../ui/modal.js').then(m => m.showPopup?.(message, type)).catch(() => {});
-    }
-}
-function showPopup(message, type = 'info') {
-    safeShowPopup(message, type);
-}
-
-function safeShowToast(title, message = '', icon = 'ph-trophy') {
-    if (typeof window !== 'undefined') {
-        import('../ui/modal.js').then(m => m.showToast?.(title, message, icon)).catch(() => {});
-    }
-}
-function showToast(title, message = '', icon = 'ph-trophy') {
-    safeShowToast(title, message, icon);
-}
-
-let _vocabulary = [];
-let _vocabIndex = new Map(); // id → index in _vocabulary
-
-function _rebuildVocabIndex() {
-    _vocabIndex.clear();
-    for (let i = 0; i < _vocabulary.length; i++) {
-        if (_vocabulary[i] && _vocabulary[i].id) {
-            _vocabIndex.set(_vocabulary[i].id, i);
-        }
-    }
 }
 
 let _currentReviewQueue = [];
@@ -94,151 +90,17 @@ if (typeof localStorage !== 'undefined') {
     }
 }
 let _currentTopicFilter = 'all';
-let _isPreviewMode = false;
 let _isTransitioning = false;
-export const MIN_STREAK_DAILY_REVIEWS = 10;
-export const STREAK_LEGACY_CUTOFF_DATE = '2026-10-23';
-
-let _initialSyncDone = false;
-export function setInitialSyncDone(done = true) {
-    _initialSyncDone = Boolean(done);
-}
-export function isInitialSyncDone() {
-    return _initialSyncDone;
-}
 
 let _lastReviewSnapshot = null;
-let _dailyStats = {
-    newCardsDoneToday: 0,
-    dueDoneToday: 0,
-    learningDoneToday: 0,
-    retentionHistory: [],
-    lastDate: getLocalDateString()
-};
-
-let _gamification = {
-    userXP: 0,
-    currentLevel: 1,
-    currentStreak: 0,
-    lastStudyDate: "",
-    activityHeatmap: {},
-    unlockedBadges: [],
-    totalReviews: 0,
-    streakFreezeCount: 0,
-    lastStreakFreezeDate: "",
-    frozenDates: [],
-    recoveredDates: [],
-    stats: {
-        // Group 1: Time
-        nightOwlWords: 0,
-        earlyBirdStreak: 0, lastEarlyBirdDate: "",
-        vampireStreak: 0, lastVampireDate: "",
-        opensToday: 0, lastOpenDate: "",
-        sunsetStreak: 0, lastSunsetDate: "",
-        totalTimeSpent: 0, 
-
-        // Group 2: Speed & Acc
-        quizCorrectStreak: 0,
-        perfectQuizStreak: 0,
-        monthlyCorrect: 0, monthlyTotal: 0,
-
-        // Group 3: Interactions
-        easyPresses: 0,
-        hardPresses: 0,
-        profileViews: 0,
-        imports: 0,
-        exports: 0,
-        darkModeDays: 0, lastDarkModeDate: "",
-        manualWordsAdded: 0,
-
-        // Group 4: Grinding
-        wordsAddedToday: 0, lastAddedDate: "",
-        xpToday: 0, lastXPDate: "",
-        leechesHealed: 0,
-        maxLostStreak: 0,
-        lastForgottenDate: Date.now(), // default to now
-
-        // Group 5: Humor
-        overdueReviewedToday: 0,
-        bareMinimumDays: 0,
-        accidentCount: 0,
-        
-        // Metadata
-        accountCreatedDate: Date.now(),
-        
-        // Group 6: Typing
-        typingPerfectQuizzes: 0, typingTypoStreaks: 0, typingFastAnswers: 0,
-        typingNoHintStreak: 0, typingTotalCorrect: 0, typingLastCharTypo: 0,
-        typingShortWordTypo: 0, typingClearedInput: 0, typingLeechRepeats: 0,
-        typingImmediateExit: 0, 
-        
-        // Group 7: UI/UX
-        syncSpamCount: 0, cardFlipSpam: 0,
-        consecutiveDeletes: 0, consecutiveShortcuts: 0, taskbarToggles: 0,
-        audioSpam: 0, filterToggles: 0, 
-        
-        // Group 8: Bizarre
-        xpLastWeek: 0, topicHopping: 0,
-        consecutiveEasy: 0, quizZeroScore: 0, justLeveledUp: false,
-        karmaEncounter: 0, kingReturns: 0
-    }
-};
-
 let _reviewLogs = [];
 let _userRecallParams = null;
 let _userLapseParams = null;
 let _userFsrs7Params = null;
 let _userFsrs7TrainedAt = null;
 
-// ===== T2.5 — TTS: giọng + tốc độ do người dùng chọn =====
-// Lưu theo đúng pattern settings đang dùng: object store `settings` của
-// IndexedDB (saveSettingToDB/getSettingFromDB) dưới khoá `ttsSettings`.
-// Không thêm store, không thêm localStorage key, không thêm document Cloud.
-export const TTS_SETTINGS_KEY = 'ttsSettings';
-export const TTS_RATE_MIN = 0.6;
-export const TTS_RATE_MAX = 1.4;
-export const TTS_RATE_DEFAULT = 1.0;
-let _ttsVoice = '';   // voiceURI/name của giọng Web Speech; '' = tự chọn giọng tiếng Anh của máy
-let _ttsRate = TTS_RATE_DEFAULT;
-const progressActor = getDeviceId();
-function skipPersistence() {
-    // sessionStorage có thể không tồn tại (SSR, môi trường test thuần Node,
-    // hoặc trình duyệt chặn WebStorage) — truy cập trực tiếp sẽ ném ReferenceError.
-    let cheatMode = false;
-    try {
-        if (typeof sessionStorage !== 'undefined') cheatMode = sessionStorage.getItem('CHEAT_MODE') === 'true';
-    } catch (_) { cheatMode = false; }
-    return _isPreviewMode || (cheatMode && !isIsolatedStorage);
-}
-
-export function prepareProgress(kind) {
-    if (kind === 'daily') rolloverDailyStats(_dailyStats, getLocalDateString());
-    return captureProgress(kind === 'daily' ? _dailyStats : _gamification, kind, progressActor);
-}
-
-export function acceptProgress(remote, kind) {
-    const merged = mergeProgress(prepareProgress(kind), remote, kind, kind === 'daily' ? getLocalDateString() : null);
-    if (kind === 'daily') _dailyStats = merged;
-    else {
-        _gamification = merged;
-        const refunded = reconcileStreakFreeze(_gamification);
-        const streak = calculateStreakFromHeatmap(
-            _gamification.activityHeatmap,
-            getLocalDateString(),
-            _gamification.frozenDates,
-            _gamification.recoveredDates
-        );
-        merged.currentStreak = streak.currentStreak;
-        merged.longestStreak = Math.max(merged.longestStreak || 0, streak.longestStreak);
-        if (refunded) {
-            prepareProgress('gamification');
-        }
-    }
-    return merged;
-}
-
 export const getState = () => ({
-    vocabulary: _vocabulary,
+    vocabulary: vocabulary,
     currentReviewQueue: _currentReviewQueue,
     allTags: _allTags,
     currentCardIndex: _currentCardIndex,
@@ -246,8 +108,8 @@ export const getState = () => ({
     isDarkMode: _isDarkMode,
     isBoostMode: _isBoostMode,
     soundMode: _soundMode,
-    ttsVoice: _ttsVoice,
-    ttsRate: _ttsRate,
+    ttsVoice: ttsVoice,
+    ttsRate: ttsRate,
     isTypingMode: _isTypingMode,
     typingFilter: _typingFilter,
     currentTopicFilter: _currentTopicFilter,
@@ -261,18 +123,6 @@ export const getState = () => ({
     isTransitioning: _isTransitioning,
 });
 
-export function getComboMultiplier() {
-    const consecutive = _gamification.consecutiveCorrect || 0;
-    if (consecutive >= 30) return 1.5;
-    if (consecutive >= 10) return 1.2;
-    if (consecutive >= 5) return 1.1;
-    return 1;
-}
-
-export function setVocabulary(newVocab) { 
-    _vocabulary = newVocab; 
-    _rebuildVocabIndex();
-}
 export function setReviewQueue(newQueue) { _currentReviewQueue = newQueue; }
 export function setAllTags(newTags) { _allTags = newTags; }
 export function setCurrentCardIndex(index) { _currentCardIndex = index; }
@@ -281,43 +131,11 @@ export function getLastReviewSnapshot() { return _lastReviewSnapshot; }
 export function setLastReviewSnapshot(snapshot) { _lastReviewSnapshot = snapshot; }
 export function clearLastReviewSnapshot() { _lastReviewSnapshot = null; }
 
-export function getVocabById(id) {
-    const idx = _vocabIndex.get(id);
-    return idx !== undefined ? _vocabulary[idx] : undefined;
-}
-
-export function getVocabIndexById(id) {
-    return _vocabIndex.has(id) ? _vocabIndex.get(id) : -1;
-}
-
-/**
- * Update 1 card trong vocabulary tại chỗ theo ID.
- * Trả về true nếu tìm thấy và cập nhật, false nếu không.
- */
-export function updateCardInVocabulary(cardId, updatedCard) {
-    const idx = _vocabIndex.get(cardId);
-    if (idx !== undefined) {
-        _vocabulary[idx] = updatedCard;
-        return true;
-    }
-    return false;
-}
-
-/**
- * Thêm card mới vào vocabulary (dùng cho sync pull).
- * Tự động cập nhật index map.
- */
-export function pushCardToVocabulary(card) {
-    const newIndex = _vocabulary.length;
-    _vocabulary.push(card);
-    if (card && card.id) _vocabIndex.set(card.id, newIndex);
-    return newIndex;
-}
 export function setIsFlipped(flipped) { _isFlipped = flipped; }
 export function setIsDarkMode(isDark) { _isDarkMode = isDark; }
 export function setIsBoostMode(isBoost) { _isBoostMode = !!isBoost; }
-export function setIsTypingMode(isTyping) { 
-    _isTypingMode = isTyping; 
+export function setIsTypingMode(isTyping) {
+    _isTypingMode = isTyping;
     if (!isTyping) {
         _typingFilter = 'off';
     } else if (_typingFilter === 'off') {
@@ -336,35 +154,9 @@ export function setTypingFilter(filter) {
     }
 }
 
-export function isCardLeech(card) {
-    if (!card) return false;
-    return (card.lapses !== undefined && card.lapses >= 2) ||
-           (card.difficulty !== undefined && card.difficulty >= 7.5) ||
-           (card.srsStatus === 'Learning' && (card.reps || 0) >= 3) ||
-           (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.1);
-}
-
 export function shouldCardUseTyping(card) {
     if (!_isTypingMode || _typingFilter === 'off' || !card) return false;
-    
-    switch (_typingFilter) {
-        case 'all':
-            return true;
-        case 'leech':
-            return isCardLeech(card);
-        case 'hard':
-            return (card.difficulty !== undefined && card.difficulty >= 6.5) ||
-                   (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.3) ||
-                   isCardLeech(card);
-        case 'learning':
-            return card.srsStatus === 'New' || card.srsStatus === 'Learning';
-        case 'starred':
-            return !!card.isStarred;
-        case 'long':
-            return (card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8;
-        default:
-            return true;
-    }
+    return matchesTypingFilter(card, _typingFilter);
 }
 
 export function getTypingFilterStats() {
@@ -377,94 +169,33 @@ export function getTypingFilterStats() {
         starred: 0,
         long: 0
     };
-    
-    for (let i = 0; i < _vocabulary.length; i++) {
-        const card = _vocabulary[i];
+
+    for (let i = 0; i < vocabulary.length; i++) {
+        const card = vocabulary[i];
         if (!card || card.isDeleted) continue;
         stats.total++;
         stats.all++;
         if (isCardLeech(card)) stats.leech++;
-        if ((card.difficulty !== undefined && card.difficulty >= 6.5) ||
-            (card.srsEaseFactor !== undefined && card.srsEaseFactor <= 2.3) ||
-            isCardLeech(card)) {
-            stats.hard++;
-        }
-        if (card.srsStatus === 'New' || card.srsStatus === 'Learning') stats.learning++;
+        if (isHardCard(card)) stats.hard++;
+        if (isLearningCard(card)) stats.learning++;
         if (card.isStarred) stats.starred++;
-        if ((card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8) stats.long++;
+        if (isLongWord(card)) stats.long++;
     }
     return stats;
 }
 export function setCurrentTopicFilter(topic) { _currentTopicFilter = topic; }
 export function setSoundMode(mode) { _soundMode = mode; }
 
-// ===== T2.5 — TTS settings (chuẩn hoá + lưu / đọc) =====
-/** Tốc độ đọc luôn nằm trong [0.6, 1.4], làm tròn 1 chữ số thập phân (bước 0.1). */
-export function normalizeTtsRate(rate) {
-    if (rate === null || rate === undefined || rate === '') return TTS_RATE_DEFAULT;
-    const value = Number(rate);
-    if (!Number.isFinite(value)) return TTS_RATE_DEFAULT;
-    const clamped = Math.min(TTS_RATE_MAX, Math.max(TTS_RATE_MIN, value));
-    return Math.round(clamped * 10) / 10;
-}
-
-/** Giọng đọc: chuỗi định danh ngắn (voiceURI/name); rỗng = auto. */
-export function normalizeTtsVoice(voice) {
-    if (typeof voice !== 'string') return '';
-    return voice.trim().slice(0, 120);
-}
-
-export function getTtsSettings() {
-    return { voice: _ttsVoice, rate: _ttsRate };
-}
-
-async function persistTtsSettings() {
-    if (skipPersistence()) return;
-    try {
-        await saveSettingToDB(TTS_SETTINGS_KEY, { voice: _ttsVoice, rate: _ttsRate });
-    } catch (_) {
-        // Không có IndexedDB (SSR/test) vẫn giữ cấu hình trong bộ nhớ phiên này.
-    }
-}
-
-/** Đọc lại cấu hình TTS đã lưu (gọi trong loadVocabulary). */
-export async function loadTtsSettings() {
-    try {
-        const saved = await getSettingFromDB(TTS_SETTINGS_KEY);
-        if (saved && typeof saved === 'object') {
-            _ttsVoice = normalizeTtsVoice(saved.voice);
-            _ttsRate = normalizeTtsRate(saved.rate);
-        }
-    } catch (_) {}
-    return { voice: _ttsVoice, rate: _ttsRate };
-}
-
-export async function setTtsVoice(voice) {
-    _ttsVoice = normalizeTtsVoice(voice);
-    await persistTtsSettings();
-    return _ttsVoice;
-}
-
-export async function setTtsRate(rate) {
-    _ttsRate = normalizeTtsRate(rate);
-    await persistTtsSettings();
-    return _ttsRate;
-}
-export function setGamification(data) { _gamification = data; }
-export function setDailyStats(data) { _dailyStats = data; }
-export function setPreviewMode(val) { _isPreviewMode = val; }
-export function isPreviewMode() { return _isPreviewMode; }
-
 export async function saveVocabulary(skipSync = true) {
     try {
-        const vocabToSave = _vocabulary.map(w => ({ ...w, srsDueDate: w.srsDueDate || null }));
-        
+        const vocabToSave = vocabulary.map(w => ({ ...w, srsDueDate: w.srsDueDate || null }));
+
         // Lưu toàn bộ vào IndexedDB (chỉ dùng cho bulk operations: import, full sync)
         const stored = await saveAllVocabularyToDB(vocabToSave, { markDirty: !skipSync });
-        const current = new Map(_vocabulary.map(card => [card.id, card]));
+        const current = new Map(vocabulary.map(card => [card.id, card]));
         setVocabulary(stored.map(card => mergeCardFields(current.get(card.id) || card, card)));
         await saveDailyStats();
-        
+
         safeUpdateStats();
         return true;
     } catch (e) {
@@ -504,10 +235,10 @@ export async function saveOneWord(word) {
 
 export async function loadVocabulary() {
     await initAppDB(); // Khởi tạo DB
-    
+
     // Đọc từ IDB
     let savedVocab = await getAllVocabularyFromDB();
-    
+
     // Nếu IDB trống, thử migrate từ localStorage sang IDB
     if (!isIsolatedStorage && savedVocab.length === 0) {
         const oldVocabStr = localStorage.getItem('celestialVocab');
@@ -524,9 +255,9 @@ export async function loadVocabulary() {
     }
 
     _allTags = new Set(['all']);
-    _vocabulary = [];
+    resetVocabulary();
     let hasSuspendedMigration = false;
-    
+
     if (Array.isArray(savedVocab)) {
         savedVocab.forEach(word => {
             if (!word || typeof word !== 'object') return;
@@ -556,11 +287,11 @@ export async function loadVocabulary() {
                 word.isSuspended = false;
             }
             if (!word.id) word.id = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).substring(2, 10));
-            _vocabulary.push(normalizeCard(word));
+            vocabulary.push(normalizeCard(word));
             word.tags.forEach(tag => _allTags.add(tag));
         });
         if (hasSuspendedMigration) {
-            saveAllVocabularyToDB(_vocabulary).catch(console.error);
+            saveAllVocabularyToDB(vocabulary).catch(console.error);
         }
     }
 
@@ -577,12 +308,12 @@ export async function loadVocabulary() {
         }
     }
 
-    _dailyStats = initializeProgress(parsedStats || _dailyStats, 'daily');
+    setDailyStats(initializeProgress(parsedStats || _dailyStats, 'daily'));
     ensureDailyStats();
     // Load Gamification Stats
     let savedGamification = await getSettingFromDB('gamification');
     if (savedGamification) {
-        _gamification = { ..._gamification, ...savedGamification };
+        setGamification({ ..._gamification, ...savedGamification });
         initializeProgress(_gamification, 'gamification');
         checkStreakStatusOnLoad(); // Check streak status on load (reset UI if missed days, do not grant streak without study)
     }
@@ -611,8 +342,8 @@ export async function loadVocabulary() {
 
 
 
-    console.log(`Loaded: ${_vocabulary.length} words from IDB.`);
-    _rebuildVocabIndex();
+    console.log(`Loaded: ${vocabulary.length} words from IDB.`);
+    rebuildVocabIndex();
     safeUpdateStats();
 }
 
@@ -626,9 +357,9 @@ export async function addReviewLog(log) {
         dictIndex = _reviewLogs.dict.length;
         _reviewLogs.dict.push(log.cardId);
     }
-    
+
     _reviewLogs.logs.push([dictIndex, log.rating, log.t, log.reviewTime || Date.now(), log.modality === 'typing' ? 1 : 0, log.id || crypto.randomUUID()]);
-    
+
     if (_reviewLogs.logs.length > 10000) {
         _reviewLogs.logs = _reviewLogs.logs.slice(_reviewLogs.logs.length - 10000);
     }
@@ -666,183 +397,80 @@ export function mergeReviewLogs(remoteLogs, localLogs) {
     return mergeLogSnapshots(remoteLogs, localLogs);
 }
 
-// ===== T2.4 — GIỚI HẠN & CẮT TỈA reviewLogs (chống chạm trần 1 MiB của Firestore) =====
-// reviewLogs CHỈ phục vụ thống kê/heatmap + train FSRS. Mất entry CŨ không ảnh
-// hưởng lịch ôn, nhưng một document Firestore vượt 1 MiB thì ghi hỏng vĩnh viễn.
-// Vì vậy log bị cắt theo CẢ HAI ngưỡng (số entry + số byte) và luôn giữ phần
-// MỚI NHẤT. Card/progress/settings tuyệt đối không đi qua hàm này.
-export const MAX_REVIEW_LOG_ENTRIES = 3000;
-// 400 KB: bằng ~40% trần 1 MiB, đủ chỗ cho dict + deletedIds + metadata và cho
-// biên an toàn khi Firestore cộng thêm overhead chỉ mục cho từng field.
-export const MAX_REVIEW_LOG_BYTES = 400_000;
-export const MAX_REVIEW_LOG_DELETED_IDS = 500;
-
-/** Đếm BYTE UTF-8 (Firestore tính byte chứ không tính ký tự: tiếng Việt/emoji > 1 byte). */
-export function utf8ByteLength(value) {
-    const text = typeof value === 'string' ? value : String(value ?? '');
-    let bytes = 0;
-    for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i);
-        if (code < 0x80) bytes += 1;
-        else if (code < 0x800) bytes += 2;
-        else if (code >= 0xD800 && code <= 0xDBFF) { bytes += 4; i++; } // cặp surrogate
-        else bytes += 3;
-    }
-    return bytes;
-}
-
-/** Một row có thể là mảng (dạng local) hoặc chuỗi JSON (dạng Firestore). */
-function parseReviewLogRow(raw) {
-    if (Array.isArray(raw)) return raw;
-    if (typeof raw === 'string' && raw.startsWith('[')) {
-        try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : null;
-        } catch (_) { return null; }
-    }
-    return null;
-}
-
-/** Chuẩn hoá đầu vào: thiếu field / rỗng / rác đều trả về cấu trúc an toàn. */
-function normalizeReviewLogs(logs) {
-    const source = Array.isArray(logs) ? { logs } : (logs && typeof logs === 'object' ? logs : {});
-    const dict = Array.isArray(source.dict) ? source.dict : [];
-    const deletedIds = [...new Set(
-        (Array.isArray(source.deletedIds) ? source.deletedIds : [])
-            .filter(id => typeof id === 'string' && id)
-    )];
-    const entries = [];
-    (Array.isArray(source.logs) ? source.logs : []).forEach((raw, order) => {
-        const row = parseReviewLogRow(raw);
-        if (!row || row.length < 4) return;              // thiếu field bắt buộc → bỏ row rác
-        const dictIndex = Number(row[0]);
-        if (!Number.isFinite(dictIndex)) return;
-        const cardId = dict[dictIndex];
-        if (cardId === undefined || cardId === null) return; // trỏ vào dict hỏng → không dùng được
-        const ts = Number(row[3]);
-        entries.push({ row, cardId, ts: Number.isFinite(ts) ? ts : 0, order });
-    });
-    return { dict, deletedIds, entries };
-}
-
-/** Dựng lại {dict, logs} với dict CHỈ chứa cardId còn được tham chiếu (dict không phình theo kho từ). */
-function buildReviewLogSnapshot(entries, deletedIds) {
-    const dict = [], index = new Map(), logs = [];
-    for (const { row, cardId } of entries) {
-        let dictIndex = index.get(cardId);
-        if (dictIndex === undefined) {
-            dictIndex = dict.length;
-            dict.push(cardId);
-            index.set(cardId, dictIndex);
-        }
-        const copy = row.slice();
-        copy[0] = dictIndex;
-        logs.push(copy);
-    }
-    return { dict, logs, deletedIds };
-}
-
-/** Shape THẬT của document Firestore: rows là chuỗi JSON (Firestore không nhận mảng lồng trong mảng). */
-function toCloudShape({ dict, logs, deletedIds }) {
-    return { dict, logs: logs.map(row => JSON.stringify(row)), deletedIds };
-}
-
-function snapshotBytes(entries, deletedIds) {
-    return utf8ByteLength(JSON.stringify(toCloudShape(buildReviewLogSnapshot(entries, deletedIds))));
-}
-
-/**
- * Payload đúng như document sẽ ghi lên Cloud (rows → chuỗi JSON, dict đã dựng
- * lại, kèm metadata nếu có). Dùng chung cho lúc ghi thật và lúc đo.
- */
-export function toCloudReviewLogPayload(logs, meta = {}) {
-    const { deletedIds, entries } = normalizeReviewLogs(logs);
-    const snapshot = buildReviewLogSnapshot(orderByNewest(entries), deletedIds.slice(-MAX_REVIEW_LOG_DELETED_IDS));
-    return { ...toCloudShape(snapshot), ...meta };
-}
-
-/** Đo dung lượng document sẽ ghi (byte UTF-8 của JSON) — cùng công thức với lúc ghi thật. */
-export function measureReviewLogBytes(logs, meta = {}) {
-    return utf8ByteLength(JSON.stringify(toCloudReviewLogPayload(logs, meta)));
-}
-
-function orderByNewest(entries) {
-    return entries
-        .map((entry, order) => ({ ...entry, order }))
-        .sort((a, b) => (a.ts - b.ts) || (a.order - b.order));
-}
-
-/**
- * Cắt reviewLogs theo cả ngưỡng SỐ ENTRY và ngưỡng BYTE, giữ phần MỚI NHẤT.
- * - Không mutate input (trả về object/row/dict mới).
- * - Chạy được với log rỗng / thiếu field / dict hỏng.
- * - Luôn giữ ít nhất 1 entry mới nhất kể cả khi chính nó vượt ngưỡng byte.
- * @param {object} logs  {dict, logs, deletedIds}; mảng thô / null / thiếu field đều được xử lý an toàn
- * @returns {{dict: Array, logs: Array, deletedIds: Array}}
- */
-export function pruneReviewLogs(logs, { maxEntries = MAX_REVIEW_LOG_ENTRIES, maxBytes = MAX_REVIEW_LOG_BYTES, maxDeletedIds = MAX_REVIEW_LOG_DELETED_IDS } = {}) {
-    const entryLimit = Math.max(1, Math.trunc(Number(maxEntries)) || MAX_REVIEW_LOG_ENTRIES);
-    const byteLimit = Math.max(1, Math.trunc(Number(maxBytes)) || MAX_REVIEW_LOG_BYTES);
-    const deletedLimit = Math.max(0, Math.trunc(Number(maxDeletedIds)) || 0);
-
-    const { deletedIds, entries } = normalizeReviewLogs(logs);
-    const trimmedDeleted = deletedIds.slice(-deletedLimit);
-    const ordered = orderByNewest(entries);
-    const byCount = ordered.slice(-entryLimit);   // entry cũ nhất bị bỏ trước
-    if (byCount.length === 0) return buildReviewLogSnapshot([], trimmedDeleted);
-
-    // Đường nhanh: phần lớn trường hợp chỉ cần ngưỡng số entry là đủ.
-    if (snapshotBytes(byCount, trimmedDeleted) <= byteLimit) {
-        return buildReviewLogSnapshot(byCount, trimmedDeleted);
-    }
-
-    // Byte giảm đơn điệu khi bớt entry → tìm nhị phân số entry giữ lại lớn nhất.
-    let low = 1, high = byCount.length, best = 0;
-    while (low <= high) {
-        const mid = (low + high) >> 1;
-        if (snapshotBytes(byCount.slice(-mid), trimmedDeleted) <= byteLimit) {
-            best = mid;
-            low = mid + 1;
-        } else {
-            high = mid - 1;
-        }
-    }
-    const keep = Math.max(1, best);
-    return buildReviewLogSnapshot(byCount.slice(-keep), trimmedDeleted);
-}
-
 export function setReviewLogs(logs) {
     // Chốt chặn cuối: mọi đường ghi vào state (kể cả pull/merge) đều không thể
     // làm log phình quá ngưỡng trong bộ nhớ.
     _reviewLogs = pruneReviewLogs(logs);
 }
 
-/**
- * Chuẩn bị payload ghi Cloud: prune theo 2 ngưỡng, rồi kiểm tra thêm NGƯỠNG AN
- * TOÀN (mặc định 400 KB = đúng MAX_REVIEW_LOG_BYTES) trên payload THẬT sắp ghi.
- * Nếu vẫn vượt (dữ liệu bất thường / sau này nới ngưỡng prune), tiếp tục cắt
- * log theo cấp số nhân — luôn giữ entry mới nhất — thay vì để Firestore từ chối.
- * @returns {{snapshot: object, payload: object, bytes: number, trimmed: boolean, before?: {bytes: number, entries: number}}}
- */
-export function prepareReviewLogsForCloud(logs, { meta = {}, safeBytes = MAX_REVIEW_LOG_BYTES, onOversize = null } = {}) {
-    const limit = Math.max(1, Math.trunc(Number(safeBytes)) || MAX_REVIEW_LOG_BYTES);
-    let snapshot = pruneReviewLogs(logs);
-    let bytes = measureReviewLogBytes(snapshot, meta);
-    if (bytes <= limit) {
-        return { snapshot, payload: toCloudReviewLogPayload(snapshot, meta), bytes, trimmed: false };
+export function toggleStarOnCurrentCard() {
+    if (_currentCardIndex < 0 || !vocabulary[_currentCardIndex]) return false;
+    const card = vocabulary[_currentCardIndex];
+    card.isStarred = !card.isStarred;
+	card.updatedAt = Date.now();
+    card.flagsUpdatedAt = nextRevision(card, 'flagsUpdatedAt');
+    card.updatedAt = Math.max(card.updatedAt, card.flagsUpdatedAt);
+    // Incremental save + sync thay vì ghi toàn bộ vocabulary
+    saveOneWord(card);
+    return card.isStarred;
+}
+
+export async function revertGamificationAfterUndo(snapshot) {
+    if (!snapshot) return;
+
+    // 1. Trừ lại XP đã cộng
+    if (snapshot.addedXP > 0) {
+        _gamification.userXP = Math.max(0, (_gamification.userXP || 0) - snapshot.addedXP);
+        _gamification.currentLevel = Math.floor(Math.sqrt(_gamification.userXP / 100)) + 1;
     }
-    const before = { bytes, entries: snapshot.logs.length };
-    let guard = 0;
-    while (bytes > limit && snapshot.logs.length > 1 && guard++ < 16) {
-        snapshot = pruneReviewLogs(snapshot, {
-            maxEntries: Math.max(1, Math.floor(snapshot.logs.length / 2)),
-            maxBytes: Math.max(1, Math.floor(bytes / 2))
-        });
-        bytes = measureReviewLogBytes(snapshot, meta);
+
+    // 2. Trừ lượt review
+    if (_gamification.totalReviews > 0) {
+        _gamification.totalReviews -= 1;
     }
-    const result = { snapshot, payload: toCloudReviewLogPayload(snapshot, meta), bytes, trimmed: true, before };
-    try { onOversize?.(result); } catch (_) {}
-    return result;
+
+    // 3. Khôi phục chuỗi Combo ban đầu
+    _gamification.consecutiveCorrect = snapshot.comboBefore || 0;
+
+    // 4. Trừ Heatmap của ngày hôm nay
+    const today = getLocalDateString(snapshot.timestamp);
+    if (_gamification.activityHeatmap && _gamification.activityHeatmap[today]) {
+        _gamification.activityHeatmap[today] = Math.max(0, _gamification.activityHeatmap[today] - 1);
+        if (_gamification.activityHeatmap[today] === 0) {
+            delete _gamification.activityHeatmap[today];
+        }
+    }
+    syncStreakFromHeatmap();
+
+    // 5. Khôi phục Daily Stats
+    ensureDailyStats();
+    if (_dailyStats.lastDate === today) {
+        if (_dailyStats.todayTotal > 0) _dailyStats.todayTotal -= 1;
+        if (snapshot.isCorrect && _dailyStats.todayCorrect > 0) _dailyStats.todayCorrect -= 1;
+        if (snapshot.wasNewCard && snapshot.isCorrect && _dailyStats.newCardsDoneToday > 0) {
+            _dailyStats.newCardsDoneToday -= 1;
+        }
+    }
+
+    if (_dailyStats.lastDate === today && snapshot.isCorrect) {
+        const key = snapshot.previousCard?.srsStatus === 'Learning' ? 'learningDoneToday'
+            : snapshot.countedDue ? 'dueDoneToday' : null;
+        if (key) _dailyStats[key] = Math.max(0, (_dailyStats[key] || 0) - 1);
+    }
+
+    // 6. Trừ bớt event stats nếu có
+    if (_gamification.stats) {
+        if (snapshot.rating === 4 && _gamification.stats.easyPresses > 0) _gamification.stats.easyPresses -= 1;
+        if (snapshot.rating === 2 && _gamification.stats.hardPresses > 0) _gamification.stats.hardPresses -= 1;
+    }
+
+    await saveGamification();
+    await saveDailyStats();
+
+    // Cập nhật lại giao diện
+    const event = new CustomEvent('gamification:update');
+    document.getElementById('app-container')?.dispatchEvent(event);
+    updateStats();
 }
 
 export async function setUserSrsParams(recall, lapse) {
@@ -854,32 +482,27 @@ export async function setUserSrsParams(recall, lapse) {
 }
 
 export async function setUserFsrs7Params(params34, trainedAtTimestamp = null) {
-    if (params34 === null) {
-        _userFsrs7Params = null;
-        _userFsrs7TrainedAt = trainedAtTimestamp ?? Math.max(Date.now(), (_userFsrs7TrainedAt || 0) + 1);
-        if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = null;
-        await saveSettingToDB('userFsrs7Params', null);
-        await saveSettingToDB('userFsrs7TrainedAt', _userFsrs7TrainedAt);
-        await saveSettingToDB('userParamsTrainedAt', _userFsrs7TrainedAt);
-        return { success: true, reset: true };
+    // T4.5b: 2 nhánh "reset" và "đặt mới" trước đây là 2 bản chép y hệt nhau
+    // (chỉ khác `reset`), nay dùng chung 1 thân. Hành vi + thứ tự ghi không đổi:
+    // tham số không hợp lệ vẫn trả lỗi TRƯỚC khi chạm vào state/IndexedDB.
+    const reset = params34 === null;
+    if (!reset && !validFsrs7Params(params34)) {
+        return { success: false, error: 'Phải chứa đúng 34 số thực hợp lệ' };
     }
-    if (validFsrs7Params(params34)) {
-        _userFsrs7Params = params34;
-        _userFsrs7TrainedAt = trainedAtTimestamp ?? Math.max(Date.now(), (_userFsrs7TrainedAt || 0) + 1);
-        if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = _userFsrs7Params;
-        await saveSettingToDB('userFsrs7Params', params34);
-        await saveSettingToDB('userFsrs7TrainedAt', _userFsrs7TrainedAt);
-        await saveSettingToDB('userParamsTrainedAt', _userFsrs7TrainedAt);
-        return { success: true, reset: false };
-    }
-    return { success: false, error: 'Phải chứa đúng 34 số thực hợp lệ' };
+    _userFsrs7Params = reset ? null : params34;
+    _userFsrs7TrainedAt = trainedAtTimestamp ?? Math.max(Date.now(), (_userFsrs7TrainedAt || 0) + 1);
+    if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = _userFsrs7Params;
+    await saveSettingToDB('userFsrs7Params', _userFsrs7Params);
+    await saveSettingToDB('userFsrs7TrainedAt', _userFsrs7TrainedAt);
+    await saveSettingToDB('userParamsTrainedAt', _userFsrs7TrainedAt);
+    return { success: true, reset };
 }
 
 export function exportReviewLogsAsJson() {
     let rawList = [];
     if (_reviewLogs && _reviewLogs.dict && Array.isArray(_reviewLogs.logs)) {
         const vocabMap = new Map();
-        _vocabulary.forEach(w => {
+        vocabulary.forEach(w => {
             if (w.id) vocabMap.set(w.id, w.english || '');
         });
         rawList = _reviewLogs.logs.map((log, idx) => {
@@ -924,698 +547,70 @@ export function exportReviewLogsAsJson() {
     return { success: true, count: rawList.length };
 }
 
-export function ensureDailyStats() {
-    const previous = _dailyStats.lastDate;
-    rolloverDailyStats(_dailyStats, getLocalDateString());
-    if (previous !== _dailyStats.lastDate) void saveDailyStats();
-    return _dailyStats;
-}
-
-export function incrementNewCardsDone() {
-    ensureDailyStats();
-    _dailyStats.newCardsDoneToday += 1;
-    void saveDailyStats();
-}
-export function incrementDueCardsDone() {
-    ensureDailyStats();
-    _dailyStats.dueDoneToday = (_dailyStats.dueDoneToday || 0) + 1;
-    void saveDailyStats();
-}
-export function incrementLearningCardsDone() {
-    ensureDailyStats();
-    _dailyStats.learningDoneToday = (_dailyStats.learningDoneToday || 0) + 1;
-    void saveDailyStats();
-}
-
-export function recordReviewResult(isCorrect) {
-    checkAndUpdateStreak(); // Đảm bảo cập nhật streak kể cả khi user treo tab sang ngày mới
-    
-    ensureDailyStats();
-
-    _dailyStats.todayTotal = (_dailyStats.todayTotal || 0) + 1;
-    if (isCorrect) {
-        _dailyStats.todayCorrect = (_dailyStats.todayCorrect || 0) + 1;
-        _gamification.consecutiveCorrect = (_gamification.consecutiveCorrect || 0) + 1;
-        
-        // Gamification: Thông báo Combo mỗi 10 câu đúng liên tiếp
-        if (_gamification.consecutiveCorrect > 0 && _gamification.consecutiveCorrect % 10 === 0) {
-            safeShowToast('Chuỗi Combo Đỉnh Cao', `🔥 Đỉnh quá! Trả lời đúng liên tiếp: ${_gamification.consecutiveCorrect}`, 'ph-fire');
-        }
-    } else {
-        // Option 3 Combo Degradation: Bấm sai khi >=30 rớt về 10, còn lại rớt về 0
-        let currentCombo = _gamification.consecutiveCorrect || 0;
-        if (currentCombo >= 30) {
-            _gamification.consecutiveCorrect = 10; // Rớt từ x1.5 xuống mốc 10 (x1.2)
-        } else {
-            _gamification.consecutiveCorrect = 0;  // Mất combo hoàn toàn về 0 (x1.0)
-        }
-    }
-    _gamification.totalReviews = (_gamification.totalReviews || 0) + 1;
-    // Dùng incremental save thay vì saveVocabulary()
-    void saveDailyStats();
-    saveGamification();
-}
-
-export function recordQuizAnswer(isCorrect) {
-    recordReviewResult(isCorrect);
-    logActivity();
-    _gamification.stats ||= {};
-    _gamification.stats.quizCorrectStreak = isCorrect ? (_gamification.stats.quizCorrectStreak || 0) + 1 : 0;
-    void saveGamification();
-}
-
-export function toggleStarOnCurrentCard() {
-    if (_currentCardIndex < 0 || !_vocabulary[_currentCardIndex]) return false;
-    const card = _vocabulary[_currentCardIndex];
-    card.isStarred = !card.isStarred;
-	card.updatedAt = Date.now();
-    card.flagsUpdatedAt = nextRevision(card, 'flagsUpdatedAt');
-    card.updatedAt = Math.max(card.updatedAt, card.flagsUpdatedAt);
-    // Incremental save + sync thay vì ghi toàn bộ vocabulary
-    saveOneWord(card);
-    return card.isStarred;
-}
-
-export async function saveGamification() {
-    if (skipPersistence()) return;
-    prepareProgress('gamification');
-    try {
-        const saved = await saveProgressToDB('gamification', structuredClone(_gamification), 'gamification');
-        acceptProgress(saved, 'gamification');
-        import('./sync.js').then(m => m.queueGamificationSync());
-        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastProgressUpdated?.(_gamification, _dailyStats));
-    } catch(e) { announceSyncStatus({ phase: 'storage-error' }); console.error('Không lưu được tiến độ học:', e); }
-}
-
-export async function saveDailyStats() {
-    if (skipPersistence()) return;
-    prepareProgress('daily');
-    try {
-        const saved = await saveProgressToDB('dailyStats', structuredClone(_dailyStats), 'daily');
-        acceptProgress(saved, 'daily');
-        import('./sync.js').then(m => m.queueGamificationSync());
-        if (typeof window !== 'undefined') import('./tab-bus.js').then(bus => bus.broadcastProgressUpdated?.(_gamification, _dailyStats));
-    } catch(e) { announceSyncStatus({ phase: 'storage-error' }); console.error('Không lưu được thống kê ngày:', e); }
-}
-
-export function addXP(amount, floatText = null) {
-    if (!Number.isFinite(amount) || amount <= 0) return;
-    const oldLevel = _gamification.currentLevel || 1;
-    _gamification.userXP += amount;
-    _gamification.currentLevel = Math.floor(Math.sqrt(_gamification.userXP / 100)) + 1;
-    saveGamification();
-    
-    if (_gamification.currentLevel > oldLevel) {
-        import('./sound.js').then(m => m.playSound('levelUp'));
-    }
-    
-    // Gọi event cho UI (hiệu ứng +XP)
-    const xpEvent = new CustomEvent('gamification:xp_added', { detail: { amount, text: floatText } });
-    document.getElementById('app-container')?.dispatchEvent(xpEvent);
-
-    // Gọi event để check badge
-    const event = new CustomEvent('gamification:update');
-    document.getElementById('app-container')?.dispatchEvent(event);
-}
-
-export async function revertGamificationAfterUndo(snapshot) {
-    if (!snapshot) return;
-    
-    // 1. Trừ lại XP đã cộng
-    if (snapshot.addedXP > 0) {
-        _gamification.userXP = Math.max(0, (_gamification.userXP || 0) - snapshot.addedXP);
-        _gamification.currentLevel = Math.floor(Math.sqrt(_gamification.userXP / 100)) + 1;
-    }
-    
-    // 2. Trừ lượt review
-    if (_gamification.totalReviews > 0) {
-        _gamification.totalReviews -= 1;
-    }
-    
-    // 3. Khôi phục chuỗi Combo ban đầu
-    _gamification.consecutiveCorrect = snapshot.comboBefore || 0;
-    
-    // 4. Trừ Heatmap của ngày hôm nay
-    const today = getLocalDateString(snapshot.timestamp);
-    if (_gamification.activityHeatmap && _gamification.activityHeatmap[today]) {
-        _gamification.activityHeatmap[today] = Math.max(0, _gamification.activityHeatmap[today] - 1);
-        if (_gamification.activityHeatmap[today] === 0) {
-            delete _gamification.activityHeatmap[today];
-        }
-    }
-    syncStreakFromHeatmap();
-    
-    // 5. Khôi phục Daily Stats
-    ensureDailyStats();
-    if (_dailyStats.lastDate === today) {
-        if (_dailyStats.todayTotal > 0) _dailyStats.todayTotal -= 1;
-        if (snapshot.isCorrect && _dailyStats.todayCorrect > 0) _dailyStats.todayCorrect -= 1;
-        if (snapshot.wasNewCard && snapshot.isCorrect && _dailyStats.newCardsDoneToday > 0) {
-            _dailyStats.newCardsDoneToday -= 1;
-        }
-    }
-    
-    if (_dailyStats.lastDate === today && snapshot.isCorrect) {
-        const key = snapshot.previousCard?.srsStatus === 'Learning' ? 'learningDoneToday'
-            : snapshot.countedDue ? 'dueDoneToday' : null;
-        if (key) _dailyStats[key] = Math.max(0, (_dailyStats[key] || 0) - 1);
-    }
-
-    // 6. Trừ bớt event stats nếu có
-    if (_gamification.stats) {
-        if (snapshot.rating === 4 && _gamification.stats.easyPresses > 0) _gamification.stats.easyPresses -= 1;
-        if (snapshot.rating === 2 && _gamification.stats.hardPresses > 0) _gamification.stats.hardPresses -= 1;
-    }
-    
-    await saveGamification();
-    await saveDailyStats();
-    
-    // Cập nhật lại giao diện
-    const event = new CustomEvent('gamification:update');
-    document.getElementById('app-container')?.dispatchEvent(event);
-    updateStats();
-}
-
-export async function setXP(targetXP) {
-    const xp = Math.max(0, parseInt(targetXP) || 0);
-    _gamification.userXP = xp;
-    _gamification.currentLevel = Math.floor(Math.sqrt(xp / 100)) + 1;
-    await saveGamification();
-    
-    const event = new CustomEvent('gamification:update');
-    document.getElementById('app-container')?.dispatchEvent(event);
-    console.log(`✨ XP đã được set thành ${xp} (Level ${_gamification.currentLevel})`);
-}
-
-
-
-export function isDayStreakQualified(activityHeatmap = {}, dateStr, frozenDates = _gamification?.frozenDates, recoveredDates = _gamification?.recoveredDates) {
-    if (!dateStr) return false;
-    if (frozenDates && frozenDates.includes(dateStr)) return true;
-    if (recoveredDates && recoveredDates.includes(dateStr)) return true;
-
-    const count = (activityHeatmap && activityHeatmap[dateStr]) || 0;
-    if (dateStr < STREAK_LEGACY_CUTOFF_DATE) {
-        return count > 0;
-    }
-    return count >= MIN_STREAK_DAILY_REVIEWS;
-}
-
-export function reconcileStreakFreeze(g = _gamification) {
-    if (!g) return false;
-    let refunded = false;
-    const heatmap = g.activityHeatmap || {};
-    const frozen = Array.isArray(g.frozenDates) ? [...g.frozenDates] : [];
-
-    const falseFrozenDates = [];
-    for (const d of frozen) {
-        const count = heatmap[d] || 0;
-        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (d < STREAK_LEGACY_CUTOFF_DATE && count > 0);
-        if (hasRealStudy) {
-            falseFrozenDates.push(d);
-        }
-    }
-
-    if (g.lastStreakFreezeDate) {
-        const count = heatmap[g.lastStreakFreezeDate] || 0;
-        const hasRealStudy = count >= MIN_STREAK_DAILY_REVIEWS || (g.lastStreakFreezeDate < STREAK_LEGACY_CUTOFF_DATE && count > 0);
-        if (hasRealStudy && !falseFrozenDates.includes(g.lastStreakFreezeDate)) {
-            falseFrozenDates.push(g.lastStreakFreezeDate);
-        }
-    }
-
-    if (falseFrozenDates.length > 0) {
-        console.log(`🛡️ Hoàn trả ${falseFrozenDates.length} Khiên Băng do phát hiện đã học (${falseFrozenDates.join(', ')})!`);
-        g.frozenDates = frozen.filter(d => !falseFrozenDates.includes(d));
-        if (falseFrozenDates.includes(g.lastStreakFreezeDate)) {
-            g.lastStreakFreezeDate = "";
-        }
-        g.streakFreezeCount = Math.min(1, (g.streakFreezeCount || 0) + falseFrozenDates.length);
-        refunded = true;
-    }
-
-    return refunded;
-}
-
-export function calculateStreakFromHeatmap(
-    activityHeatmap = {},
-    todayStr = getLocalDateString(),
-    frozenDates = _gamification?.frozenDates,
-    recoveredDates = _gamification?.recoveredDates
-) {
-    if (!activityHeatmap || typeof activityHeatmap !== 'object') {
-        return { currentStreak: 0, longestStreak: 0 };
-    }
-
-    const isTodayQualified = isDayStreakQualified(activityHeatmap, todayStr, frozenDates, recoveredDates);
-    const yesterdayStr = getOffsetDateString(todayStr, -1);
-    const isYesterdayQualified = isDayStreakQualified(activityHeatmap, yesterdayStr, frozenDates, recoveredDates);
-
-    let currentStreak = 0;
-    let checkDateStr = null;
-
-    if (isTodayQualified) {
-        currentStreak = 1;
-        checkDateStr = yesterdayStr;
-    } else if (isYesterdayQualified) {
-        currentStreak = 1;
-        checkDateStr = getOffsetDateString(yesterdayStr, -1);
-    } else {
-        currentStreak = 0;
-        checkDateStr = null;
-    }
-
-    if (checkDateStr) {
-        while (isDayStreakQualified(activityHeatmap, checkDateStr, frozenDates, recoveredDates)) {
-            currentStreak += 1;
-            checkDateStr = getOffsetDateString(checkDateStr, -1);
-        }
-    }
-
-    const allCandidateDates = new Set([
-        ...Object.keys(activityHeatmap),
-        ...(frozenDates || []),
-        ...(recoveredDates || [])
-    ]);
-
-    const qualifiedDates = [...allCandidateDates]
-        .filter(d => isDayStreakQualified(activityHeatmap, d, frozenDates, recoveredDates))
-        .sort();
-
-    let longestStreak = 0;
-    let tempStreak = 0;
-    let prevDateStr = null;
-
-    for (const dateStr of qualifiedDates) {
-        if (!prevDateStr) {
-            tempStreak = 1;
-        } else {
-            const expectedNext = getOffsetDateString(prevDateStr, 1);
-            if (dateStr === expectedNext) {
-                tempStreak += 1;
-            } else {
-                tempStreak = 1;
-            }
-        }
-        if (tempStreak > longestStreak) {
-            longestStreak = tempStreak;
-        }
-        prevDateStr = dateStr;
-    }
-
-    longestStreak = Math.max(longestStreak, currentStreak);
-
-    return { currentStreak, longestStreak };
-}
-
-export function checkAndApplyStreakFreeze(todayStr = getLocalDateString()) {
-    if (!_gamification.streakFreezeCount || _gamification.streakFreezeCount <= 0) return false;
-    if (!_gamification.activityHeatmap) _gamification.activityHeatmap = {};
-
-    const yesterdayStr = getOffsetDateString(todayStr, -1);
-    const dayBeforeYesterdayStr = getOffsetDateString(todayStr, -2);
-
-    const hasStudiedYesterday = isDayStreakQualified(_gamification.activityHeatmap, yesterdayStr, _gamification.frozenDates, _gamification.recoveredDates);
-    const hasStudiedDayBefore = isDayStreakQualified(_gamification.activityHeatmap, dayBeforeYesterdayStr, _gamification.frozenDates, _gamification.recoveredDates);
-
-    // Nếu hôm qua chưa đạt điều kiện và hôm kia có đạt điều kiện -> kích hoạt khiên cứu ngày hôm qua
-    if (!hasStudiedYesterday && hasStudiedDayBefore) {
-        if (_gamification.lastStreakFreezeDate === dayBeforeYesterdayStr) {
-            console.log("⚠️ Khiên Băng không thể kích hoạt 2 ngày liên tiếp.");
-            return false;
-        }
-
-        _gamification.frozenDates = _gamification.frozenDates || [];
-        if (!_gamification.frozenDates.includes(yesterdayStr)) {
-            _gamification.frozenDates.push(yesterdayStr);
-        }
-        _gamification.streakFreezeCount = Math.max(0, _gamification.streakFreezeCount - 1);
-        _gamification.lastStreakFreezeDate = yesterdayStr;
-
-        console.log(`❄️ Khiên Băng đã kích hoạt bảo vệ ngày ${yesterdayStr}!`);
-        safeShowToast('Khiên Băng Kích Hoạt ❄️', `Kết giới băng giá đã bảo vệ chuỗi của bạn cho ngày ${yesterdayStr}!`, 'ph-snowflake');
-        return true;
-    }
-
-    return false;
-}
-
-export function buyStreakFreeze() {
-    const minStreak = 7;
-    const costXP = 800;
-    const maxStreakAchieved = Math.max(_gamification.currentStreak || 0, _gamification.longestStreak || 0);
-
-    if (_gamification.streakFreezeCount > 0) {
-        return { success: false, message: "Bạn đã trang bị Khiên Băng rồi (Tối đa 1 khiên)!" };
-    }
-    if (maxStreakAchieved < minStreak) {
-        return { success: false, message: `Bạn cần đạt kỷ lục chuỗi tối thiểu ${minStreak} ngày để đủ tư cách chế tác Khiên Băng!` };
-    }
-    if ((_gamification.userXP || 0) < costXP) {
-        return { success: false, message: `Không đủ XP! Chế tác Khiên Băng cần ${costXP} XP (Bạn đang có ${_gamification.userXP || 0} XP).` };
-    }
-
-    _gamification.userXP -= costXP;
-    _gamification.currentLevel = Math.floor(Math.sqrt(_gamification.userXP / 100)) + 1;
-    _gamification.streakFreezeCount = 1;
-    saveGamification();
-
-    const event = new CustomEvent('gamification:update');
-    document.getElementById('app-container')?.dispatchEvent(event);
-
-    return { success: true, message: "Đã rèn thành công Khiên Băng Cổ Đại ❄️! Chuỗi học của bạn đã được bảo vệ an toàn." };
-}
-
-export function getStreakRecoveryStatus(todayStr = getLocalDateString()) {
-    if (!_gamification.activityHeatmap) return { canRecover: false, reason: "Chưa có dữ liệu hoạt động" };
-
-    const heatmap = _gamification.activityHeatmap;
-    const frozen = _gamification.frozenDates;
-    const recovered = _gamification.recoveredDates;
-    const currentStreak = calculateStreakFromHeatmap(heatmap, todayStr, frozen, recovered).currentStreak;
-
-    // Nếu người dùng đang duy trì chuỗi tốt từ 2 ngày trở lên -> Chuỗi đang hoạt động bình thường, không hiển thị cứu chuỗi
-    if (currentStreak >= 2) {
-        return { canRecover: false, reason: "Chuỗi học đang duy trì tốt, không có ngày gián đoạn cần cứu." };
-    }
-
-    let gapStartOffset = -1;
-    const isTodayQ = isDayStreakQualified(heatmap, todayStr, frozen, recovered);
-    const isYestQ = isDayStreakQualified(heatmap, getOffsetDateString(todayStr, -1), frozen, recovered);
-    if (isTodayQ && !isYestQ) {
-        gapStartOffset = -1;
-    } else if (!isTodayQ && isYestQ) {
-        gapStartOffset = -2;
-    } else {
-        gapStartOffset = -1;
-    }
-
-    // Quét vùng gián đoạn (gap) liên tiếp trong phạm vi 7 ngày gần nhất
-    const missedDates = [];
-    let gapOffset = gapStartOffset;
-
-    while (gapOffset >= -7 && !isDayStreakQualified(heatmap, getOffsetDateString(todayStr, gapOffset), frozen, recovered)) {
-        missedDates.push(getOffsetDateString(todayStr, gapOffset));
-        gapOffset--;
-    }
-
-    // Không có ngày nào bị thiếu trong 7 ngày qua
-    if (missedDates.length === 0) {
-        return { canRecover: false, reason: "Chuỗi học đang duy trì tốt, không có ngày gián đoạn trong 7 ngày qua." };
-    }
-
-    // Nếu đã quét hết 7 ngày mà ngày thứ -8 vẫn là 0 (gap kéo dài quá 7 ngày)
-    if (gapOffset < -7 && !isDayStreakQualified(heatmap, getOffsetDateString(todayStr, gapOffset), frozen, recovered)) {
-        return {
-            canRecover: false,
-            reason: "Thời gian gián đoạn đã vượt quá 1 tuần (7 ngày). Chuỗi lửa đã hóa thành tro tàn cổ đại."
-        };
-    }
-
-    // 3. Quét chuỗi học ngay trước vùng gián đoạn
-    let priorStreak = 0;
-    let priorOffset = gapOffset;
-    while (isDayStreakQualified(heatmap, getOffsetDateString(todayStr, priorOffset), frozen, recovered)) {
-        priorStreak++;
-        priorOffset--;
-    }
-
-    // Yêu cầu chuỗi trước đó phải >= 2 ngày để việc tái sinh có giá trị
-    if (priorStreak < 2) {
-        return {
-            canRecover: false,
-            reason: priorStreak === 0
-                ? "Không tìm thấy chuỗi học trước đợt gián đoạn."
-                : "Chuỗi trước khi gián đoạn chỉ có 1 ngày, chưa đủ điều kiện tái sinh (cần tối thiểu 2 ngày)."
-        };
-    }
-
-    // Đủ điều kiện thực hiện Thử Thách Tái Sinh trong vòng 1 tuần!
-    const costXP = 500;
-    const firstMissed = missedDates[missedDates.length - 1];
-    const lastMissed = missedDates[0];
-    const dateRangeStr = missedDates.length === 1 
-        ? `ngày ${lastMissed}` 
-        : `${missedDates.length} ngày (từ ${firstMissed} đến ${lastMissed})`;
-
-    return {
-        canRecover: true,
-        missedDate: lastMissed, // Giữ thuộc tính tương thích ngược
-        missedDates, // Danh sách toàn bộ các ngày gián đoạn trong 7 ngày qua
-        missedDaysCount: missedDates.length,
-        priorStreak,
-        costXP,
-        reason: `Bạn đã gián đoạn ${dateRangeStr}, làm nguội lạnh chuỗi ${priorStreak} ngày!`
-    };
-}
-
-export function completeStreakRecovery(missedDates) {
-    const datesToRecover = Array.isArray(missedDates) 
-        ? missedDates.filter(Boolean) 
-        : (missedDates ? [missedDates] : []);
-
-    if (datesToRecover.length === 0) {
-        return { success: false, message: "Ngày tái sinh chuỗi không hợp lệ" };
-    }
-
-    const costXP = 500;
-    if ((_gamification.userXP || 0) < costXP) {
-        return { success: false, message: `Không đủ Tinh Hoa XP để làm lễ vật tái sinh! Cần ${costXP} XP (bạn có ${_gamification.userXP || 0} XP).` };
-    }
-
-    _gamification.userXP -= costXP;
-    _gamification.currentLevel = Math.floor(Math.sqrt(_gamification.userXP / 100)) + 1;
-    
-    if (!_gamification.activityHeatmap) _gamification.activityHeatmap = {};
-    _gamification.recoveredDates = _gamification.recoveredDates || [];
-
-    datesToRecover.forEach(dateStr => {
-        _gamification.activityHeatmap[dateStr] = Math.max(_gamification.activityHeatmap[dateStr] || 0, 1);
-        if (!_gamification.recoveredDates.includes(dateStr)) {
-            _gamification.recoveredDates.push(dateStr);
-        }
-    });
-
-    unlockBadge('special_phoenix');
-    syncStreakFromHeatmap();
-
-    const rangeText = datesToRecover.length === 1 
-        ? datesToRecover[0] 
-        : `${datesToRecover.length} ngày (${datesToRecover[datesToRecover.length - 1]} → ${datesToRecover[0]})`;
-
-    return {
-        success: true,
-        message: `🔥 TÁI SINH THÀNH CÔNG! Ngọn lửa tinh tú đã bùng cháy trở lại, kết nối thành công chuỗi ngày (${rangeText})!`,
-        recoveredDates: datesToRecover
-    };
-}
-
-export function syncStreakFromHeatmap(options = {}) {
-    const today = getLocalDateString();
-    if (!_gamification.activityHeatmap) {
-        _gamification.activityHeatmap = {};
-    }
-
-    // Hoàn trả Khiên Băng nếu phát hiện đã học nhưng bị trừ nhầm trước khi đồng bộ
-    reconcileStreakFreeze(_gamification);
-
-    // Tự động kích hoạt Khiên Băng nếu đủ điều kiện cứu ngày hôm qua (chỉ khi được phép)
-    const allowFreeze = options.allowFreeze ?? (typeof navigator === 'undefined' || !navigator.onLine || _initialSyncDone);
-    if (allowFreeze) {
-        checkAndApplyStreakFreeze(today);
-    }
-
-    const { currentStreak, longestStreak } = calculateStreakFromHeatmap(
-        _gamification.activityHeatmap,
-        today,
-        _gamification.frozenDates,
-        _gamification.recoveredDates
-    );
-    _gamification.currentStreak = currentStreak;
-    _gamification.longestStreak = Math.max(_gamification.longestStreak || 0, longestStreak);
-    if (isDayStreakQualified(_gamification.activityHeatmap, today, _gamification.frozenDates, _gamification.recoveredDates)) {
-        _gamification.lastStudyDate = today;
-    } else {
-        const activeDates = Object.keys(_gamification.activityHeatmap)
-            .filter(d => isDayStreakQualified(_gamification.activityHeatmap, d, _gamification.frozenDates, _gamification.recoveredDates))
-            .sort();
-        if (activeDates.length > 0) {
-            _gamification.lastStudyDate = activeDates[activeDates.length - 1];
-        }
-    }
-    saveGamification();
-    
-    const event = new CustomEvent('gamification:update');
-    document.getElementById('app-container')?.dispatchEvent(event);
-}
-
-export function logActivity() {
-    const today = getLocalDateString(); // YYYY-MM-DD local
-    if (!_gamification.activityHeatmap) {
-        _gamification.activityHeatmap = {};
-    }
-    if (!_gamification.activityHeatmap[today]) {
-        _gamification.activityHeatmap[today] = 0;
-    }
-    _gamification.activityHeatmap[today] += 1;
-    const currentTodayCount = _gamification.activityHeatmap[today];
-    if (currentTodayCount === MIN_STREAK_DAILY_REVIEWS) {
-        safeShowToast('Nối Chuỗi Thành Công! 🔥', `Tuyệt vời! Bạn đã hoàn thành ${MIN_STREAK_DAILY_REVIEWS} lượt ôn tập hôm nay để bảo toàn chuỗi tinh tú!`, 'ph-fire');
-    }
-    syncStreakFromHeatmap();
-}
-
-export function checkStreakStatusOnLoad() {
-    // Không trừ khiên sớm khi vừa mở web nếu thiết bị đang online (chờ sync Firestore hoàn tất)
-    const canApplyFreeze = typeof navigator === 'undefined' || !navigator.onLine || _initialSyncDone;
-    syncStreakFromHeatmap({ allowFreeze: canApplyFreeze });
-}
-
-export function checkAndUpdateStreak() {
-    syncStreakFromHeatmap();
-}
-
-// ─── BADGE CELEBRATION BATCHING ───────────────────────────────────────────
-// Mỗi huy hiệu mở khóa từng: ghi IDB + nạp 4 module + phát 1 âm thanh + chạy
-// 1 vòng confetti + tạo 1 toast. Nhập kho lớn có thể mở 20–30 huy hiệu cùng
-// lúc ⇒ 20–30 lần ghi IDB, 20–30 vòng confetti và một "bức tường" toast.
-// Nay: gộp các huy hiệu trong cùng 120ms thành MỘT đợt chúc mừng (1 âm thanh,
-// 1 đợt confetti, 3 toast đầu + 1 toast tổng kết), và gộp 1 lần ghi IDB.
-// Người dùng vẫn thấy đầy đủ thông tin mở khóa, giao diện không đổi.
-let _badgeCelebrateTimer = null;
-let _badgeCelebrateQueue = [];
-let _badgeSaveTimer = null;
-
-function scheduleGamificationSave() {
-    if (_badgeSaveTimer) return;
-    _badgeSaveTimer = setTimeout(() => {
-        _badgeSaveTimer = null;
-        saveGamification();
-    }, 150);
-}
-
-function flushBadgeCelebrations() {
-    _badgeCelebrateTimer = null;
-    const ids = _badgeCelebrateQueue.splice(0);
-    if (!ids.length) return;
-
-    import('./sound.js').then(m => m.playSound('badgeUnlock')).catch(() => {});
-    import('../ui/render.js')
-        .then(m => m.launchCelebrationConfetti?.({ count: Math.min(85 + ids.length * 8, 160) }))
-        .catch(() => {});
-
-    Promise.all([import('../ui/modal.js'), import('../features/badges.js')])
-        .then(([ui, badgeModule]) => {
-            const { BADGE_TRACKS, SPECIAL_BADGES } = badgeModule;
-            const infoOf = (badgeId) => {
-                let badgeInfo = SPECIAL_BADGES.find(b => b.id === badgeId);
-                if (!badgeInfo) {
-                    for (const track of BADGE_TRACKS) {
-                        const index = track.ids.indexOf(badgeId);
-                        if (index !== -1) {
-                            badgeInfo = { name: track.names[index], icon: track.icons[index] };
-                            break;
-                        }
-                    }
-                }
-                return badgeInfo;
-            };
-
-            // Tối đa 3 toast chi tiết; phần còn lại gộp thành 1 toast tổng kết
-            // để không tạo hàng chục phần tử DOM + transition cùng lúc.
-            ids.slice(0, 3).forEach((badgeId) => {
-                const badgeInfo = infoOf(badgeId);
-                const title = badgeInfo ? `Huy hiệu: ${badgeInfo.name}` : 'Huy hiệu mới!';
-                const icon = badgeInfo ? badgeInfo.icon : 'ph-trophy';
-                ui.showToast(title, 'Bạn vừa mở khóa một thành tựu tuyệt vời!', icon);
-            });
-            if (ids.length > 3) {
-                ui.showToast(
-                    `+${ids.length - 3} huy hiệu khác`,
-                    'Bạn vừa mở khóa thêm nhiều thành tựu tuyệt vời!',
-                    'ph-trophy'
-                );
-            }
-        })
-        .catch(() => {});
-}
-
-export function unlockBadge(badgeId) {
-    if (_isPreviewMode) {
-        if (!_gamification.unlockedBadges) _gamification.unlockedBadges = [];
-        if (!_gamification.unlockedBadges.includes(badgeId)) {
-            _gamification.unlockedBadges.push(badgeId);
-        }
-        return;
-    }
-    
-    if (!_gamification.unlockedBadges) _gamification.unlockedBadges = [];
-    if (!_gamification.unlockedBadges.includes(badgeId)) {
-        _gamification.unlockedBadges.push(badgeId);
-        scheduleGamificationSave();
-
-        _badgeCelebrateQueue.push(badgeId);
-        if (!_badgeCelebrateTimer) {
-            _badgeCelebrateTimer = setTimeout(flushBadgeCelebrations, 120);
-        }
-    }
-}
-
-let _trackEventTimeout = null;
-
-export function trackEvent(eventName, amount = 1) {
-    if (!_gamification.stats) {
-        _gamification.stats = {};
-    }
-    
-    if (_gamification.stats[eventName] !== undefined) {
-        _gamification.stats[eventName] += amount;
-    } else {
-        _gamification.stats[eventName] = amount;
-    }
-    
-    // Debounce save and update to avoid I/O spam
-    if (_trackEventTimeout) clearTimeout(_trackEventTimeout);
-    _trackEventTimeout = setTimeout(() => {
-        saveGamification();
-        const event = new CustomEvent('gamification:update');
-        document.getElementById('app-container')?.dispatchEvent(event);
-    }, 1500); // Batch all events within 1.5 seconds
-}
-
-export async function seedIsolatedDemoVocabulary() {
-    if (!isIsolatedStorage) throw new Error('Dữ liệu demo chỉ được dùng trong kho kiểm thử riêng.');
-    sessionStorage.setItem('CHEAT_MODE', 'true');
-    sessionStorage.setItem('ISOLATED_TEST_MODE', 'true');
-    const mockCards = [
-        { id: 'v5_c1', english: 'serendipity', vietnamese: 'Sự tình cờ may mắn, duyên kỳ ngộ', type: 'noun', pronunciation: '/ˌser.ənˈdɪp.ə.t̬i/', tags: ['Vocabulary', 'Advanced'], example: 'Finding this peaceful observatory was pure serendipity.', srsStatus: 'Mastered', srsInterval: 14.5, reps: 6, lapses: 0, difficulty: 4.2, stability: 14.8, stabilityShort: 11.8, isStarred: true, lastReviewDate: Date.now() - 3 * 86400000, srsDueDate: Date.now() + 11 * 86400000 },
-        { id: 'v5_c2', english: 'ephemeral', vietnamese: 'Phù du, chóng tàn, ngắn ngủi', type: 'adjective', pronunciation: '/əˈfem.ər.əl/', tags: ['Philosophy', 'Literature'], example: 'Fame in the digital era can be remarkably ephemeral.', srsStatus: 'Learning', srsInterval: 2.1, reps: 3, lapses: 1, difficulty: 6.8, stability: 3.2, stabilityShort: 2.5, isStarred: false, lastReviewDate: Date.now() - 1 * 86400000, srsDueDate: Date.now() - 1000 },
-        { id: 'v5_c3', english: 'quintessential', vietnamese: 'Tinh túy, hoàn hảo nhất, điển hình', type: 'adjective', pronunciation: '/ˌkwɪn.təˈsen.ʃəl/', tags: ['Academic'], example: 'Watermelon is the quintessential fruit of summer.', srsStatus: 'New', srsInterval: 0, reps: 0, lapses: 0, difficulty: 5.5, stability: 1.0, stabilityShort: 0.8, isStarred: false },
-        { id: 'v5_c4', english: 'ubiquitous', vietnamese: 'Có mặt ở khắp nơi, phổ biến', type: 'adjective', pronunciation: '/juːˈbɪk.wə.t̬əs/', tags: ['Technology', 'Common'], example: 'Smartphones have become ubiquitous across all generations.', srsStatus: 'Mastered', srsInterval: 28.0, reps: 9, lapses: 0, difficulty: 3.9, stability: 28.4, stabilityShort: 22.7, isStarred: true, lastReviewDate: Date.now() - 5 * 86400000, srsDueDate: Date.now() + 23 * 86400000 },
-        { id: 'v5_c5', english: 'resilience', vietnamese: 'Khả năng phục hồi, kiên cường', type: 'noun', pronunciation: '/rɪˈzɪl.jəns/', tags: ['Psychology'], example: 'Her resilience helped her rebuild a life after the flood.', srsStatus: 'Learning', srsInterval: 3.5, reps: 4, lapses: 1, difficulty: 5.1, stability: 4.0, stabilityShort: 3.2, isStarred: false, lastReviewDate: Date.now() - 2 * 86400000, srsDueDate: Date.now() - 5000 },
-        { id: 'v5_c6', english: 'meticulous', vietnamese: 'Tỉ mỉ, cẩn thận từng chi tiết', type: 'adjective', pronunciation: '/məˈtɪk.jə.ləs/', tags: ['Academic', 'Work'], example: 'She kept meticulous notes throughout the entire experiment.', srsStatus: 'Mastered', srsInterval: 18.0, reps: 7, lapses: 0, difficulty: 4.5, stability: 18.2, stabilityShort: 14.5, isStarred: false, lastReviewDate: Date.now() - 4 * 86400000, srsDueDate: Date.now() + 14 * 86400000 },
-        { id: 'v5_c7', english: 'pragmatic', vietnamese: 'Thực dụng, thực tế, trọng hành động', type: 'adjective', pronunciation: '/præɡˈmæt̬.ɪk/', tags: ['Philosophy', 'Business'], example: 'We need to adopt a pragmatic approach to solving this crisis.', srsStatus: 'Learning', srsInterval: 2.8, reps: 3, lapses: 0, difficulty: 5.8, stability: 2.8, stabilityShort: 2.2, isStarred: false, lastReviewDate: Date.now() - 1 * 86400000, srsDueDate: Date.now() + 1.8 * 86400000 },
-        { id: 'v5_c8', english: 'conundrum', vietnamese: 'Bài toán hóc búa, câu hỏi nan giải', type: 'noun', pronunciation: '/kəˈnʌn.drəm/', tags: ['Academic', 'Logic'], example: 'Arranging the schedule proved to be a difficult conundrum.', srsStatus: 'Learning', srsInterval: 1.2, reps: 5, lapses: 2, difficulty: 7.8, stability: 1.8, stabilityShort: 1.4, isStarred: false, lastReviewDate: Date.now() - 1 * 86400000, srsDueDate: Date.now() - 10000 },
-        { id: 'v5_c9', english: 'empathy', vietnamese: 'Sự thấu cảm, đồng cảm sâu sắc', type: 'noun', pronunciation: '/ˈem.pə.θi/', tags: ['Psychology', 'Personal'], example: 'Empathy allows us to build meaningful connections with others.', srsStatus: 'Mastered', srsInterval: 21.0, reps: 8, lapses: 0, difficulty: 3.5, stability: 21.0, stabilityShort: 16.8, isStarred: true, lastReviewDate: Date.now() - 6 * 86400000, srsDueDate: Date.now() + 15 * 86400000 },
-        { id: 'v5_c10', english: 'paradigm', vietnamese: 'Mô hình mẫu, hệ hình tư duy', type: 'noun', pronunciation: '/ˈper.ə.daɪm/', tags: ['Science', 'Research'], example: 'The discovery caused a major paradigm shift in modern physics.', srsStatus: 'New', srsInterval: 0, reps: 0, lapses: 0, difficulty: 6.0, stability: 1.0, stabilityShort: 0.8, isStarred: false }
-    ];
-
-    setVocabulary(mockCards);
-    await saveAllVocabularyToDB(mockCards);
-
-    _gamification.userXP = 1420;
-    _gamification.currentLevel = 4;
-    _gamification.currentStreak = 12;
-    _gamification.totalReviews = 94;
-    _gamification.activityHeatmap = {
-        '2026-10-17': 18,
-        '2026-10-16': 24,
-        '2026-10-15': 15,
-        '2026-10-14': 32,
-        '2026-10-13': 14,
-        '2026-10-12': 28,
-        '2026-10-11': 20
-    };
-    await saveGamification();
-    return mockCards;
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// BARREL — re-export nguyên vẹn API công khai cũ (91 tên gốc + 2 tên ngày tháng).
+// Không call-site nào phải sửa. Nhóm theo module nguồn.
+// ─────────────────────────────────────────────────────────────────────────────
+export {
+    MAX_REVIEW_LOG_ENTRIES,
+    MAX_REVIEW_LOG_BYTES,
+    MAX_REVIEW_LOG_DELETED_IDS,
+    utf8ByteLength,
+    toCloudReviewLogPayload,
+    measureReviewLogBytes,
+    pruneReviewLogs,
+    prepareReviewLogsForCloud
+} from './state/review-log-prune.js';
+
+export { getVocabById, getVocabIndexById, updateCardInVocabulary, pushCardToVocabulary, setVocabulary } from './state/vocabulary.js';
+export { setGamification, setDailyStats };
+export { setPreviewMode, isPreviewMode } from './state/preview-mode.js';
+export { isCardLeech } from './state/typing-filter.js';
+export {
+    TTS_SETTINGS_KEY,
+    TTS_RATE_MIN,
+    TTS_RATE_MAX,
+    TTS_RATE_DEFAULT,
+    normalizeTtsRate,
+    normalizeTtsVoice,
+    getTtsSettings,
+    loadTtsSettings,
+    setTtsVoice,
+    setTtsRate
+} from './state/tts-settings.js';
+export {
+    MIN_STREAK_DAILY_REVIEWS,
+    STREAK_LEGACY_CUTOFF_DATE,
+    isDayStreakQualified,
+    reconcileStreakFreeze,
+    calculateStreakFromHeatmap
+} from './state/streak.js';
+export { seedIsolatedDemoVocabulary } from './state/demo-seed.js';
+
+export {
+    setInitialSyncDone,
+    isInitialSyncDone,
+    prepareProgress,
+    acceptProgress,
+    getComboMultiplier,
+    ensureDailyStats,
+    incrementNewCardsDone,
+    incrementDueCardsDone,
+    incrementLearningCardsDone,
+    recordReviewResult,
+    recordQuizAnswer,
+    saveGamification,
+    saveDailyStats,
+    addXP,
+    setXP,
+    checkAndApplyStreakFreeze,
+    buyStreakFreeze,
+    getStreakRecoveryStatus,
+    completeStreakRecovery,
+    syncStreakFromHeatmap,
+    logActivity,
+    checkStreakStatusOnLoad,
+    checkAndUpdateStreak,
+    unlockBadge,
+    trackEvent
+} from './state/gamification.js';
