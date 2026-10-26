@@ -3,6 +3,22 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 
+// ============================================================================
+// CHÍNH SÁCH ĐO (đọc trước khi sửa file này)
+//
+// - "Celestial canvas ngủ" được đo bằng __clearRectCount (dấu vân tay riêng của
+//   vòng vẽ canvas: animate() gọi ctx.clearRect mỗi frame).
+// - __rafCount là bộ đếm requestAnimationFrame TOÀN TRANG nên KHÔNG dùng làm
+//   assertion cho trạng thái "ngủ": toast dùng double-rAF
+//   (src/ui/modal.js:416-417) và có thể được tạo muộn từ hàng đợi toast, anime.js
+//   (modal/gamification) cũng chạy RAF. Đo bằng RAF toàn trang ⇒ fail giả ngẫu
+//   nhiên. Vì vậy mỗi test vẫn IN ra rafCount để minh bạch, nhưng kết luận
+//   PASS/FAIL dựa trên clearRect (và trạng thái UI: modal-active, window-blurred,
+//   display của canvas).
+// - Mọi thao tác UI đều click đúng nút thật (không dùng global debug của app:
+//   window.__celestialAudit chỉ tồn tại ở DEV + ?audit=1 nên KHÔNG có trong dist).
+// ============================================================================
+
 const rootDir = process.cwd();
 const distDir = path.join(rootDir, 'dist');
 const mimeTypes = {
@@ -179,6 +195,33 @@ async function runPerformanceLifecycleTests() {
           };
         }
       }
+
+      // Chờ trang "lặng" trước khi đo. __rafCount đếm RAF của TOÀN TRANG, kể cả
+      // anime.js của animation vào modal, animateNumber của gamification (chunk nạp
+      // ĐỘNG) và cặp requestAnimationFrame của toast (src/ui/modal.js:416-417, có
+      // thể được tạo muộn từ hàng đợi toast). Sleep cứng sẽ đo nhầm RAF của những
+      // thứ này thành "canvas không ngủ" (fail giả).
+      // Cần quietSlices lát LIÊN TIẾP cùng 0 RAF thì mới coi là ổn định.
+      // Đây là instrumentation của TEST, không phải global debug thêm vào app.
+      window.__settleRaf = async (quietMs = 250, quietSlices = 2, timeoutMs = 6000) => {
+        const start = performance.now();
+        let slices = 0;
+        let streak = 0;
+        while (performance.now() - start < timeoutMs) {
+          window.__rafCount = 0;
+          await new Promise(r => setTimeout(r, quietMs));
+          slices++;
+          if (window.__rafCount === 0) {
+            streak++;
+            if (streak >= quietSlices) {
+              return { settled: true, waitMs: Math.round(performance.now() - start), slices };
+            }
+          } else {
+            streak = 0;
+          }
+        }
+        return { settled: false, waitMs: Math.round(performance.now() - start), slices };
+      };
       return true;
     `);
 
@@ -251,11 +294,16 @@ async function runPerformanceLifecycleTests() {
       window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 200, clientY: 200 }));
       await new Promise(r => setTimeout(r, 100));
 
-      // Open manage modal (Celestial Hub)
-      window.__celestialAudit.openHub('overview');
-      // Wait 1700ms for modal entrance (830ms) and number counter animation (1500ms) to settle
-      await new Promise(r => setTimeout(r, 1700));
+      // Mở Celestial Hub bằng đúng nút thật trên header.
+      // index.html:111 #celestial-hub-btn -> src/events.js:725
+      //   -> openManageModal('overview') -> openModal() -> body.modal-active
+      const hubBtn = document.getElementById('celestial-hub-btn');
+      if (!hubBtn) throw new Error('UI hook missing: #celestial-hub-btn không tồn tại trong DOM');
+      hubBtn.click();
 
+      // Chờ modal entrance (830ms) + animateNumber của gamification ngủ hẳn
+      // (chunk gamification nạp động nên không thể sleep cứng một con số).
+      const settleInfo = await window.__settleRaf();
       const isModalActive = document.body.classList.contains('modal-active');
       
       // Reset counters and measure steady-state during modal active
@@ -265,15 +313,16 @@ async function runPerformanceLifecycleTests() {
 
       return {
         isModalActive,
+        settleInfo,
         rafCountDuringModal: window.__rafCount,
         clearRectDuringModal: window.__clearRectCount,
-        isSuspended: window.__rafCount === 0 && window.__clearRectCount === 0
+        isSuspended: window.__clearRectCount === 0
       };
     `);
     console.log('Test 3 Result:', t3);
     results.push({
-      name: 'Lifecycle Suspension on Modal Open (body.modal-active -> 0 RAF)',
-      passed: t3.isModalActive && t3.isSuspended
+      name: 'Lifecycle Suspension on Modal Open (body.modal-active -> canvas engine ngủ: 0 clearRect)',
+      passed: t3.isModalActive && t3.isSuspended && t3.settleInfo.settled
     });
 
     // TEST 4: Clean Resume on Modal Close
@@ -330,12 +379,12 @@ async function runPerformanceLifecycleTests() {
         isWindowBlurred,
         rafCountDuringBlur: window.__rafCount,
         clearRectDuringBlur: window.__clearRectCount,
-        isSuspended: isWindowBlurred && window.__rafCount === 0 && window.__clearRectCount === 0
+        isSuspended: isWindowBlurred && window.__clearRectCount === 0
       };
     `);
     console.log('Test 5 Result:', t5);
     results.push({
-      name: 'Lifecycle Suspension on window.blur (window-blurred -> 0 RAF)',
+      name: 'Lifecycle Suspension on window.blur (window-blurred -> canvas engine ngủ: 0 clearRect)',
       passed: t5.isSuspended
     });
 
@@ -402,37 +451,55 @@ async function runPerformanceLifecycleTests() {
         rafDuringHidden,
         clearDuringHidden,
         rafAfterVisible,
-        suspendedOnHidden: rafDuringHidden === 0 && clearDuringHidden === 0,
+        suspendedOnHidden: isWindowBlurred && clearDuringHidden === 0,
         resumedOnVisible: rafAfterVisible > 0
       };
     `);
     console.log('Test 7 Result:', t7);
     results.push({
-      name: 'Lifecycle Suspension on visibilitychange (hidden -> 0 RAF, visible -> resume)',
+      name: 'Lifecycle Suspension on visibilitychange (hidden -> canvas engine ngủ: 0 clearRect, visible -> resume)',
       passed: t7.suspendedOnHidden && t7.resumedOnVisible
     });
 
     // TEST 8: Adversarial Edge Case — Blur while Modal Active, Modal Closes, then Focus
     console.log('\n--- Test 8: Adversarial Edge Case: Blur + Modal Interactions ---');
     const t8 = await client.eval(`
-      // Open modal
-      window.__celestialAudit.openHub('words');
+      // Mở Hub bằng nút thật rồi chuyển sang tab "Từ Vựng" bằng tab thật:
+      // index.html:111 #celestial-hub-btn (src/events.js:725)
+      // index.html:686 #tab-vocab-list  (src/events.js:1066 -> switchHubTab('words'))
+      const hubBtn = document.getElementById('celestial-hub-btn');
+      if (!hubBtn) throw new Error('UI hook missing: #celestial-hub-btn không tồn tại trong DOM');
+      hubBtn.click();
+      // Hub mở ở tab Tổng quan trước (giống người dùng thật) và tab đó chạy
+      // animateNumber của gamification; chờ nó ngủ hẳn trước khi sang tab khác.
+      const settleOpen = await window.__settleRaf();
+      const wordsTab = document.getElementById('tab-vocab-list');
+      if (!wordsTab) throw new Error('UI hook missing: #tab-vocab-list không tồn tại trong DOM');
+      wordsTab.click();
       await new Promise(r => setTimeout(r, 300));
-      
+
+      // Kiểm chứng tab đã đổi thật (trạng thái UI, không phải biến nội bộ)
+      const wordsPane = document.getElementById('manage-view-words');
+      if (!wordsPane) throw new Error('UI hook missing: #manage-view-words không tồn tại trong DOM');
+      if (wordsPane.classList.contains('hidden')) throw new Error('Tab Từ Vựng không active sau khi click #tab-vocab-list');
+
       // Blur window while modal is still open
       window.dispatchEvent(new Event('blur'));
       await new Promise(r => setTimeout(r, 100));
 
       // Now close modal while blurred
-      const closeBtn = document.querySelector('#manage-modal .modal-close-btn') || document.querySelector('#close-manage-modal-btn');
+      const closeBtn = document.querySelector('#manage-modal .modal-close-btn') || document.getElementById('close-manage-modal-btn');
       if (closeBtn) closeBtn.click();
       await new Promise(r => setTimeout(r, 450));
+      // Để animation đóng modal (220ms anime.js) ngủ hẳn rồi mới đo
+      const settleClose = await window.__settleRaf();
 
       // Check: window is STILL blurred, so RAF must NOT resume yet!
       window.__rafCount = 0;
       window.__clearRectCount = 0;
       await new Promise(r => setTimeout(r, 400));
       const rafWhileStillBlurred = window.__rafCount;
+      const clearRectWhileStillBlurred = window.__clearRectCount;
 
       // Now focus window -> should resume cleanly!
       window.dispatchEvent(new Event('focus'));
@@ -442,10 +509,17 @@ async function runPerformanceLifecycleTests() {
       window.__clearRectCount = 0;
       await new Promise(r => setTimeout(r, 400));
       const rafAfterFocus = window.__rafCount;
+      const clearRectAfterFocus = window.__clearRectCount;
 
       return {
-        blurredHold: rafWhileStillBlurred === 0,
-        focusResume: rafAfterFocus > 0
+        settleOpen,
+        settleClose,
+        rafWhileStillBlurred,
+        clearRectWhileStillBlurred,
+        rafAfterFocus,
+        clearRectAfterFocus,
+        blurredHold: clearRectWhileStillBlurred === 0 && settleClose.settled,
+        focusResume: rafAfterFocus > 0 || clearRectAfterFocus > 0
       };
     `);
     console.log('Test 8 Result:', t8);
@@ -531,12 +605,14 @@ async function runPerformanceLifecycleTests() {
 
       return {
         viewportWidth: window.innerWidth,
+        elementsScanned: allElements.length,
         activeBackdropElementsCount: activeBackdropElements.length,
         activeBackdropElements,
         isStrictlyZero: activeBackdropElements.length === 0
       };
     `);
     console.log('Test 9 (320x568 Full DOM Scan) Result:', t9_320);
+    console.log(`   -> quét ${t9_320.elementsScanned} phần tử, ${t9_320.activeBackdropElementsCount} vi phạm backdrop-filter != none`);
 
     results.push({
       name: 'Mobile Zero-Backdrop-Filter (<= 768px Full DOM & Component Scan)',
@@ -550,19 +626,28 @@ async function runPerformanceLifecycleTests() {
     // TEST 10: Boost Mode Instantaneous Swap (0ms) & Canvas Hidden
     console.log('\n--- Test 10: Boost Mode Instantaneous Swap (0ms) & Canvas Hidden ---');
     const t10 = await client.eval(`
-      // Turn ON Boost Mode
-      window.__celestialAudit.setBoostMode(true);
+      // Bật Boost Mode bằng đúng nút thật trên header:
+      // index.html:150 #toggle-boost-mode-btn -> src/events.js:530 -> applyBoostMode(...)
+      const boostBtn = document.getElementById('toggle-boost-mode-btn');
+      if (!boostBtn) throw new Error('UI hook missing: #toggle-boost-mode-btn không tồn tại trong DOM');
+      if (!document.body.classList.contains('boost-mode')) boostBtn.click();
       await new Promise(r => setTimeout(r, 100));
 
-      const isBoostActive = document.body.classList.contains('boost-mode');
+      const isBoostActive = document.body.classList.contains('boost-mode') &&
+                            document.documentElement.classList.contains('boost-mode') &&
+                            boostBtn.getAttribute('aria-pressed') === 'true';
       const canvas = document.getElementById('celestial-canvas');
       const canvasDisplay = window.getComputedStyle(canvas).display;
+
+      // Boost có bật toast (anime.js) — chờ nó ngủ hẳn rồi mới đo RAF
+      const settleInfo = await window.__settleRaf();
 
       // Check RAF loop during Boost Mode
       window.__rafCount = 0;
       window.__clearRectCount = 0;
       await new Promise(r => setTimeout(r, 400));
       const boostRAF = window.__rafCount;
+      const boostClearRect = window.__clearRectCount;
 
       // Now test theme toggle speed in Boost Mode
       const startSwap = performance.now();
@@ -576,35 +661,51 @@ async function runPerformanceLifecycleTests() {
       const curtain = document.getElementById('shipper-curtain-container');
       const curtainHidden = curtain.classList.contains('hidden');
 
+      // Toast của "đã bật Boost" (và toast còn trong hàng đợi) tự tạo muộn bằng
+      // double-rAF, không liên quan tới canvas — chờ lặng lại trước khi đo cửa sổ
+      // "wake resistance", nếu không sẽ đếm nhầm RAF của toast.
+      const settleBeforeWake = await window.__settleRaf();
+
       // Dispatch mouse and pointer events to test wake resistance in Boost Mode
       window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 500, clientY: 500 }));
       window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 500, clientY: 500 }));
       window.__rafCount = 0;
+      window.__clearRectCount = 0;
       await new Promise(r => setTimeout(r, 300));
       const rafAfterWakeAttempt = window.__rafCount;
+      const clearRectAfterWakeAttempt = window.__clearRectCount;
       const canvasStillHidden = window.getComputedStyle(canvas).display === 'none';
 
-      // Restore Boost Mode to OFF
-      window.__celestialAudit.setBoostMode(false);
+      // Tắt lại Boost Mode bằng chính nút thật đó
+      if (document.body.classList.contains('boost-mode')) boostBtn.click();
       await new Promise(r => setTimeout(r, 100));
+      const boostRestoredOff = !document.body.classList.contains('boost-mode') &&
+                               !document.documentElement.classList.contains('boost-mode');
 
       return {
         isBoostActive,
         canvasDisplay,
         boostRAF,
+        boostClearRect,
+        settleInfo,
         swapDurationMs: durationMs,
         swappedInstantaneously: durationMs < 50 && modeBefore !== modeAfter,
         curtainHidden,
+        settleBeforeWake,
         rafAfterWakeAttempt,
+        clearRectAfterWakeAttempt,
         canvasStillHidden,
-        boostModeCompliant: isBoostActive && canvasDisplay === 'none' && boostRAF === 0 &&
-                            curtainHidden && rafAfterWakeAttempt === 0 && canvasStillHidden
+        boostRestoredOff,
+        boostModeCompliant: isBoostActive && canvasDisplay === 'none' &&
+                            boostClearRect === 0 && clearRectAfterWakeAttempt === 0 &&
+                            curtainHidden && canvasStillHidden &&
+                            settleInfo.settled && settleBeforeWake.settled
       };
     `);
     console.log('Test 10 Result:', t10);
     results.push({
-      name: 'Boost Mode (0ms instant theme swap, canvas hidden, 0 RAF, wake immune)',
-      passed: t10.boostModeCompliant && t10.swappedInstantaneously
+      name: 'Boost Mode (theme swap tức thời, canvas display:none, 0 frame vẽ, không bị đánh thức)',
+      passed: t10.boostModeCompliant && t10.swappedInstantaneously && t10.boostRestoredOff
     });
 
     // TEST 11: Active Recall Typing Idle RAF Suppression

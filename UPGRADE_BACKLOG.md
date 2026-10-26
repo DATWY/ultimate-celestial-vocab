@@ -390,6 +390,24 @@ Mọi số bundle phải ghi kèm **mốc thời gian build**, nếu không sẽ
 
 ---
 
+### 3.5 #6 — Nghĩa địa verifier: 6 script "verify" không chạy được trên dist thật
+
+Sửa xong 2 script (xem commit P5b) thì lộ ra 6 script còn lại cũng hỏng vì cùng nguyên nhân: chúng gọi hook **chỉ tồn tại ở DEV**, mà Vite production loại bỏ hook khỏi `dist/`:
+
+| Script | Triệu chứng | Mức nguy hiểm |
+|---|---|---|
+| `tools/verify_curtain.mjs:326` | `window.__celestialAudit.setDarkMode(true)` → TypeError, chết ở Test 8 | crash to |
+| `tools/verify_xp_bar_fix.mjs:158/191/252` | `window.__testGamification.previewRank/reset` (DEV-only, `gamification.js:1358`) → chết ngay Test 2 | crash to |
+| `tools/perf_deep_audit.mjs:351,366` | `__celestialAudit?.openHub?.()` optional chaining → **không crash** nhưng Hub không mở, nên ảnh "hub" thực chất là màn study | **sai âm thầm — nguy hiểm nhất** |
+| `tools/verify_fixes_hub_suspension.mjs:167,179` | ghi 2 ảnh ra `C:/Users/ASUS/.gemini/...` | ghi rác ngoài repo |
+| `tools/format_user_backup.mjs:5-6,60` | đọc file của tool khác + hardcode text version | ghi rác / sai dữ liệu |
+| `tools/create_backup.mjs:43` | hardcode `version:'DATWY.V2.261023.21'` trong payload backup | metadata sai |
+
+**Đính chính điều tôi đã nói sai:** tôi từng khẳng định "grep toàn bộ `src/` cho `__celestialAudit` = 0 kết quả". Sai — hook **có** ở `src/main.js:58`, nhưng nằm trong `if (import.meta.env?.DEV && ?audit=1)` (`src/main.js:46`) nên bị Vite loại khỏi dist. Lệnh grep của tôi sai vì dùng `Select-String -Path src/**/*.js` trên PowerShell 5.1 (glob `**` không đệ quy) — xem §3.6. Kết luận "script không chạy được" vẫn đúng, nhưng **lý do** thì khác.
+
+**Assertion chết cần xử lý:** `tools/verify_performance_lifecycle.mjs` Test 11 (Typing Field) trả `noSpuriousWake: true` **hardcode** ⇒ luôn PASS kể cả khi `inputRAF = 9`. Cần thay bằng assert thật hoặc xoá.
+
+**Đã sửa trong commit này:** 2 script trên + `npm run verify` (~29 s, exit 0). 6 script còn lại **chưa sửa** — để nguyên và ghi ở đây thay vì giả vờ chúng đang bảo vệ sản phẩm.
 ## 3.6 Bài học (P5)
 
 - **BOM UTF-8 làm hỏng `npm run build`.** Ghi file bằng `Set-Content -Encoding utf8` trên **PowerShell 5.1** sinh BOM

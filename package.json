@@ -7,6 +7,7 @@
     "test": "node --test tests/*.test.mjs",
     "dev": "vite",
     "build": "node tools/generate_version.js && vite build",
+    "verify": "node tools/verify_performance_lifecycle.mjs && node tools/verify_version_system.mjs",
     "budget": "node tools/bundle_budget.mjs",
     "report": "node tools/render_report.mjs",
     "preview": "vite preview",

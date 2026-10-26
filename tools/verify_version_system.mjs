@@ -4,7 +4,9 @@ import path from 'path';
 import { spawn } from 'child_process';
 import assert from 'assert';
 
-const distDir = path.join(process.cwd(), 'dist');
+const rootDir = process.cwd();
+const distDir = path.join(rootDir, 'dist');
+const reportsDir = path.join(rootDir, 'reports', 'verify');
 const mimeTypes = {
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -100,6 +102,9 @@ class CDPClient {
 }
 
 const PORT = 5215;
+// Cổng DevTools ngẫu nhiên: tránh đâm vào Chrome của script verify khác đang chạy
+// song song (port cố định 9241 từng làm script kết nối nhầm trình duyệt).
+const cdpPort = 9241 + Math.floor(Math.random() * 40);
 const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 server.listen(PORT, async () => {
@@ -107,7 +112,7 @@ server.listen(PORT, async () => {
   fs.mkdirSync(tmpDir, { recursive: true });
   const chrome = spawn(chromePath, [
     '--headless=new',
-    '--remote-debugging-port=9241',
+    '--remote-debugging-port=' + cdpPort,
     '--user-data-dir=' + tmpDir,
     '--window-size=1024,640'
   ]);
@@ -117,11 +122,11 @@ server.listen(PORT, async () => {
     for (let retry = 0; retry < 15; retry++) {
       try {
         await new Promise(r => setTimeout(r, 400));
-        pagesRes = await fetch(`http://localhost:9241/json`);
+        pagesRes = await fetch(`http://localhost:${cdpPort}/json`);
         if (pagesRes.ok) break;
       } catch (e) {}
     }
-    if (!pagesRes) throw new Error('Không thể kết nối Chrome DevTools port 9241 sau 6 giây');
+    if (!pagesRes) throw new Error(`Không thể kết nối Chrome DevTools port ${cdpPort} sau 6 giây`);
 
     const pages = await pagesRes.json();
     const page = pages.find(p => p.type === 'page') || pages[0];
@@ -137,8 +142,23 @@ server.listen(PORT, async () => {
 
     // TEST 1: Kiểm tra định dạng phiên bản nhúng theo cú pháp DATWY.V[số].yymmdd.hh
     console.log('--- TEST 1: Kiểm tra cú pháp phiên bản DATWY.V[số].yymmdd.hh ---');
-    const versionData = JSON.parse(fs.readFileSync('public/version.json', 'utf8'));
-    console.log('1.1 public/version.json:', versionData);
+    // Nguồn kỳ vọng PHẢI là artifact đang được serve: dist/version.json.
+    // Trước đây script đọc public/version.json (file nguồn). Sau `npm run build`,
+    // dist/version.json + APP_VERSION trong bundle mới là bản thật sự được phục vụ;
+    // nếu revert file nguồn thì public/version.json cũ hơn dist một cách HỢP LỆ và
+    // assertion cũ fail giả. Bất biến đúng cần kiểm: chữ trên UI khớp với
+    // version.json mà CHÍNH bản dist đó phục vụ.
+    const distVersionPath = path.join(distDir, 'version.json');
+    assert(fs.existsSync(distVersionPath), 'Thiếu dist/version.json — phải chạy `npm run build` trước khi verify');
+    const versionData = JSON.parse(fs.readFileSync(distVersionPath, 'utf8'));
+    console.log('1.1 dist/version.json (artifact đang phục vụ):', versionData);
+    const sourceVersionPath = path.join(rootDir, 'public', 'version.json');
+    if (fs.existsSync(sourceVersionPath)) {
+        const sourceVersion = JSON.parse(fs.readFileSync(sourceVersionPath, 'utf8')).version;
+        console.log(`1.2 public/version.json (nguồn): ${sourceVersion} → ${sourceVersion === versionData.version
+            ? 'khớp với dist'
+            : 'lệch dist (bình thường sau `npm run build` + revert file version; KHÔNG phải lỗi)'}`);
+    }
     const versionRegex = /^DATWY\.V\d+\.\d{6}\.\d{2}$/;
     assert(versionRegex.test(versionData.version), `Phiên bản phải khớp định dạng DATWY.V[số].yymmdd.hh, thực tế: ${versionData.version}`);
 
@@ -160,12 +180,13 @@ server.listen(PORT, async () => {
       };
     `);
     console.log('2.1 Phiên bản hiển thị trên UI:', uiVersion);
-    assert(uiVersion.text === versionData.version, `UI phải hiển thị đúng version ${versionData.version}, thực tế: ${uiVersion.text}`);
+    assert(uiVersion.text === versionData.version, `UI phải hiển thị đúng version mà dist đang phục vụ (${versionData.version} từ dist/version.json), thực tế: ${uiVersion.text}`);
     assert(uiVersion.btnExists === true, 'Nút "Kiểm Tra Cập Nhật" phải tồn tại trong DOM');
 
-    // Chụp ảnh thẻ Version Card trong Celestial Hub
+    // Chụp ảnh thẻ Version Card trong Celestial Hub (ảnh nằm trong repo: reports/verify/)
     const snapVer = await cdp.send('Page.captureScreenshot', { format: 'png' });
-    const snapVerPath = 'C:/Users/ASUS/.gemini/antigravity/brain/081af82c-235e-4abe-8abf-fa0148a383b2/verified_version_card_ui.png';
+    fs.mkdirSync(reportsDir, { recursive: true });
+    const snapVerPath = path.join(reportsDir, 'verified_version_card_ui.png');
     fs.writeFileSync(snapVerPath, Buffer.from(snapVer.data, 'base64'));
     console.log('✓ 2.2 Đã chụp ảnh thẻ Version Card:', snapVerPath);
 

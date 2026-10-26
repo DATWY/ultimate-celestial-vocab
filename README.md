@@ -47,6 +47,7 @@ cp .env.example .env      # điền thông số Firebase nếu muốn dùng đ�
 npm run dev               # http://localhost:5173
 npm test                  # 203 test
 npm run build             # build production vào dist/ (tự tăng version)
+npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~29 s, cần Chrome + dist đã build)
 ```
 
 Yêu cầu: Node.js ≥ 18 (đo trên **Node v26.1.0 / npm 11.13.0**), Vite 5.4.19.
@@ -266,6 +267,7 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 | `npm run dev` | Vite dev server | `scripts.dev` |
 | `npm run build` | `tools/generate_version.js` (tăng version) → `vite build` | `scripts.build` |
 | `npm run budget` | Đọc `dist/` **đã build**, in bảng thô/gzip từng file và so 4 ngưỡng; exit 1 nếu vượt. **Không** tự build | `tools/bundle_budget.mjs` |
+| `npm run verify` | 11 test hiệu năng/vòng đời (`tools/verify_performance_lifecycle.mjs`) + 4 test version (`tools/verify_version_system.mjs`); chạy trên **dist đã build**, cần Chrome; ~29 s | `scripts.verify` |
 | `npm run report` | Render `reports/upgrade-report.html` thành `reports/nang-cap-1..4.png` bằng Chrome headless (CDP) | `tools/render_report.mjs` |
 | `npm run icons` | Sinh lại `phosphor-subset.css` + 4 `woff2` subset | `tools/build-icon-subset.mjs` |
 | `npm run version` | Chỉ tăng version (`src/core/version.js`, `public/version.json`) | `tools/generate_version.js` |
