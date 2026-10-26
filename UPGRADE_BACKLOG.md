@@ -40,7 +40,7 @@
 
 ## 0.1 Trạng thái từng task (đo lại 2026-10-26, HEAD `c3f5a51`)
 
-**22/36 task `[x]`** (có commit), **14 task `[ ]`** — trong đó `T3.2` và `T4.3` đã làm **một phần** nhưng chưa đạt DoD.
+**31/37 task `[x]`** (có commit), **6 task `[ ]`** — trong đó `T4.5` đã làm **một phần** nhưng chưa đạt DoD, và `T2.6`, `T3.2`, `T4.3`, `T4.4`, `T5.2`, `T5.3` chưa làm.
 Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phía sau giữ nguyên nội dung gốc của task (Chạm/Làm/DoD/Verify).
 
 | Task | | Commit | Kết quả đo được / lý do chưa xong |
