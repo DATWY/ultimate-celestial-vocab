@@ -24,10 +24,10 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 | Test | **203 pass / 203**, 0 fail, 0 skip, ~0,50 s | `npm test` |
 | File test | **19** (`tests/*.test.mjs`) | `Get-ChildItem tests -File` |
 | File nguồn | **54** file, **35.504** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
-| Entry `assets/index-*.js` | 246.430 B thô → **80,67 kB gzip** (98,4% ngân sách 82 kB) | `npm run budget` |
+| Entry `assets/index-*.js` | 223,06 kB thô → **74,93 kB gzip** (91,4% ngân sách 82 kB) — **nhẹ hơn 1,4% so với trước nâng cấp** | `npm run budget` |
 | Chunk Firebase lớn nhất | 492.097 B thô → **113,69 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
 | CSS do Vite sinh | **326.696 B thô** / 58,98 kB gzip (93,3% ngân sách 350 kB) | `npm run budget` |
-| Toàn bộ `dist/` | **2.094,70 kB thô / 40 file** (ngân sách 2.700 kB) | `npm run budget` |
+| Toàn bộ `dist/` | **2.103,67 kB thô / 41 file** (ngân sách 2.700 kB) — vào bằng chunk `io-*.js` (8,87 kB gzip, chỉ tải khi mở Hub) | `npm run budget` |
 | Precache Service Worker | **35 URL** | đếm `url:"` trong `dist/sw.js` |
 | Khai báo `!important` | **1.920** trong `src/css` (riêng `style.css`: 1.624) | regex trên `src/css/**/*.css` |
 | Font Lexend self-host | **87.996 B / 3 file** `woff2` | `public/fonts/lexend-*.woff2` |
@@ -45,7 +45,7 @@ Con số "98,4% ngân sách" là **cảnh báo**, không phải thành tích: en
 npm install
 cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
 npm run dev               # http://localhost:5173
-npm test                  # 211 test
+npm test                  # 226 test
 npm run build             # build production vào dist/ (tự tăng version)
 npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~29 s, cần Chrome + dist đã build)
 ```

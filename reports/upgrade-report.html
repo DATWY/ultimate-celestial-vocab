@@ -154,27 +154,27 @@
     <div class="star" style="width:2px;height:2px;left:60px;top:330px;opacity:.3"></div>
 
     <div class="kicker"><span class="dot"></span> Báo cáo nâng cấp · 26/10/2026</div>
-    <h1>Ultimate Celestial Vocab<br><span class="grad">21 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
+    <h1>Ultimate Celestial Vocab<br><span class="grad">27 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
     <p class="sub">
         Mọi con số dưới đây là <b>đo được</b> (script trong repo hoặc Chrome headless), không phải ước lượng.
-        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>211</b> test, và có golden test khoá toàn bộ engine FSRS
+        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>226</b> test, và có golden test khoá toàn bộ engine FSRS
         để lần sau ai sửa công thức là CI đỏ ngay.
     </p>
 
     <div class="kpis">
         <div class="kpi" style="--c:var(--green)">
             <div class="label">Test tự động</div>
-            <div class="value">211 <small class="up">▲ +83</small></div>
-            <div class="note">128 → 142 → 166 → 195 → 203 → 211. Gồm 50 ca golden khoá engine, 8 test a11y, 10 test TTS, 8 test canh ranh giới module.</div>
+            <div class="value">226 <small class="up">▲ +98</small></div>
+            <div class="note">128 → 142 → 166 → 195 → 203 → 211 → 226. Gồm 50 ca golden khoá engine, 8 a11y, 10 TTS, 8 ranh giới module, 10 cap ôn/ngày, 5 lazy-listener.</div>
         </div>
         <div class="kpi" style="--c:var(--cyan)">
             <div class="label">Precache PWA</div>
-            <div class="value">1.358 <small>KiB</small></div>
+            <div class="value">1.366 <small>KiB</small></div>
             <div class="note">Từ 1.906,7 KiB <span class="down">▼ 29%</span> — cài app nhẹ hơn ~549 KiB.</div>
         </div>
         <div class="kpi" style="--c:var(--violet)">
             <div class="label">Tổng bản build</div>
-            <div class="value">2.095 <small>KiB</small></div>
+            <div class="value">2.104 <small>KiB</small></div>
             <div class="note">Từ 2.434,3 KiB <span class="down">▼ 14%</span> dù thêm App Check + TTS + self-host font + 6 test mới.</div>
         </div>
         <div class="kpi" style="--c:var(--amber)">
@@ -196,7 +196,7 @@
 
     <section>
         <h2><span class="num">01</span> Nhẹ đi ở đâu, nặng lên ở đâu</h2>
-        <p class="lead">Cùng một sản phẩm, cùng tính năng (thêm 3 tính năng mới). Dài = nặng hơn.</p>
+        <p class="lead">Cùng một sản phẩm, nhưng <b>nhiều tính năng hơn</b> (App Check, TTS, cap ôn/ngày, báo cáo) mà <b>vẫn nhẹ hơn</b> ở mọi hạng mục.</p>
         <div class="chart">
             <div class="chart-head">
                 <div class="chart-title">Trước → sau, theo từng hạng mục</div>
@@ -217,7 +217,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:71.2%"></i></div>
                     </div>
-                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1358 KiB</span></div>
+                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1366 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>Tổng dist</b>toàn bộ site</div>
@@ -225,7 +225,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:86%"></i></div>
                     </div>
-                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2095 KiB</span></div>
+                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2104 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>reviewLogs (xấu nhất)</b>trần Firestore 1 MiB</div>
@@ -246,16 +246,16 @@
                 <div class="row">
                     <div class="name"><b>Entry JS (gzip)</b>chứa tính năng mới</div>
                     <div class="bars">
-                        <div class="bar before"><i style="width:94.2%"></i></div>
-                        <div class="bar after"><i style="width:100%"></i></div>
+                        <div class="bar before"><i style="width:100%"></i></div>
+                        <div class="bar after"><i style="width:98.6%"></i></div>
                     </div>
-                    <div class="delta warn">+6,1% <span style="color:var(--ink-faint);font-weight:400">76→80,7 kB</span></div>
+                    <div class="delta good">−1,4% <span style="color:var(--ink-faint);font-weight:400">76→74,9 kB</span></div>
                 </div>
             </div>
             <div class="legend">
                 <span><i style="background:linear-gradient(90deg,#f87171,#fb7185)"></i> trước nâng cấp</span>
                 <span><i style="background:linear-gradient(90deg,#22d3ee,#34d399)"></i> sau nâng cấp</span>
-                <span style="color:var(--ink-faint)">Dòng cuối là chỗ DUY NHẤT nặng lên — đã tách panel TTS sang chunk lazy, phần còn lại là chi phí tính năng mới.</span>
+                <span style="color:var(--ink-faint)">Không còn dòng nào nặng lên: entry còn NHẸ hơn trước nâng cấp dù thêm 6 tính năng — nhờ tách panel TTS và tab Dữ liệu sang chunk lazy.</span>
             </div>
         </div>
     </section>
@@ -271,6 +271,7 @@
                 <div class="step"><div class="val">195</div><div class="col" style="height:118px"></div><div class="cap">reviewLogs 1 MiB<br>+ TTS</div><span class="delta-tag">+29 test</span></div>
                 <div class="step"><div class="val">203</div><div class="col" style="height:120px"></div><div class="cap">a11y P4<br>+ docs</div><span class="delta-tag">+8 test</span></div>
                 <div class="step"><div class="val">211</div><div class="col" style="height:126px"></div><div class="cap">tách state.js<br>+ ranh giới module</div><span class="delta-tag">+8 test</span></div>
+                <div class="step"><div class="val">226</div><div class="col" style="height:132px"></div><div class="cap">cap ôn/ngày<br>+ lazy io.js</div><span class="delta-tag">+15 test</span></div>
             </div>
         </div>
     </section>
@@ -429,7 +430,7 @@
             <div class="check"><span class="ic ok">✓</span><span><b>Ngân sách bundle trong CI</b> (<code>npm run budget</code>): entry 82 kB · firebase 120 kB · CSS 350 kB · dist 2,7 MB.</span></div>
             <div class="check"><span class="ic ok">✓</span><span><b>11 test hiệu năng/vòng đời + 4 test version chạy lại được</b> (<code>npm run verify</code>, 29 s). Trước đó 2 script này đã chết từ lâu.</span></div>
             <div class="check"><span class="ic ok">✓</span><span><b>Mobile 320×568: 0 phần tử còn <code>backdrop-filter</code></b> / 1225 phần tử — test chạy thật, không còn là assertion chết.</span></div>
-            <div class="check"><span class="ic ok">✓</span><span><b>Entry 80,67 kB = 98,4% ngân sách</b> — panel TTS đã tách sang chunk lazy 1,45 kB.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>Entry 74,93 kB = 91,4% ngân sách</b> — tách panel TTS (1,45 kB) và tab Dữ liệu (8,87 kB) sang chunk lazy; ngân sách dư ra 7,07 kB.</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>Bật App Check enforce</b> — thao tác trên Console, cần monitor 48h trước (rủi ro WebView cũ).</span></div>
             <div class="check"><span class="ic todo">!</span><span><b><code>!important</code> 1.624 trong <code>style.css</code> (1.920 toàn <code>src/css</code>) / mục tiêu &lt;800</b> — phải refactor specificity, xoá code chết không đủ.</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>6 script <code>verify</code> khác vẫn chết</b> vì gọi hook chỉ có ở DEV; 1 cái hỏng <i>âm thầm</i> (ảnh &quot;Hub&quot; thực chất là màn học).</span></div>
@@ -460,7 +461,7 @@
     </section>
 
     <section>
-        <h2><span class="num">07</span> 21 commit, theo đúng thứ tự đã làm</h2>
+        <h2><span class="num">07</span> 27 commit, theo đúng thứ tự đã làm</h2>
         <div class="tl">
             <div class="item"><div class="sha">2390c23</div><div class="rail"><div class="node"></div></div>
                 <div class="body"><div class="t">Backup 3 lớp + backlog 36 task</div>
@@ -518,6 +519,18 @@
                 <div class="body"><div class="t">P4 — 6 lỗi a11y &amp; responsive</div>
                 <div class="d">aria-label + aria-live, <code>lang="en"</code> 3 chỗ, focus sau khi lật chỉ khi bàn phím, nhãn mobile hết cắt, safe-area.</div>
                 <div class="m">+8 test</div></div></div>
+            <div class="item"><div class="sha">14885f9</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T1.5 — cap số lượt ôn mỗi ngày</div>
+                <div class="d">Mặc định 200 (50–500), dùng chung ngân sách với thẻ mới, thẻ Learning 1p/10p <b>không</b> bị chặn, thẻ hoãn vẫn due. Lưu IndexedDB + Cloud LWW.</div>
+                <div class="m">+10 test</div></div></div>
+            <div class="item"><div class="sha">81d7b09</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Đưa smoke E2E vào git + đo khởi động lần đầu</div>
+                <div class="d">`tests/e2e/study-loop.mjs` (trước nằm trong `scratch/` bị gitignore) và `docs/PERF.md`. Và đây là nơi phát hiện baseline "1,24 s" là <b>số bịa</b> (<code>sleep(1200)</code> trước <code>performance.now()</code>).</div>
+                <div class="m">app-ready thật: 283 ms cold / 69 ms warm</div></div></div>
+            <div class="item"><div class="sha">1ed0b0e</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Đưa tab Dữ liệu ra khỏi entry</div>
+                <div class="d">Entry đã chạm 99,8% trần sau T1.5. Tách <code>io.js</code> sang chunk lazy: 81,85 → <b>74,93 kB</b> gzip. Guard 2 lớp chống gắn trùng listener — CDP: mở/đóng 3 lần rồi Export ⇒ chạy đúng 1 lần.</div>
+                <div class="m">+5 test</div></div></div>
             <div class="item"><div class="sha">c3f5a51</div><div class="rail"><div class="node"></div></div>
                 <div class="body"><div class="t">Tách panel TTS sang chunk lazy</div>
                 <div class="d">Entry 81,38 → 80,67 kB gzip; chunk 1,45 kB. Chứng minh bằng cách <i>chặn request chunk</i>: app vẫn chạy, panel vắng, 1 cảnh báo.</div>
@@ -542,6 +555,18 @@
                 <div class="body"><div class="t">Tách <code>state.js</code>: 1.621 → 616 dòng, 10 module</div>
                 <div class="d">Barrel giữ đúng 93 tên, không sửa call site. Đo được: entry raw −1.374 B nhưng gzip <b>−7 B</b> — thắng về độ phức tạp, <i>không</i> phải byte. Byte thật nằm ở T4.5c.</div>
                 <div class="m">+8 test</div></div></div>
+            <div class="item"><div class="sha">14885f9</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">T1.5 — cap số lượt ôn mỗi ngày</div>
+                <div class="d">Mặc định 200 (50–500), dùng chung ngân sách với thẻ mới, thẻ Learning 1p/10p <b>không</b> bị chặn, thẻ hoãn vẫn due. Lưu IndexedDB + Cloud LWW.</div>
+                <div class="m">+10 test</div></div></div>
+            <div class="item"><div class="sha">81d7b09</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Đưa smoke E2E vào git + đo khởi động lần đầu</div>
+                <div class="d">`tests/e2e/study-loop.mjs` (trước nằm trong `scratch/` bị gitignore) và `docs/PERF.md`. Và đây là nơi phát hiện baseline "1,24 s" là <b>số bịa</b> (<code>sleep(1200)</code> trước <code>performance.now()</code>).</div>
+                <div class="m">app-ready thật: 283 ms cold / 69 ms warm</div></div></div>
+            <div class="item"><div class="sha">1ed0b0e</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Đưa tab Dữ liệu ra khỏi entry</div>
+                <div class="d">Entry đã chạm 99,8% trần sau T1.5. Tách <code>io.js</code> sang chunk lazy: 81,85 → <b>74,93 kB</b> gzip. Guard 2 lớp chống gắn trùng listener — CDP: mở/đóng 3 lần rồi Export ⇒ chạy đúng 1 lần.</div>
+                <div class="m">+5 test</div></div></div>
         </div>
     </section>
 
@@ -553,7 +578,7 @@
         vẫn chết và chưa được sửa.
     </div>
 
-    <div class="foot"><span>Ultimate Celestial Vocab · 211/211 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
+    <div class="foot"><span>Ultimate Celestial Vocab · 226/226 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
 </div>
 
 </body>

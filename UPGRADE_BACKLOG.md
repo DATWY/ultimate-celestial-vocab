@@ -56,7 +56,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T1.2 | `[x]` | `569c509` | `MAX_INTERVAL_DAYS = 365` (`constants.js:6`), clamp **sau** fuzz (`index.js:288`), dự báo cũng chịu trần (`index.js:376`) |
 | T1.3 | `[x]` | `e6d6a33` | bias ∈ ±0,5 (`heuristics.js:23-24`) ⇒ D0 lệch ±0,25; hệ số S 0,85–1,15; `heuristics-amplitude.test.mjs` **5/5** |
 | T1.4 | `[x]` | `e6d6a33` | `LEECH_LAPSE_THRESHOLD = 4`; smoke `SMOKE_LEECH=1` PASS: badge "CỰC KHÓ" hiện, nút Quên = `10p`, chấm Nhớ → bước 2 (≈1440 phút); `leech.test.mjs` **9/9** |
-| T1.5 | `[ ]` | — | Không tồn tại `maxReviewsPerDay`; chỉ có giới hạn thẻ **mới**/ngày (`computeDailyNewLimit`, `queue.js:133`) |
+| T1.5 | `[x]` | `14885f9` | `maxReviewsPerDay` (mặc định **200**, kẹp 50–500), dùng chung ngân sách với thẻ mới, thẻ Learning sub-day **không** bị cap, lưu IDB + Cloud LWW. 10 test + CDP thật (cap 50 → ôn đúng 50, còn 30 thẻ hoãn vẫn due) |
 | T1.6 | `[x]` | `4047255` | sửa 2 lỗi dự báo (srsDueDate → `Invalid Date`; bucket lệch ngày DST); `forecast.test.mjs` **20/20** |
 | T1.7 | `[x]` | `4047255` | `golden-fsrs.test.mjs` **4/4** (theo commit: 50 kịch bản × 11 trường + fuzz khoá + 200 tổ hợp PRNG) |
 | T1.8 | `[x]` | commit P5b | 10/10 câu ví dụ mẫu đã review; sửa 2 câu: `resilience` ("Courage is going on when you do not have strength." → "Her resilience helped her rebuild a life after the flood.") và `meticulous` (bớt lặp "preserving the precision"). **Phần dịch VI cho câu ví dụ KHÔNG làm được**: schema thẻ chỉ có `example`, không có field `exampleVi` → cần task riêng nếu muốn |
@@ -65,7 +65,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T2.3 | `[x]` | `f8d1ccb` | `/assets/**` + `/fonts/**` immutable 1 năm, `/index.html` + `/` no-cache, `/version.json` no-store (`firebase.json:29-83`) |
 | T2.4 | `[x]` | `4122444` | 3 ngưỡng **3000 entry / 400.000 B / 500 deletedIds** (`state.js:674-678`) + chốt `700_000` B trước khi ghi lên Cloud (`firebase.js:1040`); `review-logs-prune.test.mjs` **19/19** |
 | T2.5 | `[x]` | `4122444` (+ `c3f5a51`) | chọn giọng/tốc độ ở `src/features/ttsSettings.js`; `tts.test.mjs` **10/10**. `c3f5a51` tách panel cài đặt giọng thành chunk lazy: entry **81,38 → 80,67 kB gzip** |
-| T2.6 | `[ ]` | — | `registerType` vẫn `'autoUpdate'` (`vite.config.js:7`); chưa có toast "đã cập nhật" |
+| T2.6 | `[ ]` **cố ý hoãn** | — | Đổi `autoUpdate` → `prompt` + toast chạm đúng thứ T2.1 vừa sửa (reload loop). Cần thử trên máy thật + WebView trước; làm vội sẽ tái sinh lỗi cũ. Kế hoạch: theo dõi `onNeedRefresh` 1 phiên, chỉ hiện toast khi trang đang **không** trong phiên ôn, và chỉ reload sau khi người dùng bấm |
 | T3.1 | `[x]` | `2313e40` | woff2 icon **593.596 → 95.568 B (−83,9%)**, `phosphor-subset.css` 64.054 B / **792** rule `.ph-*`; **không xoá weight nào** — xem §3.5 #1 |
 | T3.2 | `[ ]` một phần | `862c33a` | đã xoá 504 dòng / 62 rule, `style.css` còn 410.502 B. **DoD KHÔNG đạt:** `!important` toàn `src/css` = **1.920** (mục tiêu < 800) và CSS Vite **58,98 kB gzip** (mục tiêu ≤ 40 kB) — xem §3.5 #2 |
 | T3.3 | `[x]` | `f8d1ccb` | precache **35 URL, 0 mp3**; `/sounds/*.mp3` chỉ vào `sfx-cache` (CacheFirst, 10 entry / 90 ngày) |
@@ -76,9 +76,9 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T4.3 | `[ ] một phần` | `7ec2465` | chỉ xong safe-area (`viewport-fit=cover`, `index.html:6`) + `@supports` margin-bottom. **Không** có `color-scheme` / bootstrap theme inline ⇒ nháy trắng **chưa** xử lý |
 | T4.4 | `[ ]` | — | không có file eslint/prettier trong repo; CI (`.github/workflows/ci.yml`) không có bước lint |
 | T4.5 | `[x]` một phần | `8d45904` | `state.js` **1.621 → 616 dòng**, 10 module trong `src/core/state/`, barrel giữ đúng **93 tên** (MISSING 0/ADDED 0, không sửa call site), 8 test mới canh API + 0 vòng import. **Byte KHÔNG giảm:** entry raw −1.374 B nhưng gzip **−7 B** (80.674 → 80.667) ⇒ đây là thắng về độ phức tạp, không phải byte — xem §3.5 #7 và task mới T4.5c |
-| T4.5c | `[~]` đang làm | (track T) | Đòn bẩy byte THẬT đã đo: `src/features/io.js` (31 kB) nằm trong entry vì `events.js` import tĩnh. Thí nghiệm stub ⇒ entry **81,86 → 74,78 kB gzip (−7,08 kB)**. Đang đưa io.js sang lazy mà không mất listener |
+| T4.5c | `[x]` | `1ed0b0e` | Đòn bẩy byte THẬT: `src/features/io.js` nằm trong entry vì `events.js` import tĩnh. Đưa sang lazy (guard idempotent 2 lớp) ⇒ entry **81,85 → 74,93 kB gzip (−6,92 kB)**, chunk `io-*.js` 8,87 kB gzip chỉ tải khi mở Hub; ngân sách còn **7,07 kB** thay vì 0,15 kB. CDP chứng minh mở/đóng panel 3 lần rồi Export 1 lần ⇒ handler chạy đúng 1 lần |
 | T4.6 | `[x]` | `81d7b09` | Smoke E2E vào git: `tests/e2e/study-loop.mjs` + `npm run test:e2e` (đã chạy 4 cách: new-card, leech, qua npm, từ cwd khác). Trước đó tài liệu hướng dẫn chạy **một file không có trong repo** |
-| T5.1 | `[ ]` | (`678132a` gắn nhãn) | commit `678132a` chỉ thêm script render báo cáo; đến hết `7ec2465` README **vẫn ghi "77/77"**. Bản viết lại theo số đo đang ở working tree, **chưa commit** |
+| T5.1 | `[x]` | `1ce2457` | commit `678132a` chỉ thêm script render báo cáo; đến hết `7ec2465` README **vẫn ghi "77/77"**. Bản viết lại theo số đo đang ở working tree, **chưa commit** |
 | T5.2 | `[ ]` một phần | `changelog` | Đã có `docs/README.md` làm mục lục (phân loại: nguồn sự thật / vận hành / báo cáo lịch sử). **Chưa gộp file** vì việc xoá/gộp báo cáo cũ cần người quyết định |
 | T5.3 | `[ ]` | — | `reports/WEB_DISCOVERY_FOR_CHATGPT/WEB_DISCOVERY_FOR_CHATGPT.zip` **9.019.103 B** vẫn được track (`*.zip` đã ignore nhưng file add từ trước) |
 | T5.4 | `[x]` | `changelog` | `CHANGELOG.md` sinh tự động từ `git log` bằng `tools/changelog.mjs` (0 dependency); 21 commit / 6 nhóm. KHÔNG dùng `conventional-changelog` như backlog ghi (thêm 1 dependency chỉ để in 20 dòng là không đáng) |
