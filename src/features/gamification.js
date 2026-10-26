@@ -3,6 +3,7 @@ import { DOM } from '../ui/elements.js';
 import { getState, unlockBadge, MIN_STREAK_DAILY_REVIEWS, isDayStreakQualified } from '../core/state.js';
 import { openModal, showPopup, switchHubTab } from '../ui/modal.js';
 import { getLocalDateString } from '../core/utils/date.js';
+import { escapeHTML } from '../core/utils/sanitize.js';
 
 // Removed static import for BADGES to use dynamic import for BADGE_TRACKS and SPECIAL_BADGES
 import { animateNumber, animateForecastChart, animateHeatmap, animateOverviewEntrance } from '../core/animations.js';
@@ -905,6 +906,19 @@ function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
     }
 }
 
+/**
+ * Sinh HTML danh sách chip từ vựng cho popup "Dự báo" (hàm thuần, không đụng DOM).
+ * `words` chính là word.english do người dùng nhập/import, nên BẮT BUỘC escape
+ * từng phần tử trước khi nội suy: popup này được render qua showPopup(..., true)
+ * (gán innerHTML). Test hồi quy: tests/xss-render.test.mjs.
+ * @param {string[]} words - Danh sách từ tiếng Anh của một ngày
+ * @returns {string} Chuỗi các chip `<span>` đã escape, sẵn sàng gán vào DOM
+ */
+export function buildForecastWordsHtml(words) {
+    if (!Array.isArray(words)) return '';
+    return words.map(w => `<span style="display:inline-block; padding: 6px 12px; background: rgba(138,43,226,0.15); border: 1px solid rgba(138,43,226,0.3); border-radius: 8px; margin: 4px; font-size: 0.95rem; font-weight: 500; color: var(--primary-color)">${escapeHTML(w)}</span>`).join('');
+}
+
 function renderForecast(vocabulary, isBackgroundUpdate = false) {
     if (!DOM.forecastChart) return;
     DOM.forecastChart.innerHTML = '';
@@ -995,10 +1009,10 @@ function renderForecast(vocabulary, isBackgroundUpdate = false) {
 
         barContainer.addEventListener('click', () => {
             if (count > 0) {
-                const wordsHtml = forecastWords[index].map(w => `<span style="display:inline-block; padding: 6px 12px; background: rgba(138,43,226,0.15); border: 1px solid rgba(138,43,226,0.3); border-radius: 8px; margin: 4px; font-size: 0.95rem; font-weight: 500; color: var(--primary-color)">${w}</span>`).join('');
-                showPopup(`<h3 style="margin-bottom:15px; color:var(--text-color); font-size: 1.1rem;">Dự báo <strong>${dayLabels[index]}</strong>: Có <strong style="color:var(--primary-color)">${count}</strong> từ cần ôn</h3><div style="max-height: 250px; overflow-y: auto; padding: 5px; text-align: left;">${wordsHtml}</div>`, 'info', true);
+                const wordsHtml = buildForecastWordsHtml(forecastWords[index]);
+                showPopup(`<h3 style="margin-bottom:15px; color:var(--text-color); font-size: 1.1rem;">Dự báo <strong>${escapeHTML(dayLabels[index])}</strong>: Có <strong style="color:var(--primary-color)">${count}</strong> từ cần ôn</h3><div style="max-height: 250px; overflow-y: auto; padding: 5px; text-align: left;">${wordsHtml}</div>`, 'info', true);
             } else {
-                showPopup(`<strong>${dayLabels[index]}</strong> chưa có từ nào cần ôn.<br>Chúc bạn một ngày thảnh thơi!`, 'info', true);
+                showPopup(`<strong>${escapeHTML(dayLabels[index])}</strong> chưa có từ nào cần ôn.<br>Chúc bạn một ngày thảnh thơi!`, 'info', true);
             }
         });
 

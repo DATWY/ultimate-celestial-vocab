@@ -4,6 +4,7 @@
 import { getState, buyStreakFreeze, getStreakRecoveryStatus, completeStreakRecovery } from '../core/state.js';
 import { showPopup, openModal, closeModal } from '../ui/modal.js';
 import { playSound } from '../core/sound.js';
+import { escapeHTML } from '../core/utils/sanitize.js';
 
 let penanceQuizState = null;
 
@@ -250,6 +251,24 @@ function startPenanceTrial(missedDates) {
 }
 
 /**
+ * Sinh HTML khối "Nghĩa tiếng Việt của từ" + phiên âm cho Khảo Hạch Tinh Hỏa
+ * (hàm thuần, không đụng DOM). Từ vựng và phiên âm đều là dữ liệu người dùng
+ * nhập/import nên BẮT BUỘC escape trước khi gán vào innerHTML.
+ * Test hồi quy: tests/xss-render.test.mjs.
+ * @param {{question?: string, word?: {pronunciation?: string}}} currentQ - Câu hỏi hiện tại
+ * @returns {string} Khối `.penance-question-box` đã escape
+ */
+export function buildPenanceQuestionHtml(currentQ) {
+    const questionText = currentQ?.question ?? '';
+    const pronunciation = currentQ?.word?.pronunciation;
+    return `<div class="penance-question-box">
+                <span class="question-label">Nghĩa tiếng Việt của từ:</span>
+                <h2 class="question-word">${escapeHTML(questionText)}</h2>
+                ${pronunciation ? `<span class="question-pron">${escapeHTML(pronunciation)}</span>` : ''}
+            </div>`;
+}
+
+/**
  * Hiển thị từng câu hỏi trong Khảo Hạch Tinh Hỏa
  */
 function renderPenanceQuestion() {
@@ -294,17 +313,13 @@ function renderPenanceQuestion() {
                 </div>
             ` : ''}
 
-            <div class="penance-question-box">
-                <span class="question-label">Nghĩa tiếng Việt của từ:</span>
-                <h2 class="question-word">${currentQ.question}</h2>
-                ${currentQ.word.pronunciation ? `<span class="question-pron">${currentQ.word.pronunciation}</span>` : ''}
-            </div>
+            ${buildPenanceQuestionHtml(currentQ)}
 
             <div class="penance-options-grid">
                 ${currentQ.options.map((opt, idx) => `
-                    <button type="button" class="penance-opt-btn" data-answer="${escapeHtml(opt)}">
+                    <button type="button" class="penance-opt-btn" data-answer="${escapeHTML(opt)}">
                         <span class="opt-key">${['A', 'B', 'C', 'D'][idx]}</span>
-                        <span class="opt-text">${escapeHtml(opt)}</span>
+                        <span class="opt-text">${escapeHTML(opt)}</span>
                     </button>
                 `).join('')}
             </div>
@@ -408,11 +423,6 @@ function renderPenanceSuccess(container) {
     container.querySelector('.btn-penance-claim')?.addEventListener('click', () => {
         closePenanceModal();
     });
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**

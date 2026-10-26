@@ -102,6 +102,12 @@ export async function closeModal(modalElement) {
     }
 }
 
+// CẢNH BÁO BẢO MẬT (T0.1): `isHTML = true` là API nguy hiểm vì gán thẳng innerHTML.
+// - Chỉ truyền HTML do code tạo (nhãn tĩnh, số liệu).
+// - MỌI dữ liệu người dùng (english, vietnamese, pronunciation, example, tags,
+//   topic, tên file...) phải đi qua escapeHTML() của core/utils/sanitize.js
+//   trước khi nội suy vào template.
+// - Nếu chỉ cần hiển thị văn bản thuần, để mặc định isHTML = false (dùng textContent).
 export function showPopup(message, type = 'info', isHTML = false) {
     if (!DOM.popupModal) return;
     if (isHTML) {
@@ -605,7 +611,7 @@ export async function renderDedupPairs() {
                 <span class="preview-meaning">${escapeHTML(item.suggestedVietnamese)}</span>
             </div>` : ''}
             <div class="dedup-pair-actions">
-                <button class="primary-btn merge-single-btn" data-key="${item.key}"><i class="ph-bold ph-arrows-merge"></i> Gộp 2 thẻ này</button>
+                <button class="primary-btn merge-single-btn" data-key="${escapeHTML(item.key)}"><i class="ph-bold ph-arrows-merge"></i> Gộp 2 thẻ này</button>
             </div>
         `;
         
