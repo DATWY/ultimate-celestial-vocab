@@ -154,18 +154,18 @@
     <div class="star" style="width:2px;height:2px;left:60px;top:330px;opacity:.3"></div>
 
     <div class="kicker"><span class="dot"></span> Báo cáo nâng cấp · 26/10/2026</div>
-    <h1>Ultimate Celestial Vocab<br><span class="grad">27 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
+    <h1>Ultimate Celestial Vocab<br><span class="grad">32 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
     <p class="sub">
         Mọi con số dưới đây là <b>đo được</b> (script trong repo hoặc Chrome headless), không phải ước lượng.
-        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>226</b> test, và có golden test khoá toàn bộ engine FSRS
+        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>229</b> test, và có golden test khoá toàn bộ engine FSRS
         để lần sau ai sửa công thức là CI đỏ ngay.
     </p>
 
     <div class="kpis">
         <div class="kpi" style="--c:var(--green)">
             <div class="label">Test tự động</div>
-            <div class="value">226 <small class="up">▲ +98</small></div>
-            <div class="note">128 → 142 → 166 → 195 → 203 → 211 → 226. Gồm 50 ca golden khoá engine, 8 a11y, 10 TTS, 8 ranh giới module, 10 cap ôn/ngày, 5 lazy-listener.</div>
+            <div class="value">229 <small class="up">▲ +101</small></div>
+            <div class="note">128 → 142 → 166 → 195 → 203 → 211 → 226 → 229. Gồm 50 ca golden khoá engine, 8 a11y, 10 TTS, 8 ranh giới module, 10 cap ôn/ngày, 5 lazy-listener, 3 CSS hygiene.</div>
         </div>
         <div class="kpi" style="--c:var(--cyan)">
             <div class="label">Precache PWA</div>
@@ -174,7 +174,7 @@
         </div>
         <div class="kpi" style="--c:var(--violet)">
             <div class="label">Tổng bản build</div>
-            <div class="value">2.104 <small>KiB</small></div>
+            <div class="value">2.100 <small>KiB</small></div>
             <div class="note">Từ 2.434,3 KiB <span class="down">▼ 14%</span> dù thêm App Check + TTS + self-host font + 6 test mới.</div>
         </div>
         <div class="kpi" style="--c:var(--amber)">
@@ -225,7 +225,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:86%"></i></div>
                     </div>
-                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2104 KiB</span></div>
+                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2100 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>reviewLogs (xấu nhất)</b>trần Firestore 1 MiB</div>
@@ -272,6 +272,7 @@
                 <div class="step"><div class="val">203</div><div class="col" style="height:120px"></div><div class="cap">a11y P4<br>+ docs</div><span class="delta-tag">+8 test</span></div>
                 <div class="step"><div class="val">211</div><div class="col" style="height:126px"></div><div class="cap">tách state.js<br>+ ranh giới module</div><span class="delta-tag">+8 test</span></div>
                 <div class="step"><div class="val">226</div><div class="col" style="height:132px"></div><div class="cap">cap ôn/ngày<br>+ lazy io.js</div><span class="delta-tag">+15 test</span></div>
+                <div class="step"><div class="val">229</div><div class="col" style="height:136px"></div><div class="cap">dọn !important<br>+ safe-area</div><span class="delta-tag">+3 test</span></div>
             </div>
         </div>
     </section>
@@ -432,13 +433,13 @@
             <div class="check"><span class="ic ok">✓</span><span><b>Mobile 320×568: 0 phần tử còn <code>backdrop-filter</code></b> / 1225 phần tử — test chạy thật, không còn là assertion chết.</span></div>
             <div class="check"><span class="ic ok">✓</span><span><b>Entry 74,93 kB = 91,4% ngân sách</b> — tách panel TTS (1,45 kB) và tab Dữ liệu (8,87 kB) sang chunk lazy; ngân sách dư ra 7,07 kB.</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>Bật App Check enforce</b> — thao tác trên Console, cần monitor 48h trước (rủi ro WebView cũ).</span></div>
-            <div class="check"><span class="ic todo">!</span><span><b><code>!important</code> 1.624 trong <code>style.css</code> (1.920 toàn <code>src/css</code>) / mục tiêu &lt;800</b> — phải refactor specificity, xoá code chết không đủ.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b><code>!important</code> 1.920 → 286</b> (riêng <code>style.css</code> 1.624 → 188) bằng <code>@layer</code> + hạ specificity — và <b>32/32 ảnh giao diện trùng khớp</b>, 0 pixel khác.</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>6 script <code>verify</code> khác vẫn chết</b> vì gọi hook chỉ có ở DEV; 1 cái hỏng <i>âm thầm</i> (ảnh &quot;Hub&quot; thực chất là màn học).</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>Sync A↔B chưa thử với Firestore thật</b> — cần 2 tài khoản để xác nhận kéo đủ thẻ + progress.</span></div>
         </div>
     </section>
 
-    <div class="foot"><span>Bảo mật &amp; độ bền — 9 việc đã xong, 4 việc còn lại</span><span>trang 3 / 4</span></div>
+    <div class="foot"><span>Bảo mật &amp; độ bền — 10 việc đã xong, 3 việc còn lại</span><span>trang 3 / 4</span></div>
 </div>
 
 <!-- ══════════════════════ PAGE 4 ══════════════════════ -->
@@ -461,7 +462,7 @@
     </section>
 
     <section>
-        <h2><span class="num">07</span> 27 commit, theo đúng thứ tự đã làm</h2>
+        <h2><span class="num">07</span> 32 commit, theo đúng thứ tự đã làm</h2>
         <div class="tl">
             <div class="item"><div class="sha">2390c23</div><div class="rail"><div class="node"></div></div>
                 <div class="body"><div class="t">Backup 3 lớp + backlog 36 task</div>
@@ -555,6 +556,10 @@
                 <div class="body"><div class="t">Đưa tab Dữ liệu ra khỏi entry</div>
                 <div class="d">Entry đã chạm 99,8% trần sau T1.5. Tách <code>io.js</code> sang chunk lazy: 81,85 → <b>74,93 kB</b> gzip. Guard 2 lớp chống gắn trùng listener — CDP: mở/đóng 3 lần rồi Export ⇒ chạy đúng 1 lần.</div>
                 <div class="m">+5 test</div></div></div>
+            <div class="item"><div class="sha">03900c2</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Dọn <code>!important</code> + safe-area xoay ngang</div>
+                <div class="d">1.920 → <b>286</b> bằng <code>@layer</code> và hạ specificity (không xoá rule). Thêm <code>env(safe-area-inset-left/right)</code>: phần tử bị tai thỏ che <b>54 → 0</b>. Chứng minh bằng 32 ảnh so sánh từng pixel.</div>
+                <div class="m">+3 test</div></div></div>
         </div>
     </section>
 
@@ -567,7 +572,7 @@
         vì chạm đúng chỗ vừa sửa reload loop.
     </div>
 
-    <div class="foot"><span>Ultimate Celestial Vocab · 226/226 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
+    <div class="foot"><span>Ultimate Celestial Vocab · 229/229 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
 </div>
 
 </body>
