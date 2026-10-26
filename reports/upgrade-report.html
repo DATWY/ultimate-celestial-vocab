@@ -154,28 +154,28 @@
     <div class="star" style="width:2px;height:2px;left:60px;top:330px;opacity:.3"></div>
 
     <div class="kicker"><span class="dot"></span> Báo cáo nâng cấp · 26/10/2026</div>
-    <h1>Ultimate Celestial Vocab<br><span class="grad">11 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
+    <h1>Ultimate Celestial Vocab<br><span class="grad">18 commit · 6 lỗi thật đã sửa · nhẹ hơn 14%</span></h1>
     <p class="sub">
         Mọi con số dưới đây là <b>đo được</b> (script trong repo hoặc Chrome headless), không phải ước lượng.
-        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>195</b> test, và có golden test khoá toàn bộ engine FSRS
+        Mỗi thay đổi đều kèm test: từ <b>128</b> lên <b>203</b> test, và có golden test khoá toàn bộ engine FSRS
         để lần sau ai sửa công thức là CI đỏ ngay.
     </p>
 
     <div class="kpis">
         <div class="kpi" style="--c:var(--green)">
             <div class="label">Test tự động</div>
-            <div class="value">195 <small class="up">▲ +67</small></div>
-            <div class="note">128 → 142 → 166 → 195. Gồm 50 ca golden khoá 11 trường engine.</div>
+            <div class="value">203 <small class="up">▲ +75</small></div>
+            <div class="note">128 → 142 → 166 → 195 → 203. Gồm 50 ca golden khoá engine, 8 test a11y, 10 test TTS.</div>
         </div>
         <div class="kpi" style="--c:var(--cyan)">
             <div class="label">Precache PWA</div>
-            <div class="value">1.357 <small>KiB</small></div>
+            <div class="value">1.359 <small>KiB</small></div>
             <div class="note">Từ 1.906,7 KiB <span class="down">▼ 29%</span> — cài app nhẹ hơn ~549 KiB.</div>
         </div>
         <div class="kpi" style="--c:var(--violet)">
             <div class="label">Tổng bản build</div>
-            <div class="value">2.094 <small>KiB</small></div>
-            <div class="note">Từ 2.434,3 KiB <span class="down">▼ 14%</span> dù thêm App Check + TTS + self-host font.</div>
+            <div class="value">2.096 <small>KiB</small></div>
+            <div class="note">Từ 2.434,3 KiB <span class="down">▼ 14%</span> dù thêm App Check + TTS + self-host font + 6 test mới.</div>
         </div>
         <div class="kpi" style="--c:var(--amber)">
             <div class="label">Rủi ro mất dữ liệu</div>
@@ -217,7 +217,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:71.2%"></i></div>
                     </div>
-                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1357 KiB</span></div>
+                    <div class="delta down">−29% <span style="color:var(--ink-faint);font-weight:400">1907→1359 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>Tổng dist</b>toàn bộ site</div>
@@ -225,7 +225,7 @@
                         <div class="bar before"><i style="width:100%"></i></div>
                         <div class="bar after"><i style="width:86%"></i></div>
                     </div>
-                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2094 KiB</span></div>
+                    <div class="delta down">−14% <span style="color:var(--ink-faint);font-weight:400">2434→2096 KiB</span></div>
                 </div>
                 <div class="row">
                     <div class="name"><b>reviewLogs (xấu nhất)</b>trần Firestore 1 MiB</div>
@@ -246,16 +246,16 @@
                 <div class="row">
                     <div class="name"><b>Entry JS (gzip)</b>chứa tính năng mới</div>
                     <div class="bars">
-                        <div class="bar before"><i style="width:93.4%"></i></div>
+                        <div class="bar before"><i style="width:94.2%"></i></div>
                         <div class="bar after"><i style="width:100%"></i></div>
                     </div>
-                    <div class="delta warn">+4,3% <span style="color:var(--ink-faint);font-weight:400">76→81,4 kB</span></div>
+                    <div class="delta warn">+6,1% <span style="color:var(--ink-faint);font-weight:400">76→80,7 kB</span></div>
                 </div>
             </div>
             <div class="legend">
                 <span><i style="background:linear-gradient(90deg,#f87171,#fb7185)"></i> trước nâng cấp</span>
                 <span><i style="background:linear-gradient(90deg,#22d3ee,#34d399)"></i> sau nâng cấp</span>
-                <span style="color:var(--ink-faint)">Dòng cuối là chỗ DUY NHẤT nặng lên — đang được tách chunk lazy.</span>
+                <span style="color:var(--ink-faint)">Dòng cuối là chỗ DUY NHẤT nặng lên — đã tách panel TTS sang chunk lazy, phần còn lại là chi phí tính năng mới.</span>
             </div>
         </div>
     </section>
@@ -268,7 +268,8 @@
                 <div class="step"><div class="val">128</div><div class="col" style="height:66px"></div><div class="cap">Baseline<br>trước nâng cấp</div></div>
                 <div class="step"><div class="val">142</div><div class="col" style="height:78px"></div><div class="cap">SRS leech<br>+ heuristics</div><span class="delta-tag">+14 test</span></div>
                 <div class="step"><div class="val">166</div><div class="col" style="height:100px"></div><div class="cap">Golden FSRS<br>+ dự báo 7 ngày</div><span class="delta-tag">+24 test</span></div>
-                <div class="step"><div class="val">195</div><div class="col" style="height:123px"></div><div class="cap">reviewLogs 1 MiB<br>+ TTS</div><span class="delta-tag">+29 test</span></div>
+                <div class="step"><div class="val">195</div><div class="col" style="height:118px"></div><div class="cap">reviewLogs 1 MiB<br>+ TTS</div><span class="delta-tag">+29 test</span></div>
+                <div class="step"><div class="val">203</div><div class="col" style="height:126px"></div><div class="cap">a11y P4<br>+ docs</div><span class="delta-tag">+8 test</span></div>
             </div>
         </div>
     </section>
@@ -425,14 +426,17 @@
             <div class="check"><span class="ic ok">✓</span><span><b>1 MiB Firestore</b> có 3 ngưỡng + prune ở 3 chỗ, không bao giờ đụng vào card/progress.</span></div>
             <div class="check"><span class="ic ok">✓</span><span><b>Golden test 50 ca × 11 trường</b> + bất biến 200 tổ hợp: đổi công thức là CI đỏ.</span></div>
             <div class="check"><span class="ic ok">✓</span><span><b>Ngân sách bundle trong CI</b> (<code>npm run budget</code>): entry 82 kB · firebase 120 kB · CSS 350 kB · dist 2,7 MB.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>11 test hiệu năng/vòng đời + 4 test version chạy lại được</b> (<code>npm run verify</code>, 29 s). Trước đó 2 script này đã chết từ lâu.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>Mobile 320×568: 0 phần tử còn <code>backdrop-filter</code></b> / 1225 phần tử — test chạy thật, không còn là assertion chết.</span></div>
+            <div class="check"><span class="ic ok">✓</span><span><b>Entry 80,67 kB = 98,4% ngân sách</b> — panel TTS đã tách sang chunk lazy 1,45 kB.</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>Bật App Check enforce</b> — thao tác trên Console, cần monitor 48h trước (rủi ro WebView cũ).</span></div>
-            <div class="check"><span class="ic todo">!</span><span><b><code>!important</code> còn 1.624 / mục tiêu &lt;800</b> — phải refactor specificity, xoá code chết không đủ.</span></div>
-            <div class="check"><span class="ic todo">!</span><span><b>Entry gzip 99% ngân sách</b> — đang tách panel TTS sang chunk lazy.</span></div>
+            <div class="check"><span class="ic todo">!</span><span><b><code>!important</code> 1.624 trong <code>style.css</code> (1.920 toàn <code>src/css</code>) / mục tiêu &lt;800</b> — phải refactor specificity, xoá code chết không đủ.</span></div>
+            <div class="check"><span class="ic todo">!</span><span><b>6 script <code>verify</code> khác vẫn chết</b> vì gọi hook chỉ có ở DEV; 1 cái hỏng <i>âm thầm</i> (ảnh &quot;Hub&quot; thực chất là màn học).</span></div>
             <div class="check"><span class="ic todo">!</span><span><b>Sync A↔B chưa thử với Firestore thật</b> — cần 2 tài khoản để xác nhận kéo đủ thẻ + progress.</span></div>
         </div>
     </section>
 
-    <div class="foot"><span>Bảo mật &amp; độ bền — 6 việc đã xong, 4 việc còn lại</span><span>trang 3 / 4</span></div>
+    <div class="foot"><span>Bảo mật &amp; độ bền — 9 việc đã xong, 4 việc còn lại</span><span>trang 3 / 4</span></div>
 </div>
 
 <!-- ══════════════════════ PAGE 4 ══════════════════════ -->
@@ -455,7 +459,7 @@
     </section>
 
     <section>
-        <h2><span class="num">07</span> 11 commit, theo đúng thứ tự đã làm</h2>
+        <h2><span class="num">07</span> 18 commit, theo đúng thứ tự đã làm</h2>
         <div class="tl">
             <div class="item"><div class="sha">2390c23</div><div class="rail"><div class="node"></div></div>
                 <div class="body"><div class="t">Backup 3 lớp + backlog 36 task</div>
@@ -501,17 +505,46 @@
                 <div class="body"><div class="t">T2.4 + T2.5 — chặn trần 1 MiB + TTS minh bạch</div>
                 <div class="d">reviewLogs xấu nhất 1.180 → 330 KB; chọn giọng/tốc độ, badge nguồn, fallback một lần/phiên.</div>
                 <div class="m">+29 test</div></div></div>
+            <div class="item"><div class="sha">678132a</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Báo cáo trực quan 4 trang (chính là tài liệu này)</div>
+                <div class="d">HTML + <code>tools/render_report.mjs</code> render từng trang bằng Chrome headless, font dùng chính woff2 của app nên ảnh khớp sản phẩm.</div>
+                <div class="m">tái lập: npm run report</div></div></div>
+            <div class="item"><div class="sha">cc3f65d</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Sửa build bị hỏng do BOM UTF-8</div>
+                <div class="d">Mình ghi <code>package.json</code> bằng PowerShell 5.1 <code>Set-Content -Encoding utf8</code> → dính BOM → <code>vite-plugin-pwa</code> chết vì <code>JSON.parse</code>. Quét 8 file tracked, strip sạch.</div>
+                <div class="m">npm run build xanh lại</div></div></div>
+            <div class="item"><div class="sha">7ec2465</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">P4 — 6 lỗi a11y &amp; responsive</div>
+                <div class="d">aria-label + aria-live, <code>lang="en"</code> 3 chỗ, focus sau khi lật chỉ khi bàn phím, nhãn mobile hết cắt, safe-area.</div>
+                <div class="m">+8 test</div></div></div>
+            <div class="item"><div class="sha">c3f5a51</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Tách panel TTS sang chunk lazy</div>
+                <div class="d">Entry 81,38 → 80,67 kB gzip; chunk 1,45 kB. Chứng minh bằng cách <i>chặn request chunk</i>: app vẫn chạy, panel vắng, 1 cảnh báo.</div>
+                <div class="m">98,4% ngân sách (trước 99,2%)</div></div></div>
+            <div class="item"><div class="sha">1ce2457</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">P5 — viết lại README theo code thật</div>
+                <div class="d">19 khẳng định sai/lỗi thời được sửa (test 77→203, Google Fonts, power-law, trần 21 ngày, sync ±3 phút…) + <code>docs/SMOKE_TEST.md</code>.</div>
+                <div class="m">22/36 task có SHA</div></div></div>
+            <div class="item"><div class="sha">e066222</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Sửa 2 câu ví dụ mẫu</div>
+                <div class="d">&quot;Courage is going on when you do not have strength.&quot; → &quot;Her resilience helped her rebuild a life after the flood.&quot;</div>
+                <div class="m">10/10 câu đã review</div></div></div>
+            <div class="item"><div class="sha">1476c29</div><div class="rail"><div class="node"></div></div>
+                <div class="body"><div class="t">Sửa 2 verifier đã chết từ lâu</div>
+                <div class="d">Thay hook chỉ-có-ở-DEV bằng thao tác UI thật; version lấy từ <code>dist/version.json</code>. Test mobile <code>backdrop-filter</code> nay chạy thật: 0 vi phạm / 1225 phần tử.</div>
+                <div class="m">npm run verify: 11 + 4 PASS</div></div></div>
         </div>
     </section>
 
     <div class="caveat">
         <b style="color:var(--ink-dim)">Những gì mình KHÔNG tuyên bố:</b> chưa test đồng bộ A↔B với Firestore thật (cần 2 tài khoản);
         chưa bật App Check enforce; screen reader thật (NVDA/VoiceOver) và iPhone thật chưa test;
-        đo hiệu năng trên máy thật chưa chạy lại sau các thay đổi. Entry bundle nặng thêm 4,3% gzip vì có thêm tính năng — đang tách lazy,
-        không phải đã xong.
+        đo hiệu năng trên máy thật chưa chạy lại sau các thay đổi. Entry bundle nặng thêm 6,1% gzip so với trước nâng cấp vì có thêm tính năng (đã tách
+        panel TTS, chặn trên là 82 kB). 6 script <code>verify</code> khác trong <code>tools/</code>
+        vẫn chết và chưa được sửa.
     </div>
 
-    <div class="foot"><span>Ultimate Celestial Vocab · 195/195 test · cây làm việc sạch</span><span>trang 4 / 4</span></div>
+    <div class="foot"><span>Ultimate Celestial Vocab · 203/203 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
 </div>
 
 </body>
