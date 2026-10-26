@@ -45,7 +45,7 @@ Con số "98,4% ngân sách" là **cảnh báo**, không phải thành tích: en
 npm install
 cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
 npm run dev               # http://localhost:5173
-npm test                  # 229 test
+npm test                  # 241 test
 npm run build             # build production vào dist/ (tự tăng version)
 npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~29 s, cần Chrome + dist đã build)
 ```
