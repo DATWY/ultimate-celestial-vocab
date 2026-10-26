@@ -257,7 +257,11 @@ function installDomStub() {
 test('panel giọng/tốc độ: gắn vào khối settings có sẵn, nạp option và lưu lựa chọn', async () => {
     const dom = installDomStub();
     try {
-        const group = sound.mountTtsSettingsUI();
+        // sound.mountTtsSettingsUI() giờ trả Promise: code dựng DOM của panel đã
+        // tách sang chunk lazy src/features/ttsSettings.js (giảm entry bundle),
+        // nên phải await trước khi assert. Hợp đồng của test KHÔNG đổi: panel phải
+        // nằm TRONG khối settings có sẵn, không tạo container ngoài.
+        const group = await sound.mountTtsSettingsUI();
         assert.ok(group, 'phải gắn được vào #taskbar-menu .group-utilities');
         assert.equal(dom.host.children.length, 1, 'không tạo thêm khối ngoài panel settings');
         assert.equal(group.className.includes('header-group'), false, 'không lồng .header-group (CSS mobile sẽ ép width/height)');
@@ -294,7 +298,7 @@ test('panel giọng/tốc độ: gắn vào khối settings có sẵn, nạp opt
         assert.equal(getTtsSettings().rate, 0.8, 'đổi tốc độ trên UI phải lưu vào settings');
         assert.deepEqual(await getSettingFromDB('ttsSettings'), { voice: 'voice-us', rate: 0.8 });
 
-        sound.mountTtsSettingsUI();
+        await sound.mountTtsSettingsUI();
         assert.equal(dom.host.children.length, 1, 'mount lần 2 không nhân đôi panel');
     } finally {
         delete globalThis.document;
