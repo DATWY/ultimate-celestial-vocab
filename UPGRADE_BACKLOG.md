@@ -76,6 +76,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T4.3 | `[ ] một phần` | `7ec2465` | chỉ xong safe-area (`viewport-fit=cover`, `index.html:6`) + `@supports` margin-bottom. **Không** có `color-scheme` / bootstrap theme inline ⇒ nháy trắng **chưa** xử lý |
 | T4.4 | `[ ]` | — | không có file eslint/prettier trong repo; CI (`.github/workflows/ci.yml`) không có bước lint |
 | T4.5 | `[x]` một phần | `8d45904` | `state.js` **1.621 → 616 dòng**, 10 module trong `src/core/state/`, barrel giữ đúng **93 tên** (MISSING 0/ADDED 0, không sửa call site), 8 test mới canh API + 0 vòng import. **Byte KHÔNG giảm:** entry raw −1.374 B nhưng gzip **−7 B** (80.674 → 80.667) ⇒ đây là thắng về độ phức tạp, không phải byte — xem §3.5 #7 và task mới T4.5c |
+| T4.5c | `[~]` đang làm | (track T) | Đòn bẩy byte THẬT đã đo: `src/features/io.js` (31 kB) nằm trong entry vì `events.js` import tĩnh. Thí nghiệm stub ⇒ entry **81,86 → 74,78 kB gzip (−7,08 kB)**. Đang đưa io.js sang lazy mà không mất listener |
 | T4.6 | `[x]` | `81d7b09` | Smoke E2E vào git: `tests/e2e/study-loop.mjs` + `npm run test:e2e` (đã chạy 4 cách: new-card, leech, qua npm, từ cwd khác). Trước đó tài liệu hướng dẫn chạy **một file không có trong repo** |
 | T5.1 | `[ ]` | (`678132a` gắn nhãn) | commit `678132a` chỉ thêm script render báo cáo; đến hết `7ec2465` README **vẫn ghi "77/77"**. Bản viết lại theo số đo đang ở working tree, **chưa commit** |
 | T5.2 | `[ ]` một phần | `changelog` | Đã có `docs/README.md` làm mục lục (phân loại: nguồn sự thật / vận hành / báo cáo lịch sử). **Chưa gộp file** vì việc xoá/gộp báo cáo cũ cần người quyết định |
@@ -419,7 +420,7 @@ Tách 1.621 dòng thành 11 file nhưng entry gzip gần như không đổi: **8
 
 **Ràng buộc cứng phát hiện thêm:** `tests/reliability.test.mjs` **trích mã nguồn** của `removeReviewLog`/`compressLogs`/`mergeReviewLogs`/`revertGamificationAfterUndo` từ chính `state.js` rồi chạy trong `vm` với binding giả. Vì vậy 2 cụm này **không thể** chuyển sang module khác (đã thử: 2 test đỏ). Đây là test bám vào *cách bố trí mã*, không bám vào hành vi — sửa test đó nếu muốn tự do refactor.
 
-**Task mới T4.5c (chưa làm):** bỏ kiểu `await import('./state.js')` ở 12 call site trong module entry, chuyển sang import tĩnh có chọn lọc + xoá 25 export chết. Đó mới là đòn bẩy byte thật; ước tính cần đo lại chứ không hứa trước con số.
+**Sửa lại con số "25 export chết":** đếm lại bằng `scratch/export-usage2.mjs` (có tính cả truy cập qua namespace `state.xxx`) cho ra **3** export không dùng ở đâu (`clearReviewLogs`, `popLastReviewLog`, `setUserSrsParams`), không phải 25. Con số 25 là đếm theo *static import* nên bỏ sót lời gọi động. ⇒ Xoá export chết **không phải** đòn bẩy byte; T4.5c phải đổi hướng (xem T4.5c bên dưới).
 
 ### 3.5 #8 — Baseline "app-ready ~1,24 s" là SỐ BỊA, không phải phép đo
 
