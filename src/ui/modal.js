@@ -322,12 +322,23 @@ export function switchHubTab(targetTab = 'overview') {
         import('../features/gamification.js').then(m => (m.renderBadgesTab || m.renderGamificationUI)?.());
     } else if (activeTabId === 'io') {
         displayAppVersion?.();
-        import('../features/io.js').then(m => m.refreshIoTabUI?.());
+        // io.js là chunk lười: gắn listener TRƯỚC khi refresh (setup idempotent)
+        // để bấm Import/Export/Xoá ngay sau khi tab hiện ra vẫn có handler.
+        import('../features/io.js').then(m => {
+            m.setupIOEventListeners?.();
+            m.refreshIoTabUI?.();
+        });
     }
 }
 
 export function openManageModal(targetTab = 'overview') {
     if (!DOM.manageModal) return;
+    // Tab "Dữ liệu" nằm trong chunk lười features/io.js. Nạp trước + gắn listener
+    // ngay khi mở Hub (setup idempotent) để handler Import/Export/Xoá sẵn sàng
+    // trước khi người dùng kịp bấm sang tab đó — không dựa vào setTimeout/idle.
+    void import('../features/io.js')
+        .then(module => module.setupIOEventListeners?.())
+        .catch(() => { /* offline/chunk lỗi: refreshIoTabUI sẽ thử lại khi mở tab */ });
     if (DOM.panelTopicFilter) DOM.panelTopicFilter.value = getState().currentTopicFilter;
     if (DOM.manageSearchInput) DOM.manageSearchInput.value = '';
     

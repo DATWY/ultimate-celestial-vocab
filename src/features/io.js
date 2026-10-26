@@ -24,8 +24,31 @@ let parsedImportData = {
     updateItems: []
 };
 
+// ─── GẮN LISTENER CHO TAB "DỮ LIỆU" — IDEMPOTENT ─────────────────────────────
+// io.js giờ là chunk LƯỜI (không còn trong entry). setupIOEventListeners() có
+// thể được gọi từ nhiều đường: mở Hub (modal.js), lần render đầu của tab Dữ
+// liệu (refreshIoTabUI), hoặc khi preload. Cờ dưới đây bảo đảm mỗi listener chỉ
+// được gắn ĐÚNG MỘT LẦN — bấm Export/Xoá một lần không bao giờ chạy hai lần
+// (nhân đôi import/xoá dữ liệu là thảm hoạ). Cờ đặt trên globalThis để HMR nạp
+// lại module cũng không gắn trùng; cờ module là đường nhanh cho lần gọi sau.
+const IO_BIND_FLAG = '__ucvIoEventListenersBound';
+const ioBindScope = typeof globalThis !== 'undefined' ? globalThis : {};
+let _ioListenersBound = false;
+
+/** True nếu listener của tab Dữ liệu đã được gắn (bởi module này hoặc bản HMR trước). */
+export function areIOEventListenersBound() {
+    return Boolean(_ioListenersBound || ioBindScope[IO_BIND_FLAG]);
+}
+
 // Nâng cấp: Xử lý sự kiện chọn file để xem trước
+/** Gắn toàn bộ listener của tab Dữ liệu. Trả true nếu vừa gắn, false nếu đã gắn trước đó. */
 export function setupIOEventListeners() {
+    if (areIOEventListenersBound()) return false;
+    // Đặt cờ TRƯỚC khi bind để một lần gọi lỗi giữa chừng cũng không bao giờ
+    // dẫn tới việc gắn trùng ở lần gọi sau.
+    _ioListenersBound = true;
+    try { ioBindScope[IO_BIND_FLAG] = true; } catch (_) { /* môi trường không cho ghi global */ }
+
     DOM.exportBtn?.addEventListener('click', handleExport);
     DOM.exportLogsBtn?.addEventListener('click', handleExportLogs);
     DOM.configFsrs7Btn?.addEventListener('click', () => {
@@ -133,6 +156,7 @@ export function setupIOEventListeners() {
             }
         });
     }
+    return true;
 }
 
 function handleFileSelect(event) {
@@ -694,8 +718,11 @@ export async function handleDownloadAllAudio() {
 
 /**
  * Làm mới toàn bộ thông tin hiển thị của tab "Dữ Liệu" mỗi khi người dùng chuyển sang tab này.
+ * Đồng thời là điểm bảo đảm listener đã sẵn sàng: mở panel Dữ liệu LUÔN đi qua
+ * hàm này, nên Import/Export/Xoá không thể bấm khi chưa được gắn listener.
  */
 export function refreshIoTabUI() {
+    setupIOEventListeners();
     updateSyncKeyUI();
     updateAudioCacheUI();
     checkAppVersion();

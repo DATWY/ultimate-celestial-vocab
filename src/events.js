@@ -10,7 +10,6 @@ import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, record
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming, getReviewCapSettings, setMaxReviewsPerDay } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
-import { setupIOEventListeners, handleApplySyncKey, handleCopySyncKey } from './features/io.js';
 import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
@@ -20,6 +19,15 @@ function runCloudSync(options) {
     import('./core/firebase.js')
         .then(module => module.smartSync?.(options))
         .catch(error => console.warn('Cloud sync chưa sẵn sàng:', error));
+}
+
+// Tab Dữ liệu (src/features/io.js) cũng đã ra khỏi entry: listener được io.js tự
+// gắn idempotent khi mở Hub / render tab, còn 2 handler dưới đây nạp module theo
+// yêu cầu rồi mới gọi — không giữ import tĩnh nào kéo io.js vào critical path.
+function runIOModule(task) {
+    import('./features/io.js')
+        .then(module => task(module))
+        .catch(error => console.warn('Không nạp được module Dữ liệu:', error));
 }
 
 async function loadAndShowQuiz() {
@@ -1133,7 +1141,9 @@ export function setupEventListeners() {
     DOM.mergeAllDupsBtn?.addEventListener('click', () => executeMergeAll());
 
     // Manage Panel (New and updated listeners)
-    setupIOEventListeners(); // Handles Import, Export, Clear All
+    // Tab Dữ liệu: io.js là chunk lười, KHÔNG gọi setupIOEventListeners() ở đây
+    // nữa. modal.openManageModal() nạp trước + gắn listener ngay khi mở Hub, và
+    // refreshIoTabUI() gọi lại setup (idempotent) trước khi tab kịp hiển thị.
     let searchTimeout;
     DOM.manageSearchInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && e.target.value.trim().toLowerCase() === '/boost') {
@@ -1195,12 +1205,13 @@ function setupCloudVaultControls() {
 
     // Một listener duy nhất cho mỗi nút: logic thật nằm trong io.js để tránh
     // hai handler chồng nhau (trước đây io.js và events.js cùng bind nút này).
+    // io.js là chunk lười nên nạp module trong handler (API giữ nguyên).
     copyBtn?.addEventListener('click', () => {
-        void handleCopySyncKey();
+        runIOModule(module => module.handleCopySyncKey?.());
     });
 
     applyBtn?.addEventListener('click', () => {
-        void handleApplySyncKey({ input: applyInput, button: applyBtn, statusElement: statusEl });
+        runIOModule(module => module.handleApplySyncKey?.({ input: applyInput, button: applyBtn, statusElement: statusEl }));
     });
 
     audioBtn?.addEventListener('click', async () => {
