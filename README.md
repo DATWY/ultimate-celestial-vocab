@@ -1,481 +1,371 @@
-# Ultimate Celestial Vocab ✨
+# Ultimate Celestial Vocab
 
-<div align="center">
+![Version](https://img.shields.io/badge/version-DATWY.V2.261025.15-8a2be2.svg?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-203%2F203%20PASS-brightgreen.svg?style=flat-square)
+![PWA](https://img.shields.io/badge/PWA-precache%2035%20entry-orange.svg?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)
 
-![Version](https://img.shields.io/badge/version-DATWY.V2.261024.10-8a2be2.svg?style=for-the-badge)
-![FSRS-7 Engine](https://img.shields.io/badge/SRS%20Engine-FSRS--7%20(34%20Params)-blueviolet.svg?style=for-the-badge)
-![Tests](https://img.shields.io/badge/Tests-77%2F77%20PASS-brightgreen.svg?style=for-the-badge)
-![Multi-Device Sync](https://img.shields.io/badge/Sync-4--Vector%20Outbox-cyan.svg?style=for-the-badge)
-![PWA Ready](https://img.shields.io/badge/PWA-Offline--First-orange.svg?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
+PWA học từ vựng tiếng Anh: Vanilla JS (ES Module) + Vite 5 + CSS thuần + IndexedDB.
+Dữ liệu học nằm trên máy; phần đồng bộ Cloud là tuỳ chọn và dùng một mã 20 ký tự.
 
-<br/>
-
-**Nền tảng học từ vựng tiếng Anh cá nhân hóa thế hệ mới — kết hợp thuật toán FSRS-7 (34 tham số), Heuristics ngôn ngữ học, đồng bộ đa thiết bị 4-Vector Outbox và hệ sinh thái Offline-First PWA.**
-
-[📖 Tài Liệu Kỹ Thuật](#8-kiến-trúc-hệ-thống--cấu-trúc-mã-nguồn) &nbsp;•&nbsp; [📊 Benchmark](#6-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark) &nbsp;•&nbsp; [🐛 Báo Lỗi / Đóng Góp](https://github.com/DATWY/ultimate-celestial-vocab/issues)
-
-<br/>
-
-![Ultimate Celestial Vocab Hero Artwork](docs/screenshots/project_thumbnail.webp)
-
-</div>
+Tài liệu này chỉ ghi những gì **đọc được từ mã nguồn** hoặc **đo lại được bằng lệnh trong repo**.
+Số nào chưa đo lại thì ghi rõ "chưa đo" (xem [§12](#12-những-gì-chưa-kiểm-chứng)).
+Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--script) rồi cập nhật bảng ở [§1](#1-trạng-thái-đo-được).
 
 ---
 
-## 📑 Mục Lục
-- [1. Giới Thiệu & Tầm Nhìn Sản Phẩm](#1-giới-thiệu--tầm-nhìn-sản-phẩm)
-- [2. Tính Năng Nổi Bật](#2-tính-năng-nổi-bật)
-  - [2.1. Không Gian Học Tập Zen Tối Giản](#21-không-gian-học-tập-zen-tối-giản)
-  - [2.2. Trung Tâm Điều Khiển (Celestial Hub)](#22-trung-tâm-điều-khiển-celestial-hub)
-  - [2.3. Hệ Thống Đồng Bộ 4-Vector Outbox](#23-hệ-thống-đồng-bộ-4-vector-outbox)
-  - [2.4. Chế Độ Dark / Light Mode](#24-chế-độ-dark--light-mode)
-- [3. Cơ Sở Khoa Học & Thuật Toán FSRS-7](#3-cơ-sở-khoa-học--thuật-toán-fsrs-7)
-  - [3.1. Mô hình DSR (Difficulty - Stability - Retrievability)](#31-mô-hình-dsr)
-  - [3.2. Kiến Trúc Trí Nhớ Kép (Dual-Track Stability)](#32-kiến-trúc-trí-nhớ-kép)
-  - [3.3. Động Học Độ Khó & Mean Reversion](#33-động-học-độ-khó--mean-reversion)
-  - [3.4. Ba Đột Phá Độc Quyền](#34-ba-đột-phá-độc-quyền)
-- [4. Động Cơ Đồng Bộ 4-Vector Outbox](#4-động-cơ-đồng-bộ-4-vector-outbox)
-- [5. Bộ Tối Ưu Hóa Ngoại Tuyến (Offline Optimizer)](#5-bộ-tối-ưu-hóa-ngoại-tuyến)
-- [6. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)](#6-bằng-chứng--dữ-liệu-thực-nghiệm-benchmark)
-- [7. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click](#7-hướng-dẫn-sử-dụng--huấn-luyện-1-click)
-- [8. Kiến Trúc Hệ Thống & Cấu Trúc Mã Nguồn](#8-kiến-trúc-hệ-thống--cấu-trúc-mã-nguồn)
-- [9. Hướng Dẫn Cài Đặt & Phát Triển Cục Bộ](#9-hướng-dẫn-cài-đặt--phát-triển-cục-bộ)
-- [10. Changelog](#10-changelog)
-- [11. Giấy Phép & Tác Giả](#11-giấy-phép--tác-giả)
+## 1. Trạng thái đo được
+
+Đo ngày **2026-10-26**, trên HEAD `c3f5a51`, `dist/` build lúc **11:19**.
+(Hash tên file trong `dist/assets/` đổi sau mỗi lần build — chỉ tên đổi, kích thước trong bảng đã kiểm lại trên 3 bản build liên tiếp.)
+
+| Hạng mục | Số đo | Cách đo |
+|---|---|---|
+| Test | **203 pass / 203**, 0 fail, 0 skip, ~0,50 s | `npm test` |
+| File test | **19** (`tests/*.test.mjs`) | `Get-ChildItem tests -File` |
+| File nguồn | **54** file, **35.504** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
+| Entry `assets/index-*.js` | 247.804 B thô → **80,67 kB gzip** (98,4% ngân sách 82 kB) | `npm run budget` |
+| Chunk Firebase lớn nhất | 492.097 B thô → **113,69 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
+| CSS do Vite sinh | **326.696 B thô** / 58,98 kB gzip (93,3% ngân sách 350 kB) | `npm run budget` |
+| Toàn bộ `dist/` | **2.096,07 kB thô / 40 file** (ngân sách 2.700 kB) | `npm run budget` |
+| Precache Service Worker | **35 URL** | đếm `url:"` trong `dist/sw.js` |
+| Khai báo `!important` | **1.920** trong `src/css` (riêng `style.css`: 1.624) | regex trên `src/css/**/*.css` |
+| Font Lexend self-host | **87.996 B / 3 file** `woff2` | `public/fonts/lexend-*.woff2` |
+| Icon subset | **95.568 B / 4 weight** + `phosphor-subset.css` 64.054 B (792 rule `.ph-*`) | `public/fonts/phosphor-*.woff2` |
+| Mã đồng bộ | **20 ký tự**, bảng chữ `A-Z` bỏ `I/O` + `2-9` | `src/core/firebase.js:141-142` |
+| Trần khoảng cách ôn | **365 ngày** (áp sau fuzz, cho mọi lần chấm) | `src/core/srs/constants.js:6` |
+
+Con số "98,4% ngân sách" là **cảnh báo**, không phải thành tích: entry chỉ còn 1,33 kB dư địa.
 
 ---
 
-## 1. Giới Thiệu & Tầm Nhìn Sản Phẩm
+## 2. Chạy nhanh
 
-Hầu hết các phần mềm học từ vựng truyền thống gặp phải các giới hạn cố hữu:
-1. **"Ease Hell":** Bấm nhầm *Hard* một lần → Ease Factor bị trừ vĩnh viễn → thẻ lặp quá dày đặc.
-2. **Đồng nhất hóa não bộ:** Giả định mọi bộ não đều quên với cùng tốc độ.
-3. **Thiếu phân hóa phản xạ:** Không phân biệt lật thẻ thụ động vs. gõ chính xác chủ động.
-4. **Xung đột đồng bộ đa thiết bị:** Last-Write-Wins xóa mất tiến độ SRS khi học cả PC lẫn điện thoại.
+```bash
+npm install
+cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
+npm run dev               # http://localhost:5173
+npm test                  # 203 test
+npm run build             # build production vào dist/ (tự tăng version)
+```
 
-**Ultimate Celestial Vocab** giải quyết triệt để các rào cản này:
-
-- **FSRS-7 Dual-Track:** Mô hình toán học chính xác nhất với 34 tham số sinh học cá nhân hóa.
-- **Linguistic Heuristics v2:** Tính độ khó xuất phát điểm $D_0$ từ cấu trúc âm tiết, hình thái ngôn ngữ — giải quyết hoàn toàn Cold-Start Problem.
-- **4-Vector Outbox Sync:** Tách riêng 4 vector (Content / SRS / Star / Tombstone) + IndexedDB Outbox → zero data loss khi offline rồi kết nối lại.
-- **Zen Flashcard UX:** Giao diện tối giản, tập trung tuyệt đối vào từ vựng — không widget xao nhãng.
-
----
-
-## 2. Tính Năng Nổi Bật
-
-### 2.1. Không Gian Học Tập Zen Tối Giản
-
-<div align="center">
-
-| Mặt Trước (Active Recall) | Mặt Sau (4 Mức Đánh Giá SRS) |
-| :---: | :---: |
-| <img src="docs/screenshots/card_study_front.webp" width="480" alt="Mặt trước thẻ flashcard"/> | <img src="docs/screenshots/card_study_back.webp" width="480" alt="Mặt sau thẻ flashcard"/> |
-
-</div>
-
-- **Thẻ Flashcard trung tâm màn hình** — không dải sidebar, không widget mục tiêu xao nhãng.
-- **Chế Độ Gõ Phím (Active Recall Typing):** Gõ đúng chính tả → Stability $\times 1.25$ (Active Motor Recall sâu hơn 25% so với lật thẻ).
-- **Sóng âm động (Web Audio API):** Phát âm TTS chuẩn với animation waveform khi nghe.
-- **Huy hiệu 🔥 Cực Khó:** Hiển thị tự động khi từ có độ khó cao hoặc từng bị quên nhiều lần.
-- **Dock Thống Kê nhỏ gọn:** Chip "Đã thuộc / Cần ôn / Đang học" + thanh tiến độ phân màu ở cuối trang.
-- **Phím tắt bàn phím:** `F` lật thẻ, `1/2/3/4` đánh giá SRS, `P` phát âm, `S` đánh sao, `Ctrl+Z` Undo.
+Yêu cầu: Node.js ≥ 18 (đo trên **Node v26.1.0 / npm 11.13.0**), Vite 5.4.19.
+Các biến môi trường có thật trong `.env.example`: `VITE_FIREBASE_*` (8 biến) và
+`VITE_FIREBASE_APPCHECK_SITE_KEY` + `VITE_FIREBASE_APPCHECK_DEBUG_TOKEN`.
+Thiếu `.env` thì app vẫn chạy offline-first; chỉ phần Cloud bị bỏ qua.
 
 ---
 
-### 2.2. Trung Tâm Điều Khiển (Celestial Hub)
+## 3. Tính năng (đối chiếu được với mã nguồn)
 
-<div align="center">
+### 3.1. Màn hình học
 
-| Tab Danh Sách Từ Vựng | Tab Dữ Liệu & Đồng Bộ (Mới) |
-| :---: | :---: |
-| <img src="docs/screenshots/manage_modal_words.webp" width="480" alt="Danh Sách Từ Vựng"/> | <img src="docs/screenshots/manage_modal_io.webp" width="480" alt="Dữ Liệu & Đồng Bộ Đa Thiết Bị"/> |
+- **Lật thẻ:** `Space` hoặc `F`. Khi thẻ đã lật, `Space`/`Enter`/`N` chấm "Nhớ" (hoặc sang thẻ kế) — `src/events.js:1352-1382`.
+- **Chấm 4 mức:** phím `1 / 2 / 3 / 4`, chỉ có hiệu lực sau khi lật (`src/events.js:1383-1389`).
+- **Phím khác:** `P` phát âm, `S` đánh dấu sao, `Ctrl+Z` hoàn tác lượt chấm gần nhất, `B` bật/tắt boost mode, `?` mở bảng phím tắt (`src/events.js:1307-1371`).
+- **Chế độ gõ (Active Recall Typing):** `src/features/typing.js`. Gõ đúng và đủ điều kiện thì **phần tăng thêm** của stability được nhân **1,25** — không phải nhân cả S (`src/core/srs/index.js:188-201`).
+- **Dải thống kê + thanh tiến độ phân màu** ở cuối màn hình: `Đã thuộc / Cần ôn / Đang học` (`index.html:415-465`).
+- **Badge "CỰC KHÓ"** chỉ hiện trên thẻ leech thật (`lapses ≥ 4`), có `title` gợi ý đổi cách học.
 
-</div>
+### 3.2. Celestial Hub (modal quản lý)
 
-4 tab được tổ chức gọn theo triết lý **"Mở ra là thấy ngay điều cần nhất"** (mặc định mở tab Tổng Quan):
+4 tab, mặc định mở tab **Tổng quan** (`index.html:683-692`, `data-tab="overview|words|io|badges"`):
 
-| Tab | Nội Dung |
+| Tab | Nội dung chính |
 |---|---|
-| 📊 **Tổng Quan & Trí Nhớ** | Bento Grid HUD: Level/XP, Streak, FusionSRS 3 chỉ số vàng, Forecast 7 ngày, Heatmap lịch 12×7 |
-| 📚 **Từ Vựng** | Lưới thẻ từ vựng, tìm kiếm thời gian thực, lọc chủ đề/trạng thái, thêm/sửa/xóa, Radar Dedup tốc độ cao (SymSpell O(1)) |
-| 💾 **Dữ Liệu & Đồng Bộ** | Bố cục 6 thẻ đối xứng: Nhập TSV Smart Merge, Xuất TSV/JSON Logs, Cấu hình 34 tham số FSRS-7 & Danger Zone, Đồng bộ đa thiết bị (Sync Key), Kho âm thanh ngoại tuyến (Offline Audio Cache) và Trạng thái phiên bản |
-| 🏆 **Huy Hiệu** | Bộ sưu tập phòng truyền thống mở khóa theo chuỗi streak, độ khó và tiến độ học tập |
+| Tổng quan | Level/XP, streak, 3 chỉ số SRS, dự báo 7 ngày, heatmap **84 ngày** (`src/features/gamification.js:880`) |
+| Từ vựng | Lưới thẻ, tìm kiếm, lọc chủ đề/trạng thái, thêm/sửa/xoá, radar trùng lặp (`src/core/dedup.js`) |
+| Dữ liệu | Nhập TSV, **Xuất Review Logs FSRS-7 (.json)**, cấu hình 34 tham số, **Tối ưu trên máy**, **Đồng bộ đa thiết bị bằng Mã đồng bộ**, **Tải toàn bộ audio ngoại tuyến**, danger zone (`index.html:923`, `:959`, `:1029-1042`, `:1149`) |
+| Huy hiệu | Bộ sưu tập badge theo tier (`src/features/badges.js`) |
 
-**Heatmap nâng cấp:** 12 cột (12 tuần) × 7 hàng (Thứ 2 → CN) + nhãn Thứ/Tháng + thang màu ░▒▓█.  
-**Topic display:** Dấu gạch dưới `_` tự động thay bằng dấu cách trong UI (dữ liệu gốc giữ nguyên).
+### 3.3. Khác
 
----
-
-### 2.3. Hệ Thống Đồng Bộ 4-Vector Outbox
-
-Kiến trúc **Local-First / Offline-First** đảm bảo không bao giờ mất dữ liệu:
-
-- **Outbox Store (IndexedDB v2):** Mọi thao tác viết được ghi vào Outbox trước → commit cục bộ an toàn → đồng bộ Firestore khi có mạng.
-- **4 Vector độc lập:** Nếu PC sửa nghĩa từ và Mobile đang ôn tập cùng lúc → cả hai thao tác đều được bảo tồn.
-- **Multi-tab safe:** 2 tab mở cùng lúc → merge bằng IndexedDB transaction, không ghi đè.
-- **Chống Clock Skew:** Cửa sổ an toàn cho đồng hồ thiết bị lệch nhau.
-- **Không gian riêng theo người dùng:** Dữ liệu Cloud nằm trong `users/{uid}/vocabulary` và `users/{uid}/state`. Firestore Rules chỉ cho chủ sở hữu đọc/ghi, không còn collection dùng chung cho mọi tài khoản.
-- **Mã đồng bộ (Sync Key):** Mỗi thiết bị sinh một mã 20 ký tự. Nhập cùng mã trên thiết bị khác (tab **Nhập & Xuất → Đồng Bộ Đa Thiết Bị**) để dùng chung không gian. Mã chính là chìa khoá; mất mã thì dữ liệu Cloud không truy cập được (bản trên máy vẫn còn).
-- **Pull theo trang & Circuit Breaker:** Đồng bộ nền kéo tối đa 2 trang × 200 thẻ, lưu cursor sau từng trang. Gặp `429 resource-exhausted` sẽ ngắt 1 giờ và lưu trạng thái xuống `localStorage`; nút đồng bộ luôn được reset.
+- **Quiz** (`src/features/quiz.js`) — mọi chuỗi chèn vào HTML đều qua `escapeHTML` (`src/core/utils/sanitize.js`), có test hồi quy XSS.
+- **Streak freeze / phục hồi streak** (`src/features/streakRecovery.js`, `src/core/state.js:1112-1475`).
+- **Dark/Light mode**, hiệu ứng nền canvas tự dừng khi idle (`src/ui/celestial-canvas.js`).
+- **TTS:** giọng máy (Web Speech API) + một endpoint proxy Apps Script cho giọng nâng cao (`src/core/sound.js:18`), phần chọn giọng/tốc độ nằm ở `src/features/ttsSettings.js`.
 
 ---
 
-### 2.4. Chế Độ Dark / Light Mode
+## 4. Vòng đời thẻ & FSRS-7
 
-<div align="center">
+### 4.1. File
 
-<img src="docs/screenshots/dark_mode_showcase.webp" width="850" alt="Dark Mode — Obsidian Celestial"/>
+| File | Vai trò |
+|---|---|
+| `src/core/srs/index.js` | Bộ điều phối: chấm điểm → state mới + lịch |
+| `src/core/srs/constants.js` | 34 tham số mặc định + biên hợp lệ từng tham số |
+| `src/core/srs/forgetting.js` | Đường cong quên **hai thành phần** + giải interval bằng Newton |
+| `src/core/srs/stability.js` | Cập nhật stability (khối dài hạn `start=7`, ngắn hạn `start=15`) |
+| `src/core/srs/difficulty.js` | Cập nhật difficulty: damping + mean reversion |
+| `src/core/srs/heuristics.js` | Bias độ khó theo hình thái từ (chỉ chạy 1 lần cho thẻ mới) |
+| `src/core/srs/training.js` | Optimizer offline (dùng chung cho web và CLI) |
 
-*Dark Mode: Nền Obsidian với ánh sáng huỳnh quang neon tím — tối ưu cho phiên học đêm. Light Mode: Porcelain Glass với tông Lavender/Slate tinh tế.*
+34 tham số mặc định: `src/core/srs/constants.js:43-62`.
 
-</div>
+### 4.2. Trí nhớ hai thành phần (dual stability)
 
----
+Mỗi thẻ mang 3 biến trạng thái: `stability` (S dài hạn), `stabilityShort` (S ngắn hạn), `difficulty` ∈ [1, 10].
+Retrievability là **hỗn hợp có trọng số** của hai thành phần, không phải một đường power-law đơn:
 
-## 3. Cơ Sở Khoa Học & Thuật Toán FSRS-7
+- Thành phần ngắn hạn `r1 = (t/S_short · factor1 + 1)^decay1`, với `decay1 = -w[23] · S_short^(w[33]-0.3)` — `src/core/srs/forgetting.js:12-25`.
+- Thành phần dài hạn `r2 = ((t/S_long) · factor2 · d_timescale + 1)^decay2` — `forgetting.js:54-57`.
+- Trộn: `R = (w1·r1 + w2·r2) / (w1 + w2)`, rồi co về khoảng mở `(1e-5, 1-1e-5)` — `forgetting.js:60-66`.
+- Interval được giải bằng Newton–Raphson trong không gian `log t`, tối đa 12 vòng, dừng khi `|R - 0.90| < 1e-4` — `forgetting.js:80-118`.
 
-### 3.1. Mô hình DSR
+> `constants.js` vẫn xuất `FACTOR = 19/81` và `DECAY = -0.5` cho code cũ, nhưng đường cong đang dùng **không** dùng hai hằng số này.
 
-Trí nhớ được mô hình hóa bởi 3 biến trạng thái:
-- **Độ khó ($D \in [1, 10]$):** Phức tạp vốn có của từ vựng đối với não bộ.
-- **Độ bền ($S > 0$ ngày):** Thời gian để xác suất nhớ giảm từ $100\%$ xuống $90\%$.
-- **Khả năng gợi nhớ ($R \in [0, 1]$):** Xác suất nhớ lại thành công tại thời điểm $t$.
+### 4.3. Cập nhật stability
 
-Đường cong lãng quên (Power-Law Forgetting Curve):
-
-$$R(t, S) = \left(1 + F \cdot \frac{t}{S}\right)^{-w_0}$$
-
-Với $F = \frac{19}{81} \approx 0.2346$, $w_0 \approx 0.1443$. Khi $t = S$ thì $R = 90\%$ — đây là thời điểm tối ưu để ôn tập.
-
----
-
-### 3.2. Kiến Trúc Trí Nhớ Kép
-
-```mermaid
-graph TD
-    A[Lượt Ôn Tập] --> B{Khoảng cách thời gian t}
-    B -- "t < 1 ngày" --> C["S_short — Trí nhớ làm việc"]
-    B -- "t ≥ 1 ngày" --> D["S_long — Trí nhớ dài hạn"]
-    C --> G[Stability Hiệu Dụng S]
-    D --> G
-```
-
-- **$S_{\text{short}}$:** Theo dõi working memory trong phiên học cấp tốc (cramming).
-- **$S_{\text{long}}$:** Tăng trưởng theo công thức phi tuyến phụ thuộc $D$, $S$, $R$ và đánh giá người học:
-
-$$S_{\text{new}} = S \cdot \left(e^{w_8} \cdot (11 - D) \cdot S^{-w_9} \cdot \left(e^{w_{10}(1-R)} - 1\right) \cdot \text{Multiplier}(\text{Grade}) + 1\right)$$
-
----
-
-### 3.3. Động Học Độ Khó & Mean Reversion
-
-$$\Delta D = -w_6 \cdot (\text{Grade} - 3)$$
-
-$$D_{\text{next}} = w_5 \cdot D_0 + (1 - w_5) \cdot \text{clamp}(D + \Delta D,\ 1,\ 10)$$
-
-Mean Reversion về $D_0$ ngăn thẻ bị kẹt vĩnh viễn ở trạng thái siêu khó.
-
----
-
-### 3.4. Ba Đột Phá Độc Quyền
-
-| Tính Năng | Cơ Chế | Lợi Ích |
-|:---|:---|:---|
-| **Linguistic Bias Parity** | $D_{\text{start}} = w_4 + \text{getDifficultyBias}(\text{word})$ | Giải quyết Cold-Start: từ đa âm tiết tự động nhận $D_0$ cao hơn |
-| **Typing Modality Bonus** | $S_{\text{long}} \leftarrow S_{\text{long}} \times 1.25$ khi gõ đúng | Phản ánh Motor Recall sâu hơn 25% so với lật thẻ thụ động |
-| **Chốt Chặn Graduation Floor** | $\text{Interval}_{\text{init}} \geq 1\ \text{ngày};\ \text{Interval}_{\text{init}} \leq 21\ \text{ngày}$ | Tránh từ bị cắt khỏi queue; tránh nhấn Easy làm thẻ biến mất 4 tháng |
-
----
-
-## 4. Động Cơ Đồng Bộ 4-Vector Outbox
-
-```mermaid
-graph LR
-    subgraph "Local — IndexedDB v2"
-        OutboxStore["Outbox Store\n(durable pending ops)"]
-        CardStore["Cards Store\n(4 vectors)"]
-    end
-
-    subgraph "Sync Engine"
-        Merger["4-Vector Merger\ncontent / srs / star / tombstone"]
-        ClockBuf["Clock-Skew Buffer\n±3 phút"]
-        EchoSup["Loopback Suppression\ndeviceId fingerprint"]
-    end
-
-    subgraph "Cloud — Firestore"
-        RemoteCard["Bản ghi thẻ phân tán"]
-    end
-
-    CardStore --> Merger
-    RemoteCard --> Merger
-    Merger --> ClockBuf --> EchoSup --> OutboxStore --> RemoteCard
-```
-
-**Các trụ cột kỹ thuật:**
-1. **Phân lập 4 Vector:** PC sửa nghĩa + Mobile ôn tập cùng lúc → cả hai đều được bảo toàn.
-2. **Outbox bền vững (Durable Outbox):** Ghi nhận giao dịch chờ trong IndexedDB; retry tự động khi mạng phục hồi; pending ID không bao giờ bị xóa nhầm bởi response cũ.
-3. **Multi-tab safe:** Mỗi write dùng IndexedDB transaction; 2 tab cùng mở không thể ghi đè nhau.
-4. **Chống Clock Skew & Echo:** Cửa sổ 3 phút bù trừ đồng hồ lệch; `deviceId` fingerprint chặn loopback event của chính mình.
-
----
-
-## 5. Bộ Tối Ưu Hóa Ngoại Tuyến
-
-Nằm trong [`tools/train_fsrs7.js`](tools/train_fsrs7.js) — chạy hoàn toàn trên máy, không cần API:
-
-- **Zero-Dependency:** Chỉ dùng Node.js built-in (`fs`, `path`, `os`).
-- **On-device button:** Nút "Tối ưu trên máy" ngay trong modal Dữ Liệu — không cần mở terminal.
-- **Holdout validation:** 80% train / 20% test theo thứ tự thời gian → chỉ áp dụng nếu test loss giảm đủ ngưỡng.
-
-### Chiến Lược Tiến Hóa (1+λ)-ES
-
-$$W_{\text{child}}^{(i)} = W_{\text{parent}} + \sigma \cdot \boldsymbol{\eta}_i, \quad \boldsymbol{\eta}_i \sim \text{Cauchy}(0, \mathbf{I})$$
-
-$$\mathcal{L}(W) = -\frac{1}{N}\sum_{i=1}^N \left[Y_i\ln P_i + (1-Y_i)\ln(1-P_i)\right] + \lambda_{\text{reg}}\sum_{j=1}^{34}(W_j - W_{\text{base},j})^2$$
-
----
-
-## 6. Bằng Chứng & Dữ Liệu Thực Nghiệm (Benchmark)
-
-Kiểm định trực tiếp trên log học thực tế ($4{,}046$ lượt, $668$ thẻ, $73.5$ ngày):
+`nextStability(S, D, R, rating, start)` (`src/core/srs/stability.js:18-47`):
 
 ```
-================================================================================
-                       KẾT QUẢ TỐI ƯU HOÁ FSRS-7
-================================================================================
-📉 Baseline Loss:          0.30443
-🏆 Optimized Loss:         0.29050
-📈 In-Sample Improvement:  +4.58%
-
---- Holdout (80% Train / 20% Future Test) ---
-📊 Baseline Test Loss:     0.34333
-🎯 Optimized Test Loss:    0.33450
-🚀 Out-of-Sample:          +2.57% (không học vẹt)
+new_s_fail = w[start+3] · ((S+1)^w[start+4] - 1) · exp((1-R)·w[start+5])
+pls        = min(S, new_s_fail)
+sinc       = exp(w[start]-1.5) · (11-D) · S^(-w[start+1]) · (exp((1-R)·w[start+2]) - 1) · hard_penalty · easy_bonus + 1
+S_next     = rating > 1 ? max(pls, S · sinc) : pls          (kẹp [S_MIN, S_MAX] = [0.01, 36500])
 ```
 
-### Bảng Hiệu Chuẩn Xác Suất Trí Nhớ
+Hai lượt gọi: `start=7` cho S dài hạn, `start=15` cho S ngắn hạn (`index.js:160-163`).
+Sau lượt trả lời đúng **không** ép `S_short ≤ S_long`; chỉ nhánh quên mới cap `S_short ≤ 0.8 · S_long` (`index.js:168-182`).
 
-| Phân Nhóm | Số Lượt | $P$ Dự Đoán | Thực Tế Nhớ | Sai Lệch |
-|:---|:---:|:---:|:---:|:---:|
-| < 70% | 76 | 58.4% | 59.3% | -0.9% ✅ |
-| 70–80% | 158 | 75.5% | 75.9% | -0.4% ✅ |
-| 80–85% | 237 | 82.4% | 87.3% | -4.8% 🟡 |
-| 85–90% | 610 | 87.7% | 87.2% | +0.5% ✅ |
-| 90–95% | 1,157 | 92.9% | 93.2% | -0.4% ✅ |
-| 95–100% | 1,146 | 97.3% | 96.4% | +0.9% ✅ |
+### 4.4. Cập nhật difficulty
 
-> **RMSE hiệu chuẩn toàn dải: 2.07%** — mô phỏng đường cong quên sinh học với sai số trung bình chỉ 2%.
+```
+ΔD = -w[6] · (rating - 3)                     (rating 1: ΔD nhân thêm (R + 0.1))
+ΔD = damping_theo_biên(ΔD, D)                  (difficulty.js:19-26)
+D' = 0.01 · D0(rating=4) + 0.99 · (D + ΔD)     (mean reversion 1%)
+```
+
+Nguồn: `src/core/srs/difficulty.js:46-69`.
+
+### 4.5. Heuristics chỉ tác động lần chấm đầu
+
+- Bias ∈ **[-0.5, +0.5]**; `D0 = initDifficulty(rating) + bias · 0.5` ⇒ D0 chỉ lệch tối đa **±0.25** (`constants.js:24`, `index.js:147`, `heuristics.js:23-24`).
+- Hệ số stability ∈ **[0.85, 1.15]** (`heuristics.js:25-26`).
+
+### 4.6. Lịch học: bước học, trần, leech
+
+| Quy tắc | Giá trị | Nguồn |
+|---|---|---|
+| Bước học thật | **1 phút → 10 phút → 1 ngày** rồi mới `Mastered` | `constants.js:17`, `index.js:50-82` |
+| Trần tốt nghiệp của thẻ **chưa từng thuộc** (`lapses = 0`) | **7 ngày** | `constants.js:13`, `index.js:54` |
+| Trần lần chấm đầu tiên | **21 ngày**, áp **sau** fuzz | `constants.js:5`, `index.js:228-232` |
+| Trần tuyệt đối mọi lần chấm | **365 ngày**, áp sau fuzz | `constants.js:6`, `index.js:288` |
+| Fuzz | ±5% khi interval ≥ 2,5 ngày | `constants.js:4`, `index.js:222-226` |
+| Nhãn nút chấm khi thẻ đang New/Learning | `1p`, `10p`, `10p`, `1 ngày` | `index.js:350-390` |
+| Leech | `lapses ≥ 4` ⇒ `isLeech = true` | `constants.js:29`, `index.js:23-27` |
+| Thẻ leech vừa quên | hẹn lại **10 phút** (bước relearning), không nhồi lại ngay | `constants.js:31-33`, `index.js:240-246` |
+
+Nhãn "Dễ" của một thẻ mới hiện `7 ngày` vì bị trần tốt nghiệp 7 ngày — đây là hành vi có chủ đích, không phải lỗi hiển thị (kiểm bằng smoke test, xem `docs/SMOKE_TEST.md`).
 
 ---
 
-## 7. Hướng Dẫn Sử Dụng & Huấn Luyện 1-Click
+## 5. Đồng bộ Cloud (tuỳ chọn)
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Người Học
-    participant Web as Celestial Vocab
-    participant Opt as Optimizer (on-device)
-    participant Cloud as Firebase
+### 5.1. Danh tính = mã đồng bộ
 
-    User->>Web: Bấm "Xuất Review Logs (.json)"
-    Web-->>User: celestial_review_logs_YYYY-MM-DD.json
-    User->>Web: Mở Trung Tâm → Tab Dữ Liệu → "Tối ưu trên máy"
-    Web->>Opt: Chạy (1+λ)-ES 100 thế hệ + holdout validation
-    Opt-->>Web: 34 tham số mới (chỉ áp dụng nếu test loss giảm)
-    Web->>Cloud: Đồng bộ cấu hình sang tất cả thiết bị
-```
+- Mã **20 ký tự** sinh bằng `crypto.getRandomValues`, bảng chữ bỏ `I/O` để không đọc nhầm (`src/core/firebase.js:141-205`); hiển thị dạng `XXXX-XXXX-XXXX-XXXX-XXXX`.
+- Mã → email/password nội bộ (`firebase.js:249-255`), nên "tài khoản" chính là mã.
+- **Chỉ mã do chính app sinh ra trên máy này** (`localStorage.celestialSyncKeyAutoGen = '1'`) mới được tự tạo tài khoản; mã do người dùng dán vào thì không (`firebase.js:213-242`, `resolveAuthAction` ở `:188-193`). Gõ lệch 1 ký tự sẽ **không** sinh không gian rỗng.
+- Mất mã = mất quyền vào Cloud (bản trên máy vẫn còn).
 
-1. **Xuất log:** Trung Tâm Điều Khiển → Tab **Dữ Liệu** → **"Xuất Review Logs FSRS-7 (.json)"**.
-2. **Tối ưu:** Bấm **"Tối ưu trên máy"** (hoặc kéo file vào `train_fsrs7.bat` trên Windows).
-3. **Nạp:** Kết quả tự điền vào ô tham số → **"Lưu & Áp Dụng"** → đồng bộ tự động.
+### 5.2. Nơi lưu
+
+`users/{uid}/vocabulary/{cardId}` và `users/{uid}/state/{gamification|dailyStats|settings|reviewLogs}`
+(`firebase.js:526-527`, `:972-1065`). `firestore.rules` chỉ cho chủ sở hữu: `match /users/{userId}/{document=**} { allow read, write: if isOwner(userId); }`
+(`firestore.rules:25-27`); các đường dẫn cũ `celestial_vocab_sync` / `celestial_user_sync` bị chặn theo `_ownerUid`.
+
+### 5.3. Ghi cục bộ & merge
+
+- IndexedDB `celestial-vocab-idb` **version 2**, 3 store: `vocabulary`, `settings`, `outbox` (`src/core/idb.js:9-30`).
+- Mọi lần ghi thẻ đều để lại một bản ghi `outbox` (`idb.js:49-51`), xoá khi đã đẩy xong và `revision` khớp (`idb.js:120-133`).
+- Merge theo **3 đồng hồ riêng** (`contentUpdatedAt`, `srsUpdatedAt`, `flagsUpdatedAt`) cộng cờ xoá `isDeleted`; hoà thì tie-break tất định để `merge(a,b) == merge(b,a)` (`src/core/card-merge.js:73-104`).
+- Chống echo: bản ghi do chính máy này vừa ghi (`_lastModifiedBy === deviceId` và `syncedAt <= _lastLocalWriteTimestamp`) bị bỏ qua khi pull (`firebase.js:751-754`).
+- Watermark pull **tách theo uid** (`lastPullTime:{uid}`) và lùi an toàn 10 giây (`firebase.js:148-180`, `:531`, `:721`).
+- **Pull theo trang:** 200 thẻ/trang; tự động tối đa **2 trang**, đồng bộ tay/full tối đa **50 trang** (`firebase.js:528-530`, `:713-792`).
+- **Circuit breaker quota:** gặp lỗi `resource-exhausted`/429 ⇒ nghỉ **1 giờ**, mốc lưu ở `localStorage.celestialQuotaExhaustedUntil` (`firebase.js:547-568`, `:609-619`).
+- **Quota shield:** đồng bộ nền không đẩy quá 50 thẻ một lượt (`firebase.js:811-815`).
+
+### 5.4. `reviewLogs` và trần 1 MiB của Firestore
+
+Document Firestore tối đa 1 MiB; vượt là ghi hỏng vĩnh viễn. Vì vậy log thống kê có **3 ngưỡng cắt tỉa** (`src/core/state.js:674-678`):
+
+| Ngưỡng | Giá trị |
+|---|---|
+| Số entry | `MAX_REVIEW_LOG_ENTRIES = 3000` |
+| Số byte | `MAX_REVIEW_LOG_BYTES = 400_000` (binary search theo byte thật) |
+| `deletedIds` | `MAX_REVIEW_LOG_DELETED_IDS = 500` |
+
+Trước khi ghi lên Cloud còn một chốt thứ tư: `REVIEW_LOG_SAFE_BYTES = 700_000` (`src/core/firebase.js:1040`) — payload lớn hơn thì chỉ ghi phần mới nhất. Cắt tỉa **chỉ** đụng log thống kê, không đụng thẻ/tiến độ (`src/core/state.js:669-700`).
 
 ---
 
-## 8. Kiến Trúc Hệ Thống & Cấu Trúc Mã Nguồn
+## 6. Bảo mật
 
-**Tech Stack:** Vanilla JS ES Modules · Vite 5 · Pure CSS · IndexedDB (idb) · Firebase Firestore · Anime.js · HTML5 Canvas · Web Audio API · Phosphor Icons · Lexend Font · PWA/Workbox
+| Hạng mục | Trạng thái thực tế | Nguồn |
+|---|---|---|
+| CSP | Có **header thật** trên Hosting (đầy đủ, gồm `frame-ancestors 'none'`) **và** 1 thẻ `<meta>` dự phòng (không có `frame-ancestors` vì Chrome bỏ qua trong meta) | `firebase.json:19-27`, `index.html:21-23` |
+| `script-src` | `'self'` + `https://www.google.com/recaptcha/` — **không** còn `'unsafe-inline'` | `firebase.json:25` |
+| `style-src` | Vẫn `'unsafe-inline'` (template dùng `style="..."` inline) | `firebase.json:25` |
+| Firestore Rules | Chỉ chủ sở hữu đọc/ghi `users/{uid}/**` | `firestore.rules:25-27` |
+| XSS | 2 sink stored-XSS đã escape + test hồi quy | `src/core/utils/sanitize.js`, `tests/xss-render.test.mjs` |
+| App Check | **Đã có code, CHƯA enforce.** Thiếu `VITE_FIREBASE_APPCHECK_SITE_KEY` thì app log 1 cảnh báo và chạy tiếp không App Check. Bật enforce là thao tác trên Firebase Console, không phải trong code | `src/core/firebase.js:69-116` |
+
+Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với Firebase web; thứ bảo vệ dữ liệu là Rules (+ App Check khi được bật enforce), không phải việc giấu key.
+
+---
+
+## 7. PWA, font, icon
+
+### 7.1. Service Worker (Workbox qua `vite-plugin-pwa`)
+
+- `registerType: 'autoUpdate'`, precache **35 URL** (`vite.config.js:6-20`, đếm trên `dist/sw.js`).
+- `globPatterns`: `js, css, html, ico, png, svg, json, wav, woff2`; **không** gồm `mp3`.
+- `globIgnores`: `version.json` và `firebase-*.js` — hai thứ này **không** precache.
+- MP3 **không** precache; chỉ vào cache sau lần phát đầu: `sfx-cache` — `CacheFirst`, tối đa 10 entry, 90 ngày, nhận cả response opaque (`statuses: [0, 200]`) (`vite.config.js:21-39`).
+- `firebase-chunk-cache` (`CacheFirst`, 4 entry/30 ngày) giữ chunk Firebase sau lần đồng bộ đầu (`vite.config.js:40-53`).
+- Còn 4 runtime cache cho `unpkg`, `cdnjs`, `jsdelivr`, `gstatic` (`vite.config.js:54-109`). App **không** còn nạp icon/font từ các host này; chúng chỉ được liệt kê trong allowlist xoá cache của `versionCheck.js` và là đường dự phòng.
+- **Chống reload loop:** mỗi version host chỉ auto-reload **1 lần trong 24 giờ**, sau đó chỉ phát cảnh báo; offline thì không làm gì; chỉ xoá cache thuộc allowlist của app (`src/core/versionCheck.js:24-25`, `:70-85`).
+
+### 7.2. Font — self-host, không Google Fonts
+
+- 3 file variable `woff2` trong `public/fonts/`: `lexend-latin.woff2` 39.680 B, `lexend-latin-ext.woff2` 34.476 B, `lexend-vietnamese.woff2` 13.840 B (**tổng 87.996 B**).
+- Khai báo `@font-face` + `unicode-range` trong `src/css/fonts.css`; thứ tự `vietnamese → latin-ext → latin` là **có chủ đích** (file khai báo sau thắng khi ký tự nằm ở nhiều `unicode-range`, ví dụ `Đ/đ`).
+- Trong `index.html` **không còn** `fonts.googleapis.com` / `fonts.gstatic.com` (đã kiểm bằng regex trên toàn file). CSP cũng không còn 2 host này.
+- `firebase.json` đặt `Cache-Control: immutable` 1 năm cho `/fonts/**`.
+
+### 7.3. Icon
+
+- `public/phosphor-subset.css` (64.054 B, **792** rule `.ph-*`) + 4 file `woff2` subset: `regular` 23.504, `bold` 23.748, `fill` 19.460, `duotone` 28.856 B (**tổng 95.568 B**).
+- Mã nguồn dùng **203** tên class `ph-*` khác nhau (`index.html` + `src/**/*.js`).
+- Không xoá được weight nào: icon được chọn **động** qua `class="ph ${t.icon}"` (`src/features/fsrsPersona.js:323`, 5 archetype × 3 trait = 15 icon) và `class="ph ${rankInfo.icon}"` (`src/features/gamification.js:68`, 5 rank). Vì vậy cách đúng là **subset codepoint**, không phải bỏ weight — xem "Phát hiện mới" trong `UPGRADE_BACKLOG.md`.
+- Sinh lại subset: `npm run icons` (`tools/build-icon-subset.mjs`; cần mạng + `fonttools`/`pyftsubset`, file sinh ra đã được commit nên build thường không cần mạng).
+
+---
+
+## 8. Optimizer FSRS offline
+
+`npm run train` → `tools/train_fsrs7.js` → `optimizeParameters()` trong `src/core/srs/training.js`.
+
+- Đọc `celestial_review_logs_*.json` / `review_logs.json` (mới nhất), hoặc truyền đường dẫn; `--merge-all` để gộp nhiều file.
+- Dữ liệu: chỉ giữ log hợp lệ, sắp theo thời gian, lấy **3000 entry gần nhất**, thẻ phải có ≥ 2 lượt (`training.js:5-26`).
+- Chia **80% train / 20% validation theo mốc thời gian** (`training.js:24`).
+- Thuật toán: **leo đồi toạ độ** — mỗi vòng chỉ nhích **một** tham số theo `±8%` (tối thiểu `0.005`), có phạt L2 nhẹ so với bộ gốc; CLI chạy tối đa **340 vòng / 60 s** (`training.js:52-69`, `tools/train_fsrs7.js:29`).
+  Đây **không phải** (1+λ)-ES, không phải L-BFGS, không có Cauchy mutation — bản README cũ mô tả sai phần này.
+- Chỉ chấp nhận bộ mới nếu `validation.loss < 0.995 × validation.loss(baseline)` (`training.js:70-75`); nếu không, giữ bộ cũ và ghi lý do.
+- Cùng một hàm này chạy trong Web Worker trên web (`src/core/srs/worker-manager.js`), nên kết quả CLI và web là một.
+
+---
+
+## 9. Lệnh / script
+
+| Lệnh | Việc nó làm | Nguồn |
+|---|---|---|
+| `npm test` | Chạy 19 file test bằng `node --test` (203 test) | `package.json` → `scripts.test` |
+| `npm run dev` | Vite dev server | `scripts.dev` |
+| `npm run build` | `tools/generate_version.js` (tăng version) → `vite build` | `scripts.build` |
+| `npm run budget` | Đọc `dist/` **đã build**, in bảng thô/gzip từng file và so 4 ngưỡng; exit 1 nếu vượt. **Không** tự build | `tools/bundle_budget.mjs` |
+| `npm run report` | Render `reports/upgrade-report.html` thành `reports/nang-cap-1..4.png` bằng Chrome headless (CDP) | `tools/render_report.mjs` |
+| `npm run icons` | Sinh lại `phosphor-subset.css` + 4 `woff2` subset | `tools/build-icon-subset.mjs` |
+| `npm run version` | Chỉ tăng version (`src/core/version.js`, `public/version.json`) | `tools/generate_version.js` |
+| `npm run train` | Optimizer FSRS-7 offline | `tools/train_fsrs7.js` |
+| `npm run preview` | `vite preview` (server tĩnh cho `dist/`) | `scripts.preview` |
+
+CI (`.github/workflows/ci.yml`) chạy `npm ci` → `npm test` → `npm run build` → `npm run budget`.
+
+Ngoài `package.json` còn các script trong `scratch/` và `tools/` phải gọi bằng `node` trực tiếp, ví dụ smoke test E2E:
+`node scratch/smoke-study-loop.mjs` (tài liệu: `docs/SMOKE_TEST.md`). Lưu ý `scratch/` bị `.gitignore:44`
+nên file smoke test **không** nằm trong git — clone mới sẽ không có.
+
+---
+
+## 10. Cấu trúc mã nguồn
 
 ```
 ultimate-celestial-vocab/
-├── index.html                      # SPA shell + tất cả modal
-├── package.json                    # Vite + PWA plugin
-├── vite.config.js
-├── src/
-│   ├── main.js                     # Entry point, khởi tạo app
-│   ├── events.js                   # Toàn bộ event listeners
+├── index.html               # SPA shell + toàn bộ modal (88.981 B)
+├── vite.config.js           # Vite 5 + vite-plugin-pwa (Workbox, manifest)
+├── firebase.json            # hosting headers (CSP, cache) + rewrites
+├── firestore.rules          # rules: chỉ chủ sở hữu users/{uid}/**
+├── src/                     # 54 file, 35.504 dòng
+│   ├── main.js              # điểm vào, boot theo thứ tự
+│   ├── events.js            # toàn bộ event listener + phím tắt toàn cục
 │   ├── core/
-│   │   ├── state.js                # State management tập trung
-│   │   ├── idb.js                  # IndexedDB v2 (outbox + cards + stats)
-│   │   ├── firebase.js             # Firestore connection + Smart Sync
-│   │   ├── sync.js                 # 4-Vector Merger Engine
-│   │   ├── sync-status.js          # Trạng thái kết nối UI
-│   │   ├── queue.js                # Review queue scheduler
-│   │   ├── sound.js                # Web Audio API + TTS
-│   │   ├── dedup.js                # Radar Semantic Dedup
-│   │   ├── daily-stats.js          # Thống kê ngày / midnight rollover
-│   │   ├── card-merge.js           # Merge logic 4-vector
-│   │   ├── progress-merge.js       # XP / gamification merge
-│   │   ├── review-log-merge.js     # Review history merge + Undo
-│   │   ├── settings-merge.js       # FSRS params merge
-│   │   ├── import-plan.js          # TSV import planner
-│   │   ├── tabular.js              # TSV parser (quotes, BOM, reorder)
-│   │   ├── animations.js           # Modal & UI animations
-│   │   └── srs/
-│   │       ├── index.js            # FSRS-7 main scheduler
-│   │       ├── constants.js        # 34 params + validators
-│   │       ├── training.js         # On-device optimizer
-│   │       └── worker-manager.js   # Web Worker bridge
-│   ├── features/
-│   │   ├── gamification.js         # XP, level, streak
-│   │   ├── badges.js               # Achievement system
-│   │   ├── quiz.js                 # Quiz mode (XSS-safe)
-│   │   ├── typing.js               # Active Typing Recall
-│   │   ├── io.js                   # Import/Export
-│   │   └── streakRecovery.js       # Streak freeze mechanic
-│   ├── ui/
-│   │   ├── render.js               # Thẻ từ, danh sách, biểu đồ, HUD
-│   │   ├── modal.js                # Hub tabs, modal lifecycle
-│   │   ├── elements.js             # DOM refs cache
-│   │   ├── celestial-canvas.js     # Particle canvas (idle-aware)
-│   │   └── waveform.js             # Audio waveform animation
-│   └── css/
-│       ├── style.css               # Design system chính
-│       ├── transition.css          # Page transitions
-│       └── study-polish.css        # Zen flashcard refinements
-├── tests/                          # 77 unit/integration tests (Node.js built-in)
-│   ├── cloud-identity.test.mjs
-│   ├── dedup-accuracy.test.mjs
-│   ├── import-and-srs.test.mjs
-│   ├── progress.test.mjs
-│   ├── reliability.test.mjs
-│   ├── srs-arithmetic.test.mjs
-│   ├── storage.test.mjs
-│   └── upgrade-regressions.test.mjs
-├── tools/
-│   └── train_fsrs7.js              # (1+λ)-ES optimizer + TimeSeriesSplit
-├── reports/
-│   ├── strict-audit-2026-10-20/    # Audit report (GPT-6.1 independent review)
-│   └── upgrade-2026-10-21/         # Upgrade report + test results
-└── public/
-    ├── version.json                # Build version (DATWY.V2.yymmdd.hh)
-    └── manifest.webmanifest        # PWA manifest
+│   │   ├── state.js         # state trung tâm + reviewLogs & prune log (1.621 dòng, 91 export)
+│   │   ├── idb.js           # IndexedDB v2: vocabulary / settings / outbox
+│   │   ├── firebase.js      # Auth bằng sync key, Firestore, smartSync, prune log
+│   │   ├── card-merge.js    # merge 3 đồng hồ + tombstone
+│   │   ├── queue.js         # dựng hàng đợi ôn
+│   │   ├── sound.js         # Web Audio + TTS
+│   │   ├── dedup.js         # radar trùng lặp (mờ + confusables)
+│   │   ├── tabular.js       # parser TSV
+│   │   ├── import-plan.js   # planner nhập TSV
+│   │   ├── tab-bus.js       # đồng bộ giữa các tab (BroadcastChannel)
+│   │   ├── versionCheck.js  # chống reload loop, xoá cache có allowlist
+│   │   ├── progress-merge.js / review-log-merge.js / settings-merge.js / sync.js / sync-status.js
+│   │   ├── daily-stats.js / device.js / animations.js / version.js
+│   │   ├── utils/           # sanitize.js, date.js
+│   │   └── srs/             # index.js, constants.js, forgetting.js, stability.js,
+│   │                        # difficulty.js, heuristics.js, frequency-data.js,
+│   │                        # training.js, worker-manager.js, optimizer.worker.js
+│   ├── features/            # gamification, badges, quiz, typing, io,
+│   │                        # streakRecovery, fsrsPersona, ttsSettings
+│   ├── ui/                  # render.js, modal.js, elements.js, celestial-canvas.js, waveform.js
+│   └── css/                 # style.css, study-polish.css, transition.css,
+│                            # icon-system.css, motion-upgrade.css, fonts.css, tokens/celestial-v5.css
+├── tests/                   # 19 file .test.mjs (node:test)
+├── tools/                   # build-icon-subset, bundle_budget, render_report,
+│                            # generate_version, train_fsrs7, measure_review_logs,
+│                            # simulate_intervals + các script verify_*/perf_*
+├── scratch/                 # script thử nghiệm, chạy tay (vd. smoke-study-loop.mjs)
+├── public/                  # fonts/ (Lexend + phosphor subset), sounds/*.mp3,
+│                            # phosphor-subset.css, icon-*, manifest, version.json
+├── docs/                    # screenshots/ + SMOKE_TEST.md
+└── reports/                 # upgrade-report.html + PNG render, audit cũ
 ```
+
+DevDependencies: `vite`, `vite-plugin-pwa`, `workbox-window`, `fake-indexeddb`.
+Dependencies runtime: `firebase@10.8.1`, `idb`, `animejs` (`devDependencies` / `dependencies` trong `package.json`).
+Chunk Firebase được tách riêng và nạp động (`vite.config.js:173-180`).
 
 ---
 
-## 9. Hướng Dẫn Cài Đặt & Phát Triển Cục Bộ
+## 11. Benchmark FSRS — có nguồn, và phần chưa đo
 
-### Yêu cầu
-- **Node.js** ≥ 18.0 (tested on v26.1.0)
-- **Trình duyệt:** Chrome / Edge / Firefox / Safari mới nhất
+**Đo được (có file kết quả trong repo):** lần chạy optimizer gần nhất ghi ở `fsrs7_params_latest.report.json`:
 
-### Bước cài đặt
-
-```bash
-# 1. Clone
-git clone https://github.com/DATWY/ultimate-celestial-vocab.git
-cd ultimate-celestial-vocab
-
-# 2. Cài dependencies
-npm install
-
-# 3. Cấu hình Firebase
-cp .env.example .env
-# → Điền thông số Firebase project vào .env
-
-# 4. Dev server
-npm run dev
-# → http://localhost:5173
-
-# 5. Chạy 77 tests
-npm test
-
-# 6. Build production
-npm run build
-
-# 7. Deploy Firestore Rules + Hosting
-#    BẮT BUỘC deploy rules: không deploy thì collection cũ vẫn mở cho mọi
-#    tài khoản đã đăng nhập đọc/ghi.
-firebase deploy --only firestore:rules,firestore:indexes,hosting
+```json
+{ "improved": false, "reason": "no-validation-gain",
+  "oldLoss": 0.45197, "newLoss": 0.47360,
+  "trainCount": 1700, "validationCount": 584, "count": 3000,
+  "model": "dual-stability-34" }
 ```
 
-### Chạy kiểm thử thuật toán riêng lẻ
+Nghĩa là: trên bộ **3.000 entry gần nhất**, sau khi replay chỉ còn **1.700 lượt** rơi vào train và **584 lượt** vào validation;
+bộ tham số mới **tệ hơn** bộ mặc định nên **không** được áp dụng. Đây là hành vi đúng của cổng holdout (bộ cũ được giữ).
 
-```bash
-# Đối chiếu mô hình FSRS-7 với reference
-node audit/probe-vs-reference.mjs
+**Chưa đo lại được (đã bỏ khỏi tài liệu):** README cũ trích "Baseline 0,30443 → Optimized 0,29050, out-of-sample +2,57%" và bảng hiệu chuẩn "RMSE 2,07%". Không có file log/lệnh nào trong repo tái tạo được hai con số đó ở thời điểm này ⇒ **chưa đo**, không dùng làm bằng chứng.
 
-# Kiểm tra hồi quy dedup (-er, dist-2, bucket, guard)
-node audit/probe-recheck.mjs
-node audit/probe-bucketcap.mjs
-
-# Đo khởi động với 3.000 thẻ (cần npm run preview)
-node audit/startup-probe.mjs http://localhost:4173/ 3000
-```
+Muốn có số mới: xuất `Xuất Review Logs FSRS-7 (.json)` từ tab Dữ liệu rồi chạy `npm run train -- "<file>.json"` — kết quả ghi đè `fsrs7_params_latest.report.json`.
 
 ---
 
-## 10. Changelog
+## 12. Những gì CHƯA kiểm chứng
 
-### DATWY.V2.261024.10 (2026-10-24) — Tinh Chỉnh Giao Diện Dữ Liệu & Chuẩn Hóa FSRS-7 Toàn Diện
+Danh sách này là **nợ kiểm chứng**, không phải tính năng đã xong:
 
-**Giao diện & Trải nghiệm (UI/UX):**
-- 🎨 **Tái thiết kế toàn diện tab Dữ Liệu (Celestial Hub):** Bố cục 6 thẻ đối xứng theo nhịp thị giác `2 → (1 + 1) → 2 → (1 + 1)`, loại bỏ hoàn toàn khoảng trống lệch cột.
-- 🔑 **Khắc phục lỗi ô nhập Sync Key bị thu hẹp:** Tách biệt layout flex với `sync-input-pill`, mở rộng trường mã 20 ký tự chuẩn monospace, bổ sung nút sao chép 1 chạm có hiệu ứng phản hồi trực quan "Đã chép!" và đèn xanh báo kết nối bảo mật.
-- 🎵 **Kho Âm Thanh Ngoại Tuyến (Offline Audio Hub):** Thống kê trực tiếp số lượng phát âm đã nạp trong IndexedDB (`2.140 / 2.140 từ`), badge trạng thái `Đầy đủ 100%`, tiến trình tải toàn bộ audio ngoại tuyến theo lô an toàn.
-- 🛡️ **Phiên Bản & Cập Nhật Hệ Thống:** Ghép cặp đối xứng với thẻ Âm Thanh, hiển thị mã bản dựng công nghệ cao (`DATWY.V2.261024.10`) cùng nút kiểm tra và làm mới cache Service Worker PWA tức thì.
-- 💥 **Khu Vực Nguy Hiểm (Danger Zone):** Nâng cấp thẻ cảnh báo đỏ rượu kính mờ với xác thực bảo vệ 2 lớp khi xóa trắng kho từ.
-
-**Thuật toán & Hiệu năng (FSRS-7 & Data Engine):**
-- 🧠 **Chuẩn hóa FSRS-7 Canonical Benchmark:** Bảo toàn tham số gốc $w_{14} = 1.0$ chuẩn `fsrs_v7.py`, bỏ ép cứng $S_{\text{short}} \le S_{\text{long}}$ trên lượt trả lời đúng (chỉ giữ cap $0.8 \times S_{\text{long}}$ khi lapse), chuyển mốc cap 21 ngày thẻ mới ra sau bước fuzzing.
-- ⚡ **Loại bỏ triệt để O(N²) Dedup:** Thuật toán SymSpell 1-deletion kết hợp tiền tố/hậu tố 4 ký tự, chunking 200 item với `requestIdleCallback`, quét 3.000 từ giảm từ 43.8s xuống 1.1s. Loại bỏ false positive danh từ tận cùng `-er` (`matter/mat`, `farmer/farm`).
-- 🛡️ **Bảo mật phân vùng người dùng Cloud & Quota Shield:** Phân vùng Firestore `users/{uid}/...` với rules `isOwner(userId)`, khóa Sync Key 20 ký tự ngẫu nhiên, ngắt mạch tự động chống bùng nổ request vượt ngưỡng Spark plan.
-- 🧪 **Kiểm định & Báo cáo:** Toàn bộ 77/77 tests PASS qua 8 bộ kiểm thử, xuất báo cáo PDF chuẩn kỹ thuật (`BAO_CAO_DANH_GIA_VA_KHAC_PHUC_TOAN_DIEN.pdf`).
-
-### DATWY.V2.261021 (2026-10-21) — Data Integrity + UI Cleanup
-
-**Core — Data Layer (audit độc lập GPT-6.1, 52/52 tests PASS):**
-- ✅ IndexedDB v2 Outbox Store — durable offline writes, retry an toàn
-- ✅ 4-Vector Firestore sync (content / srs / star / tombstone) với transaction
-- ✅ Multi-tab safe — 2 tab mở cùng lúc không ghi đè nhau
-- ✅ Midnight rollover fix — đổi ngày không bị reset sai
-- ✅ Clock-skew resistant revisions — đồng hồ thiết bị lệch không làm hỏng thứ tự
-- ✅ XSS-safe quiz feedback — escape tất cả HTML output
-- ✅ TSV importer nâng cấp — quoted fields, BOM, reordered headers, enrichment
-- ✅ On-device FSRS-7 optimizer — holdout validation, chỉ áp dụng khi test loss giảm
-- ✅ Quiz idempotent finalization — không chấm điểm 2 lần, không race condition
-
-**UI/UX:**
-- ✅ Xóa study-session-bar "KHÔNG GIAN HỌC" — giao diện Zen thuần túy
-- ✅ Heatmap 12×7 chuẩn lịch + weekday/month labels + legend ░▒▓█
-- ✅ Topic names: `_` → space trong UI (dữ liệu gốc giữ nguyên)
-- ✅ Rating buttons: cải thiện tương phản màu ở Light Mode
-- ✅ Search box focus ring: clean glow ôm khít, không double border
-- ✅ Autocomplete pollution fix — tắt browser history dropdown ô tìm kiếm
-- ✅ Canvas idle-aware: tạm dừng RAF khi idle 3s / modal mở / tab ẩn nền
-- ✅ Celestial Hub: mặc định mở tab Tổng Quan, loại bỏ tab "Who I Am"
-
-### v4.3.0 và trước đó
-- Giao diện Celestial Glassmorphism ban đầu
-- FSRS-7 Dual-Track Stability
-- Hệ thống Gamification (XP, Level, Streak, Badges)
-- Quiz Mode, Active Typing Recall
-- Radar Semantic Dedup
+1. **Đồng bộ A↔B với Firestore thật.** `tests/cloud-identity.test.mjs` chạy với driver Auth giả trong Node; chưa có lần chạy 2 profile thật nào được ghi lại (học 5 thẻ ở A → B nhập mã → thấy đủ 5 thẻ).
+2. **App Check enforce.** Code đã sẵn sàng nhưng chưa bật enforce trên Console, chưa có site key thật, chưa quan sát request bị 403 khi thiếu token.
+3. **Trình đọc màn hình thật** (NVDA/VoiceOver). `tests/a11y-p4.test.mjs` chỉ assert markup tĩnh (`aria-label`, `aria-live`, `lang`).
+4. **iOS/Safari thật.** Safe-area mới được giả lập bằng CDP (`Emulation.setDeviceMetricsOverride`); chưa thử trên máy có notch, chưa thử "Add to Home Screen".
+5. **TTS trên máy có loa.** `tests/tts.test.mjs` dùng mock; chưa ai nghe thật để xác nhận giọng/tốc độ/độ trễ, và chưa đo request ra `script.google.com`.
+6. **Số benchmark FSRS cũ** (loss 0,30443 / RMSE 2,07%) — xem §11.
+7. **Các con số hiệu năng cũ** (SymSpell 43,8 s → 1,1 s; FCP giảm ≥150 ms; app-ready 1,24 s → 900 ms) — không có log tái lập trong repo ở thời điểm này.
+8. **`npm run icons` trên máy khác** — script cần mạng + `pyftsubset`; chưa chạy lại từ đầu, chỉ kiểm tra file sinh ra đã commit là đúng.
 
 ---
 
-## 11. Giấy Phép & Tác Giả
+## 13. Giấy phép
 
-Dự án được nghiên cứu và phát triển bởi **[DATWY](https://github.com/DATWY)**.  
-Phát hành theo giấy phép **MIT License**.
-
-<div align="center">
-
-⭐ **Nếu dự án hữu ích, hãy tặng một Star trên GitHub!** ⭐
-
-[🐛 Issues](https://github.com/DATWY/ultimate-celestial-vocab/issues) &nbsp;•&nbsp; [📦 Releases](https://github.com/DATWY/ultimate-celestial-vocab/releases)
-
-</div>
+MIT License. Tác giả: **DATWY**.
