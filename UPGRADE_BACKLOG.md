@@ -69,18 +69,18 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 | T3.1 | `[x]` | `2313e40` | woff2 icon **593.596 → 95.568 B (−83,9%)**, `phosphor-subset.css` 64.054 B / **792** rule `.ph-*`; **không xoá weight nào** — xem §3.5 #1 |
 | T3.2 | `[ ]` một phần | `862c33a` | đã xoá 504 dòng / 62 rule, `style.css` còn 410.502 B. **DoD KHÔNG đạt:** `!important` toàn `src/css` = **1.920** (mục tiêu < 800) và CSS Vite **58,98 kB gzip** (mục tiêu ≤ 40 kB) — xem §3.5 #2 |
 | T3.3 | `[x]` | `f8d1ccb` | precache **35 URL, 0 mp3**; `/sounds/*.mp3` chỉ vào `sfx-cache` (CacheFirst, 10 entry / 90 ngày) |
-| T3.4 | `[ ]` | — | `runWhenIdle` có ở `main.js:32` nhưng không có commit cho task này; **chưa đo** app-ready |
+| T3.4 | `[x]` | `81d7b09` | Đo lần đầu bằng `tools/measure_startup.mjs`: app-ready **med 283,6 ms** (cold) / **68,9 ms** (warm) / **124,8 ms** với 3.000 thẻ ⇒ đạt ngưỡng ≤900 ms. Baseline "~1,24 s" cũ là **số bịa** (§3.5 #8). Chưa có ngưỡng cho FCP/long task |
 | T3.5 | `[x]` | `4047255` | `npm run budget` **4/4 ngưỡng OK**: entry 80,67/82 kB · firebase 113,69/120 kB · CSS 326,70/350 kB · dist 2.096,07/2.700 kB; CI có bước `npm run budget` |
 | T4.1 | `[x]` | `7ec2465` | `aria-label` cho `#typing-input`, `role=status aria-live=polite` cho `#typing-feedback`, `lang="en"` cho từ tiếng Anh; `a11y-p4.test.mjs` **8/8** |
 | T4.2 | `[x]` | `7ec2465` | `focusGradingArea()` khi lật bằng bàn phím; chuột/tap **không** cướp focus |
 | T4.3 | `[ ] một phần` | `7ec2465` | chỉ xong safe-area (`viewport-fit=cover`, `index.html:6`) + `@supports` margin-bottom. **Không** có `color-scheme` / bootstrap theme inline ⇒ nháy trắng **chưa** xử lý |
 | T4.4 | `[ ]` | — | không có file eslint/prettier trong repo; CI (`.github/workflows/ci.yml`) không có bước lint |
 | T4.5 | `[x]` một phần | `8d45904` | `state.js` **1.621 → 616 dòng**, 10 module trong `src/core/state/`, barrel giữ đúng **93 tên** (MISSING 0/ADDED 0, không sửa call site), 8 test mới canh API + 0 vòng import. **Byte KHÔNG giảm:** entry raw −1.374 B nhưng gzip **−7 B** (80.674 → 80.667) ⇒ đây là thắng về độ phức tạp, không phải byte — xem §3.5 #7 và task mới T4.5c |
-| T4.6 | `[ ]` | — | `tests/e2e/` không tồn tại; smoke test nằm ở `scratch/` và **không được git track** (`.gitignore:44`) |
+| T4.6 | `[x]` | `81d7b09` | Smoke E2E vào git: `tests/e2e/study-loop.mjs` + `npm run test:e2e` (đã chạy 4 cách: new-card, leech, qua npm, từ cwd khác). Trước đó tài liệu hướng dẫn chạy **một file không có trong repo** |
 | T5.1 | `[ ]` | (`678132a` gắn nhãn) | commit `678132a` chỉ thêm script render báo cáo; đến hết `7ec2465` README **vẫn ghi "77/77"**. Bản viết lại theo số đo đang ở working tree, **chưa commit** |
-| T5.2 | `[ ]` | — | **14** file `.md` ở gốc trên đĩa, **8** file được track (`git ls-files "*.md"`); chưa gộp |
+| T5.2 | `[ ]` một phần | `changelog` | Đã có `docs/README.md` làm mục lục (phân loại: nguồn sự thật / vận hành / báo cáo lịch sử). **Chưa gộp file** vì việc xoá/gộp báo cáo cũ cần người quyết định |
 | T5.3 | `[ ]` | — | `reports/WEB_DISCOVERY_FOR_CHATGPT/WEB_DISCOVERY_FOR_CHATGPT.zip` **9.019.103 B** vẫn được track (`*.zip` đã ignore nhưng file add từ trước) |
-| T5.4 | `[ ]` | — | không có `CHANGELOG.md` |
+| T5.4 | `[x]` | `changelog` | `CHANGELOG.md` sinh tự động từ `git log` bằng `tools/changelog.mjs` (0 dependency); 21 commit / 6 nhóm. KHÔNG dùng `conventional-changelog` như backlog ghi (thêm 1 dependency chỉ để in 20 dòng là không đáng) |
 
 ---
 
@@ -323,7 +323,7 @@ Bảng dưới là **nguồn trạng thái duy nhất**; các mục P0–P5 phí
 ### [ ] T5.3 — Dọn repo · 2 h
 - Bỏ track `reports/WEB_DISCOVERY_FOR_CHATGPT/*.zip` (9 MB) và ảnh trùng (dùng `git filter-repo`, **cảnh báo: rewrite history — cần thông báo trước**); thêm `scratch/`, `backups/`, `.codex-evaluation-dist/` vào ignore; quyết định bỏ track `version.js`/`version.json` (build sinh ra).
 
-### [ ] T5.4 — CHANGELOG · 1 h
+### [x] T5.4 — CHANGELOG · 1 h
 - Sinh từ commit (`conventional-changelog`), thêm vào `npm run release`.
 
 ---
@@ -421,6 +421,14 @@ Tách 1.621 dòng thành 11 file nhưng entry gzip gần như không đổi: **8
 
 **Task mới T4.5c (chưa làm):** bỏ kiểu `await import('./state.js')` ở 12 call site trong module entry, chuyển sang import tĩnh có chọn lọc + xoá 25 export chết. Đó mới là đòn bẩy byte thật; ước tính cần đo lại chứ không hứa trước con số.
 
+### 3.5 #8 — Baseline "app-ready ~1,24 s" là SỐ BỊA, không phải phép đo
+
+`tools/perf_deep_audit.mjs:205-221` làm `await sleep(1200)` **trước rồi mới** lấy `performance.now()` ⇒ `readyMs` **luôn ≥ 1200 ms**, bất kể app nhanh hay chậm. Đo thật lần đầu (`81d7b09`, `tools/measure_startup.mjs`): app-ready **med 283,6 ms** cold, **68,9 ms** warm, **124,8 ms** với 3.000 thẻ.
+
+Hệ quả nếu không phát hiện: tài liệu sẽ ghi "tối ưu từ 1,24 s → 0,12 s (−90%)" trong khi chưa từng có phép đo nào. **Đây là cái bẫy nguy hiểm nhất trong cả đợt**: các verifier chết khác chỉ không chạy, cái này **sinh ra một con số được tin**.
+
+Bài học: một con số chỉ được vào tài liệu khi trả lời được 3 câu — đo bằng script nào, chạy lúc nào, mốc bắt đầu/kết thúc là gì. `sleep(1200)` trước `performance.now()` là mốc bắt đầu giả.
+
 ## 3.6 Bài học (P5)
 
 - **BOM UTF-8 làm hỏng `npm run build`.** Ghi file bằng `Set-Content -Encoding utf8` trên **PowerShell 5.1** sinh BOM
@@ -437,6 +445,11 @@ Tách 1.621 dòng thành 11 file nhưng entry gzip gần như không đổi: **8
   Grep file lớn bằng .NET regex rồi mới tin kết quả.
 - **Số đo phải kèm "đo bằng gì, lúc nào".** Cùng một repo: `!important` trong tài liệu cũ ghi 2.068, đo lại còn **1.920**;
   `dist/` đổi 3 lần trong 10 phút.
+- **BOM còn dính vào cả commit message.** 11/21 commit trong đợt này có ký tự `U+FEFF` ở đầu subject
+  (cùng nguyên nhân: ghi message ra file bằng `Set-Content -Encoding utf8` rồi `git commit -F`). Hậu quả: công cụ
+  nhóm commit theo conventional commits **trượt 11 commit** (đều rơi vào "không theo conventional commits").
+  Không thể sửa nếu không viết lại lịch sử ⇒ `tools/changelog.mjs` phải strip `U+FEFF` trước khi parse.
+  Khi tạo message bằng file: dùng `[System.IO.File]::WriteAllText` với `UTF8Encoding($false)`.
 - **Đừng đánh `[x]` cho task "gần xong".** T3.2 và T4.3 có commit nhưng DoD đo được vẫn trượt ⇒ giữ `[ ]` + ghi rõ phần
   thiếu. Ngược lại T5.1 có commit mang đúng nhãn nhưng nội dung không phải việc của task ⇒ cũng `[ ]`.
 

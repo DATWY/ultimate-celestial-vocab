@@ -11,6 +11,7 @@
     "verify": "node tools/verify_performance_lifecycle.mjs && node tools/verify_version_system.mjs",
     "budget": "node tools/bundle_budget.mjs",
     "report": "node tools/render_report.mjs",
+    "changelog": "node tools/changelog.mjs",
     "preview": "vite preview",
     "train": "node tools/train_fsrs7.js",
     "version": "node tools/generate_version.js",
