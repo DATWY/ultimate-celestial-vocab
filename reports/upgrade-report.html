@@ -519,18 +519,6 @@
                 <div class="body"><div class="t">P4 — 6 lỗi a11y &amp; responsive</div>
                 <div class="d">aria-label + aria-live, <code>lang="en"</code> 3 chỗ, focus sau khi lật chỉ khi bàn phím, nhãn mobile hết cắt, safe-area.</div>
                 <div class="m">+8 test</div></div></div>
-            <div class="item"><div class="sha">14885f9</div><div class="rail"><div class="node"></div></div>
-                <div class="body"><div class="t">T1.5 — cap số lượt ôn mỗi ngày</div>
-                <div class="d">Mặc định 200 (50–500), dùng chung ngân sách với thẻ mới, thẻ Learning 1p/10p <b>không</b> bị chặn, thẻ hoãn vẫn due. Lưu IndexedDB + Cloud LWW.</div>
-                <div class="m">+10 test</div></div></div>
-            <div class="item"><div class="sha">81d7b09</div><div class="rail"><div class="node"></div></div>
-                <div class="body"><div class="t">Đưa smoke E2E vào git + đo khởi động lần đầu</div>
-                <div class="d">`tests/e2e/study-loop.mjs` (trước nằm trong `scratch/` bị gitignore) và `docs/PERF.md`. Và đây là nơi phát hiện baseline "1,24 s" là <b>số bịa</b> (<code>sleep(1200)</code> trước <code>performance.now()</code>).</div>
-                <div class="m">app-ready thật: 283 ms cold / 69 ms warm</div></div></div>
-            <div class="item"><div class="sha">1ed0b0e</div><div class="rail"><div class="node"></div></div>
-                <div class="body"><div class="t">Đưa tab Dữ liệu ra khỏi entry</div>
-                <div class="d">Entry đã chạm 99,8% trần sau T1.5. Tách <code>io.js</code> sang chunk lazy: 81,85 → <b>74,93 kB</b> gzip. Guard 2 lớp chống gắn trùng listener — CDP: mở/đóng 3 lần rồi Export ⇒ chạy đúng 1 lần.</div>
-                <div class="m">+5 test</div></div></div>
             <div class="item"><div class="sha">c3f5a51</div><div class="rail"><div class="node"></div></div>
                 <div class="body"><div class="t">Tách panel TTS sang chunk lazy</div>
                 <div class="d">Entry 81,38 → 80,67 kB gzip; chunk 1,45 kB. Chứng minh bằng cách <i>chặn request chunk</i>: app vẫn chạy, panel vắng, 1 cảnh báo.</div>
@@ -573,9 +561,10 @@
     <div class="caveat">
         <b style="color:var(--ink-dim)">Những gì mình KHÔNG tuyên bố:</b> chưa test đồng bộ A↔B với Firestore thật (cần 2 tài khoản);
         chưa bật App Check enforce; screen reader thật (NVDA/VoiceOver) và iPhone thật chưa test;
-        đo hiệu năng trên máy thật chưa chạy lại sau các thay đổi. Entry bundle nặng thêm 6,1% gzip so với trước nâng cấp vì có thêm tính năng (đã tách
-        panel TTS, chặn trên là 82 kB). 6 script <code>verify</code> khác trong <code>tools/</code>
-        vẫn chết và chưa được sửa.
+        đo hiệu năng trên máy thật chưa chạy lại sau các thay đổi. Entry gzip nay <b>nhẹ hơn 1,4%</b> so với trước nâng cấp (74,93 kB / trần 82 kB) dù thêm 6 tính năng
+        — nhờ tách panel TTS và tab Dữ liệu sang chunk lazy. Nhưng 6 script <code>verify</code> khác trong
+        <code>tools/</code> vẫn chết, và T2.6 (đổi <code>autoUpdate</code> → <code>prompt</code>) <b>cố ý chưa làm</b>
+        vì chạm đúng chỗ vừa sửa reload loop.
     </div>
 
     <div class="foot"><span>Ultimate Celestial Vocab · 226/226 test · npm run verify xanh · cây làm việc sạch</span><span>trang 4 / 4</span></div>
