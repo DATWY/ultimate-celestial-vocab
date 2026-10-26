@@ -7,7 +7,14 @@ export function optimizerMessage(result) {
     if (result.reason === 'insufficient-history') return 'Cần thêm lịch sử lặp lại và ít nhất 30 lượt để kiểm tra độc lập.';
     if (result.reason === 'configuration-changed') return 'Bạn đã đổi cấu hình trong lúc tối ưu. Đã giữ cấu hình mới nhất của bạn.';
     if (result.reason === 'preview-only') return 'Đã kiểm tra trong kho demo. Tham số cá nhân của bạn được giữ nguyên.';
-    if (result.improved) return `Đã áp dụng bộ 34 tham số mới. Sai số kiểm tra giảm ${((1 - result.newLoss / result.oldLoss) * 100).toFixed(1)}% trên ${result.validationCount} lượt.`;
+    if (result.improved) {
+        const ci = Array.isArray(result.gainCiPct) ? result.gainCiPct : null;
+        const ciText = ci ? ` (khoảng tin cậy 95%: ${ci[0].toFixed(1)}%…${ci[1].toFixed(1)}%)` : '';
+        return `Đã áp dụng bộ 34 tham số mới. Sai số kiểm tra giảm ${Number(result.gainPct || 0).toFixed(1)}%${ciText} trên ${result.validationCount} lượt.`;
+    }
+    if (result.reason === 'not-significant') {
+        return `Bộ mới có tốt hơn trên dữ liệu huấn luyện nhưng chưa đủ bằng chứng trên ${result.validationCount} lượt kiểm tra (cần giảm ≥1% và khoảng tin cậy 95% không chứa 0). Giữ bộ hiện tại.`;
+    }
     return 'Đã kiểm tra: bộ mới chưa tốt hơn trên lịch sử dành riêng để đánh giá. Tiếp tục dùng bộ hiện tại.';
 }
 export async function checkAndRunOptimizer() {
