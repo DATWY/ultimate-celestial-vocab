@@ -19,15 +19,22 @@
          cần điền VITE_FIREBASE_APPCHECK_SITE_KEY là dùng được, không phải sửa CSP.
          frame-ancestors KHÔNG đặt trong meta (Chrome bỏ qua + log cảnh báo mỗi lần
          load); nó chỉ có hiệu lực ở header của firebase.json. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.google.com/recaptcha/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://script.google.com https://script.googleusercontent.com https://www.google.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src https://www.google.com/recaptcha/; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.google.com/recaptcha/; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://script.google.com https://script.googleusercontent.com https://www.google.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; worker-src 'self' blob:; frame-src https://www.google.com/recaptcha/; object-src 'none'; base-uri 'self'; form-action 'self'">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="canonical" href="https://ultimate-celestial-vocab.web.app/">
     <meta name="theme-color" content="#8a2be2">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- T2.2: Lexend tự host (public/fonts/, @font-face khai báo trong
+         src/css/fonts.css @import vào bundle CSS). Không còn CSS/font lấy từ
+         Google Fonts ⇒ bỏ 2 preconnect + 1 stylesheet chặn render, offline vẫn
+         có đúng font. Preload đúng 2 subset cần cho lần paint đầu:
+         latin (chữ Anh/UI) + vietnamese (toàn bộ chữ có dấu). latin-ext để
+         trình duyệt tự lấy khi gặp ký tự ngoài 2 dải trên (hiếm), không
+         preload để khỏi tranh băng thông. `crossorigin` là BẮT BUỘC: font
+         luôn được fetch ở CORS mode, thiếu nó thì preload bị tải lại lần 2. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/lexend-latin.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/lexend-vietnamese.woff2">
     <!-- Phosphor: bản subset do tools/build-icon-subset.mjs sinh ra từ đúng
          version 2.1.1, chỉ giữ ~199 icon × 4 weight đang dùng (~990 rule thay
          vì ~9.000). Font .woff2 self-host tại /fonts/ nên icon không phụ thuộc

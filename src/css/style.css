@@ -1,3 +1,8 @@
+/* T2.2: Lexend self-host (variable, 3 subset latin/latin-ext/vietnamese).
+   @import phải đứng đầu file — Vite inline nó vào cùng bundle CSS nên không
+   phát sinh request CSS thứ hai. Khai báo @font-face nằm ở src/css/fonts.css. */
+@import './fonts.css';
+
 /* --- CSS Variables (Modern Premium Aesthetics) --- */
 :root {
     --font-primary: 'Lexend', 'Poppins', sans-serif;
