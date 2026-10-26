@@ -56,6 +56,11 @@ const _sfxVoices = new Map();        // name → AudioBufferSourceNode[]
 let _sfxPreloadPromise = null;
 let _sfxReady = false;
 let _sfxRetryAfter = 0;
+// Warm-up SFX chỉ chạy SAU tương tác đầu tiên hoặc sau 3 s rảnh (T3.3):
+// mở app không tải/giải mã 5 file MP3 nào.
+let _sfxWarmUpArmed = false;
+let _sfxWarmUpTimer = null;
+const SFX_WARMUP_DELAY_MS = 3000;
 let _audioUnlockInstalled = false;
 let _audioUnlocked = false;
 
@@ -1001,30 +1006,58 @@ function installAudioUnlock() {
                     const p = ctx.resume();
                     if (p && typeof p.catch === 'function') p.catch(() => {});
                 }
-                preloadSfxSamples().catch(() => {});
             }
         } catch (_) {}
+        // Tương tác đầu tiên = mốc warm-up sớm nhất: tải/giải mã sample ngay
+        // để từ lần bấm thứ hai trở đi đường phát là buffer (độ trễ ~0).
+        // Chính lần bấm này vẫn có tiếng nhờ element/synth fallback trong playSound.
+        warmUpSfx();
         window.removeEventListener('pointerdown', unlock, true);
         window.removeEventListener('keydown', unlock, true);
+        window.removeEventListener('touchstart', unlock, true);
     };
     window.addEventListener('pointerdown', unlock, { capture: true, passive: true });
     window.addEventListener('keydown', unlock, { capture: true, passive: true });
+    window.addEventListener('touchstart', unlock, { capture: true, passive: true });
 }
 
-function scheduleSfxPreload() {
-    const run = () => {
-        // Người dùng có thể đã chuyển sang Tắt/TTS trước khi idle callback chạy.
-        try {
-            const mode = getState?.()?.soundMode;
-            if (mode === 'off' || mode === 'tts') return;
-        } catch (_) {}
-        preloadSfxSamples().catch(() => {});
-    };
-    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-        window.requestIdleCallback(run, { timeout: 2500 });
-    } else {
-        setTimeout(run, 350);
-    }
+function clearSfxWarmUpTimer() {
+    if (_sfxWarmUpTimer === null) return;
+    try { clearTimeout(_sfxWarmUpTimer); } catch (_) {}
+    _sfxWarmUpTimer = null;
+}
+
+/**
+ * Tải + giải mã sample SFX. Idempotent: preloadSfxSamples() tự chặn gọi trùng
+ * qua _sfxReady/_sfxPreloadPromise, nên gọi từ nhiều nguồn vẫn chỉ tải 1 lần.
+ */
+function warmUpSfx() {
+    clearSfxWarmUpTimer();
+    // Người dùng có thể đã chuyển sang Tắt/TTS trước khi warm-up chạy.
+    try {
+        const mode = getState?.()?.soundMode;
+        if (mode === 'off' || mode === 'tts') return;
+    } catch (_) {}
+    preloadSfxSamples().catch(() => {});
+}
+
+/**
+ * Đặt lịch warm-up muộn nhất: 3 s sau khi boot, chạy trong lúc rảnh.
+ * Đường còn lại (sớm hơn) là tương tác đầu tiên — xem installAudioUnlock().
+ * Trước đây initializeSound() warm-up ở ~350 ms nên mở app là tải 157 kB MP3
+ * dù người dùng chưa làm gì.
+ */
+function scheduleSfxWarmUp() {
+    if (_sfxWarmUpArmed || typeof setTimeout !== 'function') return;
+    _sfxWarmUpArmed = true;
+    _sfxWarmUpTimer = setTimeout(() => {
+        _sfxWarmUpTimer = null;
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(() => warmUpSfx(), { timeout: 1500 });
+        } else {
+            warmUpSfx();
+        }
+    }, SFX_WARMUP_DELAY_MS);
 }
 
 function pauseSpokenAudio() {
@@ -1066,6 +1099,9 @@ export function applySoundMode(mode) {
     const sfxMuted = mode === 'off' || mode === 'tts';
     if (sfxMuted) closeAudioContextForMute();
     if (mode === 'off' || mode === 'sfx') pauseSpokenAudio();
+    // Bật lại SFX sau khi đã có gesture: warm-up ngay, khỏi chờ lần bấm kế tiếp.
+    // (_audioUnlocked = false lúc boot nên nhánh này không làm tải MP3 sớm.)
+    if (!sfxMuted && _audioUnlocked) warmUpSfx();
 }
 
 export function getSfxStatus() {
@@ -1083,12 +1119,14 @@ export function initializeSound() {
     // element chỉ được tạo khi buffer chưa sẵn sàng. Tránh tải trùng 164 kB.
     sounds = {};
     installAudioUnlock();
-    // Người dùng đã tắt âm thanh hoặc chỉ dùng TTS thì không tải sample.
+    // KHÔNG preload MP3 ở đây (T3.3): mở app không phát sinh request âm thanh.
+    // Sample chỉ được tải/giải mã sau tương tác đầu tiên hoặc sau 3 s rảnh —
+    // xem scheduleSfxWarmUp(). Người dùng đã tắt âm thanh hoặc chỉ dùng TTS
+    // thì không tải sample chút nào.
     let savedMode = null;
     try { savedMode = localStorage.getItem('celestialSoundMode'); } catch (_) {}
     if (savedMode !== 'off' && savedMode !== 'tts') {
-        // Decode sau khi UI ổn định; nếu người dùng bấm sớm, element MP3 sẽ phát ngay.
-        scheduleSfxPreload();
+        scheduleSfxWarmUp();
     }
     console.log('Sound system initialized: decoded MP3 samples + synth fallback.');
 }

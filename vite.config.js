@@ -7,7 +7,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,wav,mp3}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,wav,mp3,woff2}'],
         // Firebase SDK (468 kB) là chunk nạp ĐỘNG sau khi UI sẵn sàng. Không
         // precache để lần cài đặt đầu không phải tải; runtime cache sẽ giữ lại
         // sau lần đồng bộ đầu tiên, nên offline vẫn hoạt động.
