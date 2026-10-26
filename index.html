@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P4: viewport-fit=cover để env(safe-area-inset-*) có giá trị trên iPhone tai thỏ (padding bù ở style.css) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Ultimate Celestial Vocab ✨</title>
     <meta name="description" content="Ultimate Celestial Vocab - Ứng dụng học từ vựng tiếng Anh theo thuật toán lặp lại ngắt quãng FSRS-7 tối ưu">
     <meta property="og:title" content="Ultimate Celestial Vocab ✨">
@@ -173,7 +174,7 @@
                     <div class="flashcard" id="flashcard">
                         <div class="card-face card-front">
                             <div id="card-hard-badge" class="card-hard-badge hidden" title="Từ này có độ khó rất cao hoặc từng bị quên nhiều lần"><i class="ph-fill ph-flame"></i> <span>Cực Khó</span></div>
-                            <h2 id="card-english">English Word</h2>
+                            <h2 id="card-english" lang="en">English Word</h2>
                             <div id="typing-front-ui" class="hidden typing-ui-container">
                                 <div class="typing-hint">
                                     <span class="hint-label">Gợi ý nghĩa</span>
@@ -181,10 +182,10 @@
                                 </div>
                                 <div id="typing-area" class="typing-container">
                                     <div class="typing-input-wrapper">
-                                        <input type="text" id="typing-input" placeholder="Gõ từ tiếng Anh..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" />
+                                        <input type="text" id="typing-input" placeholder="Gõ từ tiếng Anh..." aria-label="Gõ từ tiếng Anh" aria-describedby="typing-hint-text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" />
                                         <button id="typing-submit-btn" class="icon-btn" title="Xác nhận (Enter)"><i class="ph-duotone ph-paper-plane-right"></i></button>
                                     </div>
-                                    <p id="typing-feedback" class="typing-feedback"></p>
+                                    <p id="typing-feedback" class="typing-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
                                 </div>
                             </div>
                             <div class="card-actions-front">
@@ -219,7 +220,7 @@
                                         <span class="label">Ví dụ:</span>
                                         <span id="example-focus-tag" class="example-focus-tag hidden"><i class="ph-fill ph-sparkle"></i> Đọc kỹ ngữ cảnh</span>
                                     </div>
-                                    <span class="content" id="card-example">Example sentence.</span>
+                                    <span class="content" id="card-example" lang="en">Example sentence.</span>
                                 </div>
                             </div>
                         </div>
@@ -231,7 +232,7 @@
 
             <div id="controls-area" class="hidden">
                 <button id="reveal-btn"><i class="ph-duotone ph-arrows-clockwise"></i> Xem nghĩa <kbd class="desktop-key-hint">F</kbd></button>
-                <div id="srs-feedback-buttons" class="hidden srs-feedback-grid">
+                <div id="srs-feedback-buttons" class="hidden srs-feedback-grid" tabindex="-1" role="group" aria-label="Chấm điểm mức độ nhớ của bạn">
                     <button class="srs-btn srs-btn-again" data-rating="1" title="Quên (1)">
                         <div class="srs-btn-label-group">
                             <i class="ph-duotone ph-brain"></i>

@@ -12659,9 +12659,15 @@ body:not(.dark-mode) .celestial-stats-dock {
     }
 
     .chip-title {
-        font-size: 0.58rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        /* P4 (#5): ở 375px nhãn "Đang học" từng bị nowrap + ellipsis cắt thành
+           "ĐANG H…" (đo được: scrollWidth 54 > clientWidth 53). Giảm nhẹ cỡ chữ,
+           bỏ letter-spacing và cho phép xuống 2 dòng thay vì cắt — chữ giữ nguyên. */
+        font-size: 0.55rem;
+        letter-spacing: 0;
+        line-height: 1.15;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
     }
 
     .dock-meta-row {
@@ -12671,6 +12677,15 @@ body:not(.dark-mode) .celestial-stats-dock {
     .meta-pill {
         font-size: 0.68rem;
         padding: 2px 6px;
+    }
+}
+
+/* P4 (#6): iPhone tai thỏ — bù vùng an toàn cho khối dưới cùng của màn học.
+   Chỉ cộng thêm margin khi env() > 0 (kèm viewport-fit=cover ở index.html),
+   nên không đổi bố cục ở mọi thiết bị/khung nhìn khác. */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    #stats-area {
+        margin-bottom: env(safe-area-inset-bottom, 0px);
     }
 }
 

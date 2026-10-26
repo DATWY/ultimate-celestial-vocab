@@ -469,7 +469,7 @@ export function displayCard(index, preserveFlipState = false) {
     updateStats();
 }
 
-export async function flipCard() {
+export async function flipCard({ fromKeyboard = false } = {}) {
     if (getState().isTransitioning) return;
     const { currentCardIndex, isFlipped } = getState();
     if (currentCardIndex < 0 || !DOM.flashcard) return;
@@ -486,12 +486,26 @@ export async function flipCard() {
             const currentCard = getState().vocabulary[getState().currentCardIndex];
             if (shouldCardUseTyping(currentCard)) {
                 startTypingTimer();
-            } else {
-                DOM.srsFeedbackButtons?.querySelector('.srs-btn[data-rating="3"]')?.focus({ preventScroll: true });
+            } else if (fromKeyboard) {
+                // P4 (#4): chỉ dời focus khi thao tác lật phát sinh từ BÀN PHÍM.
+                // Click/tap chuột giữ nguyên focus của người dùng (không cướp focus).
+                // Đích là container nút chấm, không phải nút "Quên"
+                // (Space vẫn phải giữ nghĩa "chọn Nhớ" như index.html bảng phím tắt).
+                focusGradingArea();
             }
         }
     } finally {
         setIsTransitioning(false);
+    }
+}
+
+function focusGradingArea() {
+    const target = DOM.srsFeedbackButtons;
+    if (!target || target.classList.contains('hidden')) return;
+    try {
+        target.focus({ preventScroll: true });
+    } catch {
+        target.focus();
     }
 }
 
@@ -1289,7 +1303,7 @@ function wordCardHtml(word) {
         <div class="word-card-inner">
             <div class="word-card-header">
                 <div class="word-card-title-group">
-                    <span class="word-english">${safeEnglish}</span>
+                    <span class="word-english" lang="en">${safeEnglish}</span>
                     <span class="word-type">${safeType}</span>
                 </div>
                 <div class="word-card-header-right">

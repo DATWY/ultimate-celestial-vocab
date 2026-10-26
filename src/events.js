@@ -817,7 +817,9 @@ export function setupEventListeners() {
     DOM.revealBtn?.addEventListener('click', (e) => {
         if (getState().isTransitioning) return;
         import('./core/state.js').then(s => s.trackEvent('cardFlipSpam'));
-        flipCard();
+        // P4 (#4): detail === 0 ⇒ click do bàn phím/AT kích hoạt (Enter/Space trên nút),
+        // detail >= 1 ⇒ chuột/tap. Chỉ trường hợp bàn phím mới được dời focus.
+        flipCard({ fromKeyboard: e.detail === 0 });
     });
     DOM.nextCardBtn?.addEventListener('click', () => { 
         if (getState().isTransitioning) return;
@@ -1358,13 +1360,13 @@ function handleGlobalShortcuts(e) {
                 if (btn3) btn3.click();
             }
         } else {
-            flipCard();
+            flipCard({ fromKeyboard: true });
         }
         return;
     }
     switch (e.key.toUpperCase()) {
         case 'B': e.preventDefault(); DOM.toggleBoostModeBtn?.click(); break;
-        case 'F': e.preventDefault(); flipCard(); break;
+        case 'F': e.preventDefault(); flipCard({ fromKeyboard: true }); break;
         case 'P': e.preventDefault(); DOM.ttsBtn?.click(); break;
         case 'S': e.preventDefault(); DOM.starBtn?.click(); break;
         case 'N': case 'ENTER':
