@@ -16,7 +16,6 @@ const mimeTypes = {
   '.webmanifest': 'application/manifest+json'
 };
 
-const PORT = 5299;
 const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 class CDPClient {

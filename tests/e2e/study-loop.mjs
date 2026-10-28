@@ -5,13 +5,45 @@
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 
 const rootDir = path.resolve(path.dirname(process.argv[1] || '.'), '..', '..'); // gốc repo suy ra từ vị trí file (tests/e2e/ → ../..), không phụ thuộc cwd
 const distDir = path.join(rootDir, 'dist');
 const PORT = 5199;
 const WITH_LEECH = process.env.SMOKE_LEECH === '1';
-const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+// Tìm Chrome theo thứ tự: biến môi trường → đường dẫn phổ biến của từng HĐH →
+// lệnh trong PATH. Trước đây đường dẫn Windows được hard-code nên E2E không thể
+// chạy trong CI (ubuntu-latest) và luôn bị bỏ qua ở cổng chất lượng.
+function resolveChromePath() {
+    const candidates = [
+        process.env.CHROME_PATH,
+        process.env.CHROME_BIN,
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+        try { if (fs.existsSync(candidate)) return candidate; } catch { }
+    }
+    for (const command of ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'chrome']) {
+        try {
+            const found = execSync(`command -v ${command} || where ${command}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+                .toString().split(/\r?\n/)[0].trim();
+            if (found) return found;
+        } catch { }
+    }
+    return null;
+}
+
+const chromePath = resolveChromePath();
+if (!chromePath) {
+    console.error('Không tìm thấy Chrome. Đặt CHROME_PATH hoặc cài Chrome/Chromium để chạy E2E.');
+    process.exit(2);
+}
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 
 const server = http.createServer((req, res) => {

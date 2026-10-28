@@ -1,8 +1,8 @@
 import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
-import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, saveVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, setTypingFilter, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
+import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
 import { playSound, ensureAudioForWords, applySoundMode } from '../core/sound.js';
-import { buildReviewQueue, getNextCardToReview, getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus } from '../core/queue.js';
+import { getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus } from '../core/queue.js';
 // modal.js được nạp động: render <-> modal là vòng import lớn nhất của app.
 // Gọi UI modal không cần đồng bộ, nên nạp động vừa phá vòng vừa giảm entry chunk.
 let _modalModulePromise = null;
@@ -40,7 +40,7 @@ const CELEBRATE_COLORS = ['#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981',
 const MAX_CELEBRATE_PARTICLES = 220;
 let _celebrateCanvas = null;
 let _celebrateCtx = null;
-let _celebrateParticles = [];
+const _celebrateParticles = [];
 let _celebrateRaf = 0;
 let _celebrateLastTs = 0;
 
@@ -173,9 +173,22 @@ export function launchCelebrationConfetti(options = {}) {
     }
 }
 
+// Handle của vòng requestAnimationFrame đang chạy cho pháo giấy màn "vinh quang".
+// Vì sao cần biến ở phạm vi module: bản cũ khai báo `let animId` BÊN TRONG hàm và
+// chỉ gán mà không bao giờ huỷ. Mỗi lần mở lại màn vinh quang (hoặc ăn mừng liên
+// tiếp) là thêm MỘT vòng rAF nữa vẽ trên cùng canvas, giữ riêng một mảng 75 hạt
+// → càng bấm càng nặng, và không có đường nào dừng vòng cũ. Lưu handle ở đây để
+// lần phát mới huỷ lần cũ (một canvas chỉ nên có một vòng vẽ).
+let confettiAnimId = null;
+
 export function launchVictoryConfetti() {
     launchCelebrationConfetti();
     if (getState().isBoostMode) return;
+    // Huỷ vòng vẽ của lần trước trước khi bắt đầu lần này.
+    if (confettiAnimId !== null) {
+        cancelAnimationFrame(confettiAnimId);
+        confettiAnimId = null;
+    }
     const canvas = document.getElementById('victory-confetti-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -204,7 +217,6 @@ export function launchVictoryConfetti() {
         });
     }
 
-    let animId;
     const startTime = Date.now();
 
     function render() {
@@ -243,8 +255,11 @@ export function launchVictoryConfetti() {
         }
 
         if (active > 0 && elapsed < 3500) {
-            animId = requestAnimationFrame(render);
+            confettiAnimId = requestAnimationFrame(render);
         } else {
+            // Kết thúc vòng đời: xoá handle để lần sau không huỷ nhầm một id đã
+            // được trình duyệt tái sử dụng cho vòng khác.
+            confettiAnimId = null;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
     }
@@ -1000,7 +1015,7 @@ export function updateCustomTypingUI() {
     }
 }
 
-export function populateTopicFilters(tagsHaveChanged = false) {
+export function populateTopicFilters(_tagsHaveChanged = false) {
     const { allTags } = getState();
     const sortedTags = Array.from(allTags).sort((a, b) => {
         if (a === 'all') return -1;

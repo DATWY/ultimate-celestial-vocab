@@ -25,7 +25,6 @@ async function dumpData() {
   const wsUrl = await getWsUrl();
   console.log('Connecting to Chrome CDP at:', wsUrl);
   
-  const WebSocket = (await import('node:http')).default; // check if WebSocket global or ws package
   let ws;
   if (typeof globalThis.WebSocket !== 'undefined') {
     ws = new globalThis.WebSocket(wsUrl);

@@ -56,7 +56,7 @@ export function handleFocus() {
 
 export function getResponseTime() {
     if (typingStartTime === 0) return 0;
-    let currentPause = isPaused ? (Date.now() - pauseStartTime) : 0;
+    const currentPause = isPaused ? (Date.now() - pauseStartTime) : 0;
     return Math.max(0, Date.now() - typingStartTime - totalPauseTime - currentPause);
 }
 
@@ -165,9 +165,14 @@ export function stripVietnameseDiacritics(str) {
         .replace(/[Đ]/g, 'D');
 }
 
+// Trần độ dài đầu vào: Damerau-Levenshtein là O(n·m). Paste 5.000 ký tự vào ô
+// gõ từng đo được 537ms chặn UI. Ô nhập đã có maxlength nhưng engine vẫn phải
+// tự chặn (dán bằng script, autofill, hoặc test).
+const MAX_TYPING_INPUT = 128;
+
 export function evaluateTyping(inputStr, targetStr) {
-    const input = inputStr.trim();
-    const target = targetStr.trim();
+    const input = String(inputStr ?? '').slice(0, MAX_TYPING_INPUT).trim();
+    const target = String(targetStr ?? '').trim();
 
     // 1. Accidental Submit Guard
     if (input.length < 0.4 * target.length) {
@@ -178,6 +183,9 @@ export function evaluateTyping(inputStr, targetStr) {
     const normTarget = superNormalize(target);
 
     // If target is pure ASCII (standard English), strip accidental Vietnamese IME diacritics
+    // \x00 ở đây chỉ là BIÊN DƯỚI của khoảng ASCII (câu hỏi: "target thuần ASCII?"),
+    // không phải mẫu khớp ký tự điều khiển — nên tắt đúng một dòng cho rule này.
+    // eslint-disable-next-line no-control-regex
     if (/^[\x00-\x7F\s]+$/.test(normTarget)) {
         normInput = stripVietnameseDiacritics(normInput);
     }

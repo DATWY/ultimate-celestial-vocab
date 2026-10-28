@@ -447,7 +447,7 @@ export function checkAndUpdateStreak() {
 // 1 đợt confetti, 3 toast đầu + 1 toast tổng kết), và gộp 1 lần ghi IDB.
 // Người dùng vẫn thấy đầy đủ thông tin mở khóa, giao diện không đổi.
 let _badgeCelebrateTimer = null;
-let _badgeCelebrateQueue = [];
+const _badgeCelebrateQueue = [];
 let _badgeSaveTimer = null;
 
 function scheduleGamificationSave() {

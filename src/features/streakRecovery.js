@@ -275,7 +275,7 @@ function renderPenanceQuestion() {
     const modal = document.getElementById('penance-trial-modal');
     if (!modal || !penanceQuizState) return;
 
-    const { questions, currentIndex, correctCount, incorrectCount, maxAllowedIncorrect } = penanceQuizState;
+    const { questions, currentIndex, incorrectCount, maxAllowedIncorrect } = penanceQuizState;
     const bodyContainer = modal.querySelector('.penance-modal-body');
 
     // Kiểm tra nếu đã bị loại (sai quá 1 câu)
@@ -394,7 +394,7 @@ function renderPenanceFailure(container) {
  */
 function renderPenanceSuccess(container) {
     const missedDates = penanceQuizState.missedDates;
-    const recoveryResult = completeStreakRecovery(missedDates);
+    completeStreakRecovery(missedDates);
 
     playSound('levelUp');
     playSound('streak');

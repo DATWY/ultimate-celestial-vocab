@@ -157,13 +157,13 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         const r1 = shortComponentRecall(actualDaysElapsed, newState.stabilityShort, w);
 
         // Update Long-term Stability (start = 7)
-        let upd_s_long = nextStability(newState.stability, newState.difficulty, retrievability, rating, 7, w);
+        const upd_s_long = nextStability(newState.stability, newState.difficulty, retrievability, rating, 7, w);
         
         // Update Short-term Stability (start = 15)
         let upd_s_short = nextStability(newState.stabilityShort, newState.difficulty, r1, rating, 15, w);
 
         // Update Difficulty with Surprise-Weighted Lapse
-        let upd_d = nextDifficulty(newState.difficulty, rating, retrievability, newState.anchor, w);
+        const upd_d = nextDifficulty(newState.difficulty, rating, retrievability, newState.anchor, w);
 
         if (rating === 1) { // Lapse (Again)
             // Post-lapse short-term cap: s_short is capped at 0.8 * post-lapse long-term S (bounded by S_MIN)
@@ -324,6 +324,10 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
  * @returns {string}
  */
 export function formatIntervalPreview(days) {
+    // Fail-safe: NaN/Infinity/undefined không được biến thành nhãn rác
+    // ("NaNn", "Infinityn") trên nút chấm. Input đã được engine làm sạch, nhưng
+    // đây là biên cuối trước khi chữ hiện ra màn hình nên vẫn phải chặn.
+    if (!Number.isFinite(days)) return '—';
     if (days <= 0) return '<10p';
     if (days < 1) {
         const hours = Math.round(days * 24);
@@ -348,6 +352,7 @@ export function formatIntervalPreview(days) {
  * @returns {string}
  */
 function formatLearningPreview(intervalDays) {
+    if (!Number.isFinite(intervalDays)) return '—';
     const ms = intervalDays * DAY_MS;
     if (ms < 3600000) return `${Math.max(1, Math.round(ms / 60000))}p`;
     if (ms < DAY_MS) return `${Math.round(ms / 3600000)}h`;

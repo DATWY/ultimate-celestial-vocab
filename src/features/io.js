@@ -3,7 +3,7 @@ import { planVocabularyImport } from '../core/import-plan.js';
 // src/features/io.js
 
 import { DOM } from '../ui/elements.js';
-import { getState, setVocabulary, setAllTags, saveVocabulary, trackEvent } from '../core/state.js';
+import { getState, setVocabulary, setAllTags, trackEvent } from '../core/state.js';
 import { showPopup, showConfirmation, showToast, closeModal, openModal } from '../ui/modal.js';
 import { populateTopicFilters, updatePanelWordList, displayCard } from '../ui/render.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
@@ -17,7 +17,6 @@ function syncCardToFirebase(card) {
 }
 import { saveAllVocabularyToDB } from '../core/idb.js';
 import { checkAppVersion } from '../core/versionCheck.js';
-import { canonicalEnglish, canonicalPartOfSpeech, calculateSemanticSimilarity, isDuplicateCard, cleanAndDeduplicateVietnamese } from '../core/dedup.js';
 
 let parsedImportData = {
     newItems: [],
@@ -684,7 +683,7 @@ export async function handleDownloadAllAudio() {
         const { startBackgroundAudioPreload } = await import('../core/sound.js');
         await startBackgroundAudioPreload(getState().vocabulary, {
             reason: 'manual',
-            onProgress: ({ done, total, percent, isComplete, batchTotal }) => {
+            onProgress: ({ done, total, percent, batchTotal }) => {
                 if (batchTotal === 0) {
                     if (btnText) btnText.textContent = 'Toàn bộ từ đã có audio!';
                     if (progressFill) progressFill.style.width = '100%';

@@ -51,6 +51,21 @@ before(async () => {
 /** Chờ microlit: speakText không await phần toast (fire-and-forget). */
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+/**
+ * Chờ có điều kiện. Handler của modal lưu settings qua IndexedDB rồi mới
+ * refresh UI (setTtsSource(...).then(refresh)); fake-indexeddb hoàn tất ở
+ * macrotask nên `await tick()` một lần là KHÔNG đủ — đo được flake 1/12 lần
+ * chạy khi chạy song song cả bộ test.
+ */
+const waitUntil = async (predicate, { timeout = 3000, step = 10 } = {}) => {
+    const started = Date.now();
+    while (Date.now() - started < timeout) {
+        if (predicate()) return true;
+        await new Promise(resolve => setTimeout(resolve, step));
+    }
+    return false;
+};
+
 function assertFallbackShape(utterance, { rate, voiceUri = null }) {
     assert.ok(utterance instanceof FakeUtterance, 'phải tạo SpeechSynthesisUtterance');
     assert.equal(utterance.rate, rate);
@@ -393,19 +408,19 @@ test('modal giọng/tốc độ: dựng trong body, đủ 3 select + badge, đ�
         // Đổi nguồn sang giọng máy: select giọng mở khoá, settings lưu ngay.
         sourceSelect.value = 'device';
         sourceSelect.fire('change');
-        await tick();
+        await waitUntil(() => getTtsSettings().source === 'device' && voiceSelect.disabled === false);
         assert.equal(getTtsSettings().source, 'device', 'đổi nguồn phải lưu vào settings');
         assert.equal(voiceSelect.disabled, false, 'nguồn device ⇒ chọn giọng được');
         assert.match(hint.textContent, /giọng máy/i);
 
         voiceSelect.value = 'voice-gb';
         voiceSelect.fire('change');
-        await tick();
+        await waitUntil(() => getTtsSettings().voice === 'voice-gb');
         assert.equal(getTtsSettings().voice, 'voice-gb', 'đổi giọng trên UI phải lưu vào settings');
 
         rateSelect.value = '1.2';
         rateSelect.fire('change');
-        await tick();
+        await waitUntil(() => getTtsSettings().rate === 1.2);
         assert.equal(getTtsSettings().rate, 1.2, 'đổi tốc độ trên UI phải lưu vào settings');
         assert.deepEqual(await getSettingFromDB('ttsSettings'), { voice: 'voice-gb', rate: 1.2, source: 'device' });
 

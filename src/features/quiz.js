@@ -5,7 +5,7 @@ import { playSound } from '../core/sound.js';
 import { calculateNextSrsState } from '../core/srs/index.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 import { displayCard, launchVictoryConfetti } from '../ui/render.js';
-import { saveVocabulary, saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent, saveGamification, addReviewLog, clearLastReviewSnapshot, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone } from '../core/state.js';
+import { saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent, saveGamification, addReviewLog, clearLastReviewSnapshot, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone } from '../core/state.js';
 import { animateNumber } from '../core/animations.js';
 import { superNormalize, stripVietnameseDiacritics } from './typing.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
@@ -20,7 +20,6 @@ let quizIncorrect = 0;
 let quizInProgress = false;
 let quizIncorrectWordsInfo = [];
 let quizIsReviewing = false;
-let currentReviewIndex = -1;
 let quizRealStartTime = 0;
 let quizSessionXP = 0;
 let quizAdvanceTimer = null;
@@ -119,7 +118,7 @@ function startQuiz() {
     
     const targetCount = (numQuestionsOption === 'all') ? potentialQuizVocab.length : parseInt(numQuestionsOption, 10);
     
-    let quizPool = [...dueWords, ...learningWords, ...newWords, ...otherWords];
+    const quizPool = [...dueWords, ...learningWords, ...newWords, ...otherWords];
     
     quizQuestions = (numQuestionsOption === 'all')
         ? quizPool

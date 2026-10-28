@@ -312,7 +312,7 @@ export async function loadVocabulary() {
     setDailyStats(initializeProgress(parsedStats || _dailyStats, 'daily'));
     ensureDailyStats();
     // Load Gamification Stats
-    let savedGamification = await getSettingFromDB('gamification');
+    const savedGamification = await getSettingFromDB('gamification');
     if (savedGamification) {
         setGamification({ ..._gamification, ...savedGamification });
         initializeProgress(_gamification, 'gamification');
@@ -322,7 +322,7 @@ export async function loadVocabulary() {
 
 
 
-    let rawLogs = await getSettingFromDB('reviewLogs') || { dict: [], logs: [] };
+    const rawLogs = await getSettingFromDB('reviewLogs') || { dict: [], logs: [] };
     if (Array.isArray(rawLogs)) {
         console.log("Migrating reviewLogs to compressed format...");
         _reviewLogs = compressLogs(rawLogs);

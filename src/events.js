@@ -4,12 +4,12 @@ import { restoreCardReview } from './core/card-merge.js';
 // src/events.js
 
 import { DOM } from './ui/elements.js';
-import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setIsTypingMode, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
+import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
-import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, checkAndCleanupTags, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
-import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, openCelestialHub, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
+import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
+import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
@@ -46,7 +46,6 @@ async function loadAndShowQuiz() {
     }
 }
 
-let stashedCardState = null;
 let stashedCardIndex = -1;
 let typingRetryCount = 0;
 let isTypoRetry = false;
@@ -102,7 +101,7 @@ export async function undoLastReview() {
         
         // 4. Khôi phục hàng đợi:
         // - Xóa bản sao learning step của thẻ này nếu nó vừa được chèn vào
-        let newQueue = currentReviewQueue.filter(idx => idx !== targetIndex);
+        const newQueue = currentReviewQueue.filter(idx => idx !== targetIndex);
         
         // - Nếu hiện tại đang mở một thẻ khác (khác targetIndex), cất thẻ đó lại vào đầu hàng đợi
         if (currentCardIndex >= 0 && currentCardIndex !== targetIndex && vocabulary[currentCardIndex] && !vocabulary[currentCardIndex].isDeleted) {
@@ -112,7 +111,6 @@ export async function undoLastReview() {
         
         // 5. Điều hướng về lại Thẻ cũ (targetIndex)
         stashedCardIndex = -1;
-        stashedCardState = null;
         typingRetryCount = 0;
         isTypoRetry = false;
         setCurrentCardIndex(targetIndex);
@@ -495,7 +493,6 @@ export function setupEventListeners() {
 
         // Reset typing retry state
         stashedCardIndex = -1;
-        stashedCardState = null;
         typingRetryCount = 0;
         isTypoRetry = false;
 
@@ -513,7 +510,7 @@ export function setupEventListeners() {
         const { vocabulary, typingFilter } = getState();
         const activeFilter = typingFilter === 'off' ? 'leech' : typingFilter;
 
-        let candidates = [];
+        const candidates = [];
         for (let i = 0; i < vocabulary.length; i++) {
             const card = vocabulary[i];
             if (!card || card.isDeleted) continue;
@@ -959,7 +956,6 @@ export function setupEventListeners() {
                 
                 setTimeout(() => {
                     stashedCardIndex = -1;
-                    stashedCardState = null;
                     typingRetryCount = 0;
                     switchCardWithAnimation();
                 }, 800);
@@ -1005,7 +1001,6 @@ export function setupEventListeners() {
 
         // Chấm điểm lần đầu:
         if (result.status === "incorrect" || result.status === "typo") {
-            stashedCardState = JSON.parse(JSON.stringify(currentCard));
             stashedCardIndex = currentCardIndex;
             typingRetryCount = 1;
 
@@ -1228,36 +1223,6 @@ function toggleStar() {
         DOM.starBtn.classList.toggle('starred', isStarred);
     }
     playSound(isStarred ? 'starOn' : 'starOff');
-}
-
-function editCurrentWord() {
-    const { vocabulary, currentCardIndex } = getState();
-    if (currentCardIndex < 0) return;
-    openAddEditModal(true, vocabulary[currentCardIndex]);
-}
-
-function deleteCurrentWord() {
-    import('./core/state.js').then(s => s.trackEvent('consecutiveDeletes'));
-    const { vocabulary, currentCardIndex } = getState();
-    if (currentCardIndex < 0) return;
-    const cardToDelete = vocabulary[currentCardIndex];
-    showConfirmation(`Bạn có chắc chắn muốn xóa từ "${cardToDelete.english}" không?`, () => {
-        const currentVocab = getState().vocabulary;
-        const indexToDelete = currentVocab.findIndex(v => v.id === cardToDelete.id);
-        if (indexToDelete > -1) {
-			currentVocab[indexToDelete].isDeleted = true;
-            currentVocab[indexToDelete].updatedAt = Date.now();
-            setVocabulary(currentVocab);
-            saveOneWord(currentVocab[indexToDelete]);
-            playSound('delete');
-            showPopup(`Đã xóa từ "${cardToDelete.english}".`);
-            let tagsNeedRepopulate = checkAndCleanupTags();
-            populateTopicFilters(tagsNeedRepopulate);
-            buildReviewQueue();
-            updatePanelWordList();
-            switchCardWithAnimation();
-        }
-    });
 }
 
 async function handleBulkDelete() {

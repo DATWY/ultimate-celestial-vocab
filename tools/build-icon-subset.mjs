@@ -134,7 +134,6 @@ for (const weight of WEIGHTS) {
 
     const capWeight = weight[0].toUpperCase() + weight.slice(1);
     const family = weight === 'regular' ? 'Phosphor' : `Phosphor-${capWeight}`;
-    const fontFile = weight === 'regular' ? 'Phosphor' : `Phosphor-${capWeight}`;
     const header = [`/* ${weight.toUpperCase()} */`];
     const iconRules = [];
     const codepoints = new Set();

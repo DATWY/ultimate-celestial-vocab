@@ -137,7 +137,6 @@ const worstInput = {
     deletedIds: Array.from({ length: 2000 }, () => randomUUID())
 };
 const prepared = prepareReviewLogsForCloud(worstInput, { meta: META });
-const worst = measure(prepared.snapshot);
 const maxRowBytes = Math.max(...prepared.snapshot.logs.map(row => utf8ByteLength(JSON.stringify(row))));
 console.log('④ CODE MỚI — payload lớn nhất có thể ghi (đo bằng prepareReviewLogsForCloud)');
 console.log(`   Nguồn vào: 10.000 entry + 2.000 deletedIds (dữ liệu cực đoan)`);

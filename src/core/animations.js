@@ -6,8 +6,6 @@ import { getState } from './state.js';
 
 const DEFAULT_DURATION = 400;
 const APPLE_SPRING = 'cubicBezier(0.16, 1, 0.3, 1)';
-const EASE_OUT_EXPO = 'easeOutExpo';
-const EASE_IN_OUT_SINE = 'easeInOutSine';
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const isPageHidden = () => typeof document !== 'undefined' && document.hidden;
 // anime.js chỉ resolve promise .finished qua requestAnimationFrame; khi tab bị

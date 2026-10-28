@@ -4540,6 +4540,31 @@ body.dark-mode .modal-overlay {
     padding: 35px 40px;
 }
 
+/* ── Popup theo LOẠI thông báo (info / success / error / warning / confirm) ──
+   showPopup(message, type) được gọi với 'error'/'success'/'warning' ở 22 chỗ
+   nhưng bản cũ bỏ qua `type`, nên lỗi và thành công trông y hệt nhau. Khối này
+   biến `data-type` (do showPopup gắn) thành tín hiệu thị giác. Màu lấy từ token
+   theme nên tự đúng ở cả light và dark mode. */
+#popup-modal .popup-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    line-height: 1;
+    margin-bottom: 0.6rem;
+    color: var(--primary-color);
+}
+
+#popup-modal[data-type="success"] .popup-icon { color: var(--secondary-color); }
+#popup-modal[data-type="error"] .popup-icon { color: var(--danger-color); }
+#popup-modal[data-type="warning"] .popup-icon { color: var(--due-color); }
+#popup-modal[data-type="confirm"] .popup-icon { color: var(--new-color); }
+
+/* Viền nhấn: đọc được loại thông báo ngay cả khi không nhìn kỹ biểu tượng. */
+#popup-modal[data-type="success"] .modal-content.small-modal { border-color: var(--secondary-color); }
+#popup-modal[data-type="error"] .modal-content.small-modal { border-color: var(--danger-color); }
+#popup-modal[data-type="warning"] .modal-content.small-modal { border-color: var(--due-color); }
+
 body.dark-mode .modal-content.small-modal {
     background: linear-gradient(145deg, #1e2030, #14151f);
     border: 1px solid rgba(138, 43, 226, 0.4);

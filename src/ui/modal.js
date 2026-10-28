@@ -4,7 +4,7 @@ import { setReviewQueue, trackEvent } from '../core/state.js';
 
 import { DOM } from './elements.js';
 import { getState, saveVocabulary, setVocabulary, setAllTags, saveOneWord } from '../core/state.js';
-import { populateTopicFilters, updatePanelWordList, displayCard, checkAndCleanupTags, updateUndoButtonState } from './render.js';
+import { populateTopicFilters, updatePanelWordList, displayCard, updateUndoButtonState } from './render.js';
 import { displayAppVersion } from '../core/versionCheck.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 import { playSound } from '../core/sound.js';
@@ -16,7 +16,7 @@ function syncCardToFirebase(card) {
     if (!_syncModulePromise) _syncModulePromise = import('../core/sync.js');
     _syncModulePromise.then(module => module.syncCardToFirebase?.(card)).catch(() => {});
 }
-import { findDuplicatePairs, findDuplicatePairsAsync, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese } from '../core/dedup.js';
+import { findDuplicatePairs, findDuplicatePairsAsync, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese, selectAutoMergePairs } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from './celestial-canvas.js';
 
@@ -84,22 +84,60 @@ export async function closeModal(modalElement) {
         await animateModalClose(modalElement);
     } catch (e) {
         console.warn('Error during animateModalClose:', e);
-    } finally {
-        if (generation !== modalGenerations.get(modalElement)) return;
-        modalElement.classList.add('hidden');
-        if (modalElement.style) modalElement.style.zIndex = '';
-        const position = modalStack.indexOf(modalElement);
-        if (position >= 0) modalStack.splice(position, 1);
-        const opener = modalOpeners.get(modalElement);
-        const activeModal = topModal();
-        if (opener?.isConnected && !opener.closest('.hidden') && (!activeModal || activeModal.contains(opener))) {
-            opener.focus({ preventScroll: true });
-        } else if (activeModal) (modalFocusable(activeModal)[0] || activeModal).focus();
-        if (document.querySelectorAll('.modal:not(.hidden)').length === 0) {
-            document.body.classList.remove('modal-active');
-            resumeCelestialCanvas();
-        }
     }
+    // Trước đây phần dọn dẹp nằm trong `finally` và dùng `return` ở đó. `return`
+    // trong `finally` nuốt luôn ngoại lệ đang lan ra và giá trị trả về của khối
+    // try — ESLint no-unsafe-finally bắt đúng. Ở đây không có gì cần finally:
+    // lỗi animation đã được catch ngay trên, nên chạy tuần tự là tương đương
+    // về hành vi mà không còn cái bẫy đó.
+    //
+    // Modal bị MỞ LẠI trong lúc chờ animation ⇒ generation đã đổi ⇒ thoát sớm,
+    // giữ nguyên stack/opener/body-class cho lần đóng sau.
+    if (generation !== modalGenerations.get(modalElement)) return;
+    modalElement.classList.add('hidden');
+    if (modalElement.style) modalElement.style.zIndex = '';
+    const position = modalStack.indexOf(modalElement);
+    if (position >= 0) modalStack.splice(position, 1);
+    const opener = modalOpeners.get(modalElement);
+    const activeModal = topModal();
+    if (opener?.isConnected && !opener.closest('.hidden') && (!activeModal || activeModal.contains(opener))) {
+        opener.focus({ preventScroll: true });
+    } else if (activeModal) (modalFocusable(activeModal)[0] || activeModal).focus();
+    if (document.querySelectorAll('.modal:not(.hidden)').length === 0) {
+        document.body.classList.remove('modal-active');
+        resumeCelestialCanvas();
+    }
+}
+
+// ── LOẠI THÔNG BÁO ──────────────────────────────────────────────────────────
+// showPopup(message, type) nhận `type` ở 22 call site ('error' | 'success' |
+// 'warning') nhưng bản cũ bỏ qua hoàn toàn: người dùng thấy hộp thoại lỗi và
+// hộp thoại thành công GIỐNG HỆT NHAU. Hàm dưới đây biến `type` thành thứ nhìn
+// thấy được (biểu tượng + data-type cho CSS) và chịu được giá trị lạ.
+const POPUP_TYPE_ICONS = {
+    info: 'ph-duotone ph-info',
+    success: 'ph-duotone ph-check-circle',
+    error: 'ph-duotone ph-x-circle',
+    warning: 'ph-duotone ph-warning-circle',
+    confirm: 'ph-duotone ph-question',
+};
+const DENIED_POPUP_TYPES = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** Chuẩn hoá loại thông báo: chỉ nhận 5 loại đã biết, còn lại rơi về 'info'. */
+export function normalizePopupType(type) {
+    const value = typeof type === 'string' ? type.trim().toLowerCase() : '';
+    if (DENIED_POPUP_TYPES.has(value)) return 'info';
+    return Object.prototype.hasOwnProperty.call(POPUP_TYPE_ICONS, value) ? value : 'info';
+}
+
+function applyPopupType(type) {
+    const normalized = normalizePopupType(type);
+    if (DOM.popupModal) {
+        if (DOM.popupModal.dataset) DOM.popupModal.dataset.type = normalized;
+        else DOM.popupModal.setAttribute('data-type', normalized);
+    }
+    const iconHost = document.getElementById('popup-icon');
+    if (iconHost) iconHost.innerHTML = `<i class="${POPUP_TYPE_ICONS[normalized]}" aria-hidden="true"></i>`;
 }
 
 // CẢNH BÁO BẢO MẬT (T0.1): `isHTML = true` là API nguy hiểm vì gán thẳng innerHTML.
@@ -110,6 +148,7 @@ export async function closeModal(modalElement) {
 // - Nếu chỉ cần hiển thị văn bản thuần, để mặc định isHTML = false (dùng textContent).
 export function showPopup(message, type = 'info', isHTML = false) {
     if (!DOM.popupModal) return;
+    applyPopupType(type);
     if (isHTML) {
         DOM.popupMessage.innerHTML = message;
     } else {
@@ -125,6 +164,7 @@ export function showPopup(message, type = 'info', isHTML = false) {
 
 export function showConfirmation(message, onConfirm, isHTML = false) {
     if (!DOM.popupModal) return;
+    applyPopupType('confirm');
     if (isHTML) {
         DOM.popupMessage.innerHTML = message;
     } else {
@@ -371,16 +411,6 @@ export function openManageModal(targetTab = 'overview') {
 
 export function openCelestialHub(targetTab = 'overview') {
     openManageModal(targetTab);
-}
-
-function saveAndRefreshUI(tagsHaveChanged = false) {
-    saveVocabulary(true);
-    playSound('complete');
-    if (tagsHaveChanged) {
-        populateTopicFilters(true);
-    }
-    buildReviewQueue();
-    updatePanelWordList();
 }
 
 // --- Toast Notification System ---
@@ -639,7 +669,7 @@ export function executeCleanAllInternalMeanings() {
     const internalDups = findInternalDuplicateCards(vocabulary);
     if (internalDups.length === 0) return;
 
-    let currentVocab = [...vocabulary];
+    const currentVocab = [...vocabulary];
     const modifiedWords = [];
 
     internalDups.forEach(({ card, cleanedMeaning }) => {
@@ -695,15 +725,22 @@ export function executeMergeAll() {
     const internalDups = findInternalDuplicateCards(vocabulary);
     if (dups.length === 0 && internalDups.length === 0) return;
 
-    const totalActions = dups.length + internalDups.length;
-    showConfirmation(`Bạn có chắc muốn tự động gộp ${dups.length} cặp từ trùng và làm sạch nghĩa cho ${internalDups.length} thẻ?`, () => {
+    // An toàn dữ liệu: chỉ gộp tự động các cặp CHẮC CHẮN cùng một từ.
+    // Cặp chỉ "giống chính tả" (FUZZY_TYPO) hoặc confidence thấp được để lại
+    // cho người dùng xem từng cặp — gộp nhầm là xoá mất một từ vĩnh viễn.
+    const { safe: safePairs, review: reviewPairs } = selectAutoMergePairs(dups);
+    const autoMergeable = safePairs.length;
+    const reviewNote = reviewPairs.length > 0
+        ? ` ${reviewPairs.length} cặp chỉ giống chính tả sẽ được GIỮ LẠI để bạn tự kiểm tra.`
+        : '';
+    showConfirmation(`Gộp tự động ${autoMergeable} cặp chắc chắn trùng và làm sạch nghĩa cho ${internalDups.length} thẻ?${reviewNote}`, () => {
         let currentVocab = [...getState().vocabulary];
-        let modifiedWords = [];
+        const modifiedWords = [];
         let mergedCount = 0;
         let cleanedCount = 0;
 
-        // 1. Gộp các cặp trùng lặp
-        dups.forEach(d => {
+        // 1. Gộp các cặp trùng lặp (chỉ rổ an toàn)
+        safePairs.forEach(d => {
             const cardA = currentVocab.find(w => w.id === d.cardA.id && !w.isDeleted);
             const cardB = currentVocab.find(w => w.id === d.cardB.id && !w.isDeleted);
             if (cardA && cardB) {
@@ -743,7 +780,8 @@ export function executeMergeAll() {
         // Sync queue cho tất cả các thẻ đã sửa
         modifiedWords.forEach(word => saveOneWord(word));
         updatePanelWordList(false);
-        showPopup(`Hoàn tất! Đã gộp ${mergedCount} cặp từ và làm sạch ${cleanedCount} thẻ lặp nghĩa.`, 'success');
+        const skippedNote = reviewPairs.length > 0 ? ` ${reviewPairs.length} cặp lệch chính tả cần bạn xem tay.` : '';
+        showPopup(`Hoàn tất! Đã gộp ${mergedCount} cặp từ và làm sạch ${cleanedCount} thẻ lặp nghĩa.${skippedNote}`, 'success');
         void renderDedupPairs();
     });
 }

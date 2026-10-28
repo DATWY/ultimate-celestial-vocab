@@ -204,7 +204,7 @@ export function orderLearningByDue(vocabulary, indexes) {
 export function getSmartCramCards(vocabulary, filterLowerCase) {
     const now = Date.now();
     const todayStr = getLocalDateString();
-    let candidates = [];
+    const candidates = [];
 
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
@@ -363,7 +363,7 @@ export function getNextCardToReview() {
 }
 
 export function insertCardForLearningStep(cardIndex) {
-    let { currentReviewQueue, vocabulary } = getState();
+    const { currentReviewQueue, vocabulary } = getState();
     
     // SỬA LỖI KB 3.2: Kiểm tra chống chèn trùng lặp thẻ vào hàng đợi
     if (currentReviewQueue.includes(cardIndex)) return;
@@ -394,7 +394,7 @@ export function triggerSmartCramming() {
     // ƯU TIÊN 1: Nếu còn thẻ Đang Học chưa xong, nạp thẻ Đang Học để học dứt điểm trước
     const pendingLearning = getPendingLearningCards(vocabulary, filterLowerCase);
     if (pendingLearning.length > 0) {
-        let { currentReviewQueue } = getState();
+        const { currentReviewQueue } = getState();
         let newQueue = [...currentReviewQueue, ...pendingLearning];
         newQueue = [...new Set(newQueue)];
         setReviewQueue(newQueue);
@@ -405,7 +405,7 @@ export function triggerSmartCramming() {
     // ƯU TIÊN 2: Nạp thẻ Smart Cramming (Mastered)
     const cramCards = getSmartCramCards(vocabulary, filterLowerCase);
     if (cramCards.length > 0) {
-        let { currentReviewQueue } = getState();
+        const { currentReviewQueue } = getState();
         let newQueue = [...currentReviewQueue, ...cramCards];
         newQueue = [...new Set(newQueue)];
         setReviewQueue(newQueue);

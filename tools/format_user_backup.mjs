@@ -1,77 +1,131 @@
+#!/usr/bin/env node
+// tools/format_user_backup.mjs
+//
+// Chuyển một bản backup JSON (mảng thẻ) thành TSV CHUẨN của ứng dụng — đúng
+// đúng thứ tự cột và đúng kiểu dữ liệu mà `parseVocabularyTsv()` đọc lại được.
+//
+// Vì sao phải viết lại (2026-10-28):
+//   Bản cũ tự khai báo header riêng ('wordType', 'phonetic'…) trong khi importer
+//   của ứng dụng ánh xạ theo VOCAB_COLUMNS ('Type', 'Pronunciation'). Kết quả đo
+//   trên chính file backup của người dùng: 3.053/3.053 thẻ MẤT type + phiên âm
+//   khi khôi phục, mà importer vẫn báo 0 lỗi — mất dữ liệu trong im lặng.
+//   Bản mới dùng chính `exportVocabularyTsv()` của ứng dụng và tự kiểm tra
+//   vòng lặp export → parse ngay sau khi ghi; lệch một trường là exit 1.
+//
+// Dùng:
+//   node tools/format_user_backup.mjs <vocabulary.json|user_backup.json> [outDir]
+//
+// Nếu JSON là bản export đầy đủ (có `vocabulary`), chỉ phần từ vựng được xuất.
+
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { exportVocabularyTsv, parseVocabularyTsv, VOCAB_COLUMNS } from '../src/core/tabular.js';
+import { findInternalDuplicateCards } from '../src/core/dedup.js';
 
-const step288Path = 'C:\\Users\\ASUS\\.gemini\\antigravity\\brain\\8c0155af-5ac4-4055-a70b-7222abf95287\\.system_generated\\steps\\288\\output.txt';
-const step290Path = 'C:\\Users\\ASUS\\.gemini\\antigravity\\brain\\8c0155af-5ac4-4055-a70b-7222abf95287\\.system_generated\\steps\\290\\output.txt';
-
-const targetDir = path.resolve('backups', 'celestial_user_data_backup');
-fs.mkdirSync(targetDir, { recursive: true });
-
-console.log('Reading extracted vocabulary from step 288...');
-const rawVocabOutput = fs.readFileSync(step288Path, 'utf8');
-// The output file contains "Script ran on page and returned:\n```json\n[...]```"
-const jsonMatch = rawVocabOutput.match(/```json\s*([\s\S]*?)\s*```/) || [null, rawVocabOutput];
-const vocabJsonStr = jsonMatch[1].trim();
-const vocab = JSON.parse(vocabJsonStr);
-
-console.log(`Successfully parsed ${vocab.length} vocabulary words!`);
-
-// 1. Write vocabulary JSON
-const vocabJsonPath = path.join(targetDir, 'vocabulary_3053_words.json');
-fs.writeFileSync(vocabJsonPath, JSON.stringify(vocab, null, 2), 'utf8');
-console.log(`Saved: ${vocabJsonPath} (${(fs.statSync(vocabJsonPath).size / 1024).toFixed(1)} KB)`);
-
-// 2. Write vocabulary TSV (Compatible with Import/Export TSV feature of Celestial Vocab)
-const headers = [
-  'english', 'vietnamese', 'wordType', 'phonetic', 'example', 
-  'srsStatus', 'srsInterval', 'srsDueDate', 'difficulty', 'stability', 
-  'reps', 'lapses', 'tags'
+const COMPARE_FIELDS = [
+    'english', 'vietnamese', 'type', 'pronunciation', 'example', 'isStarred',
+    'srsStatus', 'srsDueDate', 'lapses', 'srsInterval', 'srsEaseFactor', 'difficulty',
+    'stability', 'reps', 'learningStep', 'lastReviewDate', 'stabilityShort',
+    'notes', 'exampleMeaning', 'synonyms', 'antonyms', 'collocations'
 ];
-const tsvRows = [headers.join('\t')];
 
-for (const card of vocab) {
-  const row = headers.map(key => {
-    let val = card[key] ?? card[key === 'wordType' ? 'type' : ''] ?? '';
-    if (Array.isArray(val)) val = val.join(',');
-    return String(val).replace(/[\t\r\n]+/g, ' ');
-  });
-  tsvRows.push(row.join('\t'));
+function fail(message) {
+    console.error('✖ ' + message);
+    process.exit(1);
 }
 
-const vocabTsvPath = path.join(targetDir, 'vocabulary_3053_words.tsv');
-fs.writeFileSync(vocabTsvPath, tsvRows.join('\n'), 'utf8');
-console.log(`Saved: ${vocabTsvPath} (${(fs.statSync(vocabTsvPath).size / 1024).toFixed(1)} KB)`);
+function readVocabulary(file) {
+    let raw;
+    try {
+        raw = fs.readFileSync(file, 'utf8');
+    } catch (error) {
+        fail('Không đọc được ' + file + ': ' + error.message);
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch (error) {
+        fail('JSON không hợp lệ: ' + error.message);
+    }
+    const list = Array.isArray(parsed) ? parsed
+        : Array.isArray(parsed?.vocabulary) ? parsed.vocabulary
+        : Array.isArray(parsed?.cards) ? parsed.cards
+        : null;
+    if (!list) fail('Không tìm thấy mảng từ vựng trong JSON (cần [] hoặc { vocabulary: [] }).');
+    return list;
+}
 
-// 3. Write Settings
-console.log('Reading settings from step 290...');
-const rawSettingsOutput = fs.readFileSync(step290Path, 'utf8');
-const settingsMatch = rawSettingsOutput.match(/```json\s*([\s\S]*?)\s*```/) || [null, rawSettingsOutput];
-const settings = JSON.parse(settingsMatch[1].trim());
+// Giá trị mặc định mà importer tự điền khi ô trống (xem cardFromParts()).
+// Thiếu dữ liệu nguồn mà đọc lại đúng mặc định ⇒ KHÔNG phải mất dữ liệu.
+const FIELD_DEFAULTS = {
+    srsEaseFactor: 2.5, lapses: 0, srsInterval: 0, reps: 0, learningStep: 0,
+    isStarred: false, srsStatus: 'New', srsDueDate: null, type: '', pronunciation: '',
+    example: '', notes: '', exampleMeaning: '', synonyms: '', antonyms: '', collocations: ''
+};
 
-const settingsPath = path.join(targetDir, 'settings.json');
-fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-console.log(`Saved: ${settingsPath} (${settings.length} settings records)`);
+const same = (a, b, field) => {
+    const hasDefault = Object.hasOwn(FIELD_DEFAULTS, field);
+    const fallback = FIELD_DEFAULTS[field];
+    if (a === null || a === undefined) {
+        if (b === null || b === undefined) return true;
+        if (hasDefault) return same(fallback, b, field);
+        return false;
+    }
+    if (typeof a === 'number') return Math.abs(Number(b) - a) < 1e-9;
+    if (typeof a === 'boolean') return String(b).toLowerCase() === String(a).toLowerCase();
+    if (Array.isArray(a)) return String(b ?? '') === a.join(',');
+    return String(b ?? '') === String(a);
+};
 
-// 4. Create README / Manifest
-const readmeContent = `# BẢN SAO LƯU DỮ LIỆU TỪ VỰNG & TIẾN ĐỘ HỌC TẬP (LIVE DATA BACKUP)
-Ngày sao lưu: ${new Date().toLocaleString('vi-VN')}
-Số lượng từ vựng: ${vocab.length} thẻ
-Phiên bản hệ thống: DATWY.V2.261023.23
+const inputPath = process.argv[2];
+if (!inputPath) {
+    console.error('Dùng: node tools/format_user_backup.mjs <vocabulary.json> [outDir]');
+    process.exit(1);
+}
+const outDir = process.argv[3] ? path.resolve(process.argv[3]) : path.dirname(path.resolve(inputPath));
+fs.mkdirSync(outDir, { recursive: true });
 
-DANH SÁCH TỆP:
-1. vocabulary_3053_words.tsv: Tệp TSV chuẩn chứa đầy đủ 3.053 từ vựng cùng các thông số FSRS-7 (Stability, Difficulty, Interval, Reps, Tags, Ví dụ...). Có thể nạp lại trực tiếp qua tab "Nhập & Xuất" của ứng dụng bất cứ lúc nào.
-2. vocabulary_3053_words.json: Toàn bộ dữ liệu raw của store 'vocabulary' từ IndexedDB.
-3. settings.json: Cấu hình cá nhân, điểm XP, gamification, huy hiệu, streak từ store 'settings'.
+const vocabulary = readVocabulary(inputPath);
+const live = vocabulary.filter(card => card && !card.isDeleted);
+const tsv = exportVocabularyTsv(vocabulary);
+const baseName = path.basename(inputPath).replace(/\.json$/i, '');
+const outPath = path.join(outDir, baseName + '.app.tsv');
+fs.writeFileSync(outPath, tsv, 'utf8');
 
-HƯỚNG DẪN KHÔI PHỤC:
-- Mở ứng dụng web (hoặc localhost) -> Vào "Celestial Hub" -> Tab "Dữ liệu (I/O)".
-- Kéo thả tệp vocabulary_3053_words.tsv vào khung Dropzone hoặc nhấn "Nhập TSV".
-- Toàn bộ 3.053 từ vựng và lịch ôn sẽ được nạp lại nguyên vẹn 100%!
-`;
-fs.writeFileSync(path.join(targetDir, 'README_RESTORE.txt'), readmeContent, 'utf8');
+// --- Tự kiểm tra: export → parse → so từng trường ---
+const reparsed = parseVocabularyTsv(tsv);
+if (reparsed.errors.length > 0) {
+    fail('TSV vừa ghi không parse lại được: ' + JSON.stringify(reparsed.errors.slice(0, 3)));
+}
+const problems = [];
+if (reparsed.rows.length !== live.length) {
+    problems.push('Số dòng: ghi ' + live.length + ' nhưng đọc lại ' + reparsed.rows.length);
+}
+for (let i = 0; i < Math.min(live.length, reparsed.rows.length); i++) {
+    const source = live[i];
+    const roundTrip = reparsed.rows[i].card;
+    for (const field of COMPARE_FIELDS) {
+        if (!same(source[field], roundTrip[field], field)) {
+            problems.push('Dòng ' + (i + 1) + ' (' + (source.english || '?') + ') trường ' + field +
+                ': ' + JSON.stringify(source[field]) + ' → ' + JSON.stringify(roundTrip[field]));
+            break;
+        }
+    }
+    if (problems.length >= 5) break;
+}
 
-// 5. Zip the data backup folder
-const zipDst = path.resolve('backups', 'celestial_user_data_backup_3053_words.zip');
-execSync(`powershell -NoProfile -Command "Compress-Archive -Path '${targetDir}\\*' -DestinationPath '${zipDst}' -CompressionLevel Optimal -Force"`, { stdio: 'inherit' });
-console.log(`SUCCESS! Created standalone data zip: ${zipDst} (${(fs.statSync(zipDst).size / 1024).toFixed(1)} KB)`);
+const internalDups = findInternalDuplicateCards(vocabulary);
+console.log('── BÁO CÁO BACKUP ─────────────────────────────');
+console.log('Nguồn            : ' + path.resolve(inputPath));
+console.log('Đích             : ' + outPath);
+console.log('Tổng thẻ         : ' + vocabulary.length);
+console.log('Thẻ đang dùng    : ' + live.length + (vocabulary.length !== live.length ? ' (bỏ ' + (vocabulary.length - live.length) + ' thẻ đã xoá)' : ''));
+console.log('Dung lượng       : ' + (Buffer.byteLength(tsv, 'utf8') / 1024).toFixed(1) + ' kB');
+console.log('Cột              : ' + VOCAB_COLUMNS.length + ' (' + VOCAB_COLUMNS.join(', ') + ')');
+console.log('Nghĩa bị lặp nội bộ: ' + internalDups.length + ' thẻ');
+if (problems.length > 0) {
+    console.error('✖ ROUND-TRIP KHÔNG KHỚP:');
+    problems.forEach(problem => console.error('   - ' + problem));
+    process.exit(1);
+}
+console.log('✔ Round-trip: ' + live.length + '/' + live.length + ' thẻ khớp toàn bộ ' + COMPARE_FIELDS.length + ' trường.');

@@ -7,7 +7,6 @@ const number = value => Number.isFinite(value) ? value : 0;
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const cumulativeStat = key => !/streak|consecutive|^last|^max|Today$|^xpLastWeek$|^monthly|Date$/i.test(key);
 const path = (...parts) => JSON.stringify(parts);
-const read = (object, parts) => parts.reduce((value, key) => value?.[key], object);
 function write(object, parts, value) {
     let target = object;
     parts.slice(0, -1).forEach(key => { target = target[key] ??= {}; });
@@ -35,8 +34,14 @@ function counters(value, kind) {
 
 function registers(value, kind) {
     const result = {};
+    // currentStreak là SỐ ĐO PHÁI SINH (tính lại từ activityHeatmap) nhưng nếu để
+    // nó rơi vào nhánh "local thắng" của mergeProgress thì hàm merge MẤT tính giao
+    // hoán: merge(A,B) ⇒ 13, merge(B,A) ⇒ 15. Hai call site hiện tại đều tính lại
+    // streak sau merge nên lỗi bị che, nhưng chỉ cần một call site mới là hai thiết
+    // bị hiển thị hai chuỗi ngày khác nhau. Đưa vào registers (LWW) để bản thân
+    // mergeProgress đã hội tụ, không phụ thuộc người gọi.
     const fields = kind === 'daily' ? ['currentLimit', 'limitAdjustedDate']
-        : ['consecutiveCorrect', 'lastStreakFreezeDate', 'lastStudyDate'];
+        : ['consecutiveCorrect', 'lastStreakFreezeDate', 'lastStudyDate', 'currentStreak'];
     for (const key of fields) if (value[key] !== undefined) result[path(key)] = value[key];
     if (kind !== 'daily') for (const [key, val] of Object.entries(value.stats || {})) {
         if (typeof val !== 'number' || !cumulativeStat(key)) result[path('stats', key)] = val;

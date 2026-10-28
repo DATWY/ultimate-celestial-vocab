@@ -150,7 +150,7 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
         const weights = fromUnit(unit);
         return validFsrs7Params(weights) ? evaluateParameters(data, weights).loss : Infinity;
     };
-    let unit = toUnit(start);
+    const unit = toUnit(start);
     let current = lossOf(unit);
     let best = [...start], bestScore = current;
     let bestUnit = [...unit];

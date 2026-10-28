@@ -186,7 +186,7 @@
                                 </div>
                                 <div id="typing-area" class="typing-container">
                                     <div class="typing-input-wrapper">
-                                        <input type="text" id="typing-input" placeholder="Gõ từ tiếng Anh..." aria-label="Gõ từ tiếng Anh" aria-describedby="typing-hint-text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" />
+                                        <input type="text" id="typing-input" maxlength="64" placeholder="Gõ từ tiếng Anh..." aria-label="Gõ từ tiếng Anh" aria-describedby="typing-hint-text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" />
                                         <button id="typing-submit-btn" class="icon-btn" title="Xác nhận (Enter)"><i class="ph-duotone ph-paper-plane-right"></i></button>
                                     </div>
                                     <p id="typing-feedback" class="typing-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -1214,6 +1214,12 @@
             <div class="modal-content small-modal">
                 <button id="close-popup-modal-btn" class="modal-close-btn" title="Đóng (Esc)"
                     aria-label="Đóng thông báo"><i class="ph-bold ph-x"></i></button>
+                <!-- Biểu tượng theo loại thông báo (info/success/error/warning/confirm).
+                     Trước đây showPopup() nhận tham số `type` nhưng KHÔNG dùng, nên
+                     thông báo lỗi và thông báo thành công trông giống hệt nhau. -->
+                <div id="popup-icon" class="popup-icon" aria-hidden="true">
+                    <i class="ph-duotone ph-info"></i>
+                </div>
                 <p id="popup-message" aria-live="polite">Nội dung...</p>
                 <div id="popup-actions" class="modal-actions"> <button id="popup-ok-btn">OK</button> <button
                         id="popup-cancel-btn" class="hidden">Hủy</button> </div>

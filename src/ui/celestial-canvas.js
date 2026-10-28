@@ -3,7 +3,7 @@
 let canvas, ctx;
 let stars = [];
 let shootingStars = [];
-let mouse = { x: null, y: null, targetX: null, targetY: null };
+const mouse = { x: null, y: null, targetX: null, targetY: null };
 let isDark = true;
 let animFrameId = null;
 let lastFrameTime = 0;

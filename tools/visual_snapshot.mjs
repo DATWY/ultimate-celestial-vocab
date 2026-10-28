@@ -71,17 +71,6 @@ const NOTCH_VIEWPORT = {
     orientation: { type: 'landscapePrimary', angle: 90 },
     insets: { top: 0, right: 59, bottom: 21, left: 59 },
 };
-const STATES = [
-    'empty',
-    'card-front',
-    'card-back',
-    'hub-overview',
-    'hub-words',
-    'hub-io',
-    'tts-panel',
-    'light',
-];
-
 const MIME = {
     '.html': 'text/html; charset=utf-8',
     '.js': 'text/javascript; charset=utf-8',
@@ -452,7 +441,7 @@ const SAFE_AUDIT_SELECTORS = [
     '.onboarding-cta-card',
 ];
 
-function collectDomExpression(insets) {
+function collectDomExpression(_insets) {
     return `
         const rectOf = (el) => {
             const r = el.getBoundingClientRect();

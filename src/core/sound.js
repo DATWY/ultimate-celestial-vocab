@@ -177,7 +177,6 @@ export function updateTtsSourceBadge() {
 let audioCtx = null;
 let masterGainNode = null;   // bus chung cho sample + synth
 let synthGainNode = null;    // bus riêng để cân bằng synth với sample
-let limiterNode = null;      // chặn đỉnh khi nhiều hiệu ứng chồng nhau
 let cachedNoiseBuffer = null;
 
 // --- SFX SAMPLES ---
@@ -241,7 +240,6 @@ function getAudioContext() {
         audioCtx = null;
         masterGainNode = null;
         synthGainNode = null;
-        limiterNode = null;
     }
     if (!audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -287,14 +285,12 @@ function getAudioContext() {
 
             masterGainNode = master;
             synthGainNode = synth;
-            limiterNode = limiter;
         } catch (_) {
             try { master?.disconnect(); } catch (_) {}
             try { synth?.disconnect(); } catch (_) {}
             try { limiter?.disconnect(); } catch (_) {}
             masterGainNode = null;
             synthGainNode = null;
-            limiterNode = null;
             return null;
         }
     }
@@ -921,7 +917,6 @@ function scheduleSynthVoices(ctx, soundName) {
             }
         }
     }
-    return true;
 }
 
 // === SFX SAMPLE PLAYBACK ===
@@ -1217,7 +1212,6 @@ function closeAudioContextForMute() {
     audioCtx = null;
     masterGainNode = null;
     synthGainNode = null;
-    limiterNode = null;
     _sfxVoices.clear();
     _concurrentSfx = 0;
     _resumeDeferred = false;

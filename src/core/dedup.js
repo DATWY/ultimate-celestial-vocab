@@ -55,6 +55,90 @@ const COMMON_VERBS = new Set([
 /**
  * Tính khoảng cách Levenshtein giữa 2 chuỗi
  */
+// ---------------------------------------------------------------------------
+// HỌ TỪ PHÁI SINH (word family) — chặn gộp nhầm các TỪ KHÁC NHAU.
+//
+// Vì sao cần: nghĩa tiếng Việt của hai từ cùng họ thường dùng chung từ
+// ("nhà cung cấp" / "cung cấp", "người phỏng vấn" / "người được phỏng vấn")
+// nên điểm tương đồng ngữ nghĩa ~1.0, trong khi mặt chữ tiếng Anh chỉ lệch vài
+// ký tự. Nếu chỉ dựa vào stem + nghĩa thì dedup đề xuất gộp supplier⟷supply và
+// interviewer⟷interviewee — gộp xong là MẤT một từ. Ba hàm dưới đây là cổng
+// chặn: cặp nào rơi vào họ từ phái sinh thì KHÔNG phải trùng lặp.
+// ---------------------------------------------------------------------------
+
+// Ngưỡng ngữ nghĩa cho cặp TRÙNG MẶT CHỮ. Đo trên kho thật 3.053 thẻ:
+//   color⟷colour = 1.00 (giữ), Commission⟷Commission = 0.00, Turnover = 0.00,
+//   Store "cửa hàng"⟷"lưu trữ" = 0.00 (tách). 0.35 nằm giữa hai cụm rất xa nhau.
+const POLYSEMY_EXACT_THRESHOLD = 0.35;
+
+const DERIVATIONAL_SUFFIXES = [
+    'ation', 'ition', 'tion', 'sion', 'ion', 'ment', 'ness', 'ity', 'ance', 'ence',
+    'ism', 'ize', 'ise', 'ful', 'less', 'ous', 'ive', 'able', 'ible', 'ship', 'hood', 'dom'
+];
+// Hậu tố tạo danh từ chỉ người/vật: -er (agent), -or (agent), -ee (patient), -ant, -ist
+const AGENT_SUFFIXES = ['er', 'or', 'ee', 'ant', 'ist'];
+
+const compactWord = (word) => String(word || '').toLowerCase().replace(/[^a-z]/g, '');
+
+/**
+ * Hai từ là ANH/EM trong cùng họ từ phái sinh, ví dụ
+ * interviewer⟷interviewee, employer⟷employee, trainer⟷trainee.
+ * Cùng gốc nhưng hậu tố khác nhau ⇒ hai từ độc lập, không được gộp.
+ */
+export function isSiblingDerivative(wordA, wordB) {
+    const a = compactWord(wordA);
+    const b = compactWord(wordB);
+    if (!a || !b || a === b) return false;
+    for (const suffixA of AGENT_SUFFIXES) {
+        if (!a.endsWith(suffixA)) continue;
+        for (const suffixB of AGENT_SUFFIXES) {
+            if (suffixB === suffixA || !b.endsWith(suffixB)) continue;
+            const baseA = a.slice(0, -suffixA.length);
+            if (baseA.length >= 4 && baseA === b.slice(0, -suffixB.length)) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Một từ là DẠNG PHÁI SINH của từ kia, ví dụ supplier⟷supply, manager⟷manage,
+ * creation⟷create, readable⟷read.
+ *
+ * Ngoại lệ có chủ đích: hậu tố -er/-est của SO SÁNH HƠN (happy⟷happier) là biến
+ * thể ngữ pháp, không phải phái sinh ⇒ vẫn phải được coi là trùng lặp. Vì vậy
+ * -er chỉ bị coi là phái sinh khi từ gốc KHÔNG phải tính từ/trạng từ.
+ */
+export function isDerivationalVariant(wordA, wordB, posA = 'unknown', posB = 'unknown', meaningA = '', meaningB = '') {
+    const a = compactWord(wordA);
+    const b = compactWord(wordB);
+    if (!a || !b || a === b) return false;
+    // Dấu hiệu SO SÁNH HƠN: động từ/danh từ không có dạng này. Nghĩa tiếng Việt
+    // của thẻ so sánh luôn chứa "hơn" (vui vẻ ⟷ hạnh phúc hơn) nên đây là tín
+    // hiệu ổn định ngay cả khi thẻ thiếu trường `type`.
+    const looksComparative =
+        /(^|[^\p{L}])hơn([^\p{L}]|$)/iu.test(String(meaningA || '')) ||
+        /(^|[^\p{L}])hơn([^\p{L}]|$)/iu.test(String(meaningB || '')) ||
+        [posA, posB].some(pos => pos === 'adjective' || pos === 'adverb');
+    const suffixes = [...DERIVATIONAL_SUFFIXES, 'er', 'or', 'ee'];
+    // Thử cả hai chiều: từ dài có thể là dạng phái sinh của từ ngắn và ngược lại.
+    for (const [long, short] of [[a, b], [b, a]]) {
+        if (long.length <= short.length) continue;
+        for (const suffix of suffixes) {
+            if (suffix === 'er' && looksComparative) continue; // -er so sánh hơn = biến thể ngữ pháp
+            if (!long.endsWith(suffix)) continue;
+            const stem = long.slice(0, -suffix.length);
+            if (stem.length < 4) continue;
+            const restored = new Set([stem, stem + 'e']);
+            if (stem.endsWith('i')) restored.add(stem.slice(0, -1) + 'y'); // supplier ⇢ suppl ⇢ supply
+            if (candidatesRestoreE(stem)) restored.add(stem.slice(0, -1)); // creation ⇢ creat ⇢ create
+            if (restored.has(short)) return true;
+        }
+    }
+    return false;
+}
+
+const candidatesRestoreE = (stem) => /[^aeiou][aeiou][^aeiou]$/.test(stem);
+
 export function levenshteinDistance(s1, s2) {
     if (s1 === s2) return 0;
     const len1 = s1.length;
@@ -527,6 +611,7 @@ export function isDuplicateCard(cardA, cardB) {
 
     const semSim = calculateSemanticSimilarity(cardA.vietnamese, cardB.vietnamese);
     const phraseOverlap = calculatePhraseOverlap(cardA.vietnamese, cardB.vietnamese);
+    const bothHaveMeaning = Boolean(String(cardA.vietnamese ?? '').trim() && String(cardB.vietnamese ?? '').trim());
 
     // BẢO VỆ CHỐNG GỘP NHẦM TỪ LOẠI PHÁI SINH (Word Families):
     // Ví dụ: manufacture (verb) vs manufacturer (noun), accurate (adj) vs accurately (adv)
@@ -549,6 +634,17 @@ export function isDuplicateCard(cardA, cardB) {
         if (!isCompatiblePOS && posA !== 'unknown' && posB !== 'unknown' && semSim < 0.70) {
             return { isDuplicate: false, confidence: semSim, category: 'POLYSEMY', reason: 'Từ đa nghĩa (khác loại từ và nghĩa)' };
         }
+        // Cùng mặt chữ nhưng nghĩa rời hẳn nhau (Commission "hoa hồng" vs
+        // Commission "hội đồng"; Turnover "doanh thu" vs "tỷ lệ nghỉ việc").
+        // Gộp hai thẻ này sẽ xoá một nghĩa người dùng đang học ⇒ coi là đa nghĩa.
+        if (bothHaveMeaning && semSim < POLYSEMY_EXACT_THRESHOLD) {
+            return {
+                isDuplicate: false,
+                confidence: semSim,
+                category: 'POLYSEMY',
+                reason: 'Cùng mặt chữ nhưng nghĩa khác hẳn (từ đa nghĩa) — cần giữ riêng'
+            };
+        }
         return {
             isDuplicate: true,
             confidence: Math.max(0.95, semSim),
@@ -561,6 +657,14 @@ export function isDuplicateCard(cardA, cardB) {
 
     // Nếu khác mặt chữ và là từ loại phái sinh (Word Family) -> KHÔNG COI LÀ TRÙNG LẶP
     if (isWordFamilyDerivative) {
+        return { isDuplicate: false, confidence: 0, category: 'WORD_FAMILY', reason: 'Họ từ phái sinh (cần học riêng biệt)' };
+    }
+
+    // Cổng an toàn: cặp ANH/EM cùng họ từ (interviewer⟷interviewee) hoặc DẠNG
+    // PHÁI SINH của nhau (supplier⟷supply, manager⟷manage) là HAI TỪ KHÁC NHAU.
+    // Nghĩa tiếng Việt của chúng dùng chung từ nên điểm ngữ nghĩa ≈ 1.0 — không
+    // thể dựa vào nghĩa để phân biệt, phải dựa vào hình thái từ.
+    if (isSiblingDerivative(rawA, rawB) || isDerivationalVariant(rawA, rawB, posA, posB, cardA.vietnamese, cardB.vietnamese)) {
         return { isDuplicate: false, confidence: 0, category: 'WORD_FAMILY', reason: 'Họ từ phái sinh (cần học riêng biệt)' };
     }
 
@@ -875,6 +979,30 @@ export async function findDuplicatePairsAsync(vocabulary, options = {}) {
  * Quét tìm các thẻ đơn lẻ trong kho có nghĩa tiếng Việt bị lặp từ/cụm từ nội bộ
  * Ví dụ thẻ Demonstrate: "Thị phạm, chứng minh, Chứng minh, giải thích"
  */
+/**
+ * Chia kết quả quét thành HAI rổ trước khi gộp:
+ *
+ *   safe   — cặp trùng mặt chữ (EXACT) hoặc biến thể ngữ pháp (INFLECTION) đủ tin cậy.
+ *            Gộp tự động được vì hai thẻ chắc chắn là cùng một từ.
+ *   review — cặp "tìm kiếm mờ" (lệch chính tả) và mọi cặp confidence thấp.
+ *            Người dùng phải tự xem từng cặp: đây chính là rổ từng sinh ra
+ *            gợi ý sai (manage⟷manager, interviewer⟷interviewee).
+ *
+ * Nhờ vậy nút "Gộp tất cả" không còn là thao tác một-cú-click-xoá-từ.
+ */
+export function selectAutoMergePairs(dups) {
+    const safe = [];
+    const review = [];
+    for (const pair of Array.isArray(dups) ? dups : []) {
+        const sameSpelling = canonicalEnglish(pair?.cardA?.english) === canonicalEnglish(pair?.cardB?.english);
+        const trusted = Number(pair?.confidence) >= 0.9;
+        const structural = pair?.category === 'EXACT' || pair?.category === 'INFLECTION';
+        if (trusted && (structural || sameSpelling)) safe.push(pair);
+        else review.push(pair);
+    }
+    return { safe, review };
+}
+
 export function findInternalDuplicateCards(vocabulary) {
     if (!Array.isArray(vocabulary)) return [];
     const activeCards = vocabulary.filter(w => w && typeof w === 'object' && !w.isDeleted);
