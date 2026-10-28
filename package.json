@@ -9,23 +9,31 @@
     "dev": "vite",
     "build": "node tools/generate_version.js && vite build",
     "verify": "node tools/verify_performance_lifecycle.mjs && node tools/verify_version_system.mjs",
+    "lint": "eslint src tools tests vite.config.js eslint.config.js",
+    "lint:fix": "eslint src tools tests vite.config.js eslint.config.js --fix",
+    "format": "prettier --write \"tests/ui-*.test.mjs\" \"eslint.config.js\" \".prettierrc.json\"",
+    "format:check": "prettier --check \"tests/ui-*.test.mjs\" \"eslint.config.js\" \".prettierrc.json\"",
     "budget": "node tools/bundle_budget.mjs",
     "report": "node tools/render_report.mjs",
     "changelog": "node tools/changelog.mjs",
     "preview": "vite preview",
     "train": "node tools/train_fsrs7.js",
     "version": "node tools/generate_version.js",
-    "icons": "node tools/build-icon-subset.mjs"
+    "icons": "node tools/build-icon-subset.mjs",
+    "check": "npm run lint && npm test && npm run build && npm run budget && npm run test:e2e"
   },
   "devDependencies": {
+    "eslint": "^9.39.5",
     "fake-indexeddb": "^6.2.6",
-    "vite": "^5.0.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.9.10",
+    "vite": "^6.4.4",
     "vite-plugin-pwa": "^1.3.0",
     "workbox-window": "^7.4.1"
   },
   "dependencies": {
     "animejs": "^3.2.1",
-    "firebase": "10.8.1",
+    "firebase": "10.14.1",
     "idb": "^8.0.3"
   }
 }

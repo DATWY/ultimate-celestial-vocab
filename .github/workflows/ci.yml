@@ -22,6 +22,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Cổng chặn tĩnh — chạy TRƯỚC test để lỗi kiểu `no-undef` (gõ sai tên biến
+      # toàn cục, chỉ nổ khi đúng nhánh đó chạy) bị bắt ngay thay vì lọt ra prod.
+      # Cấu hình: eslint.config.js (0 error là điều kiện; warning được phép).
+      - name: Lint (static analysis gate)
+        run: npm run lint
+
+      # Định dạng chỉ áp cho file mới/đã chuyển đổi; việc format lại toàn repo
+      # được tách thành thay đổi riêng để diff review không bị nhiễu.
+      - name: Check formatting of converted files
+        run: npm run format:check
+
       - name: Run unit & regression tests
         run: npm test
 
@@ -32,3 +43,18 @@ jobs:
       # khai báo trong tools/bundle_budget.mjs; vượt ngưỡng ⇒ exit 1 ⇒ CI đỏ.
       - name: Check bundle budget
         run: npm run budget
+
+      # E2E trên CHÍNH bundle vừa build (không phải dev server): seed IndexedDB,
+      # vòng học thật, kiểm nhãn nút chấm + trạng thái sau khi chấm + Ctrl+Z.
+      # Trước 2026-10-28 bước này không tồn tại vì harness hard-code đường dẫn
+      # Chrome của Windows; nay dò Chrome theo PATH nên chạy được trên runner.
+      - name: Install Chrome for E2E
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+        id: setup-chrome
+
+      - name: E2E study loop on built bundle
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: npm run test:e2e
