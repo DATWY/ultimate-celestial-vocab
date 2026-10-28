@@ -1,11 +1,12 @@
-# Ultimate Celestial Vocab
+﻿# Ultimate Celestial Vocab
 
-![Version](https://img.shields.io/badge/version-DATWY.V2.261025.15-8a2be2.svg?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-203%2F203%20PASS-brightgreen.svg?style=flat-square)
-![PWA](https://img.shields.io/badge/PWA-precache%2035%20entry-orange.svg?style=flat-square)
+![Version](https://img.shields.io/badge/version-DATWY.V2.261028.22-8a2be2.svg?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-311%2F311%20PASS-brightgreen.svg?style=flat-square)
+![Lint](https://img.shields.io/badge/eslint-0%20error-blue.svg?style=flat-square)
+![PWA](https://img.shields.io/badge/PWA-precache%2036%20entry-orange.svg?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)
 
-PWA học từ vựng tiếng Anh: Vanilla JS (ES Module) + Vite 5 + CSS thuần + IndexedDB.
+PWA học từ vựng tiếng Anh: Vanilla JS (ES Module) + Vite 6 + CSS thuần + IndexedDB.
 Dữ liệu học nằm trên máy; phần đồng bộ Cloud là tuỳ chọn và dùng một mã 20 ký tự.
 
 Tài liệu này chỉ ghi những gì **đọc được từ mã nguồn** hoặc **đo lại được bằng lệnh trong repo**.
@@ -16,26 +17,28 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 
 ## 1. Trạng thái đo được
 
-Đo ngày **2026-10-26**, trên HEAD `c3f5a51`, `dist/` build lúc **11:19**.
-(Hash tên file trong `dist/assets/` đổi sau mỗi lần build — chỉ tên đổi, kích thước trong bảng đã kiểm lại trên 3 bản build liên tiếp.)
+Đo ngày **2026-10-28** (vòng "sửa lỗi + nâng cấp"), trên working tree kế tiếp `30b4cf9`, `dist/` build lúc **22:5x**.
+(Hash tên file trong `dist/assets/` đổi sau mỗi lần build — chỉ tên đổi, kích thước đã kiểm lại trên nhiều bản build liên tiếp.)
 
 | Hạng mục | Số đo | Cách đo |
 |---|---|---|
-| Test | **203 pass / 203**, 0 fail, 0 skip, ~0,50 s | `npm test` |
-| File test | **19** (`tests/*.test.mjs`) | `Get-ChildItem tests -File` |
-| File nguồn | **54** file, **35.504** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
-| Entry `assets/index-*.js` | 223,06 kB thô → **74,93 kB gzip** (91,4% ngân sách 82 kB) — **nhẹ hơn 1,4% so với trước nâng cấp** | `npm run budget` |
-| Chunk Firebase lớn nhất | 492.097 B thô → **113,69 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
-| CSS do Vite sinh | **326.696 B thô** / 58,98 kB gzip (93,3% ngân sách 350 kB) | `npm run budget` |
-| Toàn bộ `dist/` | **2.103,67 kB thô / 41 file** (ngân sách 2.700 kB) — vào bằng chunk `io-*.js` (8,87 kB gzip, chỉ tải khi mở Hub) | `npm run budget` |
-| Precache Service Worker | **35 URL** | đếm `url:"` trong `dist/sw.js` |
-| Khai báo `!important` | **1.920** trong `src/css` (riêng `style.css`: 1.624) | regex trên `src/css/**/*.css` |
+| Test | **311 pass / 311**, 0 fail, 0 skip | `npm test` |
+| File test | **33** (	ests/*.test.mjs) + 1 E2E | `Get-ChildItem tests -File` |
+| Lint | **0 error**, 105 warning (đều là `no-console`/escape cố ý) | `npm run lint` |
+| File nguồn | **65** file, **38.135** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
+| Entry `assets/index-*.js` | 230,2 kB thô → **76,16 kB gzip** (92,9% ngân sách 82 kB) | `npm run budget` |
+| Chunk Firebase lớn nhất | 492.097 B thô → **113,65 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
+| CSS do Vite sinh | **325.071 B thô** / **58,84 kB gzip** (92,9% ngân sách 350 kB) | `npm run budget` |
+| Toàn bộ `dist/` | **2.111,98 kB thô / 41 file** (ngân sách 2.700 kB) | `npm run budget` |
+| Precache Service Worker | **36 URL** | đếm `url:"` trong `dist/sw.js` |
+| Khai báo `!important` | **264** trong `src/css` (đã giảm từ 1.920) | regex trên `src/css/**/*.css` |
 | Font Lexend self-host | **87.996 B / 3 file** `woff2` | `public/fonts/lexend-*.woff2` |
-| Icon subset | **95.568 B / 4 weight** + `phosphor-subset.css` 64.054 B (792 rule `.ph-*`) | `public/fonts/phosphor-*.woff2` |
+| Icon subset | **95.568 B / 4 weight** + `phosphor-subset.css` 64.054 B | `public/fonts/phosphor-*.woff2` |
+| Tên icon `ph-*` dùng thật | **198** | regex trên `index.html` + `src/**/*.js` |
 | Mã đồng bộ | **20 ký tự**, bảng chữ `A-Z` bỏ `I/O` + `2-9` | `src/core/firebase.js:141-142` |
 | Trần khoảng cách ôn | **365 ngày** (áp sau fuzz, cho mọi lần chấm) | `src/core/srs/constants.js:6` |
 
-Con số "98,4% ngân sách" là **cảnh báo**, không phải thành tích: entry chỉ còn 1,33 kB dư địa.
+Con số "92,9% ngân sách" là **cảnh báo**, không phải thành tích: entry chỉ còn ~5,8 kB dư địa.
 
 ---
 
@@ -45,15 +48,21 @@ Con số "98,4% ngân sách" là **cảnh báo**, không phải thành tích: en
 npm install
 cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
 npm run dev               # http://localhost:5173
-npm test                  # 241 test
+npm test                  # 311 test
+npm run lint              # ESLint 9 (0 error là điều kiện CI)
 npm run build             # build production vào dist/ (tự tăng version)
-npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~29 s, cần Chrome + dist đã build)
+npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~31 s, cần Chrome + dist đã build)
+npm run check             # lint + test + build + budget + E2E (một lệnh cho trước khi push)
 ```
 
-Yêu cầu: Node.js ≥ 18 (đo trên **Node v26.1.0 / npm 11.13.0**), Vite 5.4.19.
+Yêu cầu: Node.js ≥ 20 (đo trên **Node v26.1.0 / npm 11.13.0**), Vite 6.4.4 (đã nâng từ 5.4.19 để vá advisory dev-server).
 Các biến môi trường có thật trong `.env.example`: `VITE_FIREBASE_*` (8 biến) và
 `VITE_FIREBASE_APPCHECK_SITE_KEY` + `VITE_FIREBASE_APPCHECK_DEBUG_TOKEN`.
 Thiếu `.env` thì app vẫn chạy offline-first; chỉ phần Cloud bị bỏ qua.
+
+> **Lưu ý về 3 file version:** `src/core/version.js`, `public/version.json`, `version_seq.json`
+> được `tools/generate_version.js` sinh ra (có `BUILD_TIME`), nên **sau mỗi `npm run build`
+> working tree sẽ dirty 3 file này**. Đây là chủ ý: chúng được commit cùng commit release.
 
 ---
 
@@ -228,7 +237,7 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 
 ### 7.1. Service Worker (Workbox qua `vite-plugin-pwa`)
 
-- `registerType: 'autoUpdate'`, precache **35 URL** (`vite.config.js:6-20`, đếm trên `dist/sw.js`).
+- `registerType: 'autoUpdate'`, precache **36 URL** (`vite.config.js:6-20`, đếm trên `dist/sw.js`).
 - `globPatterns`: `js, css, html, ico, png, svg, json, wav, woff2`; **không** gồm `mp3`.
 - `globIgnores`: `version.json` và `firebase-*.js` — hai thứ này **không** precache.
 - MP3 **không** precache; chỉ vào cache sau lần phát đầu: `sfx-cache` — `CacheFirst`, tối đa 10 entry, 90 ngày, nhận cả response opaque (`statuses: [0, 200]`) (`vite.config.js:21-39`).
@@ -245,8 +254,8 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 
 ### 7.3. Icon
 
-- `public/phosphor-subset.css` (64.054 B, **792** rule `.ph-*`) + 4 file `woff2` subset: `regular` 23.504, `bold` 23.748, `fill` 19.460, `duotone` 28.856 B (**tổng 95.568 B**).
-- Mã nguồn dùng **203** tên class `ph-*` khác nhau (`index.html` + `src/**/*.js`).
+- `public/phosphor-subset.css` (64.054 B, **1.785** khai báo `.ph-*` cho 4 weight) + 4 file `woff2` subset: `regular` 23.504, `bold` 23.748, `fill` 19.460, `duotone` 28.856 B (**tổng 95.568 B**).
+- Mã nguồn dùng **198** tên class `ph-*` khác nhau (`index.html` + `src/**/*.js`).
 - Không xoá được weight nào: icon được chọn **động** qua `class="ph ${t.icon}"` (`src/features/fsrsPersona.js:323`, 5 archetype × 3 trait = 15 icon) và `class="ph ${rankInfo.icon}"` (`src/features/gamification.js:68`, 5 rank). Vì vậy cách đúng là **subset codepoint**, không phải bỏ weight — xem "Phát hiện mới" trong `UPGRADE_BACKLOG.md`.
 - Sinh lại subset: `npm run icons` (`tools/build-icon-subset.mjs`; cần mạng + `fonttools`/`pyftsubset`, file sinh ra đã được commit nên build thường không cần mạng).
 
@@ -270,7 +279,9 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 
 | Lệnh | Việc nó làm | Nguồn |
 |---|---|---|
-| `npm test` | Chạy 19 file test bằng `node --test` (203 test) | `package.json` → `scripts.test` |
+| `npm test` | Chạy 33 file test bằng `node --test` (311 test) | `package.json` → `scripts.test` |
+| `npm run lint` | ESLint 9 flat config: `no-undef` (bắt tên biến gõ sai), `no-unused-vars`, `no-dupe-keys`, `no-unreachable`; 0 error là điều kiện CI | `eslint.config.js` |
+| `npm run check` | Chuỗi cổng đầy đủ trước khi push: lint → test → build → budget → E2E | `package.json` |
 | `npm run test:e2e` | Smoke E2E vòng học trên **`dist/` đã build** (Chrome headless + CDP, 2 chế độ qua `SMOKE_LEECH=1`); ~12 s, exit 0/1. **Không** tự build | `tests/e2e/study-loop.mjs` (tài liệu: `docs/SMOKE_TEST.md`) |
 | `npm run dev` | Vite dev server | `scripts.dev` |
 | `npm run build` | `tools/generate_version.js` (tăng version) → `vite build` | `scripts.build` |
@@ -296,7 +307,7 @@ chạy được ngay sau `npm run build`. Gốc repo được suy ra từ vị t
 ```
 ultimate-celestial-vocab/
 ├── index.html               # SPA shell + toàn bộ modal (88.981 B)
-├── vite.config.js           # Vite 5 + vite-plugin-pwa (Workbox, manifest)
+├── vite.config.js           # Vite 6 + vite-plugin-pwa (Workbox, manifest)
 ├── firebase.json            # hosting headers (CSP, cache) + rewrites
 ├── firestore.rules          # rules: chỉ chủ sở hữu users/{uid}/**
 ├── src/                     # 54 file, 35.504 dòng
@@ -325,7 +336,7 @@ ultimate-celestial-vocab/
 │   ├── ui/                  # render.js, modal.js, elements.js, celestial-canvas.js, waveform.js
 │   └── css/                 # style.css, study-polish.css, transition.css,
 │                            # icon-system.css, motion-upgrade.css, fonts.css, tokens/celestial-v5.css
-├── tests/                   # 19 file .test.mjs (node:test) + e2e/study-loop.mjs
+├── tests/                   # 33 file .test.mjs (node:test) + e2e/study-loop.mjs
 ├── tools/                   # build-icon-subset, bundle_budget, render_report,
 │                            # generate_version, train_fsrs7, measure_review_logs,
 │                            # simulate_intervals + các script verify_*/perf_*

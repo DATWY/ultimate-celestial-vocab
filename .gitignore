@@ -64,3 +64,13 @@ reports/verify/
 # anh so sanh truoc/sau cua tools/visual_snapshot.mjs (18,5 MB, tai lap duoc)
 reports/visual/*
 !reports/visual/README.md
+
+# Anh do `npm run report` sinh ra tu reports/upgrade-report.html (tai lap duoc,
+# truoc day tung duoc commit: 4 file ~3,9 MB). Chay lai lenh la co lai.
+reports/nang-cap-*.png
+
+# Plugin DSH cua moi truong lam viec, KHONG lien quan san pham web nay
+harness-plugins/
+
+# ESLint/Prettier cache
+.eslintcache
