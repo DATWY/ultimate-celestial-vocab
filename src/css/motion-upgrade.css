@@ -4,7 +4,15 @@
    animate transform/opacity only.
    ========================================================================== */
 
-/* --- 1. CARD FLIP: depth + one-pass light sweep -------------------------- */
+/* --- 1. CARD FLIP: tactile depth only ---------------------------------- */
+/* Vì sao KHÔNG còn "light sweep": bản cũ phủ một dải sáng chéo bằng
+   pseudo-element ::after của thẻ rồi chạy keyframes 620ms mỗi lần lật.
+   Hiệu ứng đó (a) không truyền tải thông tin gì — người dùng gọi là "vệt sáng
+   vô nghĩa"; (b) chạy 620ms trong khi lớp .is-flipping chỉ tồn tại 500ms nên
+   luôn bị cắt giữa chừng, thấy rõ nhất trên nền thẻ sáng; (c) vẽ thêm một lớp
+   gradient toàn thẻ mỗi frame đúng lúc trình duyệt đang xoay 3D.
+   Giữ lại thứ CÓ nghĩa: bóng đổ sâu hơn khi lật (box-shadow) + nhịp scale ở
+   animations.js. Không còn pseudo-element nào được thêm vào thẻ. */
 
 @layer base {
 .card-face {
@@ -26,51 +34,11 @@ body:not(.dark-mode) .flashcard.is-flipping {
         0 24px 54px -14px rgba(99, 102, 241, 0.24),
         0 0 0 1px rgba(99, 102, 241, 0.18);
 }
-
-.card-face::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    opacity: 0;
-    background-image: linear-gradient(
-        105deg,
-        transparent 38%,
-        rgba(255, 255, 255, 0.02) 44%,
-        rgba(255, 255, 255, 0.28) 50%,
-        rgba(255, 255, 255, 0.02) 56%,
-        transparent 62%
-    );
-    background-size: 260% 100%;
-    background-position: 130% 0;
-}
-
-.flashcard.is-flipping .card-face::after {
-    animation: celestialCardSweep 620ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-}
-
-@keyframes celestialCardSweep {
-    0% { opacity: 0; background-position: 130% 0; }
-    18% { opacity: 0.9; }
-    100% { opacity: 0; background-position: -30% 0; }
-}
-
-@layer base {
-
-body:not(.dark-mode) .card-face::after {
-    background: linear-gradient(
-        105deg,
-        transparent 38%,
-        rgba(255, 255, 255, 0.04) 44%,
-        rgba(99, 102, 241, 0.16) 50%,
-        rgba(255, 255, 255, 0.04) 56%,
-        transparent 62%
-    );
 }
 
 /* --- 2. SRS BUTTONS: sheen + tactile press ------------------------------ */
+@layer base {
+
 .srs-btn::before {
     content: "";
     position: absolute;
@@ -237,7 +205,6 @@ body:not(.dark-mode) .card-face::after {
 
 @layer base {
 
-body.boost-mode .flashcard.is-flipping .card-face::after,
 body.boost-mode .srs-btn::before {
     display: none;
 }
@@ -248,12 +215,6 @@ body.boost-mode .srs-btn::before {
 @layer base {
     .meta-pill.combo-pill {
         animation: none;
-    }
-}
-
-@layer overrides {
-    .flashcard.is-flipping .card-face::after {
-        animation-duration: 1ms !important;
     }
 }
 
