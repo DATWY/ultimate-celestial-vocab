@@ -508,7 +508,7 @@ function renderBadges(unlockedBadges) {
                 </div>
 
                 <div class="track-card-hero">
-                    <div class="track-icon-box tier-${tier.id}">
+                    <div class="track-icon-box">
                         <i class="${currentIcon}"></i>
                     </div>
                     <div class="track-titles-col">

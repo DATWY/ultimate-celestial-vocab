@@ -483,8 +483,8 @@ body:not(.dark-mode) .achieve-tab-btn.active {
 @layer overrides {
 .badge-track-item {
     border-radius: 20px;
-    padding: 20px;
-    gap: 16px;
+    padding: 14px;
+    gap: 10px;
     transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease !important;
 }
 
@@ -542,10 +542,10 @@ body.dark-mode .badge-track-item:hover {
 
 /* 3D Icon Box Enhancement */
 .track-icon-box {
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
-    font-size: 1.85rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+    font-size: 1.55rem;
     box-shadow: 0 6px 18px -2px color-mix(in srgb, var(--track-theme, #8b5cf6) 30%, transparent);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
@@ -622,7 +622,7 @@ body:not(.dark-mode) .track-level-badge {
 .achievements-wrapper {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    gap: 14px;
 }
 
 .special-badges-section {

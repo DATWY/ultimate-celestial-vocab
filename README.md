@@ -1,7 +1,7 @@
 ﻿# Ultimate Celestial Vocab
 
 ![Version](https://img.shields.io/badge/version-DATWY.V2.261028.22-8a2be2.svg?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-311%2F311%20PASS-brightgreen.svg?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-320%2F320%20PASS-brightgreen.svg?style=flat-square)
 ![Lint](https://img.shields.io/badge/eslint-0%20error-blue.svg?style=flat-square)
 ![PWA](https://img.shields.io/badge/PWA-precache%2036%20entry-orange.svg?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)
@@ -22,8 +22,8 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 
 | Hạng mục | Số đo | Cách đo |
 |---|---|---|
-| Test | **311 pass / 311**, 0 fail, 0 skip | `npm test` |
-| File test | **33** (	ests/*.test.mjs) + 1 E2E | `Get-ChildItem tests -File` |
+| Test | **320 pass / 320**, 0 fail, 0 skip | `npm test` |
+| File test | **35** (	ests/*.test.mjs) + 1 E2E | `Get-ChildItem tests -File` |
 | Lint | **0 error**, 105 warning (đều là `no-console`/escape cố ý) | `npm run lint` |
 | File nguồn | **65** file, **38.135** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
 | Entry `assets/index-*.js` | 230,2 kB thô → **76,16 kB gzip** (92,9% ngân sách 82 kB) | `npm run budget` |
@@ -48,7 +48,7 @@ Con số "92,9% ngân sách" là **cảnh báo**, không phải thành tích: en
 npm install
 cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
 npm run dev               # http://localhost:5173
-npm test                  # 311 test
+npm test                  # 320 test
 npm run lint              # ESLint 9 (0 error là điều kiện CI)
 npm run build             # build production vào dist/ (tự tăng version)
 npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~31 s, cần Chrome + dist đã build)
@@ -279,7 +279,7 @@ Hệ quả cần nhớ: **apiKey nằm trong bundle là bình thường** với 
 
 | Lệnh | Việc nó làm | Nguồn |
 |---|---|---|
-| `npm test` | Chạy 33 file test bằng `node --test` (311 test) | `package.json` → `scripts.test` |
+| `npm test` | Chạy 35 file test bằng `node --test` (320 test) | `package.json` → `scripts.test` |
 | `npm run lint` | ESLint 9 flat config: `no-undef` (bắt tên biến gõ sai), `no-unused-vars`, `no-dupe-keys`, `no-unreachable`; 0 error là điều kiện CI | `eslint.config.js` |
 | `npm run check` | Chuỗi cổng đầy đủ trước khi push: lint → test → build → budget → E2E | `package.json` |
 | `npm run test:e2e` | Smoke E2E vòng học trên **`dist/` đã build** (Chrome headless + CDP, 2 chế độ qua `SMOKE_LEECH=1`); ~12 s, exit 0/1. **Không** tự build | `tests/e2e/study-loop.mjs` (tài liệu: `docs/SMOKE_TEST.md`) |
@@ -336,7 +336,7 @@ ultimate-celestial-vocab/
 │   ├── ui/                  # render.js, modal.js, elements.js, celestial-canvas.js, waveform.js
 │   └── css/                 # style.css, study-polish.css, transition.css,
 │                            # icon-system.css, motion-upgrade.css, fonts.css, tokens/celestial-v5.css
-├── tests/                   # 33 file .test.mjs (node:test) + e2e/study-loop.mjs
+├── tests/                   # 35 file .test.mjs (node:test) + e2e/study-loop.mjs
 ├── tools/                   # build-icon-subset, bundle_budget, render_report,
 │                            # generate_version, train_fsrs7, measure_review_logs,
 │                            # simulate_intervals + các script verify_*/perf_*
