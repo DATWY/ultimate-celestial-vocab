@@ -95,3 +95,27 @@ test('không còn vệt sáng lặp vô hạn trên banner tổng', () => {
         'banner không được có pseudo-element tạo vệt sáng'
     );
 });
+
+test('thẻ bao và khung cuộn phải có đệm ngang (không dính sát 2 mép)', () => {
+    // Lỗi người dùng báo 2026-10-29 (lần 2): "các thẻ bị dính sát vào 2 mép 2 bên".
+    // Đo được: pane padding-left 0px, .achievements-card padding 0 ⇒ nội dung cách mép
+    // trái 1px và cách mép phải 8px (chỉ có gutter thanh cuộn).
+    const cardPadding = cssValue(
+        /.achievements-card,\s*\n\.profile-card\.achievements-card,\s*\n\.badges-showcase-section/,
+        'padding'
+    );
+    assert.ok(cardPadding, '.achievements-card phải khai báo padding');
+    const parts = String(cardPadding).split(/\s+/).map(px);
+    const inline = parts.length >= 2 ? parts[1] : parts[0]; // "18px 20px 20px" ⇒ 20px
+    assert.ok(inline >= 12, `đệm ngang của thẻ bao phải ≥ 12px, đang: ${inline}px`);
+
+    const paneBlock = /#manage-view-io,[\s\S]*?#profile-view-badges\s*\{([^}]*)\}/.exec(allCss);
+    assert.ok(paneBlock, 'không tìm thấy rule padding của các pane');
+    assert.match(
+        paneBlock[1],
+        /padding-inline\s*:/,
+        'pane phải đặt padding-inline (cả hai bên) — chỉ padding-right sẽ làm nội dung lệch trái'
+    );
+    const panePad = /padding-inline\s*:\s*([^;]+)/.exec(paneBlock[1])[1];
+    assert.ok(px(panePad) >= 4, `padding-inline của pane phải ≥ 4px, đang: ${panePad}`);
+});

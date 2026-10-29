@@ -6733,7 +6733,9 @@ body.dark-mode .manage-nav-tab[data-tab="badges"].active::after {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-right: 6px;
+    /* 6px = bề rộng gutter của thanh cuộn; đặt cả hai bên để nội dung không lệch
+       trái/phải (trước đây chỉ có padding-right nên chữ dính sát mép trái). */
+    padding-inline: 6px;
     padding-bottom: 16px;
 }
 }
@@ -8651,6 +8653,7 @@ body:not(.dark-mode) .heatmap-stats-summary strong {
 .achievements-card,
 .profile-card.achievements-card,
 .badges-showcase-section {
+    padding: 18px 20px 20px;
     flex-shrink: 0;
     min-height: min-content;
     height: auto;
@@ -8705,7 +8708,7 @@ body.dark-mode .profile-card.achievements-card:hover {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    margin-top: 15px;
+    margin-top: 0;
 }
 
 /* Overall Achievements Progress Summary Banner */
