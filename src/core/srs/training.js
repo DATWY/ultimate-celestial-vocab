@@ -119,6 +119,25 @@ export function bootstrapGain(baseline, candidate, rounds = BOOTSTRAP_ROUNDS) {
     return { gain: sum / n, lo: boots[Math.floor(rounds * 0.025)], hi: boots[Math.floor(rounds * 0.975)], n, cards: groups.length };
 }
 
+/**
+ * P2: đạo hàm số một chiều có xử lý BIÊN.
+ *
+ * Bản cũ luôn tiến: north = min(1, value + fd). Tại value = 1 thì north === value,
+ * mẫu số ~0 nên gradient luôn 0 và tham số kẹt vĩnh viễn ở biên trên. Nay nếu không
+ * thể tiến đủ xa thì lấy sai phân LÙI (vẫn giữ nguyên số lần đánh giá).
+ *
+ * @param {number} value     điểm đang xét (đã chuẩn hoá về [0,1])
+ * @param {number} fd        bước sai phân
+ * @param {number} current   loss tại 'value' (đã có sẵn, tránh đánh giá lại)
+ * @param {(x:number)=>number} evaluate  hàm loss theo tham số chuẩn hoá
+ */
+export function finiteDifferenceGradient(value, fd, current, evaluate) {
+    const north = Math.min(1, value + fd);
+    if (north - value >= fd / 2) return (evaluate(north) - current) / Math.max(1e-9, north - value);
+    const south = Math.max(0, value - fd);
+    return (current - evaluate(south)) / Math.max(1e-9, value - south);
+}
+
 export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS7_PARAMS, options = {}) {
     const data = prepareTrainingData(logs, vocabulary);
     if (data.count < 400) return { improved: false, reason: 'insufficient-data', count: data.count };
@@ -161,12 +180,13 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
         const grad = new Float64Array(34);
         for (let i = 0; i < 34; i++) {
             const saved = unit[i];
-            const north = Math.min(1, saved + fd);
-            unit[i] = north;
-            const up = lossOf(unit);
-            unit[i] = saved;
-            evaluations++;
-            grad[i] = (up - current) / Math.max(1e-9, north - saved);
+            grad[i] = finiteDifferenceGradient(saved, fd, current, (x) => {
+                unit[i] = x;
+                const loss = lossOf(unit);
+                unit[i] = saved;
+                evaluations++;
+                return loss;
+            });
         }
         for (let i = 0; i < 34; i++) {
             m1[i] = beta1 * m1[i] + (1 - beta1) * grad[i];
@@ -177,7 +197,15 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
         }
         const next = lossOf(unit);
         evaluations++;
-        if (Number.isFinite(next)) current = next;
+        if (Number.isFinite(next)) {
+            current = next;
+        } else {
+            // Bước đi rơi vào vùng loss = Infinity/NaN: nếu chỉ bỏ qua 'next' thì 'unit'
+            // VẪN ở điểm hỏng còn 'current' là loss cũ ⇒ gradient vòng sau tính quanh
+            // một điểm không tồn tại. Quay lại điểm tốt nhất và tính là một bước cùn.
+            unit.splice(0, unit.length, ...bestUnit);
+            current = bestScore;
+        }
         if (current < bestScore - 1e-7) {
             bestScore = current;
             bestUnit = [...unit];
@@ -191,16 +219,25 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
     const baselineLosses = collectValidationLosses(data, start);
     const candidateLosses = collectValidationLosses(data, best);
     const ci = bootstrapGain(baselineLosses, candidateLosses);
-    // Kiểm tra thêm: phần giảm phải DƯƠNG ở cả hai nửa thời gian của holdout. Một bộ
-    // tham số chỉ thắng nhờ một cụm thẻ/dịp hiếm thường lệch dấu giữa hai nửa — đó là
-    // dấu hiệu overfit, không phải cải thiện thật. Rẻ (chỉ chia mảng đã có) nên dùng
-    // ngân sách thời gian rảnh để siết cổng thay vì dò thêm bước vô ích.
+    // Kiểm tra thêm: phần giảm phải DƯƠNG ở cả hai nửa của holdout. Một bộ tham số
+    // chỉ thắng nhờ một cụm thẻ hiếm thường lệch dấu giữa hai nửa — dấu hiệu overfit.
+    //
+    // LƯU Ý (sửa lại cho khớp mã): collectValidationLosses() duyệt THEO TỪNG THẺ rồi
+    // theo lượt ôn, nên hai nửa ở đây là hai nửa TẬP THẺ (kiểm tra khả năng khái quát
+    // sang từ mới), KHÔNG phải hai nửa thời gian. Chú thích cũ ghi "hai nửa thời gian"
+    // là sai so với mã.
+    //
+    // Trước đây ngưỡng là >= 40 trong khi cổng validation chỉ cần >= 30 ⇒ dải 30–39
+    // không bao giờ tính được halfGain, consistent = false và mọi cải thiện thật đều
+    // bị loại với lý do "not-significant". Nay dùng đúng ngưỡng 30 và yêu cầu mỗi nửa
+    // tối thiểu 10 mẫu.
     let halfGain = [0, 0];
-    if (baselineLosses.length >= 40) {
+    if (baselineLosses.length >= 30) {
         const mid = Math.floor(baselineLosses.length / 2);
         const mean = arr => arr.reduce((s, x) => s + (x.a.loss - x.b.loss), 0) / arr.length;
         const pairs = baselineLosses.map((a, i) => ({ a, b: candidateLosses[i] }));
-        halfGain = [mean(pairs.slice(0, mid)), mean(pairs.slice(mid))];
+        const head = pairs.slice(0, mid), tail = pairs.slice(mid);
+        if (head.length >= 10 && tail.length >= 10) halfGain = [mean(head), mean(tail)];
     }
     const consistent = halfGain[0] > 0 && halfGain[1] > 0;
     const relativeGain = baselineValidation.loss > 0 ? (baselineValidation.loss - validation.loss) / baselineValidation.loss : 0;

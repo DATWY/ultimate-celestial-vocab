@@ -273,19 +273,9 @@ export function buildReviewQueue() {
         if (topicMatch) {
             // V3.2: Thẻ Mastered (đã thuộc) được tính là ĐẾN HẠN nếu hạn rơi vào bất kỳ lúc nào trong ngày hôm nay.
             // SỬA LỖI KB 2.1: Nếu đã ôn hôm nay rồi (isReviewedToday = true), tuyệt đối không coi là Đến Hạn trong cùng ngày nữa!
-            const endOfDay = new Date(now).setHours(23, 59, 59, 999);
-            const isReviewedToday = word.lastReviewDate && getLocalDateString(word.lastReviewDate) === getLocalDateString(now);
-            
-            let isDue = false;
-            if (word.srsStatus === 'Mastered') {
-                if (!isReviewedToday) {
-                    isDue = !word.srsDueDate || word.srsDueDate <= endOfDay;
-                }
-            } else if (word.srsStatus === 'Learning') {
-                isDue = !word.srsDueDate || word.srsDueDate <= now;
-            } else {
-                isDue = !word.srsDueDate || word.srsDueDate <= now;
-            }
+            // P2: dùng predicate dùng chung (isNaturallyDue) để dock thống kê và hàng đợi
+            // không bao giờ lệch nhau nữa.
+            const isDue = isNaturallyDue(word, now);
             
             if (word.srsStatus === 'Learning') {
                 // V3: Phải đợi hết 5/10 phút (delay) mới được nhét lại vào hàng đợi
@@ -413,4 +403,26 @@ export function triggerSmartCramming() {
         return true;
     }
     return false;
+}
+
+/**
+ * P2: predicate "thẻ đến hạn TỰ NHIÊN" — nguồn sự thật DUY NHẤT cho cả buildReviewQueue
+ * và dock thống kê (render.js). Trước đây mỗi nơi tự viết một bản; bản trong render.js
+ * thiếu điều kiện "Mastered đã ôn hôm nay thì không tính" nên dock báo "Cần ôn" cao hơn
+ * số thẻ thật sự vào phiên học.
+ *
+ * Thẻ CHƯA có srsDueDate vẫn được coi là đến hạn (giữ đúng hành vi cũ của buildReviewQueue);
+ * nơi nào không muốn vậy thì tự kiểm tra srsDueDate trước khi gọi.
+ */
+export function isNaturallyDue(word, now = Date.now()) {
+    if (!word || word.isDeleted) return false;
+    if (!word.srsDueDate) return true;
+    if (word.srsStatus === 'Mastered') {
+        const reviewedToday = word.lastReviewDate &&
+            getLocalDateString(word.lastReviewDate) === getLocalDateString(now);
+        if (reviewedToday) return false;
+        const endOfDay = new Date(now).setHours(23, 59, 59, 999);
+        return word.srsDueDate <= endOfDay;
+    }
+    return word.srsDueDate <= now;
 }

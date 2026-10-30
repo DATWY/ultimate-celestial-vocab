@@ -1,7 +1,7 @@
 ﻿# Ultimate Celestial Vocab
 
 ![Version](https://img.shields.io/badge/version-DATWY.V2.261028.22-8a2be2.svg?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-320%2F320%20PASS-brightgreen.svg?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-380%2F380%20PASS-brightgreen.svg?style=flat-square)
 ![Lint](https://img.shields.io/badge/eslint-0%20error-blue.svg?style=flat-square)
 ![PWA](https://img.shields.io/badge/PWA-precache%2036%20entry-orange.svg?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)
@@ -22,8 +22,8 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 
 | Hạng mục | Số đo | Cách đo |
 |---|---|---|
-| Test | **320 pass / 320**, 0 fail, 0 skip | `npm test` |
-| File test | **35** (	ests/*.test.mjs) + 1 E2E | `Get-ChildItem tests -File` |
+| Test | **380 pass / 380**, 0 fail, 0 skip | `npm test` |
+| File test | **43** (	ests/*.test.mjs) + 1 E2E | `Get-ChildItem tests -File` |
 | Lint | **0 error**, 105 warning (đều là `no-console`/escape cố ý) | `npm run lint` |
 | File nguồn | **65** file, **38.135** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
 | Entry `assets/index-*.js` | 230,2 kB thô → **76,16 kB gzip** (92,9% ngân sách 82 kB) | `npm run budget` |
@@ -48,7 +48,7 @@ Con số "92,9% ngân sách" là **cảnh báo**, không phải thành tích: en
 npm install
 cp .env.example .env      # điền thông số Firebase nếu muốn dùng đồng bộ Cloud
 npm run dev               # http://localhost:5173
-npm test                  # 320 test
+npm test                  # 380 test
 npm run lint              # ESLint 9 (0 error là điều kiện CI)
 npm run build             # build production vào dist/ (tự tăng version)
 npm run verify            # 11 test hiệu năng/vòng đời + 4 test version (~31 s, cần Chrome + dist đã build)

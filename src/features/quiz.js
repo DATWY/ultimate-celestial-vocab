@@ -329,8 +329,10 @@ function finishQuiz(isSilent = false) {
     const circleProgress = document.getElementById('score-circle-progress');
     const pctValEl = document.getElementById('quiz-percentage-val');
     if (pctValEl) {
-        animateNumber(pctValEl, scorePct);
-        setTimeout(() => { pctValEl.textContent = `${scorePct}%`; }, 600);
+        // P2: animateNumber chạy 1600ms và tự ghi lại text ở update/complete
+        // (animations.js:294-303) nên setTimeout 600ms bị ghi đè ⇒ mất dấu "%".
+        // Truyền suffix cho chính animation thay vì vá sau 600ms.
+        animateNumber(pctValEl, scorePct, 1600, { suffix: '%' });
     }
     if (circleProgress) {
         const circumference = 314.16; // 2 * PI * 50

@@ -34,6 +34,10 @@ export function renderGamificationUI(options = {}) {
     }
     _lastRenderGamificationTime = now;
 
+    // P3: "Chân Dung Não Bộ" là code chết trước đây (không pane, không caller). Render
+    // cùng tab Tổng quan; hàm tự bỏ qua nếu pane không tồn tại.
+    renderFsrsPersonaTab();
+
     const state = getState();
     const gamification = state.gamification || {};
     const { userXP = 0, currentLevel: rawLevel = 1, currentStreak = 0, activityHeatmap = {}, unlockedBadges = [] } = gamification;
@@ -810,6 +814,12 @@ function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
     const WEEKS_PER_BLOCK = 4;
 
     const monthsContainer = document.createElement('div');
+
+    // P2: 3 khối × 4 tuần = 84 ngày, mỗi khối lấy tháng của tuần giữa. Hai khối liền
+    // nhau thường rơi vào CÙNG một tháng ⇒ tiêu đề trùng "Tháng 10" hai lần và người
+    // dùng không phân biệt được khối nào. Đánh dấu "(tiếp)" + tooltip khoảng ngày thật.
+    let lastMonthLabel = '';
+    const fmtDayMonth = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
     monthsContainer.className = 'heatmap-months-blocks';
 
     for (let b = 0; b < BLOCKS_COUNT; b++) {
@@ -825,8 +835,14 @@ function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
         // 1. Tiêu đề Tháng (Hàng ngang trên đầu mỗi khối)
         const monthHeader = document.createElement('div');
         monthHeader.className = 'heatmap-month-block-title';
-        monthHeader.textContent = `Tháng ${monthNum}`;
-        monthHeader.title = `Tháng ${monthNum} (${WEEKS_PER_BLOCK} tuần)`;
+        const baseLabel = `Tháng ${monthNum}`;
+        const blockStart = new Date(startMonday);
+        blockStart.setDate(startMonday.getDate() + b * WEEKS_PER_BLOCK * 7);
+        const blockEnd = new Date(blockStart);
+        blockEnd.setDate(blockStart.getDate() + WEEKS_PER_BLOCK * 7 - 1);
+        monthHeader.textContent = baseLabel === lastMonthLabel ? `${baseLabel} (tiếp)` : baseLabel;
+        monthHeader.title = `${baseLabel}: ${fmtDayMonth(blockStart)} – ${fmtDayMonth(blockEnd)}`;
+        lastMonthLabel = baseLabel;
         block.appendChild(monthHeader);
 
         // 2. Hàng 7 Cột Thứ (T2, T3, T4, T5, T6, T7, CN)

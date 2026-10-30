@@ -2,7 +2,7 @@ import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
 import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
 import { playSound, ensureAudioForWords, applySoundMode } from '../core/sound.js';
-import { getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus, buildReviewQueue, getNextCardToReview } from '../core/queue.js';
+import { getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus, buildReviewQueue, getNextCardToReview, isNaturallyDue } from '../core/queue.js';
 // modal.js được nạp động: render <-> modal là vòng import lớn nhất của app.
 // Gọi UI modal không cần đồng bộ, nên nạp động vừa phá vòng vừa giảm entry chunk.
 let _modalModulePromise = null;
@@ -678,7 +678,6 @@ export function updateStats() {
     // study-session-bar removed; these elements no longer exist in DOM
     const filterLowerCase = (currentTopicFilter || 'all').toLowerCase();
     const now = Date.now();
-    const endOfDay = new Date(now).setHours(23, 59, 59, 999);
     const { currentReviewQueue, currentCardIndex } = getState();
 
     // Thẻ được ép vào hàng đợi ôn tập (học nhồi / thẻ đang mở) dù chưa đến hạn tự nhiên.
@@ -716,7 +715,10 @@ export function updateStats() {
         else if (status === 'Learning') totalLearningRaw++;
         else if (status === 'Mastered') totalMasteredRaw++;
 
-        const isNaturalDue = Boolean(word.srsDueDate) && (status === 'Mastered' ? word.srsDueDate <= endOfDay : word.srsDueDate <= now);
+        // P2: dùng CHUNG predicate với buildReviewQueue. Bản cũ thiếu "Mastered đã ôn hôm nay"
+        // nên dock báo "Cần ôn" cao hơn số thẻ thật sự vào phiên học. Vẫn yêu cầu có srsDueDate
+        // để thẻ mới không bị đội vào "Cần ôn".
+        const isNaturalDue = Boolean(word.srsDueDate) && isNaturallyDue(word, now);
         const isDue = isNaturalDue || forcedDueKeys.has(word.id || index);
         if (isDue) dueCount++;
         else if (status === 'Mastered') masteredNonDue++;
@@ -791,10 +793,13 @@ export function updateStats() {
     if (ringLearning) ringLearning.setAttribute('stroke-dasharray', `${pLearningTotal}, 100`);
 
     // Segmented Progress Bar percentages (Sum = 100%)
-    const pBarMastered = masteredNonDue / baseCount * 100;
-    const pBarDue = dueCount / baseCount * 100;
-    const pBarLearning = learningNonDue / baseCount * 100;
-    const pBarNew = newCount / baseCount * 100;
+    // P2: tooltip từng in số thực chưa làm tròn ("12.345679012345678%") trong khi ring đã
+    // Math.round ⇒ hai chỗ hiển thị hai con số khác nhau cho cùng một dữ liệu.
+    const pct1 = value => Math.round(value * 10) / 10;
+    const pBarMastered = pct1(masteredNonDue / baseCount * 100);
+    const pBarDue = pct1(dueCount / baseCount * 100);
+    const pBarLearning = pct1(learningNonDue / baseCount * 100);
+    const pBarNew = pct1(newCount / baseCount * 100);
 
     const barMastered = document.getElementById('bar-mastered');
     const barDue = document.getElementById('bar-due');

@@ -131,6 +131,10 @@ export function isDerivationalVariant(wordA, wordB, posA = 'unknown', posB = 'un
             const restored = new Set([stem, stem + 'e']);
             if (stem.endsWith('i')) restored.add(stem.slice(0, -1) + 'y'); // supplier ⇢ suppl ⇢ supply
             if (candidatesRestoreE(stem)) restored.add(stem.slice(0, -1)); // creation ⇢ creat ⇢ create
+            // -sion ⇢ -de (decision/decide, division/divide, conclusion/conclude,
+            // explosion/explode, invasion/invade): bỏ "-sion" là đủ tiền tố động từ,
+            // chỉ cần thêm "de". Bản cũ không có luật này nên 5 cặp trên không nhận ra.
+            if (suffix === 'sion') restored.add(stem + 'de');
             if (restored.has(short)) return true;
         }
     }
@@ -518,7 +522,9 @@ export function calculatePhraseOverlap(textA, textB) {
             }
         }
     }
-    return matchCount / Math.min(setA.size, setB.size);
+    // P2: matchCount ≤ setA.size, nhưng mẫu số là min(size) nên khi A dài hơn B tỉ lệ
+    // có thể vượt 1.0 (ví dụ A 5 cụm, B 2 cụm ⇒ 2.5) và mọi ngưỡng "≥ 0.8" thành vô nghĩa.
+    return Math.min(1, matchCount / Math.min(setA.size, setB.size));
 }
 
 /**

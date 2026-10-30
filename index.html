@@ -829,6 +829,12 @@
                             </div>
                         </section>
                     </div>
+                    <!-- P3: màn "Chân Dung Não Bộ" (whoiam-v2) từng bị bỏ rơi: module 262 dòng và
+                    16 rule CSS vẫn còn nhưng KHÔNG có pane và không ai gọi renderFsrsPersonaTab().
+                    Nay đặt lại trong tab Tổng quan để tính năng thật sự hiển thị. -->
+                    <section class="profile-card whoiam-card">
+                    <div id="profile-view-persona"></div>
+                    </section>
                 </div>
 
                 <!-- TAB 2: Danh Sách Từ Vựng (Dedicated View) -->
@@ -1083,9 +1089,9 @@
                             </div>
                         </div>
                     </section>
-                </div>
+    </div>
 
-                <!-- TAB 4: Phòng Truyền Thống Huy Hiệu Thành Tựu -->
+    <!-- TAB 4: Phòng Truyền Thống Huy Hiệu Thành Tựu -->
                 <div id="profile-view-badges" class="manage-tab-pane profile-tab-pane hidden">
                     <section class="profile-card achievements-card">
                         <div class="achievements-container" id="achievements-list">

@@ -13,11 +13,28 @@ const DIRTY_THRESHOLD = 30;
 export function getDirtyCount() { return _syncQueue.size; }
 export function getSyncQueueSize() { return _syncQueue.size; }
 
-function persistPendingIds() {
+// P2: persistPendingIds() được gọi ở MỖI syncCardToFirebase, và mỗi lần nó
+// JSON.stringify TOÀN BỘ _syncQueue. Khi nhập 2.000 từ rồi sửa từng thẻ, tổng chi
+// phí là O(N²) lần serialize (2000 × 2000 phần tử) trên main thread.
+// Nay: gộp các lần gọi trong cùng một khung 500ms thành một lần ghi, và vẫn ghi
+// ngay khi hàng chờ vừa trống (mốc quan trọng cho khôi phục sau khi tải lại).
+let _persistTimer = null;
+function persistPendingIds({ immediate = false } = {}) {
     announceSyncStatus({ pending: _syncQueue.size });
-    try {
-        localStorage.setItem('pendingSyncIds', JSON.stringify([..._syncQueue.keys()]));
-    } catch (error) { announceSyncStatus({ phase: 'storage-error' }); console.warn('Không thể lưu hàng chờ đồng bộ.', error); }
+    const flush = () => {
+        _persistTimer = null;
+        try {
+            localStorage.setItem('pendingSyncIds', JSON.stringify([..._syncQueue.keys()]));
+        } catch (error) { announceSyncStatus({ phase: 'storage-error' }); console.warn('Không thể lưu hàng chờ đồng bộ.', error); }
+    };
+    if (immediate || _syncQueue.size === 0) {
+        if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
+        flush();
+        return;
+    }
+    if (_persistTimer) return;
+    _persistTimer = setTimeout(flush, 500);
+    _persistTimer?.unref?.();
 }
 
 export function syncCardToFirebase(card) {
@@ -80,6 +97,9 @@ export async function flushSyncQueue() {
             console.warn('Chưa đồng bộ được; dữ liệu vẫn được giữ trên máy và trong hàng chờ.', error);
             return flushed;
         } finally {
+            // Kết thúc một lượt flush (dù thành công hay lỗi) là mốc cần ghi NGAY: nếu
+            // tab bị đóng trong 500ms hoãn của debounce thì hàng chờ sẽ mất.
+            persistPendingIds({ immediate: true });
             if (_syncQueue.size) {
                 // Một edit trong lúc đang xác thực có thể đã đặt lịch sẵn một timer.
                 // Xoá trước khi đặt timer mới để không tồn tại hai lượt flush song song.
@@ -96,7 +116,8 @@ export async function flushSyncQueue() {
 
 export function flushSyncQueueBeforeUnload() {
     if (sessionStorage.getItem('CHEAT_MODE') === 'true') return;
-    persistPendingIds();
+    // Đang đóng tab: phải ghi NGAY, hoãn 500ms là mất hàng chờ.
+    persistPendingIds({ immediate: true });
     void syncGamificationToFirebase();
     void flushSyncQueue();
 }
@@ -110,7 +131,7 @@ export async function recoverPendingSyncIds() {
             if (typeof id === 'string') _syncQueue.set(id, ++_generation);
         }
         sessionStorage.removeItem('pendingSyncIds');
-        persistPendingIds();
+        persistPendingIds({ immediate: true });
         if (_syncQueue.size) _syncTimer = setTimeout(flushSyncQueue, 5000);
     } catch (error) { console.warn('Không thể khôi phục hàng chờ đồng bộ.', error); }
 }
