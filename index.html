@@ -148,6 +148,12 @@
                         <i class="ph-duotone ph-lightning"></i>
                         <span class="btn-label">Tăng Tốc (Boost)</span>
                     </button>
+                    <!-- UI-02: Undo nằm ngay thanh công cụ học (trước đây bị giấu trong
+                         Celestial Hub ở một khối display:none nên gần như không thể bấm). -->
+                    <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Z)"
+                        aria-label="Hoàn tác lượt đánh giá trước" disabled>
+                        <i class="ph-duotone ph-arrow-u-up-left"></i>
+                    </button>
                     <button id="toggle-dark-mode-btn" class="icon-btn" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
                         <i class="ph-duotone ph-moon-stars"></i>
                         <span class="btn-label">Giao diện Tối/Sáng</span>
@@ -677,8 +683,6 @@
                                 <span id="manage-total-count" class="manage-count-badge"><i class="ph-bold ph-cards"></i> 0 từ</span>
                                 <button id="scan-duplicates-btn" class="icon-btn dedup-btn" title="Quét &amp; Gộp từ vựng trùng lặp thông minh"
                                     aria-label="Quét trùng lặp"><i class="ph-bold ph-scan"></i></button>
-                                <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Shift+Z)"
-                                    aria-label="Hoàn tác lượt đánh giá trước" disabled><i class="ph-duotone ph-arrow-u-up-left"></i></button>
                             </div>
                             <button id="close-manage-modal-btn" class="modal-close-btn manage-close-btn" title="Đóng (Esc)"
                                 aria-label="Đóng hộp thoại"><i class="ph-bold ph-x"></i></button>

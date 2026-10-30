@@ -4,7 +4,8 @@ import { setReviewQueue, trackEvent } from '../core/state.js';
 
 import { DOM } from './elements.js';
 import { getState, saveVocabulary, setVocabulary, setAllTags, saveOneWord } from '../core/state.js';
-import { populateTopicFilters, updatePanelWordList, displayCard, updateUndoButtonState } from './render.js';
+import { populateTopicFilters, updatePanelWordList, displayCard, updateUndoButtonState, refreshStudyAfterVocabularyChange } from './render.js';
+import { trackWordAdded } from '../features/stat-trackers.js';
 import { displayAppVersion } from '../core/versionCheck.js';
 import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 import { playSound } from '../core/sound.js';
@@ -259,7 +260,11 @@ export function handleAddEditSubmit(event) {
             setVocabulary(next);
             setAllTags(new Set(['all', ...next.filter(card => !card.isDeleted).flatMap(card => card.tags || [])]));
             syncCardToFirebase(saved);
-            if (!editing) trackEvent('manualWordsAdded');
+            if (!editing) {
+                trackEvent('manualWordsAdded');
+                // GAME-01: wordsAddedToday (hurricane) + nightOwlWords (nightwalker).
+                trackWordAdded(getState().gamification?.stats);
+            }
             populateTopicFilters(true); buildReviewQueue(); updatePanelWordList();
             const activeIndex = next.findIndex(card => card.id === currentId && !card.isDeleted);
             if (activeIndex >= 0) { setReviewQueue(getState().currentReviewQueue.filter(i => i !== activeIndex)); displayCard(activeIndex); }
@@ -776,10 +781,13 @@ export function executeMergeAll() {
 
         setVocabulary(currentVocab);
         saveVocabulary(true);
-        
+
         // Sync queue cho tất cả các thẻ đã sửa
         modifiedWords.forEach(word => saveOneWord(word));
         updatePanelWordList(false);
+        // UI-02: gộp xong hàng đợi ôn phải dựng lại ngay — thẻ vừa bị gộp (isDeleted)
+        // có thể đang là thẻ hiện tại trên màn hình học.
+        refreshStudyAfterVocabularyChange(modifiedWords.filter(w => w.isDeleted).map(w => w.id));
         const skippedNote = reviewPairs.length > 0 ? ` ${reviewPairs.length} cặp lệch chính tả cần bạn xem tay.` : '';
         showPopup(`Hoàn tất! Đã gộp ${mergedCount} cặp từ và làm sạch ${cleanedCount} thẻ lặp nghĩa.${skippedNote}`, 'success');
         void renderDedupPairs();

@@ -15,6 +15,7 @@ import { rolloverDailyStats } from '../daily-stats.js';
 import { captureProgress, mergeProgress } from '../progress-merge.js';
 import { announceSyncStatus } from '../sync-status.js';
 import { getActorId } from '../device.js';
+import { trackXP, trackLevelUp, trackStreakLoss } from '../../features/stat-trackers.js';
 import { getLocalDateString, getOffsetDateString } from '../utils/date.js';
 import { skipPersistence, isPreviewMode } from './preview-mode.js';
 import { safeShowToast } from './ui-notify.js';
@@ -171,9 +172,13 @@ export function addXP(amount, floatText = null) {
     const oldLevel = gamification.currentLevel || 1;
     gamification.userXP += amount;
     syncLevelFromXp();
+    // GAME-01: XP theo ngày (bounty_hunter/phoenix) và theo tuần (mutant).
+    trackXP(gamification.stats, amount);
     saveGamification();
 
     if (gamification.currentLevel > oldLevel) {
+        // GAME-01: golden_hour cần biết "vừa lên cấp" + khung giờ của chính lúc đó.
+        trackLevelUp(gamification.stats);
         import('../sound.js').then(m => m.playSound('levelUp'));
     }
 
@@ -397,6 +402,9 @@ export function syncStreakFromHeatmap(options = {}) {
         gamification.frozenDates,
         gamification.recoveredDates
     );
+    // GAME-01: ghi lại chuỗi dài nhất ĐÃ TỪNG BỊ MẤT (return_of_the_king / slip_up).
+    const previousStreak = Number(gamification.currentStreak) || 0;
+    if (currentStreak === 0 && previousStreak >= 2) trackStreakLoss(gamification.stats, previousStreak);
     gamification.currentStreak = currentStreak;
     gamification.longestStreak = Math.max(gamification.longestStreak || 0, longestStreak);
     if (isDayStreakQualified(gamification.activityHeatmap, today, gamification.frozenDates, gamification.recoveredDates)) {

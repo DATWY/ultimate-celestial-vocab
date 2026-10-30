@@ -7,6 +7,8 @@ import './css/icon-system.css';
 import './css/motion-upgrade.css';
 import { loadVocabulary, getState, setVocabulary, seedIsolatedDemoVocabulary } from './core/state.js';
 import { getNextCardToReview, buildReviewQueue } from './core/queue.js';
+import { trackAppOpen, rolloverDailyStats } from './features/stat-trackers.js';
+import { getLocalDateString } from './core/utils/date.js';
 import { initializeSound } from './core/sound.js';
 import { displayCard, flipCard, populateTopicFilters, updateCustomTypingUI, applyDarkMode, applySoundSetting, applyBoostMode } from './ui/render.js';
 import { setupEventListeners } from './events.js';
@@ -165,6 +167,14 @@ async function initializeApp() {
     updateCustomTypingUI();
     buildReviewQueue();
     setupEventListeners();
+    // GAME-01: bộ đếm theo NGÀY phải rollover khi mở app, và fanatic cần số lần mở.
+    {
+        const g = getState().gamification;
+        if (g) {
+            rolloverDailyStats(g.stats, getLocalDateString(), g.currentLimit || 0);
+            trackAppOpen(g.stats);
+        }
+    }
 
     const firstCardIndex = getNextCardToReview();
     displayCard(firstCardIndex);

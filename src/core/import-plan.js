@@ -20,6 +20,15 @@ export function planVocabularyImport(text, vocabulary, makeId = () => crypto.ran
             const before = JSON.stringify(matched);
             if (incoming.example.trim().length > (matched.example || '').trim().length) matched.example = incoming.example;
             if (!matched.pronunciation?.trim() && incoming.pronunciation) matched.pronunciation = incoming.pronunciation;
+            // DEDUP-01: nghĩa tiếng Việt của dòng nhập phải được GỘP, không bị bỏ qua.
+            // Trước đây nhập lại một từ đã có (kèm nghĩa mới) làm mất đúng nghĩa mới đó.
+            const mergedVietnamese = cleanAndDeduplicateVietnamese(
+                [matched.vietnamese, incoming.vietnamese].filter(Boolean).join(', ')
+            );
+            // So sánh không phân biệt hoa/thường: cleanAndDeduplicateVietnamese viết hoa
+            // chữ đầu, nếu so thô thì nhập lại đúng thẻ cũ sẽ sinh một bản cập nhật rỗng.
+            const sameMeaning = mergedVietnamese.toLocaleLowerCase() === String(matched.vietnamese || '').toLocaleLowerCase();
+            if (mergedVietnamese && !sameMeaning) matched.vietnamese = mergedVietnamese;
             matched.tags = [...new Set([...(matched.tags || []), ...incoming.tags])];
             for (const field of ['notes', 'exampleMeaning', 'synonyms', 'antonyms', 'collocations']) {
                 if (!matched[field] && incoming[field]) matched[field] = incoming[field];

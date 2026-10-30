@@ -1,5 +1,7 @@
 import anime from 'animejs/lib/anime.es.js';
 import { escapeHTML } from './core/utils/sanitize.js';
+import { isEditableTarget, shouldHandleUndoShortcut, matchBoostCommand } from './core/utils/keyboard.js';
+import { trackReview, trackHourBonus, trackDarkMode } from './features/stat-trackers.js';
 import { restoreCardReview } from './core/card-merge.js';
 // src/events.js
 
@@ -198,6 +200,21 @@ function processSrsFeedback(rating, autoAdvance = true) {
         // Rating 1 = Again -> incorrect. Rating > 1 -> correct
         recordReviewResult(rating > 1);
         logActivity(); // Ghi nhận hoạt động vào Heatmap
+
+        // GAME-01: gom mọi bộ đếm của một lượt chấm vào MỘT chỗ (stat-trackers.js)
+        // thay vì rải rác — 25 khoá stats trước đây không có nơi ghi nên 33 huy hiệu
+        // đặc biệt không bao giờ mở được.
+        {
+            const stats = getState().gamification?.stats;
+            trackHourBonus(stats);
+            trackReview({
+                stats,
+                card: previousCard,
+                updatedCard,
+                rating,
+                isTyping: modality === 'typing'
+            });
+        }
 
         // Typing mode keeps the same card on screen, so refresh the dock now.
         if (!autoAdvance) updateStats();
@@ -527,7 +544,9 @@ export function setupEventListeners() {
         }
 
         if (candidates.length === 0) {
-            showPopup("Không tìm thấy từ vựng", "Hiện không có từ vựng nào trong kho phù hợp với bộ lọc này để tạo phiên học riêng.");
+            // showPopup(message, type) — bản cũ truyền (title, message) nên câu giải
+            // thích bị nuốt vào tham số type và người dùng chỉ thấy tiêu đề.
+            showPopup("Hiện không có từ vựng nào trong kho phù hợp với bộ lọc này để tạo phiên học riêng.", 'warning');
             return;
         }
 
@@ -562,6 +581,8 @@ export function setupEventListeners() {
 
         const currentIsDark = getState().isDarkMode;
         const targetModeIsDark = !currentIsDark;
+        // GAME-01: incognito cần số NGÀY có dùng dark mode (mỗi ngày tính 1 lần).
+        if (targetModeIsDark) trackDarkMode(getState().gamification?.stats);
 
         // Boost mode or Reduced Motion: instantaneous clean transition
         const isBoost = getState().isBoostMode || document.body.classList.contains('boost-mode');
@@ -1200,19 +1221,12 @@ function setupCloudVaultControls() {
         runIOModule(module => module.handleApplySyncKey?.({ input: applyInput, button: applyBtn, statusElement: statusEl }));
     });
 
-    audioBtn?.addEventListener('click', async () => {
-        audioBtn.disabled = true;
-        setStatus('Đang tải audio... có thể mất vài phút tuỳ số từ.');
-        try {
-            const sound = await import('./core/sound.js');
-            await sound.startBackgroundAudioPreload(getState().vocabulary, { reason: 'manual' });
-            setStatus('Đã tải xong audio ngoại tuyến.');
-        } catch (error) {
-            setStatus(error?.message || 'Tải audio thất bại.');
-        } finally {
-            audioBtn.disabled = false;
-        }
-    });
+    // UI-01: KHÔNG bind #download-all-audio-btn ở đây nữa.
+    // Tab Dữ liệu do io.js sở hữu nút này (handleDownloadAllAudio có onProgress +
+    // progress bar). Bind thêm ở đây tạo hai listener: listener này chạy trước,
+    // đặt isPreloadingAll = true (sound.js:1836) khiến handler của io.js return
+    // sớm (sound.js:1833) ⇒ thanh tiến độ đứng im vĩnh viễn.
+    void audioBtn;
 }
 
 function toggleStar() {
@@ -1301,7 +1315,10 @@ function handleGlobalShortcuts(e) {
     }
     // Phím tắt Hoàn tác (Undo): Ctrl + Z hoặc Ctrl + Shift + Z (Cmd + Z / Cmd + Shift + Z)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (!isTyping && !isModalOpen) {
+        // UI-02: Undo phải dùng được khi Celestial Hub đang mở (nút Undo nằm ở
+        // thanh công cụ học, người dùng hay mở Hub để xem lại). Điều kiện duy nhất
+        // là con trỏ không nằm trong ô nhập — gõ chữ vẫn phải là undo của trình duyệt.
+        if (shouldHandleUndoShortcut({ editable: isEditableTarget(active), isTyping })) {
             e.preventDefault();
             undoLastReview();
             return;
@@ -1315,7 +1332,12 @@ function handleGlobalShortcuts(e) {
     globalKeystrokeBuffer = (globalKeystrokeBuffer + e.key).slice(-10).toLowerCase();
     globalKeystrokeTimer = setTimeout(() => { globalKeystrokeBuffer = ''; }, 2000);
 
-    if (globalKeystrokeBuffer.endsWith('/boost') || globalKeystrokeBuffer.endsWith('boost')) {
+    // UI-03: lệnh gõ phải có tiền tố '/' (giống lệnh terminal). Bản cũ nhận cả
+    // chuỗi trần "boost", nên gõ đúng chữ đó vừa bật/tắt Boost (B) vừa bật/tắt
+    // Sao (S) ở từng ký tự, rồi mới khớp lệnh — người dùng mất dấu sao oan.
+    // Ở đây buffer chỉ được dùng để nhận diện SAU khi đã có '/', còn các ký tự
+    // đơn vẫn chạy phím tắt bình thường.
+    if (matchBoostCommand(globalKeystrokeBuffer)) {
         e.preventDefault();
         globalKeystrokeBuffer = '';
         applyBoostMode(!getState().isBoostMode, true);

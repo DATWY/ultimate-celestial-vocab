@@ -117,7 +117,9 @@ const POSITIVE = {
     special_bad_luck: { when: new Date(2026, 2, 10, 0, 0) },
     special_firefighter: { stats: { overdueReviewedToday: 100 } },
     special_procrastinator: { stats: { bareMinimumDays: 10 } },
-    special_give_up: { stats: { manualWordsAdded: 1, leechesHealed: -1 } },
+    // GAME-01: "Bỏ Cuộc" = tạo một từ rồi xoá nó trong 60 giây. Điều kiện cũ
+    // (leechesHealed === -1) là vô nghiệm nên huy hiệu chết 100%.
+    special_give_up: { stats: { manualWordsAdded: 1, giveUpCount: 1 } },
     special_slip_up: { stats: { maxLostStreak: 99 } },
     special_five_elements: { stats: { easyPresses: 5, hardPresses: 5 } },
     special_accident: { stats: { accidentCount: 1 } },
@@ -141,7 +143,14 @@ const POSITIVE = {
     special_eclipse: { isDarkMode: true, soundMode: 'off' },
     special_magic_hands: { stats: { cardFlipSpam: 20 } },
     special_black_hole: { stats: { consecutiveDeletes: 10 } },
-    special_tag_master: { vocabulary: cards(1, () => ({ tags: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'] })) },
+    // GAME-01: Chuyên Gia Phân Loại phải khác Đầu Bếp — cần GẮN NHÃN cho số
+    // lượng lớn thẻ, không chỉ tạo ra nhiều nhãn.
+    special_tag_master: {
+        vocabulary: Array.from({ length: 200 }, (_, i) => ({
+            id: 'tag' + i, english: 'w' + i, isDeleted: false,
+            tags: ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t']
+        }))
+    },
     special_lazy_scroll: { stats: { consecutiveShortcuts: 100 } },
     special_mesmerized: { stats: { taskbarToggles: 5 } },
     special_speaker_test: { stats: { audioSpam: 10 } },
@@ -153,7 +162,8 @@ const POSITIVE = {
     special_untouchable: { stats: { consecutiveEasy: 100 } },
     special_blind_faith: { stats: { quizZeroScore: 1 } },
     special_fusion: { totalReviews: 1000 },
-    special_golden_hour: { when: new Date(2026, 2, 10, 17, 0), stats: { justLeveledUp: true } },
+    // GAME-01: golden_hour dùng MỐC THỜI GIAN lúc lên cấp (cùng ngày, 17–18h),
+    special_golden_hour: { when: new Date(2026, 2, 12, 18, 0), stats: { justLeveledUp: new Date(2026, 2, 12, 17, 30).getTime() } },
     special_karma: { stats: { karmaEncounter: 1 } },
     special_king_returns: { stats: { kingReturns: 1 } }
 };

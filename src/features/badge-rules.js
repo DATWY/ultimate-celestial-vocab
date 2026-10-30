@@ -126,12 +126,18 @@ export function specialBadgeUnlocked(badgeId, snapshot, now = new Date()) {
                         break;
                     }
                     case 'special_invincible': {
-                        const daysSinceForgotten = Math.floor((now.getTime() - (s.lastForgottenDate || now.getTime())) / (1000 * 3600 * 24));
-                        if (daysSinceForgotten >= 30) shouldUnlock = true;
+                        // GAME-01: bản cũ mở MIỄN PHÍ sau 30 ngày kể từ ngày tạo hồ sơ vì
+                        // lastForgottenDate khởi tạo bằng Date.now() và không bao giờ cập nhật.
+                        // Giờ mốc này được ghi mỗi lần bấm Quên, và huy hiệu đòi có lần quên thật.
+                        const forgottenAt = Number(s.lastForgottenDate) || 0;
+                        const daysSinceForgotten = Math.floor((now.getTime() - forgottenAt) / (1000 * 3600 * 24));
+                        if (forgottenAt > 0 && daysSinceForgotten >= 30) shouldUnlock = true;
                         break;
                     }
                     case 'special_nirvana': {
-                        const totalWords = vocabulary ? vocabulary.length : 0;
+                        // GAME-01: mẫu số phải là thẻ SỐNG — bản cũ đếm cả thẻ đã xoá nên
+                        // xoá bớt từ lại làm tỉ lệ tụt và huy hiệu không bao giờ mở.
+                        const totalWords = vocabulary ? vocabulary.filter(w => !w.isDeleted).length : 0;
                         if (totalWords >= 500 && (masteredCount / totalWords) >= 0.9) shouldUnlock = true;
                         break;
                     }
@@ -142,7 +148,9 @@ export function specialBadgeUnlocked(badgeId, snapshot, now = new Date()) {
                     case 'special_bad_luck': if (hour === 0 && now.getMinutes() === 0) shouldUnlock = true; break; // Proxy for checking late finish
                     case 'special_firefighter': if (s.overdueReviewedToday >= 100) shouldUnlock = true; break;
                     case 'special_procrastinator': if (s.bareMinimumDays >= 10) shouldUnlock = true; break;
-                    case 'special_give_up': if (s.manualWordsAdded >= 1 && s.leechesHealed === -1) shouldUnlock = true; break; // Using arbitrary logic
+                    // GAME-01: điều kiện cũ (leechesHealed === -1) là VÔ NGHIỆM nên huy hiệu
+                    // chết 100%. "Bỏ cuộc" = tạo một từ rồi xoá nó trong vòng 60 giây.
+                    case 'special_give_up': if ((s.giveUpCount || 0) >= 1) shouldUnlock = true; break;
                     case 'special_slip_up': if (s.maxLostStreak >= 99) shouldUnlock = true; break;
                     case 'special_five_elements': if (s.easyPresses >= 5 && s.hardPresses >= 5) shouldUnlock = true; break; // Proxy
                     case 'special_accident': if (s.accidentCount >= 1) shouldUnlock = true; break;
@@ -173,8 +181,13 @@ export function specialBadgeUnlocked(badgeId, snapshot, now = new Date()) {
                     case 'special_magic_hands': if (s.cardFlipSpam >= 20) shouldUnlock = true; break;
                     case 'special_black_hole': if (s.consecutiveDeletes >= 10) shouldUnlock = true; break;
                     case 'special_tag_master': {
-                        const uniqueTags3 = new Set(vocabulary ? vocabulary.filter(w => !w.isDeleted).flatMap(w => w.tags || []) : []);
-                        if (uniqueTags3.size >= 20) shouldUnlock = true; 
+                        // GAME-01: bản cũ TRÙNG HOÀN TOÀN với special_chef (cùng >= 20 nhãn) nên hai
+                        // huy hiệu luôn mở cùng lúc. Chuyên Gia Phân Loại phải là người gắn nhãn cho
+                        // số lượng lớn thẻ, không chỉ tạo ra nhiều nhãn.
+                        const live = vocabulary ? vocabulary.filter(w => !w.isDeleted) : [];
+                        const uniqueTags3 = new Set(live.flatMap(w => w.tags || []));
+                        const taggedCards = live.filter(w => (w.tags || []).length > 0).length;
+                        if (uniqueTags3.size >= 20 && taggedCards >= 200) shouldUnlock = true;
                         break;
                     }
                     case 'special_lazy_scroll': if (s.consecutiveShortcuts >= 100) shouldUnlock = true; break;
@@ -194,7 +207,18 @@ export function specialBadgeUnlocked(badgeId, snapshot, now = new Date()) {
                     case 'special_untouchable': if (s.consecutiveEasy >= 100) shouldUnlock = true; break;
                     case 'special_blind_faith': if (s.quizZeroScore >= 1) shouldUnlock = true; break;
                     case 'special_fusion': if (totalReviews >= 1000) shouldUnlock = true; break;
-                    case 'special_golden_hour': if ((hour === 17 || hour === 18) && s.justLeveledUp) shouldUnlock = true; break;
+                    case 'special_golden_hour': {
+                        // GAME-01: kiểm tra giờ của LÚC LÊN CẤP (cùng ngày) thay vì giờ hiện tại —
+                        // bản cũ chỉ mở nếu tình cờ kiểm tra badge đúng 17–18h.
+                        const leveledAt = Number(s.justLeveledUp) || 0;
+                        if (leveledAt > 0) {
+                            const at = new Date(leveledAt);
+                            const sameDay = at.toDateString() === now.toDateString();
+                            const h = at.getHours();
+                            if (sameDay && (h === 17 || h === 18)) shouldUnlock = true;
+                        }
+                        break;
+                    }
                     case 'special_karma': if (s.karmaEncounter >= 1) shouldUnlock = true; break;
                     case 'special_king_returns': if (s.kingReturns >= 1) shouldUnlock = true; break;
                 }

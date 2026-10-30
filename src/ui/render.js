@@ -2,7 +2,7 @@ import anime from 'animejs/lib/anime.es.js';
 import { DOM } from './elements.js';
 import { getState, setCurrentCardIndex, setIsFlipped, setSoundMode, setIsDarkMode, setIsBoostMode, setVocabulary, setAllTags, setIsTransitioning, shouldCardUseTyping, getTypingFilterStats, isCardLeech, ensureDailyStats, getLastReviewSnapshot } from '../core/state.js';
 import { playSound, ensureAudioForWords, applySoundMode } from '../core/sound.js';
-import { getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus } from '../core/queue.js';
+import { getSmartCramCards, getPendingLearningCards, getReviewBudget, getReviewCapStatus, buildReviewQueue, getNextCardToReview } from '../core/queue.js';
 // modal.js được nạp động: render <-> modal là vòng import lớn nhất của app.
 // Gọi UI modal không cần đồng bộ, nên nạp động vừa phá vòng vừa giảm entry chunk.
 let _modalModulePromise = null;
@@ -17,6 +17,23 @@ import { escapeHTML } from '../core/utils/sanitize.js';
 import { nextRevision } from '../core/card-merge.js';
 import { predictNextIntervals, isLeechCard } from '../core/srs/index.js';
 import { startTypingTimer } from '../features/typing.js';
+import { trackDeletion } from '../features/stat-trackers.js';
+
+/**
+ * UI-02: dữ liệu từ vựng vừa đổi (xoá một thẻ, gộp trùng) ⇒ hàng đợi ôn, số liệu
+ * header và thẻ đang hiển thị đều phải tính lại.
+ *
+ * Trước đây hai luồng đó chỉ sửa mảng vocabulary rồi vẽ lại danh sách: thẻ vừa xoá
+ * vẫn nằm trên màn hình học và các số "cần ôn / từ mới" lệch tới lần render sau.
+ */
+export function refreshStudyAfterVocabularyChange(removedIds = []) {
+    buildReviewQueue();
+    const { vocabulary, currentCardIndex } = getState();
+    const current = vocabulary[currentCardIndex];
+    const currentRemoved = !current || current.isDeleted || removedIds.includes(current.id);
+    if (currentRemoved) displayCard(getNextCardToReview());
+    else updateStats();
+}
 
 export function updateUndoButtonState() {
     const snapshot = getLastReviewSnapshot();
@@ -1420,6 +1437,10 @@ function handleWordListActionClick(e) {
             currentVocab[idx].updatedAt = Date.now();
             setVocabulary(currentVocab);
             import('../core/state.js').then(s => s.saveOneWord(currentVocab[idx]));
+            // UI-02: nếu đang học đúng thẻ vừa xoá thì phải chuyển thẻ + cập nhật số liệu.
+            refreshStudyAfterVocabularyChange([current.id]);
+            // GAME-01: black_hole (10 lần xoá liên tiếp) + give_up (xoá từ vừa tạo).
+            trackDeletion(getState().gamification?.stats, current);
             // Xóa đúng thẻ khỏi DOM thay vì render lại toàn bộ danh sách (có
             // thể đang có hàng trăm thẻ đã cuộn qua).
             filteredWordsCache = filteredWordsCache.filter(w => w.id !== current.id);

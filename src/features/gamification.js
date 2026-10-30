@@ -103,11 +103,20 @@ export function renderGamificationUI(options = {}) {
             totalStability += w.stability;
             stabilityCount++;
         }
-        if (w.lapses) totalLapses += w.lapses;
+        // GAME-01: chỉ tính thẻ SỐNG — bản cũ cộng cả lapses của thẻ đã xoá, làm tỉ lệ
+        // ghi nhớ tụt dù người dùng đã dọn đúng những từ khó.
+        if (!w.isDeleted && w.lapses) totalLapses += w.lapses;
     });
 
     const avgStabilityNum = stabilityCount > 0 ? (totalStability / stabilityCount) : (totalReviews > 0 ? 1.0 : 0);
-    const retentionRateNum = totalReviews > 0 ? Math.min(99.4, Math.max(82.0, (100 - (totalLapses / (totalReviews || 1)) * 100))) : 94.2;
+    // GAME-01: bản cũ kẹp cứng [82.0, 99.4], nên hai nhánh cảnh báo "< 88%" và "< 75%"
+    // bên dưới là DEAD CODE, và người mới (totalReviews = 0) được hiển thị 94.2% kèm
+    // "Đang nhớ rất sâu" dù chưa ôn câu nào. Giờ: chưa có dữ liệu ⇒ null (UI hiện "—"),
+    // còn khi đã có thì để số thật (chỉ kẹp [0, 100] cho an toàn hiển thị).
+    const retentionRateNum = totalReviews > 0
+        ? Math.min(100, Math.max(0, 100 - (totalLapses / totalReviews) * 100))
+        : null;
+    const hasRetention = retentionRateNum !== null;
 
     const elRetention = document.getElementById('profile-retention-rate');
     const elStability = document.getElementById('profile-avg-stability');
@@ -116,14 +125,17 @@ export function renderGamificationUI(options = {}) {
     const elStabilitySub = document.getElementById('profile-stability-sub');
     const elMemoryStatus = document.getElementById('profile-memory-status');
 
-    if (elRetention) animateNumber(elRetention, retentionRateNum, numDuration, { decimals: 1, suffix: '%' });
+    if (elRetention) {
+        if (hasRetention) animateNumber(elRetention, retentionRateNum, numDuration, { decimals: 1, suffix: '%' });
+        else elRetention.textContent = '—';
+    }
     if (elStability) animateNumber(elStability, avgStabilityNum, numDuration, { decimals: 1, suffix: ' ngày' });
     if (elTotalRev) animateNumber(elTotalRev, totalReviews, numDuration, { format: true });
 
     // Micro-meter visual telemetry bars
     const elRetentionMeter = document.getElementById('profile-retention-meter');
     if (elRetentionMeter) {
-        const pct = `${Math.min(100, Math.max(0, retentionRateNum)).toFixed(1)}%`;
+        const pct = `${hasRetention ? Math.min(100, Math.max(0, retentionRateNum)).toFixed(1) : 0}%`;
         elRetentionMeter.dataset.targetWidth = pct;
         elRetentionMeter.style.width = pct;
     }
@@ -145,7 +157,9 @@ export function renderGamificationUI(options = {}) {
     }
 
     if (elRetentionSub) {
-        elRetentionSub.textContent = retentionRateNum >= 88 ? '🎯 Đang nhớ rất sâu' : (retentionRateNum >= 75 ? '👍 Duy trì ổn định' : '⚠️ Cần củng cố thêm');
+        elRetentionSub.textContent = !hasRetention
+            ? '🌱 Chưa đủ dữ liệu — hãy ôn thêm'
+            : (retentionRateNum >= 88 ? '🎯 Đang nhớ rất sâu' : (retentionRateNum >= 75 ? '👍 Duy trì ổn định' : '⚠️ Cần củng cố thêm'));
     }
 
     if (elStabilitySub) {
@@ -153,7 +167,9 @@ export function renderGamificationUI(options = {}) {
     }
 
     if (elMemoryStatus) {
-        if (retentionRateNum >= 88) {
+        if (!hasRetention) {
+            elMemoryStatus.innerHTML = `<i class="ph-fill ph-chart-line-up" style="color: #64748b;"></i> Phong độ: Chưa đủ dữ liệu`;
+        } else if (retentionRateNum >= 88) {
             elMemoryStatus.innerHTML = `<i class="ph-fill ph-check-circle" style="color: #16a34a;"></i> Phong độ: Xuất sắc`;
         } else if (retentionRateNum >= 75) {
             elMemoryStatus.innerHTML = `<i class="ph-fill ph-sparkle" style="color: #d97706;"></i> Phong độ: Ổn định`;

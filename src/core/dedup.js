@@ -1082,6 +1082,19 @@ export function mergeDuplicateCards(cardA, cardB) {
         flagsUpdatedAt: nextRevision({ flagsUpdatedAt: Math.max(primary.flagsUpdatedAt || primary.updatedAt || 0, secondary.flagsUpdatedAt || secondary.updatedAt || 0) }, 'flagsUpdatedAt')
     };
 
+    // DEDUP-01: thẻ phụ bị đánh dấu xoá sau khi gộp, nên trường nào chỉ thẻ phụ có
+    // dữ liệu mà bản chính để trống là MẤT VĨNH VIỄN. Trước đây chỉ 5 trường được
+    // gộp (nghĩa/ví dụ/phiên âm/tags/sao); 7 trường dưới đây bị bỏ quên.
+    const hasValue = value => {
+        if (value == null) return false;
+        if (typeof value === 'string') return value.trim().length > 0;
+        if (Array.isArray(value)) return value.length > 0;
+        return true;
+    };
+    for (const field of ['notes', 'synonyms', 'antonyms', 'collocations', 'exampleMeaning', 'exampleVi', 'audio']) {
+        if (!hasValue(mergedCard[field]) && hasValue(secondary[field])) mergedCard[field] = secondary[field];
+    }
+
     return {
         mergedCard,
         deletedCardId: secondary.id
