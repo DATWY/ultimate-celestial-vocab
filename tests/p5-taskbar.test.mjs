@@ -121,7 +121,12 @@ test('P5: âm thanh + giao diện phản ánh trạng thái trong chip/menu', ()
 });
 
 test('P5: mobile bỏ menu lồng — 5 mục chảy thẳng vào drawer ☰', () => {
-    const mobile = css.slice(css.lastIndexOf('@media (max-width: 900px)'));
+    // Khối @media (max-width: 900px) của PHASE 5 không còn là khối cuối file
+    // (PHASE 7 thêm block mobile riêng) ⇒ lấy từ @media gần nhất TRƯỚC rule
+    // #header-more-btn, đủ dài để chứa cả .header-more-menu.
+    const btnIdx = css.indexOf('#header-more-btn {');
+    const blockStart = css.lastIndexOf('@media (max-width: 900px) {', btnIdx);
+    const mobile = css.slice(blockStart, blockStart + 1600);
     assert.match(
         mobile,
         /#header-more-btn\s*\{\s*display: none;/,

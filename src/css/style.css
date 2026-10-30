@@ -16704,6 +16704,12 @@ body:not(.dark-mode).boost-mode .celestial-stats-dock {
     opacity: 0.5;
 }
 
+/* Nhãn chữ của chip: desktop chỉ có icon (thanh gọn), drawer mobile hiện chữ
+   để người dùng biết chip nào là Boost, chip nào là Âm thanh. */
+.header-chip-label {
+    display: none;
+}
+
 body:not(.dark-mode) .header-chip[aria-pressed='true'] {
     color: hsl(var(--accent-hue), 72%, 42%);
     background: hsla(var(--accent-hue), 80%, 60%, 0.12);
@@ -16854,3 +16860,221 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
         display: none;
     }
 }
+
+/* ─── PHASE 7: TỐI ƯU MOBILE ────────────────────────────────────────────────
+   Số đo trên Chrome headless (emulation 320/360/390) trước khi sửa:
+     • #toggle-taskbar-btn 36×36, #tts-btn 42×42, #star-btn 34×34, nút help 20×20
+       — nhỏ hơn ngưỡng chạm 44px.
+     • drawer ☰: 11 dòng cao 38px, 2 chip ⚡/🔊 KHÔNG có chữ.
+     • Hub → Tổng quan, pane rộng 251px nhưng có phần tử rộng tới 330px:
+       .streak-recovery-controls/.streak-freeze-btn 171px, .identity-card-inner
+       vẫn 2 cột (507px nội dung), .level-display/.xp-info tràn 3–4px.
+   Nguyên tắc: chỉ can thiệp trong media query, không đổi giao diện desktop.   */
+
+@media (max-width: 900px) {
+    /* 1. Ngưỡng chạm 44px cho các nút tròn trên header + trên thẻ */
+    #toggle-taskbar-btn,
+    #tts-btn,
+    #star-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* 2. Drawer: mỗi dòng là một hàng chạm được, có nhãn chữ */
+    #taskbar-menu button {
+        min-height: 44px;
+    }
+
+    .header-chip {
+        width: 100%;
+        height: 44px;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 0 12px;
+        border-radius: 10px;
+    }
+
+    .header-chip-label {
+        display: inline;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .header-chip .btn-label {
+        display: inline;
+    }
+}
+
+/* 3. Hub trên tablet/điện thoại: bỏ các cột cứng gây tràn ngang */
+@media (max-width: 768px) {
+    /* Thẻ căn cước persona: cột phải 279px cố định làm nội dung rộng 507px */
+    .whoiam-identity-card .identity-card-inner {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .identity-right-column {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Khối "Sức Khỏe Trí Nhớ": tiêu đề + nút help 20px không đủ chỗ */
+    .memory-analytics-title-group {
+        min-width: 0;
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    .analytics-help-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Cấp độ + XP: cho phép co lại thay vì tràn 3–4px */
+    .level-display,
+    .xp-info,
+    .xp-footer-row {
+        min-width: 0;
+        flex-wrap: wrap;
+        row-gap: 2px;
+    }
+
+    /* Khối chuỗi: nút Rèn Khiên 171px từng đẩy ra ngoài pane 251px */
+    .streak-widget,
+    .streak-bento-card {
+        min-width: 0;
+    }
+
+    .streak-recovery-controls {
+        min-width: 0;
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .streak-recovery-controls .streak-freeze-btn,
+    .streak-freeze-btn {
+        min-width: 0;
+        max-width: 100%;
+        flex: 1 1 140px;
+        white-space: normal;
+        text-align: center;
+    }
+
+    /* Heatmap: đã là carousel scroll-snap ở media khác; chỉ chặn tràn khung */
+    .heatmap-bento-card,
+    .chart-bento-card {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .card-header-flex {
+        min-width: 0;
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+}
+
+/* 4. Máy rất hẹp (320–360): ưu tiên xếp dọc thay vì cắt chữ */
+@media (max-width: 400px) {
+    .streak-recovery-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .identity-right-column {
+        grid-template-columns: 1fr;
+    }
+
+    .dock-meta-row,
+    .stats-meta-row {
+        flex-wrap: wrap;
+        row-gap: 4px;
+        justify-content: center;
+    }
+}
+
+/* ─── PHASE 7b: chi tiết sau khi đo lại trên 320px ──────────────────────────
+   Ảnh chụp 320px cho thấy 2 lỗi mới do bản 7 gây ra:
+     • Nút "Rèn Khiên (800 XP)" bị kéo cao 200×260px vì là flex item trong cột
+       mà mặc định align-items: stretch ⇒ phải tự canh giữa, giữ chiều cao 44px.
+     • Dòng "Còn 3.467 XP để lên cấp" bị CẮT mất chữ "cấp" (nowrap + overflow).
+   Kèm 2 chỉnh nhỏ: hàng trong drawer canh trái cho thẳng với các mục menu, và
+   giới hạn số toast trên máy hẹp để không che kín màn hình.                        */
+
+@media (max-width: 900px) {
+    /* Hàng trong drawer: icon + chữ canh trái, thẳng hàng với menu ⚙ */
+    #taskbar-menu .icon-btn-text {
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 0 12px;
+    }
+
+    #taskbar-menu .btn-label {
+        display: inline;
+    }
+}
+
+@media (max-width: 768px) {
+    .streak-widget,
+    .streak-bento-card {
+        align-items: center;
+    }
+
+    .streak-recovery-controls {
+        align-items: center;
+    }
+
+    .streak-recovery-controls .streak-freeze-btn,
+    .streak-freeze-btn {
+        align-self: center;
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 44px;
+        padding: 10px 14px;
+        line-height: 1.25;
+    }
+
+    /* Đừng cắt chữ ở dòng XP — cho phép xuống dòng thay vì mất chữ */
+    .xp-footer-row,
+    .xp-info,
+    .xp-title-row {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+}
+
+@media (max-width: 400px) {
+    /* Màn 320: cấp độ + XP xuống dòng. Trước đây .xp-info chỉ rộng 117px trong khi
+       nội dung cần 157px nên chữ "cấp" bị .level-card (overflow:hidden) cắt mất. */
+    .level-display {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+
+    .level-display .xp-info {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    /* Màn 320: nút Rèn Khiên chiếm 1 hàng riêng, nhưng chỉ cao 44px */
+    .streak-recovery-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .streak-recovery-controls .streak-freeze-btn,
+    .streak-freeze-btn {
+        align-self: stretch;
+        width: 100%;
+    }
+}
+
+/* Toast trên máy hẹp: số lượng giới hạn trong JS (maxVisibleToasts) — ẩn bằng CSS
+   sẽ khiến container vẫn ĐẾM toast bị ẩn và hàng đợi không bao giờ rút. */

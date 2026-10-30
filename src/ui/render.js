@@ -1112,6 +1112,8 @@ export function applySoundSetting(mode) {
         soundBtn.setAttribute('aria-pressed', mode === 'off' ? 'false' : 'true');
         soundBtn.setAttribute('aria-label', 'Âm thanh: ' + modeText);
         soundBtn.title = 'Âm thanh: ' + modeText + ' (bấm để đổi)';
+        const chipText = soundBtn.querySelector('.header-chip-label');
+        if (chipText) chipText.textContent = 'Âm thanh: ' + modeText;
     }
     applySoundMode(mode);
 }
@@ -1137,6 +1139,8 @@ export function applyBoostMode(isBoost, showToastNotification = false) {
         if (label) {
             label.textContent = isBoost ? 'Tăng Tốc: BẬT' : 'Tăng Tốc (Boost)';
         }
+        const chipText = btn.querySelector('.header-chip-label');
+        if (chipText) chipText.textContent = isBoost ? 'Boost: BẬT' : 'Boost';
         btn.setAttribute('aria-pressed', isBoost ? 'true' : 'false');
         btn.title = isBoost 
             ? 'Chế độ Tăng Tốc đang BẬT (giảm hiệu ứng nền)'

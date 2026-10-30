@@ -424,6 +424,13 @@ export function openCelestialHub(targetTab = 'overview') {
 // là một layer + transition + filter, làm main thread và compositor quá tải.
 // Giao diện/nội dung từng toast giữ nguyên, chỉ lần lượt hiện ra.
 const MAX_VISIBLE_TOASTS = 3;
+// Trên điện thoại hẹp, 3 toast xếp dọc che gần nửa màn hình (đo ở 320×568: mỗi
+// toast ~90px ⇒ 3 cái = 270px). Giới hạn 2 cái; hàng đợi vẫn chạy tiếp vì
+// container.childElementCount giảm khi toast tự ẩn.
+function maxVisibleToasts() {
+    if (typeof window === 'undefined') return MAX_VISIBLE_TOASTS;
+    return window.innerWidth <= 480 ? 2 : MAX_VISIBLE_TOASTS;
+}
 const MAX_QUEUED_TOASTS = 12;
 const _toastQueue = [];
 
@@ -477,7 +484,7 @@ function renderToast({ title, message, iconClass }) {
 
 function drainToastQueue() {
     const container = getToastContainer();
-    while (_toastQueue.length > 0 && container.childElementCount < MAX_VISIBLE_TOASTS) {
+    while (_toastQueue.length > 0 && container.childElementCount < maxVisibleToasts()) {
         renderToast(_toastQueue.shift());
     }
 }
