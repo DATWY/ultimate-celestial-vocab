@@ -1226,7 +1226,7 @@ function setupCloudVaultControls() {
     // progress bar). Bind thêm ở đây tạo hai listener: listener này chạy trước,
     // đặt isPreloadingAll = true (sound.js:1836) khiến handler của io.js return
     // sớm (sound.js:1833) ⇒ thanh tiến độ đứng im vĩnh viễn.
-    void audioBtn;
+    // (audioBtn vẫn cần cho guard "không có control nào" ở đầu hàm.)
 }
 
 function toggleStar() {

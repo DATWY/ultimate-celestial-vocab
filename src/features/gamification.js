@@ -12,9 +12,14 @@ import { renderFsrsPersonaUI } from './fsrsPersona.js';
 
 export function renderFsrsPersonaTab() {
     const panePersona = document.getElementById('profile-view-persona');
-    if (panePersona) {
-        renderFsrsPersonaUI(panePersona);
-    }
+    if (!panePersona) return;
+    // Chỉ dựng lại khi tab Tổng quan đang HIỆN (hoặc chưa từng dựng): render này chạy
+    // theo mỗi lần cập nhật gamification (≈ mỗi lượt chấm) nên dựng lại 968px DOM vô
+    // ích khi Hub đang đóng, và làm mất trạng thái ngăn kéo "thông số kỹ thuật".
+    const visible = panePersona.offsetParent !== null;
+    if (!visible && panePersona.dataset.personaRendered === '1') return;
+    renderFsrsPersonaUI(panePersona);
+    panePersona.dataset.personaRendered = '1';
 }
 
 export function renderBadgesTab() {

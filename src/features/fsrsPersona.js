@@ -268,6 +268,13 @@ export function renderFsrsPersonaUI(container) {
 
     const data = analyzeFsrs7Persona(userParams, trainedAt);
 
+    // P4: chống dựng lại DOM khi dữ liệu không đổi. renderFsrsPersonaTab() được gọi
+    // theo mỗi lần cập nhật gamification; nếu mù quáng gán innerHTML thì mỗi lượt
+    // chấm sẽ đóng ngăn kéo "thông số kỹ thuật" mà người dùng vừa mở.
+    const signature = JSON.stringify([userParams || null, trainedAt || 0]);
+    if (container.dataset.personaSig === signature) return;
+    container.dataset.personaSig = signature;
+
     let statusBadgeHtml = '';
     if (data.isPersonalized) {
         const trainedDateStr = data.trainedAt ? new Date(data.trainedAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Gần đây';

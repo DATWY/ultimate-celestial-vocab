@@ -169,9 +169,12 @@ async function initializeApp() {
     setupEventListeners();
     // GAME-01: bộ đếm theo NGÀY phải rollover khi mở app, và fanatic cần số lần mở.
     {
-        const g = getState().gamification;
+        const { gamification: g, dailyStats: d } = getState();
         if (g) {
-            rolloverDailyStats(g.stats, getLocalDateString(), g.currentLimit || 0);
+            // currentLimit (hạn mức thẻ mới/ngày) thuộc dailyStats — queue.js:146 đọc
+            // chính nó. Truyền g.currentLimit (không tồn tại) thì cap luôn = 0 và
+            // bareMinimumDays không bao giờ tăng.
+            rolloverDailyStats(g.stats, getLocalDateString(), d?.currentLimit || 0);
             trackAppOpen(g.stats);
         }
     }

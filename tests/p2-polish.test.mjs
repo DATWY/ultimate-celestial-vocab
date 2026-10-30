@@ -143,3 +143,33 @@ test('P3: "Chân Dung Não Bộ" thật sự hiển thị (không còn là code 
     const src = read('src/features/gamification.js');
     assert.match(src, /renderFsrsPersonaTab\(\)/, 'renderGamificationUI phải gọi renderFsrsPersonaTab()');
 });
+
+test('P4: bareMinimumDays dùng currentLimit của DAILYSTATS (không phải gamification)', () => {
+    const main = read('src/main.js');
+    assert.match(main, /dailyStats: d/, 'phải đọc dailyStats từ state');
+    assert.match(
+        main,
+        /rolloverDailyStats\(g\.stats, getLocalDateString\(\), d\?\.currentLimit \|\| 0\)/,
+        'cap phải lấy từ dailyStats.currentLimit — gamification KHÔNG có trường này'
+    );
+    // Chỉ soi LỜI GỌI, không soi chú thích (chú thích có nhắc lại lỗi cũ).
+    assert.doesNotMatch(
+        main,
+        /rolloverDailyStats\([^)]*g\.currentLimit/,
+        'gamification không có currentLimit ⇒ cap luôn 0'
+    );
+});
+
+test('P4: không còn dòng "void audioBtn" thừa trong events.js', () => {
+    const events = read('src/events.js');
+    assert.doesNotMatch(events, /^\s*void audioBtn;\s*$/m, 'audioBtn vẫn được dùng trong guard đầu hàm');
+});
+
+test('P4: "Chân Dung Não Bộ" không dựng lại DOM khi tab ẩn hoặc dữ liệu không đổi', () => {
+    const wrap = read('src/features/gamification.js');
+    assert.match(wrap, /panePersona\.offsetParent !== null/, 'phải kiểm tra tab đang hiện');
+    assert.match(wrap, /dataset\.personaRendered/, 'phải nhớ đã dựng hay chưa');
+
+    const persona = read('src/features/fsrsPersona.js');
+    assert.match(persona, /dataset\.personaSig/, 'phải so chữ ký dữ liệu trước khi gán innerHTML');
+});
