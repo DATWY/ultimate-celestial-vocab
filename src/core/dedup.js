@@ -1000,10 +1000,25 @@ export function selectAutoMergePairs(dups) {
     const safe = [];
     const review = [];
     for (const pair of Array.isArray(dups) ? dups : []) {
-        const sameSpelling = canonicalEnglish(pair?.cardA?.english) === canonicalEnglish(pair?.cardB?.english);
+        const a = pair?.cardA || {};
+        const b = pair?.cardB || {};
+        const sameSpelling = canonicalEnglish(a.english) === canonicalEnglish(b.english);
         const trusted = Number(pair?.confidence) >= 0.9;
-        const structural = pair?.category === 'EXACT' || pair?.category === 'INFLECTION';
-        if (trusted && (structural || sameSpelling)) safe.push(pair);
+
+        // AN TOÀN DỮ LIỆU (P4): gộp tự động là XOÁ VĨNH VIỄN thẻ phụ, nên chỉ được
+        // tự gộp khi hai thẻ là CÙNG MỘT TỪ viết giống hệt nhau và tự kiểm lại vẫn
+        // ra đúng loại EXACT.
+        //
+        // Bản cũ tự gộp cả INFLECTION vì confidence của nó luôn >= 0.90
+        // (dedup.js: Math.max(0.90, semSim)). Nhưng INFLECTION chỉ là "cùng gốc từ",
+        // không phải cùng nghĩa: trong kho thật 3.053 thẻ có Leasing (hoạt động cho
+        // thuê) vs Lease (hợp đồng cho thuê), Advise (khuyên) vs Advised (được khuyên).
+        // Cổng nghĩa cũng không cứu được vì hai nghĩa đều chứa "cho thuê".
+        // Nay INFLECTION luôn vào rổ "xem tay": người dùng xác nhận 1 lần, không mất
+        // dữ liệu oan.
+        const verified = isDuplicateCard(a, b);
+        const safeExact = trusted && sameSpelling && verified.isDuplicate && verified.category === 'EXACT';
+        if (safeExact) safe.push(pair);
         else review.push(pair);
     }
     return { safe, review };

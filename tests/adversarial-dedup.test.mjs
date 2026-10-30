@@ -72,15 +72,18 @@ test('dedup adversarial: biến thể thật vẫn phải bắt được (không
     }
 });
 
-test('dedup adversarial: nút Gộp tất cả chỉ nhận cặp chắc chắn, cặp lệch chính tả để xem tay', () => {
+test('dedup adversarial: nút Gộp tất cả CHỈ nhận cặp cùng từ viết giống hệt, biến thể ngữ pháp để xem tay', () => {
     const exact = { cardA: card('color', 'màu'), cardB: card('Colour', 'màu'), category: 'EXACT', confidence: 0.99 };
     const inflection = { cardA: card('colleague', 'đồng nghiệp'), cardB: card('colleagues', 'đồng nghiệp'), category: 'INFLECTION', confidence: 0.95 };
     const typo = { cardA: card('maintenance', 'bảo trì'), cardB: card('maintainance', 'bảo trì'), category: 'FUZZY_TYPO', confidence: 0.9 };
     const weak = { cardA: card('abc', 'x'), cardB: card('abd', 'y'), category: 'INFLECTION', confidence: 0.5 };
 
+    // P4: gộp tự động = XOÁ VĨNH VIỄN thẻ phụ. INFLECTION chỉ là "cùng gốc từ"
+    // (Leasing vs Lease, Advise vs Advised) nên KHÔNG được tự gộp dù confidence 0.95.
     const { safe, review } = selectAutoMergePairs([exact, inflection, typo, weak]);
-    assert.deepEqual(safe.map(p => p.category), ['EXACT', 'INFLECTION']);
-    assert.deepEqual(review.map(p => p.category), ['FUZZY_TYPO', 'INFLECTION']);
+    assert.deepEqual(safe.map(p => p.category), ['EXACT'], 'chỉ EXACT được tự gộp');
+    assert.deepEqual(review.map(p => p.category), ['INFLECTION', 'FUZZY_TYPO', 'INFLECTION'],
+        'biến thể ngữ pháp + lệch chính tả + confidence thấp đều phải xem tay');
 });
 
 test('dedup adversarial: quét bộ 14 thẻ mô phỏng đúng 7 cặp thật trong kho người dùng', () => {
@@ -108,6 +111,9 @@ test('dedup adversarial: quét bộ 14 thẻ mô phỏng đúng 7 cặp thật t
         const verified = isDuplicateCard(pair.cardA, pair.cardB);
         assert.equal(verified.isDuplicate, true, `Cặp ${pair.cardA.english}/${pair.cardB.english} được đề xuất nhưng tự kiểm lại thì KHÔNG trùng`);
     }
-    const { safe } = selectAutoMergePairs(pairs);
-    assert.equal(safe.length, pairs.length, 'mọi cặp còn lại đều đủ tin cậy để gộp tự động');
+    // P4: các cặp biến thể (Leasing/Lease, Advise/Advised, Facilities/Facility) là
+    // những từ KHÁC NHAU về nghĩa sử dụng — phải để người dùng xác nhận từng cặp.
+    const { safe, review } = selectAutoMergePairs(pairs);
+    assert.equal(safe.length, 0, 'không cặp biến thể nào được tự gộp khi chưa có xác nhận');
+    assert.equal(review.length, pairs.length);
 });

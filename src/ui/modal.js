@@ -736,9 +736,21 @@ export function executeMergeAll() {
     const { safe: safePairs, review: reviewPairs } = selectAutoMergePairs(dups);
     const autoMergeable = safePairs.length;
     const reviewNote = reviewPairs.length > 0
-        ? ` ${reviewPairs.length} cặp chỉ giống chính tả sẽ được GIỮ LẠI để bạn tự kiểm tra.`
+        ? ` ${reviewPairs.length} cặp còn lại (biến thể ngữ pháp / lệch chính tả) sẽ được GIỮ LẠI để bạn tự kiểm tra.`
         : '';
-    showConfirmation(`Gộp tự động ${autoMergeable} cặp chắc chắn trùng và làm sạch nghĩa cho ${internalDups.length} thẻ?${reviewNote}`, () => {
+
+    // P4: từ nay chỉ cặp EXACT (cùng một từ) mới được tự gộp, nên có trường hợp
+    // không còn cặp nào đủ chắc chắn. Đừng hỏi "Gộp tự động 0 cặp?" — vô nghĩa.
+    if (autoMergeable === 0 && internalDups.length === 0) {
+        showPopup(reviewPairs.length > 0
+            ? `Không có cặp nào đủ chắc chắn để tự gộp. ${reviewPairs.length} cặp cần bạn xem và xác nhận từng cặp bên dưới.`
+            : 'Không tìm thấy từ vựng trùng lặp nào.', 'info');
+        return;
+    }
+    const title = autoMergeable > 0
+        ? `Gộp tự động ${autoMergeable} cặp chắc chắn trùng và làm sạch nghĩa cho ${internalDups.length} thẻ?`
+        : `Làm sạch nghĩa cho ${internalDups.length} thẻ (không có cặp nào đủ chắc chắn để tự gộp)?`;
+    showConfirmation(`${title}${reviewNote}`, () => {
         let currentVocab = [...getState().vocabulary];
         const modifiedWords = [];
         let mergedCount = 0;
