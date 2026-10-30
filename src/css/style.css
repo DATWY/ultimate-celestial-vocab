@@ -8034,6 +8034,17 @@ body.dark-mode .word-card:hover {
     min-height: 0;
 }
 
+/* PHASE 6: hàng heatmap + dự báo từng cao ĐÚNG 0px (đo được: height 0, scrollHeight
+   180) vì `flex: 1` = basis 0% cộng `min-height: 0` trong cột flex đã bị tràn.
+   Hai thẻ con tràn ra ngoài hộp 0px ấy và VẼ ĐÈ lên khối đứng sau (Chân Dung Não
+   Bộ) — trước đây không có gì đứng sau nên lỗi ẩn. Nay hàng nhận đúng chiều cao
+   nội dung và vẫn giãn thêm khi còn chỗ trống. */
+#profile-view-overview > .profile-rhythm-grid,
+#profile-view-overview > .bento-charts-row {
+    flex: 1 1 auto;
+    min-height: min-content;
+}
+
 .heatmap-bento-card,
 #activity-heatmap-card {
     order: 1;
