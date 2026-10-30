@@ -35,23 +35,30 @@ test('header không còn <select> nào (2 select TTS đã chuyển vào modal)',
         'header vẫn còn <select> — dropdown trắng của trình duyệt sẽ đè lên thẻ học');
 });
 
-test('nút #tts-settings-btn nằm ngay sau #toggle-sound-btn', () => {
+test('nút #tts-settings-btn nằm trong menu ⚙ của taskbar (PHASE 5)', () => {
+    // PHASE 5: 10 control rời rạc được gom thành 3 tầng; nút Giọng đọc (1 tháng dùng
+    // 1 lần) chuyển vào menu "Tùy chỉnh" nhưng GIỮ NGUYÊN id nên sound.js vẫn gắn được.
     const soundIndex = headerHtml.indexOf('id="toggle-sound-btn"');
+    const menuIndex = headerHtml.indexOf('id="header-more-menu"');
     const ttsIndex = headerHtml.indexOf('id="tts-settings-btn"');
     assert.ok(soundIndex >= 0, 'thiếu #toggle-sound-btn');
-    assert.ok(ttsIndex > soundIndex, '#tts-settings-btn phải đứng sau nút âm thanh');
-    const between = headerHtml.slice(soundIndex, ttsIndex);
-    assert.equal((between.match(/<button\b/g) || []).length, 1, 'giữa 2 nút không được có nút khác');
+    assert.ok(menuIndex >= 0, 'thiếu #header-more-menu');
+    assert.ok(ttsIndex > menuIndex, '#tts-settings-btn phải nằm TRONG menu ⚙');
     const tag = headerHtml.slice(ttsIndex - 60, ttsIndex + 400).match(/<button[^>]*id="tts-settings-btn"[^>]*>/)?.[0] || '';
-    assert.match(tag, /class="icon-btn"/);
+    assert.match(tag, /class="header-menu-item"/, 'phải là một dòng trong menu');
     assert.match(tag, /title="Giọng đọc &amp; tốc độ"|title="Giọng đọc & tốc độ"/);
     assert.match(tag, /aria-label="Cài đặt giọng đọc và tốc độ"/);
     assert.match(headerHtml, /ph-duotone ph-sliders-horizontal/,
         'icon phải có trong subset Phosphor (ph-sliders không tồn tại trong public/phosphor-subset.css)');
 });
 
-test('#shortcuts-menu-btn và .review-cap-control đã bị gỡ khỏi DOM + CSS inline', () => {
-    assert.doesNotMatch(html, /shortcuts-menu-btn/, 'vẫn còn #shortcuts-menu-btn');
+test('#shortcuts-menu-btn chỉ còn trong menu ⚙; .review-cap-control đã bị gỡ', () => {
+    // PHASE 5: nút Phím tắt trở lại như một MỤC trong menu ⋯. Trước đây nó là tham
+    // chiếu chết trong elements.js (không có phần tử) nên không ai mở được modal.
+    const occurrences = (html.match(/shortcuts-menu-btn/g) || []).length;
+    assert.equal(occurrences, 1, '#shortcuts-menu-btn phải xuất hiện đúng 1 lần');
+    assert.ok(html.indexOf('id="shortcuts-menu-btn"') > html.indexOf('id="header-more-menu"'),
+        'phải nằm trong menu ⋯');
     assert.doesNotMatch(html, /review-cap-control/, 'vẫn còn .review-cap-control');
     assert.doesNotMatch(html, /max-reviews-per-day/, 'vẫn còn input #max-reviews-per-day');
 });

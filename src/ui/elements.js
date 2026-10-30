@@ -83,6 +83,9 @@ export const DOM = {
     statMastered: getEl('stat-mastered'),
     addEditModal: getEl('add-edit-modal'),
     shortcutsModal: getEl('shortcuts-modal'),
+    headerMoreBtn: getEl('header-more-btn'),
+    headerMoreMenu: getEl('header-more-menu'),
+    shortcutsMenuBtn: getEl('shortcuts-menu-btn'),
     // P3: #shortcuts-menu-btn không tồn tại trong index.html ⇒ xoá tham chiếu chết.
     closeShortcutsModalBtn: getEl('close-shortcuts-modal-btn'),
     shortcutsOverlay: getEl('shortcuts-modal')?.querySelector('.modal-overlay'),

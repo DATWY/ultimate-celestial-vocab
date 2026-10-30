@@ -1089,6 +1089,39 @@ export function setupEventListeners() {
     DOM.addEditOverlay?.addEventListener('click', () => closeModal(DOM.addEditModal));
 
     // Keyboard shortcut cheat-sheet (chỉ mở bằng phím "?" — nút trên header đã bỏ)
+    // PHASE 5: menu "⋯" của taskbar gom các công cụ ít dùng (hoàn tác, giao diện,
+    // giọng đọc, đồng bộ, phím tắt). Chỉ đổi CHỖ của nút — mọi id cũ giữ nguyên nên
+    // handler sẵn có vẫn chạy, không phải viết lại logic nào.
+    const moreBtn = DOM.headerMoreBtn || document.getElementById('header-more-btn');
+    const moreMenu = DOM.headerMoreMenu || document.getElementById('header-more-menu');
+    if (moreBtn && moreMenu) {
+        const isMoreMenuOpen = () => moreMenu.classList.contains('is-open');
+        const setMoreMenuOpen = (open) => {
+            moreMenu.classList.toggle('is-open', open);
+            moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+        moreBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            setMoreMenuOpen(!isMoreMenuOpen());
+        });
+        moreMenu.addEventListener('click', (event) => {
+            // Bấm một mục là xong việc ⇒ đóng menu, không để panel treo trên màn hình.
+            if (event.target.closest('.header-menu-item')) setMoreMenuOpen(false);
+        });
+        document.addEventListener('click', (event) => {
+            if (!isMoreMenuOpen()) return;
+            if (event.target.closest('#header-more-menu, #header-more-btn')) return;
+            setMoreMenuOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && isMoreMenuOpen()) {
+                setMoreMenuOpen(false);
+                moreBtn.focus();
+            }
+        });
+    }
+    DOM.shortcutsMenuBtn?.addEventListener('click', () => openShortcutsModal());
+
     DOM.closeShortcutsModalBtn?.addEventListener('click', () => closeModal(DOM.shortcutsModal));
     DOM.shortcutsOverlay?.addEventListener('click', () => closeModal(DOM.shortcutsModal));
     DOM.cancelEditBtn?.addEventListener('click', cancelEdit);

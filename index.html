@@ -67,106 +67,123 @@
             </button>
 
             <div id="taskbar-menu" class="settings-controls">
-                <!-- Group 1: Topic Filter & Sync -->
+                <!-- TẦNG 1a: bộ lọc chủ đề (điều kiện của mọi phiên học) -->
                 <div class="header-group group-filter">
                     <div id="custom-topic-dropdown" class="custom-topic-dropdown">
-                        <button id="custom-topic-trigger" class="custom-topic-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chọn chủ đề học">
-                            <i class="ph-duotone ph-bookmarks topic-trigger-icon"></i>
-                            <span id="custom-topic-label" class="topic-trigger-label">Tất cả chủ đề</span>
-                            <span id="custom-topic-badge" class="topic-trigger-badge">...</span>
-                            <i class="ph-bold ph-caret-down topic-trigger-caret"></i>
-                        </button>
-                        <div id="custom-topic-menu" class="custom-topic-menu" role="listbox" tabindex="-1">
-                            <div class="topic-menu-header">
-                                <span class="topic-menu-title"><i class="ph-duotone ph-tag"></i> Chủ đề học</span>
-                                <span id="custom-topic-total-badge" class="topic-total-badge">0 từ</span>
-                            </div>
-                            <div class="custom-topic-search-wrap">
-                                <i class="ph-bold ph-magnifying-glass search-icon"></i>
-                                <input type="text" id="custom-topic-search" aria-label="Tìm chủ đề" class="custom-topic-search" placeholder="Tìm chủ đề..." autocomplete="off">
-                            </div>
-                            <div id="custom-topic-options" class="custom-topic-options">
-                                <!-- Populated dynamically -->
-                            </div>
-                        </div>
-                    </div>
-                    <button id="manual-sync-btn" class="icon-btn" title="Đồng bộ Cloud" aria-label="Đồng bộ Cloud">
-                        <i class="ph-duotone ph-arrows-clockwise"></i>
-                        <span class="btn-label">Đồng bộ Cloud</span>
+                    <button id="custom-topic-trigger" class="custom-topic-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chọn chủ đề học">
+                    <i class="ph-duotone ph-bookmarks topic-trigger-icon"></i>
+                    <span id="custom-topic-label" class="topic-trigger-label">Tất cả chủ đề</span>
+                    <span id="custom-topic-badge" class="topic-trigger-badge">...</span>
+                    <i class="ph-bold ph-caret-down topic-trigger-caret"></i>
                     </button>
+                    <div id="custom-topic-menu" class="custom-topic-menu" role="listbox" tabindex="-1">
+                    <div class="topic-menu-header">
+                    <span class="topic-menu-title"><i class="ph-duotone ph-tag"></i> Chủ đề học</span>
+                    <span id="custom-topic-total-badge" class="topic-total-badge">0 từ</span>
+                    </div>
+                    <div class="custom-topic-search-wrap">
+                    <i class="ph-bold ph-magnifying-glass search-icon"></i>
+                    <input type="text" id="custom-topic-search" aria-label="Tìm chủ đề" class="custom-topic-search" placeholder="Tìm chủ đề..." autocomplete="off">
+                    </div>
+                    <div id="custom-topic-options" class="custom-topic-options">
+                    <!-- Populated dynamically -->
+                    </div>
+                    </div>
+                    </div>
                 </div>
 
                 <span class="header-divider"></span>
 
-                <!-- Group 2: Quick Study & Central Hub Actions -->
+                <!-- TẦNG 1b: hành động học mỗi ngày — luôn hiện, luôn có chữ -->
                 <div class="header-group group-actions">
+                    <div id="custom-typing-dropdown" class="custom-typing-dropdown">
+                    <button id="custom-typing-trigger" class="custom-typing-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chế độ học: Lật thẻ & Lọc từ gõ phím" aria-label="Chế độ học và lọc từ gõ phím">
+                    <i class="ph-duotone ph-cards typing-trigger-icon" id="typing-mode-icon"></i>
+                    <span id="typing-mode-label" class="typing-trigger-label">Lật thẻ</span>
+                    <i class="ph-bold ph-caret-down typing-trigger-caret"></i>
+                    </button>
+                    <div id="custom-typing-menu" class="custom-typing-menu" role="listbox" tabindex="-1">
+                    <div class="typing-menu-header">
+                    <span class="typing-menu-title"><i class="ph-duotone ph-keyboard"></i> Chế độ Gõ & Lọc Từ</span>
+                    <span id="typing-menu-active-badge" class="typing-menu-active-badge">Active Recall</span>
+                    </div>
+                    <div class="typing-menu-desc">
+                    Chọn chế độ ôn tập phù hợp với mục tiêu & năng lượng:
+                    </div>
+                    <div id="custom-typing-options" class="custom-typing-options">
+                    <!-- Populated dynamically with live counts -->
+                    </div>
+                    <div class="typing-menu-footer">
+                    <button type="button" id="start-dedicated-typing-btn" class="typing-dedicated-btn" title="Nạp 15 thẻ thuộc bộ lọc này vào hàng đợi để luyện gõ tập trung">
+                    <i class="ph-bold ph-lightning"></i>
+                    <span>Tạo phiên luyện gõ tập trung (15 thẻ)</span>
+                    </button>
+                    </div>
+                    </div>
+                    <button id="toggle-typing-mode-btn" class="hidden-typing-btn" style="display:none !important;" aria-hidden="true"></button>
+                    </div>
+
                     <button id="start-quiz-btn" class="icon-btn-text" title="Làm bài kiểm tra">
                         <i class="ph-duotone ph-rocket-launch"></i>
                         <span class="btn-label">Kiểm tra</span>
                     </button>
 
-                    <button id="celestial-hub-btn" class="icon-btn-text" title="Trung tâm điều khiển & Quản lý" aria-label="Trung tâm điều khiển">
+                    <button id="celestial-hub-btn" class="icon-btn-text" title="Trung tâm điều khiển &amp; Quản lý" aria-label="Trung tâm điều khiển">
                         <i class="ph-duotone ph-squares-four"></i>
                         <span class="btn-label">Trung Tâm</span>
                     </button>
-                    <!-- Aliases for backwards compatibility -->
-                    <button id="manage-words-btn-open" class="hidden" style="display:none !important;" aria-hidden="true"></button>
-                    <button id="profile-btn" class="hidden" style="display:none !important;" aria-hidden="true"></button>
+                <!-- Aliases cho tương thích ngược (luôn ẩn) -->
+                <button id="manage-words-btn-open" class="hidden" style="display:none !important;" aria-hidden="true"></button>
+                <button id="profile-btn" class="hidden" style="display:none !important;" aria-hidden="true"></button>
                 </div>
 
                 <span class="header-divider"></span>
 
-                <!-- Group 3: Mode & Quick Settings -->
+                <!-- TẦNG 2 + 3: hai toggle dùng liên tục + một menu cho phần còn lại -->
                 <div class="header-group group-utilities">
-                    <div id="custom-typing-dropdown" class="custom-typing-dropdown">
-                        <button id="custom-typing-trigger" class="custom-typing-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chế độ học: Lật thẻ & Lọc từ gõ phím" aria-label="Chế độ học và lọc từ gõ phím">
-                            <i class="ph-duotone ph-cards typing-trigger-icon" id="typing-mode-icon"></i>
-                            <span id="typing-mode-label" class="typing-trigger-label">Lật thẻ</span>
-                            <i class="ph-bold ph-caret-down typing-trigger-caret"></i>
-                        </button>
-                        <div id="custom-typing-menu" class="custom-typing-menu" role="listbox" tabindex="-1">
-                            <div class="typing-menu-header">
-                                <span class="typing-menu-title"><i class="ph-duotone ph-keyboard"></i> Chế độ Gõ & Lọc Từ</span>
-                                <span id="typing-menu-active-badge" class="typing-menu-active-badge">Active Recall</span>
-                            </div>
-                            <div class="typing-menu-desc">
-                                Chọn chế độ ôn tập phù hợp với mục tiêu & năng lượng:
-                            </div>
-                            <div id="custom-typing-options" class="custom-typing-options">
-                                <!-- Populated dynamically with live counts -->
-                            </div>
-                            <div class="typing-menu-footer">
-                                <button type="button" id="start-dedicated-typing-btn" class="typing-dedicated-btn" title="Nạp 15 thẻ thuộc bộ lọc này vào hàng đợi để luyện gõ tập trung">
-                                    <i class="ph-bold ph-lightning"></i>
-                                    <span>Tạo phiên luyện gõ tập trung (15 thẻ)</span>
-                                </button>
-                            </div>
-                        </div>
-                        <button id="toggle-typing-mode-btn" class="hidden-typing-btn" style="display:none !important;" aria-hidden="true"></button>
-                    </div>
-                    <button id="toggle-boost-mode-btn" class="icon-btn" title="Chế độ Tăng Tốc (Giảm hiệu ứng nền)" aria-label="Chế độ Tăng Tốc">
+                    <button id="toggle-boost-mode-btn" class="icon-btn header-chip" type="button" aria-pressed="false"
+                        title="Chế độ Tăng Tốc (giảm hiệu ứng nền)" aria-label="Chế độ Tăng Tốc">
                         <i class="ph-duotone ph-lightning"></i>
-                        <span class="btn-label">Tăng Tốc (Boost)</span>
                     </button>
-                    <!-- UI-02: Undo nằm ngay thanh công cụ học (trước đây bị giấu trong
-                         Celestial Hub ở một khối display:none nên gần như không thể bấm). -->
-                    <button id="undo-btn" class="icon-btn undo-btn disabled" title="Hoàn tác lượt đánh giá trước (Ctrl+Z)"
-                        aria-label="Hoàn tác lượt đánh giá trước" disabled>
-                        <i class="ph-duotone ph-arrow-u-up-left"></i>
-                    </button>
-                    <button id="toggle-dark-mode-btn" class="icon-btn" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
-                        <i class="ph-duotone ph-moon-stars"></i>
-                        <span class="btn-label">Giao diện Tối/Sáng</span>
-                    </button>
-                    <button id="toggle-sound-btn" class="icon-btn" title="Bật/Tắt Âm thanh" aria-label="Âm thanh">
+                    <button id="toggle-sound-btn" class="icon-btn header-chip" type="button" aria-pressed="true"
+                        title="Âm thanh: Tất cả" aria-label="Âm thanh: Tất cả">
                         <i class="ph-duotone ph-speaker-high"></i>
-                        <span class="btn-label">Bật/Tắt Âm thanh</span>
                     </button>
-                    <!-- Cài đặt giọng đọc & tốc độ: mở modal #tts-settings-modal
-                         (không còn 2 <select> trần trong header). -->
-                    <button id="tts-settings-btn" class="icon-btn" title="Giọng đọc & tốc độ" aria-label="Cài đặt giọng đọc và tốc độ">
+
+                    <button id="header-more-btn" class="icon-btn header-more-btn" type="button"
+                        aria-haspopup="menu" aria-expanded="false" aria-controls="header-more-menu"
+                        title="Tùy chỉnh &amp; công cụ" aria-label="Tùy chỉnh và công cụ">
+                        <i class="ph-bold ph-gear-six"></i>
+                    </button>
+
+                    <div id="header-more-menu" class="header-more-menu" role="menu" aria-label="Tùy chỉnh và công cụ">
+                    <button id="undo-btn" class="header-menu-item undo-btn disabled" role="menuitem" type="button"
+                        title="Hoàn tác lượt đánh giá trước (Ctrl+Z)" aria-label="Hoàn tác lượt đánh giá trước" disabled>
+                        <i class="ph-duotone ph-arrow-u-up-left"></i>
+                        <span class="header-menu-item-text">Hoàn tác đánh giá</span>
+                        <kbd class="header-menu-kbd">Ctrl+Z</kbd>
+                    </button>
+                    <button id="toggle-dark-mode-btn" class="header-menu-item" role="menuitem" type="button"
+                        aria-pressed="false" title="Chuyển chế độ Tối/Sáng" aria-label="Đổi giao diện">
+                        <i class="ph-duotone ph-moon-stars"></i>
+                        <span class="header-menu-item-text">Giao diện: Sáng</span>
+                    </button>
+                    <button id="tts-settings-btn" class="header-menu-item" role="menuitem" type="button"
+                        title="Giọng đọc &amp; tốc độ" aria-label="Cài đặt giọng đọc và tốc độ">
                         <i class="ph-duotone ph-sliders-horizontal"></i>
+                        <span class="header-menu-item-text">Giọng đọc &amp; tốc độ</span>
                     </button>
+                    <button id="manual-sync-btn" class="header-menu-item" role="menuitem" type="button"
+                        title="Đồng bộ Cloud" aria-label="Đồng bộ Cloud">
+                        <i class="ph-duotone ph-arrows-clockwise"></i>
+                        <span class="header-menu-item-text">Đồng bộ Cloud</span>
+                    </button>
+                    <button id="shortcuts-menu-btn" class="header-menu-item" role="menuitem" type="button"
+                        title="Xem danh sách phím tắt" aria-label="Xem danh sách phím tắt">
+                        <i class="ph-duotone ph-keyboard"></i>
+                        <span class="header-menu-item-text">Phím tắt</span>
+                    </button>
+                    </div>
                 </div>
             </div>
         </header>

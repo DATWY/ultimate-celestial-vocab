@@ -16653,3 +16653,193 @@ body:not(.dark-mode).boost-mode .celestial-stats-dock {
         }
     }
 }
+
+/* ─── Taskbar 3 tầng (PHASE 5) ──────────────────────────────────────────────
+   Thanh trên cùng gom 10 control rời rạc thành 3 nhóm theo TẦN SUẤT DÙNG:
+     1a. bộ lọc chủ đề (điều kiện của mọi phiên học)
+     1b. hành động học mỗi ngày: Lật thẻ · Kiểm tra · Trung Tâm
+     2+3. hai toggle dùng liên tục (⚡ 🔊) + menu "⋯" cho phần còn lại.
+   Nguyên tắc: nút càng ít bấm càng lùi vào trong; toggle phải có TRẠNG THÁI nhìn
+   thấy được (aria-pressed + nền tint + chấm nhỏ), không chỉ đổi icon.            */
+
+.group-utilities {
+    position: relative;
+}
+
+/* Chip bật/tắt: trạng thái BẬT phải nhìn ra ngay, không cần rê chuột đọc tooltip */
+.header-chip[aria-pressed='true'] {
+    color: hsl(var(--accent-hue), 88%, 74%);
+    background: hsla(var(--accent-hue), 88%, 64%, 0.18);
+    border-color: hsla(var(--accent-hue), 88%, 64%, 0.45);
+}
+
+.header-chip[aria-pressed='false'] {
+    opacity: 0.66;
+}
+
+.header-chip[aria-pressed='true']::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    transform: translateX(-50%);
+}
+
+.header-chip.muted {
+    opacity: 0.5;
+}
+
+body:not(.dark-mode) .header-chip[aria-pressed='true'] {
+    color: hsl(var(--accent-hue), 72%, 42%);
+    background: hsla(var(--accent-hue), 80%, 60%, 0.12);
+}
+
+.header-more-btn[aria-expanded='true'] {
+    background: hsla(var(--accent-hue), 88%, 64%, 0.2);
+    border-color: hsla(var(--accent-hue), 88%, 64%, 0.45);
+}
+
+/* Menu "Tùy chỉnh": panel dọc, mỗi dòng là một công cụ ít dùng.
+   KHÔNG dùng class .hidden cho menu này: .hidden của toàn cục là
+   `display:none !important` nằm trong @layer, mà với !important thì rule có layer
+   THẮNG rule không layer bất kể specificity — nên mọi cố gắng mở menu đều thua. */
+.header-more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 60;
+    min-width: 262px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: rgba(17, 25, 40, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(14px);
+    animation: headerMenuIn 0.16s ease-out;
+}
+
+body:not(.dark-mode) .header-more-menu {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(203, 213, 225, 0.95);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+}
+
+.header-more-menu.is-open {
+    display: flex;
+}
+
+@keyframes headerMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.header-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.header-menu-item i {
+    font-size: 1.12rem;
+    opacity: 0.85;
+    flex-shrink: 0;
+}
+
+.header-menu-item-text {
+    flex: 1 1 auto;
+}
+
+.header-menu-kbd {
+    font-family: inherit;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgba(148, 163, 184, 0.2);
+    opacity: 0.85;
+}
+
+.header-menu-item:hover:not(:disabled) {
+    background: hsla(var(--accent-hue), 88%, 64%, 0.16);
+    color: hsl(var(--accent-hue), 88%, 74%);
+}
+
+body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
+    color: hsl(var(--accent-hue), 72%, 40%);
+}
+
+.header-menu-item:disabled,
+.header-menu-item.disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+.header-menu-item[aria-pressed='true'] i {
+    color: hsl(var(--accent-hue), 88%, 66%);
+}
+
+/* Trên mobile, cả #taskbar-menu đã là một drawer (mở bằng nút ☰) nên menu "⋯"
+   lồng trong drawer là hai lớp menu chồng nhau. Nay: giấu nút "⋯" và để các mục
+   của nó chảy thẳng vào drawer — vẫn đủ 5 công cụ, chỉ bớt một lần bấm. */
+@media (max-width: 900px) {
+    /* id selector (1,0,0) đủ đè .icon-btn (0,1,0) ⇒ không cần !important
+       (test css-hygiene chặn việc tăng số !important trong dự án). */
+    #header-more-btn {
+        display: none;
+    }
+
+    /* display:contents làm container biến mất khỏi layout: 5 mục trở thành con trực
+       tiếp của .group-utilities (flex column) và xếp chồng tự nhiên như các chip.
+       Trước đó đo được container chỉ cao 38px (bị flex co lại trong drawer có
+       max-height) nên 5 dòng chồng lên nhau và bị cắt mất. */
+    .header-more-menu {
+        position: static;
+        top: auto;
+        right: auto;
+        display: contents;
+        flex-direction: column;
+        width: 100%;
+        min-width: 0;
+        padding: 0;
+        background: none;
+        border: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        animation: none;
+    }
+
+    .header-menu-item {
+        padding: 10px 10px;
+    }
+
+    .header-menu-kbd {
+        display: none;
+    }
+}

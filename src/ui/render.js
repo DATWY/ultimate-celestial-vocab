@@ -1071,6 +1071,14 @@ export function applyDarkMode(isDark) {
     const icon = DOM.toggleDarkModeBtn?.querySelector('i');
     if (icon) icon.className = isDark ? 'ph-duotone ph-sun' : 'ph-duotone ph-moon-stars';
 
+    // PHASE 5: mục "Giao diện" nằm trong menu ⋯ nên phải nói rõ đang ở chế độ nào
+    // (trước đây chỉ đổi icon trên một nút tròn, người dùng phải đoán).
+    if (DOM.toggleDarkModeBtn) {
+        DOM.toggleDarkModeBtn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        const label = DOM.toggleDarkModeBtn.querySelector('.header-menu-item-text');
+        if (label) label.textContent = isDark ? 'Giao diện: Tối' : 'Giao diện: Sáng';
+    }
+
     updateCanvasTheme(isDark);
 }
 
@@ -1095,6 +1103,16 @@ export function applySoundSetting(mode) {
         else label.textContent = 'Âm thanh: Tắt';
     }
     DOM.toggleSoundBtn?.classList.toggle('muted', mode === 'off');
+
+    // PHASE 5: chip âm thanh phải nói được trạng thái bằng aria-pressed + tooltip,
+    // vì nhãn chữ đã bị ẩn trên desktop (chỉ còn icon).
+    const soundBtn = DOM.toggleSoundBtn || document.getElementById('toggle-sound-btn');
+    if (soundBtn) {
+        const modeText = mode === 'all' ? 'Tất cả' : mode === 'sfx' ? 'Chỉ SFX' : mode === 'tts' ? 'Chỉ TTS' : 'Tắt';
+        soundBtn.setAttribute('aria-pressed', mode === 'off' ? 'false' : 'true');
+        soundBtn.setAttribute('aria-label', 'Âm thanh: ' + modeText);
+        soundBtn.title = 'Âm thanh: ' + modeText + ' (bấm để đổi)';
+    }
     applySoundMode(mode);
 }
 
