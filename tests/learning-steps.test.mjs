@@ -67,8 +67,10 @@ test('T1.1 #5: New + Quên (1) → Learning, bước 0, hẹn lại sau 1 phút'
     assert.equal(next.learningStep, 0);
     assert.ok(Math.abs(next.srsDueDate - (NOW + MIN)) <= TOLERANCE_MS,
         `due phải là now+1 phút, nhận ${next.srsDueDate - NOW}ms`);
-    assert.equal(next.lapses, 1);
-    assert.equal(next.reps, 0);
+    // SRS-01: lần chạm đầu bị quên KHÔNG phải lapse (thẻ chưa từng thuộc), và một
+    // lượt chấm vẫn là một rep — nếu không, thẻ mới bị mất trần tốt nghiệp 7 ngày.
+    assert.equal(next.lapses, 0);
+    assert.equal(next.reps, 1);
 });
 
 test('T1.1 #6: Mastered + Nhớ (3) giữ nguyên hành vi cũ (snapshot trước khi sửa)', () => {
@@ -105,18 +107,24 @@ test('T1.1 #7: 20 lần Good liên tiếp trên thẻ Mastered → interval luô
     }
 });
 
-test('T1.1: Khó (2) luôn chỉ hẹn 10 phút, kể cả khi đã ở bước cuối', () => {
+test('T1.1: Khó (2) lặp lại ĐÚNG bước hiện tại, không vượt mặt Nhớ (3)', () => {
+    // SRS-01: bản cũ tăng learningStep rồi chỉ hẹn 10 phút ⇒ ở bước 1, "Khó" chạm
+    // bước tốt nghiệp sau 10 phút còn "Nhớ" phải chờ 1 ngày. Giờ Khó đứng yên.
     const hardFromNew = review(newCard(), 2, NOW);
     assert.equal(hardFromNew.srsStatus, 'Learning');
-    assert.equal(hardFromNew.learningStep, 1);
-    assert.ok(Math.abs(hardFromNew.srsDueDate - (NOW + 10 * MIN)) <= TOLERANCE_MS);
+    assert.equal(hardFromNew.learningStep, 0, 'bước 0 + Khó vẫn ở bước 0');
+    assert.ok(Math.abs(hardFromNew.srsDueDate - (NOW + MIN)) <= TOLERANCE_MS, 'hẹn lại 1 phút');
 
     const step1 = review(newCard(), 3, NOW);
+    const hardAtStep1 = review(step1, 2, step1.srsDueDate);
+    assert.equal(hardAtStep1.learningStep, 1, 'bước 1 + Khó giữ nguyên bước 1');
+    assert.ok(Math.abs(hardAtStep1.srsDueDate - (step1.srsDueDate + 10 * MIN)) <= TOLERANCE_MS);
+
     const step2 = review(step1, 3, step1.srsDueDate);
     const hardAtFinal = review(step2, 2, step2.srsDueDate);
     assert.equal(hardAtFinal.srsStatus, 'Learning', 'Khó ở bước cuối không được tốt nghiệp');
     assert.equal(hardAtFinal.learningStep, 2);
-    assert.ok(Math.abs(hardAtFinal.srsDueDate - (step2.srsDueDate + 10 * MIN)) <= TOLERANCE_MS);
+    assert.ok(Math.abs(hardAtFinal.srsDueDate - (step2.srsDueDate + DAY)) <= TOLERANCE_MS, 'bước cuối + Khó hẹn 1 ngày');
 });
 
 test('T1.1: trạng thái bộ nhớ FSRS vẫn cập nhật mỗi lượt, chỉ lịch bị override', () => {
@@ -149,7 +157,8 @@ test('T1.1: thẻ Learning cũ thiếu learningStep được coi như bước 0'
 test('T1.1: nhãn nút chấm cho thẻ New nói đúng bước học (không còn 5d/13d/21d)', () => {
     const labels = predictNextIntervals(newCard(), 'en-vi');
     assert.equal(labels[1], '1p');
-    assert.equal(labels[2], '10p');
+    // SRS-01: New + Khó lặp bước 0 (1 phút), không nhảy sang bước 1 (10 phút).
+    assert.equal(labels[2], '1p');
     assert.equal(labels[3], '10p');
     assert.ok(/ngày$/.test(labels[4]), `Dễ phải hiện đơn vị ngày, nhận "${labels[4]}"`);
 

@@ -130,3 +130,90 @@ test('chỉ xoá cache của app, không đụng cache lạ', () => {
     assert.equal(isAppCacheName('some-other-app-cache'), false);
     assert.equal(isAppCacheName(undefined), false);
 });
+
+test('cùng chuỗi version nhưng buildTime mới hơn ⇒ VẪN phải cập nhật', () => {
+    // Sự cố thật 2026-10-29: hai deploy trong CÙNG MỘT GIỜ cho ra cùng chuỗi
+    // DATWY.V2.261029.19. Client cũ so chuỗi ⇒ tưởng "đã mới nhất" ⇒ không bao giờ
+    // nhận bản sửa CSS. Nay phải so thêm mốc dựng.
+    const SAME = 'DATWY.V2.261029.19';
+    const older = '2026-10-29T12:02:56.027Z';
+    const newer = '2026-10-29T12:12:02.470Z';
+
+    assert.equal(
+        decideVersionAction({
+            hosted: SAME, local: SAME, hostedBuildTime: newer, localBuildTime: older,
+            lastReload: null, now: NOW, online: true
+        }),
+        'reload',
+        'cùng version nhưng build mới hơn phải reload'
+    );
+    assert.equal(
+        decideVersionAction({
+            hosted: SAME, local: SAME, hostedBuildTime: older, localBuildTime: older,
+            lastReload: null, now: NOW, online: true
+        }),
+        'none',
+        'đúng bản đang chạy thì không làm gì'
+    );
+    assert.equal(
+        decideVersionAction({
+            hosted: SAME, local: SAME, hostedBuildTime: older, localBuildTime: newer,
+            lastReload: null, now: NOW, online: true
+        }),
+        'none',
+        'server cũ hơn (rollback đang tải dở) không được kích reload'
+    );
+});
+
+test('guard ghi kèm buildTime: bản dựng mới cùng version vẫn được reload 1 lần', () => {
+    const SAME = 'DATWY.V2.261029.19';
+    const first = '2026-10-29T12:02:56.027Z';
+    const second = '2026-10-29T12:12:02.470Z';
+    const third = '2026-10-29T12:30:00.000Z';
+
+    // Lần 1: guard cho bản dựng 'first' (đã auto-reload cho nó)
+    assert.equal(
+        decideVersionAction({
+            hosted: SAME, local: SAME, hostedBuildTime: second, localBuildTime: first,
+            lastReload: { version: SAME, buildTime: first, at: NOW - HOUR }, now: NOW, online: true
+        }),
+        'reload',
+        'guard của bản dựng CŨ không được chặn bản dựng mới'
+    );
+    // Lần 2: guard đã là 'second' ⇒ cùng bản dựng ⇒ chỉ cảnh báo (chống loop)
+    assert.equal(
+        decideVersionAction({
+            hosted: SAME, local: SAME, hostedBuildTime: second, localBuildTime: first,
+            lastReload: { version: SAME, buildTime: second, at: NOW - HOUR }, now: NOW, online: true
+        }),
+        'notify',
+        'đã auto-reload cho đúng bản dựng này rồi thì chỉ cảnh báo'
+    );
+    // Lần 3: có bản dựng thứ ba ⇒ lại được reload
+    assert.equal(
+        decideVersionAction({
+            hosted: SAME, local: SAME, hostedBuildTime: third, localBuildTime: second,
+            lastReload: { version: SAME, buildTime: second, at: NOW - HOUR }, now: NOW, online: true
+        }),
+        'reload'
+    );
+});
+
+test('thiếu buildTime (client cũ / server cũ) vẫn giữ hành vi cũ', () => {
+    assert.equal(
+        decideVersionAction({ hosted: OLD, local: OLD, lastReload: null, now: NOW, online: true }),
+        'none'
+    );
+    assert.equal(
+        decideVersionAction({ hosted: NEW, local: OLD, lastReload: null, now: NOW, online: true }),
+        'reload'
+    );
+    // buildTime rác không được làm hỏng quyết định
+    assert.equal(
+        decideVersionAction({
+            hosted: NEW, local: OLD, hostedBuildTime: 'không-phải-ngày', localBuildTime: 'cũng-không',
+            lastReload: null, now: NOW, online: true
+        }),
+        'reload'
+    );
+});

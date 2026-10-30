@@ -80,7 +80,11 @@ export function captureProgress(value, kind, actorId, now = Date.now()) {
     const seq = component.seq + 1;
     let changed = false;
     for (const [key, val] of Object.entries(current)) {
-        const difference = val - Math.max(0, number(before[key]));
+        // CRDT-01: KHÔNG kẹp sàn "before". Tổng đã âm là trạng thái hợp lệ (đã tiêu
+        // hoặc Undo vượt mức). Kẹp sàn khiến lần capture kế tiếp bị tính thành
+        // "tăng" và trừ nợ lần thứ hai — capture cùng một trạng thái hai lần sẽ
+        // làm đổi tổng, phá tính bất biến của CRDT.
+        const difference = val - number(before[key]);
         if (Math.abs(difference) < 1e-9) continue;
         component.delta[key] = number(component.delta[key]) + difference;
         changed = true;
@@ -132,7 +136,14 @@ export function mergeProgress(local = {}, remote = {}, kind = 'gamification', ac
         }));
     } else {
         result.activityHeatmap = {};
-        for (const [key, val] of Object.entries(sum)) write(result, JSON.parse(key), Math.max(0, val));
+        // Trần theo luật game: Khiên Băng tối đa 1 (buyStreakFreeze chặn mua thêm).
+        // Chỉ kẹp sàn thì hai máy cùng có 1 khiên sẽ cộng thành 2 sau merge.
+        const CEILING = { streakFreezeCount: 1 };
+        for (const [key, val] of Object.entries(sum)) {
+            const parts = JSON.parse(key);
+            const ceiling = parts.length === 1 && Object.hasOwn(CEILING, parts[0]) ? CEILING[parts[0]] : Infinity;
+            write(result, parts, Math.min(ceiling, Math.max(0, val)));
+        }
         result.currentLevel = Math.floor(Math.sqrt(result.userXP / 100)) + 1;
         for (const field of ['unlockedBadges', 'frozenDates', 'recoveredDates']) result[field] = [...new Set([...(local[field] || []), ...(remote[field] || [])])].sort();
         result.longestStreak = Math.max(local.longestStreak || 0, remote.longestStreak || 0);

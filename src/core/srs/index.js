@@ -64,11 +64,14 @@ function scheduleLearningStep(currentStep, rating, fsrsIntervalDays, { isFreshCa
         return { srsStatus: 'Learning', learningStep: 0, intervalDays: LEARNING_STEPS_MS[0] / DAY_MS };
     }
     if (rating === 2) {
-        // Khó: nhích 1 bước nhưng luôn chỉ hẹn 10 phút (không nhảy thẳng sang bước 1 ngày).
+        // SRS-01: Khó KHÔNG tiến bước. Bản cũ tăng learningStep rồi chỉ hẹn 10 phút,
+        // nên ở bước 1 người bấm Khó chạm bước tốt nghiệp chỉ sau 10 phút, còn bấm
+        // Nhớ phải chờ 1 ngày — "Khó" hoá ra dễ hơn "Nhớ", sai ngữ nghĩa SRS.
+        // Giờ Khó lặp lại đúng bước hiện tại (Anki: Hard repeats the current step).
         return {
             srsStatus: 'Learning',
-            learningStep: Math.min(currentStep + 1, FINAL_LEARNING_STEP),
-            intervalDays: LEARNING_STEPS_MS[1] / DAY_MS
+            learningStep: currentStep,
+            intervalDays: LEARNING_STEPS_MS[currentStep] / DAY_MS
         };
     }
     if (rating === 3) {
@@ -149,8 +152,14 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         newState.difficulty = Math.min(D_MAX, Math.max(D_MIN, baseD));
         newState.stability = Math.min(S_MAX, Math.max(S_MIN, baseS));
         newState.stabilityShort = Math.min(S_MAX, Math.max(S_MIN, 0.8 * baseS));
-        newState.reps = rating > 1 ? 1 : 0;
-        if (rating === 1) newState.lapses = 1;
+        // SRS-01: một lượt chấm là MỘT rep, kể cả khi quên. Trước đây rating 1 đặt
+        // reps = 0, rồi lượt sau logic "suy diễn reps cho thẻ cũ" (dòng ~126) chèn
+        // thêm 1 nữa ⇒ reps nhảy 0 → 2 chỉ sau hai lượt.
+        newState.reps = 1;
+        // SRS-01: KHÔNG gán lapses = 1 cho thẻ New. Lần chạm đầu bị quên không phải
+        // "trượt" (chưa từng thuộc thì không có gì để quên). Gán 1 sẽ khiến
+        // `isFreshCard` sai ngay sau đó ⇒ mất trần tốt nghiệp 7 ngày, và chỉ 4 lần
+        // Again là thẻ mới bị gắn cờ leech.
     } else {
         // 4. Subsequent reviews (Dual-Stability Step)
         const retrievability = dualTraceForgettingCurve(actualDaysElapsed, newState.stability, newState.stabilityShort, newState.difficulty, w);

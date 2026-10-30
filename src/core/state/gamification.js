@@ -14,7 +14,7 @@ import { saveProgressToDB } from '../idb.js';
 import { rolloverDailyStats } from '../daily-stats.js';
 import { captureProgress, mergeProgress } from '../progress-merge.js';
 import { announceSyncStatus } from '../sync-status.js';
-import { getDeviceId } from '../device.js';
+import { getActorId } from '../device.js';
 import { getLocalDateString, getOffsetDateString } from '../utils/date.js';
 import { skipPersistence, isPreviewMode } from './preview-mode.js';
 import { safeShowToast } from './ui-notify.js';
@@ -30,7 +30,8 @@ export function isInitialSyncDone() {
     return _initialSyncDone;
 }
 
-const progressActor = getDeviceId();
+// CRDT-01: actor theo TAB (không chỉ theo thiết bị) — hai tab không ghi đè nhau.
+const progressActor = getActorId();
 
 // ─── Tiện ích dùng chung trong module (gom các khối bị chép lặp trước T4.5b) ──
 /** Phát sự kiện để UI vẽ lại thanh XP / rank / huy hiệu. */

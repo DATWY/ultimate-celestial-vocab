@@ -37,7 +37,15 @@ export const UPDATE_AVAILABLE_EVENT = 'app:update-available';
  * @param {boolean} [input.online]   - navigator.onLine
  * @returns {'reload'|'notify'|'none'}
  */
-export function decideVersionAction({ hosted, local, lastReload = null, now = Date.now(), online = true } = {}) {
+export function decideVersionAction({
+    hosted,
+    local,
+    hostedBuildTime = null,
+    localBuildTime = null,
+    lastReload = null,
+    now = Date.now(),
+    online = true
+} = {}) {
     // 1) Offline: HTML có thể cũ hơn server một cách hợp lệ. Tuyệt đối không
     //    reload và không xoá cache — làm vậy chỉ tự phá bản offline đang chạy.
     if (online === false) return 'none';
@@ -48,14 +56,29 @@ export function decideVersionAction({ hosted, local, lastReload = null, now = Da
     if (!hostedVersion || !localVersion) return 'none';
 
     // 2) Đang chạy đúng bản server đang phát.
-    if (hostedVersion === localVersion) return 'none';
+    //
+    //    So sánh CHUỖI KHÔNG ĐỦ: chuỗi chỉ có độ phân giải 1 GIỜ
+    //    (DATWY.V{seq}.{yymmdd}.{hh}), nên hai lần deploy trong cùng một giờ cho
+    //    ra chuỗi giống hệt nhau. Khi đó client cũ tưởng "đã mới nhất" và KHÔNG
+    //    BAO GIỜ cập nhật (đúng sự cố 2026-10-29: sửa CSS đã deploy nhưng máy
+    //    người dùng vẫn chạy bundle cũ). Vì vậy so thêm mốc dựng buildTime.
+    const hostedAt = Date.parse(typeof hostedBuildTime === 'string' ? hostedBuildTime : '');
+    const localAt = Date.parse(typeof localBuildTime === 'string' ? localBuildTime : '');
+    const hostedBuildIsNewer = Number.isFinite(hostedAt) && Number.isFinite(localAt) && hostedAt > localAt;
+    if (hostedVersion === localVersion && !hostedBuildIsNewer) return 'none';
 
     // 3) Đã auto-reload cho ĐÚNG phiên bản này trong 24h qua → đây là vòng lặp
     //    (hoặc deploy lệch không tự khỏi được). Chỉ cảnh báo, không reload.
     const guardVersion = lastReload && typeof lastReload === 'object' && typeof lastReload.version === 'string'
         ? lastReload.version.trim()
         : '';
-    if (guardVersion && guardVersion === hostedVersion) {
+    const guardBuildKey = lastReload && typeof lastReload === 'object' && typeof lastReload.buildTime === 'string'
+        ? lastReload.buildTime.trim()
+        : '';
+    // Guard phải khớp CẢ mốc dựng, nếu không hai bản dựng cùng chuỗi version sẽ
+    // dùng chung một guard và lần cập nhật thứ hai chỉ còn 'notify'.
+    const sameGuardBuild = !hostedBuildTime || guardBuildKey === String(hostedBuildTime).trim();
+    if (guardVersion && guardVersion === hostedVersion && sameGuardBuild) {
         const guardAt = Number(lastReload.at);
         const recent = !Number.isFinite(guardAt) || (Number(now) - guardAt) < RELOAD_GUARD_WINDOW_MS;
         // guardAt ở tương lai (lệch đồng hồ) cũng rơi vào đây → vẫn an toàn.
@@ -94,15 +117,15 @@ export function readReloadGuard() {
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object' || typeof parsed.version !== 'string') return null;
-        return { version: parsed.version, at: Number(parsed.at) };
+        return { version: parsed.version, buildTime: typeof parsed.buildTime === 'string' ? parsed.buildTime : null, at: Number(parsed.at) };
     } catch (_) {
         return null;
     }
 }
 
-function saveReloadGuard(version) {
+function saveReloadGuard(version, buildTime = null) {
     try {
-        localStorage.setItem(RELOAD_GUARD_KEY, JSON.stringify({ version, at: Date.now() }));
+        localStorage.setItem(RELOAD_GUARD_KEY, JSON.stringify({ version, buildTime, at: Date.now() }));
     } catch (_) {}
 }
 
@@ -150,13 +173,13 @@ function notifyUpdateAvailable(hostedVersion) {
  * CHỈ được gọi khi decideVersionAction() đã trả 'reload'.
  * @param {string} newVersion
  */
-export async function performAppResetAndUpdate(newVersion) {
+export async function performAppResetAndUpdate(newVersion, newBuildTime = null) {
     if (_isUpdating) return;
     _isUpdating = true;
 
     // Ghi guard TRƯỚC mọi thao tác khác: nếu bước sau lỗi giữa chừng và trang
     // vẫn reload, lần kiểm tra kế tiếp thấy guard và chỉ cảnh báo — không loop.
-    if (newVersion) saveReloadGuard(newVersion);
+    if (newVersion) saveReloadGuard(newVersion, newBuildTime);
 
     console.log(`[VersionCheck] 🚀 Đang tiến hành reset web để cập nhật lên phiên bản: ${newVersion}`);
     await showToastAsync("Phát hiện Bản Cập Nhật Mới", `Hệ thống nâng cấp lên ${newVersion}. Đang làm mới dữ liệu...`, "ph-arrows-clockwise");
@@ -230,11 +253,14 @@ export async function checkAppVersion(options = { isManual: false }) {
 
         const data = await res.json();
         const serverVersion = typeof data?.version === 'string' ? data.version : null;
+        const serverBuildTime = typeof data?.buildTime === 'string' ? data.buildTime : null;
         const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
 
         const action = decideVersionAction({
             hosted: serverVersion,
             local: APP_VERSION,
+            hostedBuildTime: serverBuildTime,
+            localBuildTime: BUILD_TIME,
             lastReload: readReloadGuard(),
             now,
             online
@@ -244,7 +270,7 @@ export async function checkAppVersion(options = { isManual: false }) {
             // Guard { version: hosted, at: now } được ghi TRƯỚC khi reload
             // (dòng đầu của performAppResetAndUpdate) để lần kiểm tra sau
             // không reload lần 2 cho cùng phiên bản.
-            await performAppResetAndUpdate(serverVersion);
+            await performAppResetAndUpdate(serverVersion, serverBuildTime);
             return true;
         }
 

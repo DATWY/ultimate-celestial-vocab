@@ -98,7 +98,14 @@ export function mergeCardFields(local, remote) {
     result.deletedAt = Math.max(toMillis(a.deletedAt), toMillis(b.deletedAt),
         a.isDeleted ? a.updatedAt : 0, b.isDeleted ? b.updatedAt : 0);
     result.isSuspended = false;
-    delete result.syncedAt;
+    // SYNC-01: KHÔNG xoá syncedAt. Đây là mốc "bản trên Cloud đã khớp", thứ duy nhất
+    // giúp Phase 2 của smartSync phân biệt "thẻ chưa từng sync" với "thẻ đã sync rồi".
+    // Xoá nó khiến mọi thẻ bị đẩy lại mỗi vòng: mỗi thẻ là một transaction.get (đốt
+    // quota đọc) và danh sách push phình to tới mức Quota Shield xoá sạch, nuốt luôn
+    // các thẻ hội tụ cần đẩy. Giữ giá trị LỚN NHẤT để merge vẫn giao hoán.
+    const syncedAt = Math.max(toMillis(a.syncedAt), toMillis(b.syncedAt));
+    if (syncedAt > 0) result.syncedAt = syncedAt;
+    else delete result.syncedAt;
     delete result._lastModifiedBy;
     return result;
 }

@@ -29,6 +29,7 @@ import {
 } from 'firebase/firestore';
 import { mergeCardFields, isSrsEqual, normalizeCard, toMillis } from './card-merge.js';
 export { mergeCardFields, isSrsEqual, toMillis } from './card-merge.js';
+import { planPushBatch } from './push-plan.js';
 import { getStorage } from 'firebase/storage';
 import {
     getState, setVocabulary, saveVocabulary, setAllTags, isPreviewMode,
@@ -583,6 +584,10 @@ export async function writeMergedCards(cards) {
     const uid = user.uid;
     const snapshot = cards.map(card => JSON.parse(JSON.stringify(normalizeCard(card))));
     const committed = [];
+    // SYNC-01: mọi thẻ trong lô này đã được đối chiếu với Cloud (dù có ghi hay không,
+    // vì transaction đọc rồi merge đúng như dòng 592). Đóng dấu mốc để vòng sync sau
+    // bỏ qua chúng thay vì đọc lại từng thẻ.
+    const pushedAt = Date.now();
     for (let i = 0; i < snapshot.length; i += 100) {
         const chunk = snapshot.slice(i, i + 100);
         const merged = await runTransaction(db, async transaction => {
@@ -598,7 +603,7 @@ export async function writeMergedCards(cards) {
                         _ownerUid: uid
                     });
                 }
-                return result;
+                return { ...result, syncedAt: pushedAt };
             });
         });
         committed.push(...merged);
@@ -607,6 +612,9 @@ export async function writeMergedCards(cards) {
 }
 
 let _lastLocalWriteTimestamp = 0;
+// Số thẻ CHƯA-TỪNG-SYNC tối đa mỗi vòng ở background. Thẻ hội tụ không tính vào
+// hạn mức này vì bỏ chúng đi là hai máy không bao giờ giống nhau.
+const PUSH_BATCH_BACKGROUND_MAX = 50;
 
 export async function smartSync({ forceFullPull = false, isManual = false } = {}) {
     // --- CIRCUIT BREAKER QUOTA PROTECTION ---
@@ -797,24 +805,25 @@ export async function smartSync({ forceFullPull = false, isManual = false } = {}
         // ============================================================
         // PHASE 2: PUSH — thẻ local chưa từng sync + thẻ merge hội tụ
         // ============================================================
-        const cardsToPushMap = new Map();
-        for (const card of convergedCardsToPush) {
-            if (card && card.id) cardsToPushMap.set(card.id, card);
-        }
+        // SYNC-01: thẻ hội tụ đi riêng khỏi hàng "chưa từng sync". Bản cũ gộp chung
+        // rồi xoá cả mảng khi > 50 ở background ⇒ nuốt luôn phần hội tụ.
+        const freshCards = [];
         for (const card of vocabulary) {
             if (!card || !card.id) continue;
             if (pulledIds.has(card.id)) continue;
-            if (!card.syncedAt && !flushedIds.has(card.id)) {
-                if (!cardsToPushMap.has(card.id)) cardsToPushMap.set(card.id, card);
-            }
+            if (card.syncedAt || flushedIds.has(card.id)) continue;
+            freshCards.push(card);
         }
 
-        const cardsToPush = Array.from(cardsToPushMap.values());
-
-        // QUOTA SHIELD: chặn push hàng loạt trong background
-        if (cardsToPush.length > 50 && !isManual) {
-            console.warn(`🛡️ [Quota Shield] Phát hiện ${cardsToPush.length} thẻ cần push trong background. Chặn push hàng loạt để bảo vệ Firebase Quota.`);
-            cardsToPush.length = 0;
+        const pushPlan = planPushBatch({
+            converged: convergedCardsToPush,
+            fresh: freshCards,
+            isManual,
+            maxBackground: PUSH_BATCH_BACKGROUND_MAX
+        });
+        const cardsToPush = pushPlan.items;
+        if (pushPlan.deferred > 0) {
+            console.log(`🛡️ [Quota Shield] Hoãn ${pushPlan.deferred} thẻ chưa-từng-sync sang vòng sau (đẩy ${cardsToPush.length} thẻ, gồm ${convergedCardsToPush.length} thẻ hội tụ).`);
         }
 
         if (cardsToPush.length > 0) {
