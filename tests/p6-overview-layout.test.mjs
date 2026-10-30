@@ -60,3 +60,36 @@ test('P6: persona chỉ chiếm 1 khối duy nhất (không chèn vào lưới b
     assert.ok(wrapper.length > 0, 'thiếu khối bọc .whoiam-card');
     assert.doesNotMatch(wrapper, /bento-charts-row/, 'không được lồng trong lưới biểu đồ');
 });
+
+// ── PHASE 6b: bẫy "khai báo trùng trong cùng một block" ─────────────────────
+// Lỗi thật đã xảy ra: rule .header-more-menu có CẢ `display: none` (mới thêm)
+// và `display: flex` (còn sót) trong CÙNG một block ⇒ cái sau thắng, menu ⚙
+// luôn mở dù không ai bấm. Test này chặn đúng lớp lỗi đó cho mọi file CSS.
+test('P6: không block CSS nào khai báo display hai lần', () => {
+    const dir = path.join(root, 'src/css');
+    const offenders = [];
+    for (const name of fs.readdirSync(dir).filter(n => n.endsWith('.css'))) {
+        const text = fs.readFileSync(path.join(dir, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+        const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+        let match;
+        while ((match = blockRe.exec(text))) {
+            const decls = match[2]
+                .split(';')
+                .map(s => s.trim())
+                .filter(Boolean);
+            const displayCount = decls.filter(d => /^display\s*:/.test(d)).length;
+            if (displayCount > 1) {
+                offenders.push(name + ' → ' + match[1].trim().split('\n').pop().trim().slice(0, 60));
+            }
+        }
+    }
+    assert.deepEqual(offenders, [], 'một block chỉ được có một khai báo display');
+});
+
+test('P6: menu ⚙ mặc định ẩn — base rule chỉ có display:none', () => {
+    const base = css.slice(css.indexOf('.header-more-menu {'));
+    const blockText = base.slice(0, base.indexOf('}'));
+    const displays = [...blockText.matchAll(/display:\s*([a-z-]+)/g)].map(m => m[1]);
+    assert.deepEqual(displays, ['none'], 'base rule phải chỉ khai báo display:none');
+    assert.match(css, /\.header-more-menu\.is-open\s*\{\s*display: flex;/);
+});

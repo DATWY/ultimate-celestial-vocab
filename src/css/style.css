@@ -16719,6 +16719,7 @@ body:not(.dark-mode) .header-chip[aria-pressed='true'] {
    `display:none !important` nằm trong @layer, mà với !important thì rule có layer
    THẮNG rule không layer bất kể specificity — nên mọi cố gắng mở menu đều thua. */
 .header-more-menu {
+    /* MẶC ĐỊNH ẨN. Chỉ .is-open mới bật (xem bên dưới). */
     display: none;
     position: absolute;
     top: calc(100% + 10px);
@@ -16726,7 +16727,6 @@ body:not(.dark-mode) .header-chip[aria-pressed='true'] {
     z-index: 60;
     min-width: 262px;
     padding: 6px;
-    display: flex;
     flex-direction: column;
     gap: 2px;
     background: rgba(17, 25, 40, 0.97);
