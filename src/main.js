@@ -45,6 +45,12 @@ function runWhenIdle(task, { delay = 6000, timeout = 3000 } = {}) {
     }, delay);
 }
 
+// Chẩn đoán engine sao — luôn có (chỉ trả về số đếm trạng thái, không lộ dữ liệu).
+// Cần cho test hồi quy "sao vẫn chạy khi đang gõ từ" trên bản production.
+if (typeof window !== 'undefined') {
+    window.__celestialCanvasDiagnostics = getCelestialDiagnostics;
+}
+
 if (import.meta.env?.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('audit') === '1') {
 // Sample Vocabulary Seeder for Isolated Testing & First-Run Exploration
 window.loadIsolatedSampleVocabulary = async function() {
@@ -59,6 +65,8 @@ window.loadIsolatedSampleVocabulary = async function() {
 // Celestial Audit & Test Automation Harness
 window.__celestialAudit = {
     seed: window.loadIsolatedSampleVocabulary,
+    // Chẩn đoán engine sao: { animFrameId, isTypingActive, isBoostMode, stars, idleMs, ... }
+    celestial: () => (typeof getCelestialDiagnostics === 'function' ? getCelestialDiagnostics() : null),
     clear: async () => {
         setVocabulary([]);
         const { clearVocabularyDB } = await import('./core/idb.js');
@@ -119,6 +127,7 @@ window.__celestialAudit = {
 }
 
 import { initCelestialCanvas, isMobileDevice } from './ui/celestial-canvas.js';
+import { getCelestialDiagnostics } from './ui/celestial-canvas.js';
 
 async function initializeApp() {
     console.log("Initializing Celestial Vocab App...");

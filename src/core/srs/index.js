@@ -1,6 +1,6 @@
 // src/core/srs/index.js — FSRS-7 Dual-Stability Engine Coordinator
 
-import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS, LEARNING_STEPS_MS, D0_BIAS_SCALE, LEECH_LAPSE_THRESHOLD, LEECH_RELEARNING_INTERVAL_MS, LEECH_RELEARNING_STEP } from './constants.js';
+import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS, LEARNING_STEPS_MS, D0_BIAS_SCALE, LEECH_LAPSE_THRESHOLD, LEECH_RELEARNING_INTERVAL_MS, LEECH_RELEARNING_STEP, POST_LAPSE_GRADUATION_CAP_DAYS, LEECH_MAX_SAME_DAY_LAPSES, BURIED_RELEASE_HOUR } from './constants.js';
 import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton } from './forgetting.js';
 import { initDifficulty, nextDifficulty } from './difficulty.js';
 import { nextStability } from './stability.js';
@@ -47,11 +47,15 @@ function readLearningStep(card) {
  * @param {{ isFreshCard?: boolean }} [opts] - isFreshCard: thẻ CHƯA TỪNG thuộc (lapses = 0)
  * @returns {{ srsStatus: 'Learning'|'Mastered', learningStep: number, intervalDays: number }}
  */
-function scheduleLearningStep(currentStep, rating, fsrsIntervalDays, { isFreshCard = true } = {}) {
+function scheduleLearningStep(currentStep, rating, fsrsIntervalDays, { isFreshCard = true, hasLapses = false } = {}) {
     // Thẻ chưa từng thuộc: sau 2-3 lần chạm trong một ngày, FSRS thô vẫn cho 21-38 ngày.
     // Chặn ở 7 ngày để từ mới không biến mất cả tuần ngay sau buổi học đầu tiên.
     // Thẻ tái tốt nghiệp (đã từng Mastered rồi trượt) giữ interval FSRS đầy đủ.
-    const graduationCap = isFreshCard ? MAX_GRADUATION_INTERVAL_DAYS : MAX_INTERVAL_DAYS;
+    // C′: thẻ đã từng quên (hasLapses) không được tốt nghiệp với interval dài —
+    // dù không còn là "thẻ mới", nó vẫn chưa chứng minh được trí nhớ bền.
+    const graduationCap = isFreshCard
+        ? MAX_GRADUATION_INTERVAL_DAYS
+        : (hasLapses ? POST_LAPSE_GRADUATION_CAP_DAYS : MAX_INTERVAL_DAYS);
     const graduate = () => ({
         srsStatus: 'Mastered',
         learningStep: FINAL_LEARNING_STEP,
@@ -120,6 +124,19 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
     }
 
     newState.lapses = Number.isFinite(Number(newState.lapses)) ? Math.max(0, parseInt(newState.lapses, 10)) : 0;
+    // B′: bộ đếm sai-trong-ngày phải reset khi sang ngày khác, nếu không thì lần
+    // sai đầu tiên của ngày hôm sau sẽ bị tính là "đã sai 2 lần" và bị chôn oan.
+    {
+        const todayKey = new Date(now).toDateString();
+        if (newState.lapseDay !== todayKey) {
+            newState.lapseDay = todayKey;
+            newState.lapsesToday = 0;
+        }
+    }
+    // Cờ "cần viết lại" tự hết khi thẻ đã trả lời đúng 2 lần liên tiếp sau đó.
+    if (rating > 1 && (Number(newState.lapsesToday) || 0) === 0) {
+        newState.needsReformulation = false;
+    }
     newState.anchor = Number.isFinite(anchorStrength) ? Math.min(1, Math.max(0, anchorStrength)) : 0;
     newState.modality = modality;
     newState.srsStatus = newState.srsStatus || 'New';
@@ -253,12 +270,34 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
         newState.srsStatus = 'Learning';
         newState.learningStep = LEECH_RELEARNING_STEP;
         nextIntervalDays = LEECH_RELEARNING_INTERVAL_MS / DAY_MS;
+
+        // ── B′: chống "bão ôn" trong ngày ────────────────────────────────────
+        // Sai 2 lần trong cùng một ngày = massed practice; lượt thứ 3 hôm nay
+        // không thêm trí nhớ dài hạn mà chỉ tạo cảm giác đã thuộc. Chôn tới 04:00
+        // sáng mai (kèm jitter) và đánh dấu thẻ cần được viết lại.
+        const todayKey = new Date(now).toDateString();
+        const sameDay = newState.lapseDay === todayKey;
+        const lapsesToday = (sameDay ? (Number(newState.lapsesToday) || 0) : 0) + 1;
+        newState.lapseDay = todayKey;
+        newState.lapsesToday = lapsesToday;
+
+        if (lapsesToday >= LEECH_MAX_SAME_DAY_LAPSES) {
+            const release = new Date(now);
+            release.setDate(release.getDate() + 1);
+            release.setHours(BURIED_RELEASE_HOUR, 0, 0, 0);
+            // jitter 0–3h để 62 thẻ leech không dồn hết vào 04:00
+            const jitterMs = Math.round((lapsesToday * 37) % 3 * 3600000);
+            nextIntervalDays = Math.max(0, (release.getTime() + jitterMs - now) / DAY_MS);
+            newState.buriedOn = todayKey;
+            // Chôn KHÔNG phải xoá: thẻ vẫn tồn tại, chỉ không quay lại hôm nay.
+            newState.needsReformulation = true;
+        }
     } else if (wasInLearningPhase) {
         // 7b. LEARNING STEPS (T1.1): 1 phút → 10 phút → 1 ngày → mới tốt nghiệp Mastered.
         //     Chỉ override lịch; S/S_short/D/reps/lapses/srsUpdatedAt vẫn cập nhật như trên.
         const schedule = scheduleLearningStep(readLearningStep(card), rating, fsrsIntervalDays, {
-            // lapses > 0 => thẻ đã từng thuộc rồi trượt: không áp trần tốt nghiệp 7 ngày.
-            isFreshCard: (Number(newState.lapses) || 0) === 0
+            isFreshCard: (Number(newState.lapses) || 0) === 0,
+            hasLapses: (Number(newState.lapses) || 0) > 0
         });
         newState.srsStatus = schedule.srsStatus;
         newState.learningStep = schedule.learningStep;

@@ -31,6 +31,19 @@ export const LEECH_LAPSE_THRESHOLD = 4;
 export const LEECH_RELEARNING_INTERVAL_MS = 600_000;
 // Bước học tương ứng với bước relearning ở trên (dùng cho learningStep của thẻ leech).
 export const LEECH_RELEARNING_STEP = 1;
+// C′ — TRẦN TỐT NGHIỆP SAU KHI ĐÃ TRƯỢT.
+// Thẻ đã từng quên (lapses > 0) mà bấm "Dễ" thì KHÔNG được nhảy interval như thẻ
+// mới tinh: trace vừa đứt, bằng chứng trí nhớ yếu. Trần 10 ngày để buộc phải
+// retrieval lại trước khi tin tưởng (xem docs/SRS-KHOA-HOC.md §C).
+export const POST_LAPSE_GRADUATION_CAP_DAYS = 10;
+
+// B′ — CHỐNG "BÃO ÔN" TRONG NGÀY.
+// Một thẻ leech sai 2 lần trong cùng một ngày là dấu hiệu massed practice: thêm
+// lượt nữa hôm nay chỉ tạo "thuộc giả" (fluency illusion) chứ không tăng trí nhớ
+// dài hạn. Lần sai thứ 2 → chôn tới sáng mai, gắn cờ cần viết lại thẻ.
+export const LEECH_MAX_SAME_DAY_LAPSES = 2;
+// Ngày bị chôn: 04:00 sáng hôm sau (+ jitter 0–3h để không dồn một giờ cao điểm).
+export const BURIED_RELEASE_HOUR = 4;
 
 // Memory-state clamp bounds from FSRS-7 (fsrs-rs / srs-benchmark)
 export const S_MIN = 0.01;

@@ -126,7 +126,11 @@ const GOLDEN = [
     G('B10 Learning bước 2 + Khó(2) — ở lại bước 2, 1 ngày', learning({ step: 2, elapsedDays: 1 }), 2, 'en-vi', [4.061330, 51.033573, 7.569508, 1.00000000, 86400000, 'Learning', 2, false, 4, 0, 0]),
     G('B11 Learning bước 2 + Nhớ(3) — tốt nghiệp', learning({ step: 2, elapsedDays: 1 }), 3, 'en-vi', [5.221836, 81.823261, 5.950000, 4.29472977, 371064652, 'Mastered', 2, false, 4, 0, 0]),
     G('B12 Learning bước 2 + Dễ(4) — tốt nghiệp', learning({ step: 2, elapsedDays: 1 }), 4, 'en-vi', [5.221836, 88.794662, 3.925615, 7.00000000, 604800000, 'Mastered', 2, false, 4, 0, 0]),
-    G('B13 Learning bước 2, lapses 1 + Nhớ(3) — tái tốt nghiệp KHÔNG bị trần 7 ngày', learning({ step: 2, lapses: 1, reps: 6, stability: 300, stabilityShort: 900, difficulty: 3, elapsedDays: 1 }), 3, 'en-vi', [310.346723, 1027.825095, 2.980000, 365.00000000, 31536000000, 'Mastered', 2, false, 7, 1, 0]),
+    // C′ (PHASE 8): trước đây tái tốt nghiệp sau khi trượt KHÔNG bị trần nên ca này
+    // nhảy thẳng 365 ngày (srsInterval 365, due +365d). Khoa học trí nhớ: vừa trượt
+    // là bằng chứng trace yếu ⇒ tốt nghiệp phải bị trần POST_LAPSE_GRADUATION_CAP_DAYS
+    // = 10 ngày. Snapshot mới dưới đây là thay đổi CÓ CHỦ ĐÍCH (xem docs/SRS-KHOA-HOC.md §C).
+    G('B13 Learning bước 2, lapses 1 + Nhớ(3) — tái tốt nghiệp bị trần 10 ngày (C′)', learning({ step: 2, lapses: 1, reps: 6, stability: 300, stabilityShort: 900, difficulty: 3, elapsedDays: 1 }), 3, 'en-vi', [310.346723, 1027.825095, 2.980000, 10.00000000, 864000000, 'Mastered', 2, false, 7, 1, 0]),
     G('B14 Learning thiếu trường learningStep (thẻ cũ) + Nhớ(3) — coi như bước 0', learning({ step: 'NONE' }), 3, 'en-vi', [3.452982, 26.106175, 5.950000, 0.00694444, 600000, 'Learning', 1, false, 4, 0, 0]),
     G('B15 Learning leech (lapses 4) + Quên(1) — bước relearning 10 phút', learning({ step: 1, lapses: 4 }), 1, 'en-vi', [0.689433, 0.097918, 9.311130, 0.00694444, 600000, 'Learning', 1, true, 2, 5, 0]),
     G('B16 Learning leech (lapses 4) + Nhớ(3)', learning({ step: 1, lapses: 4 }), 3, 'en-vi', [3.452982, 26.106175, 5.950000, 1.00000000, 86400000, 'Learning', 2, true, 4, 4, 0]),

@@ -1090,6 +1090,49 @@ export function mergeDuplicateCards(cardA, cardB) {
     // Lấy phiên âm chuẩn nhất
     const mergedPron = primary.pronunciation || secondary.pronunciation || '';
 
+    // ── A': GỘP TRẠNG THÁI TRÍ NHỚ THEO HƯỚNG THẬN TRỌNG ────────────────────
+    // Bản cũ lấy nguyên `...primary` nên TOÀN BỘ lịch sử của thẻ phụ bị bỏ:
+    // "Mastered (stability 60 ngày, reps 9)" + "New nhưng đã quên 3 lần" ⇒ giữ 60
+    // ngày ⇒ thẻ biến mất 2 tháng dù người học vừa quên nó 3 lần. Sai về mặt
+    // khoa học: mỗi lần quên là bằng chứng trace yếu, không được phép biến mất.
+    // Nguyên tắc: chọn hướng BẢO THỦ (dễ gặp lại hơn) — nhớ nhầm tốn 1 lượt ôn,
+    // quên nhầm tốn cả một từ.
+    const num = v => (Number.isFinite(Number(v)) ? Number(v) : null);
+    const positive = v => { const n = num(v); return n != null && n > 0 ? n : null; };
+    const stabilityA = positive(cardA.stability);
+    const stabilityB = positive(cardB.stability);
+    const stabilityCandidates = [stabilityA, stabilityB].filter(v => v != null);
+    // Chỉ một bên có dữ liệu ⇒ vẫn hạ 20% vì lịch sử còn lại chưa biết.
+    const mergedStability = stabilityCandidates.length === 2
+        ? Math.min(...stabilityCandidates)
+        : (stabilityCandidates.length === 1 ? stabilityCandidates[0] * 0.8 : null);
+
+    const mergedLapses = (num(cardA.lapses) || 0) + (num(cardB.lapses) || 0);
+    const mergedReps = Math.max(num(cardA.reps) || 0, num(cardB.reps) || 0);
+    const difficultyCandidates = [num(cardA.difficulty), num(cardB.difficulty)].filter(v => v != null);
+    const mergedDifficulty = difficultyCandidates.length ? Math.max(...difficultyCandidates) : null;
+
+    // Không được DỜI hạn: lấy hạn sớm nhất của hai bản.
+    const dueCandidates = [num(cardA.srsDueDate), num(cardB.srsDueDate)].filter(v => v != null && v > 0);
+    const mergedDue = dueCandidates.length ? Math.min(...dueCandidates) : null;
+    const intervalCandidates = [positive(cardA.srsInterval), positive(cardB.srsInterval)].filter(v => v != null);
+    let mergedInterval = intervalCandidates.length ? Math.min(...intervalCandidates) : null;
+    // Đã từng quên ⇒ không cho hạn xa quá 10 ngày (xem docs/SRS-KHOA-HOC.md §A).
+    const POST_LAPSE_MAX_INTERVAL_DAYS = 10;
+    if (mergedInterval != null && mergedLapses > 0) {
+        mergedInterval = Math.min(mergedInterval, POST_LAPSE_MAX_INTERVAL_DAYS);
+    }
+    const lastReviewCandidates = [num(cardA.lastReviewDate), num(cardB.lastReviewDate)].filter(v => v != null);
+    const mergedLastReview = lastReviewCandidates.length ? Math.max(...lastReviewCandidates) : null;
+
+    // Trạng thái: nghiêng về phía "còn phải học" nếu có bản nào chưa Mastered.
+    const mergedStatus = Math.min(rankStatus(cardA.srsStatus), rankStatus(cardB.srsStatus)) === 3
+        ? 'Mastered'
+        : (Math.max(rankStatus(cardA.srsStatus), rankStatus(cardB.srsStatus)) === 3 ? 'Learning' : primary.srsStatus);
+    const mergedStep = mergedStatus === 'Mastered'
+        ? (num(primary.learningStep) || 0)
+        : Math.min(num(cardA.learningStep) || 0, num(cardB.learningStep) || 0);
+
     // Thẻ được gộp hoàn chỉnh
     const mergedCard = {
         ...primary,
@@ -1102,6 +1145,31 @@ export function mergeDuplicateCards(cardA, cardB) {
         contentUpdatedAt: nextRevision({ contentUpdatedAt: Math.max(primary.contentUpdatedAt || primary.updatedAt || 0, secondary.contentUpdatedAt || secondary.updatedAt || 0) }, 'contentUpdatedAt'),
         flagsUpdatedAt: nextRevision({ flagsUpdatedAt: Math.max(primary.flagsUpdatedAt || primary.updatedAt || 0, secondary.flagsUpdatedAt || secondary.updatedAt || 0) }, 'flagsUpdatedAt')
     };
+
+    // Áp trạng thái trí nhớ đã gộp thận trọng
+    mergedCard.lapses = mergedLapses;
+    mergedCard.reps = mergedReps;
+    if (mergedDifficulty != null) mergedCard.difficulty = mergedDifficulty;
+    if (mergedStability != null) {
+        mergedCard.stability = mergedStability;
+        mergedCard.stabilityShort = Math.min(
+            positive(mergedCard.stabilityShort) ?? mergedStability,
+            mergedStability
+        );
+    }
+    mergedCard.srsStatus = mergedStatus;
+    mergedCard.learningStep = mergedStep;
+    if (mergedInterval != null) mergedCard.srsInterval = mergedInterval;
+    if (mergedDue != null && mergedInterval != null) {
+        // Hạn = min(hạn cũ, hôm nay + interval đã hạ) để không bị đẩy lùi
+        mergedCard.srsDueDate = Math.min(mergedDue, Date.now() + Math.round(mergedInterval * 86400000));
+    } else if (mergedDue != null) {
+        mergedCard.srsDueDate = mergedDue;
+    }
+    if (mergedLastReview != null) mergedCard.lastReviewDate = mergedLastReview;
+    mergedCard.srsUpdatedAt = Math.max(num(cardA.srsUpdatedAt) || 0, num(cardB.srsUpdatedAt) || 0) || Date.now();
+    mergedCard.isLeech = mergedLapses >= 4;
+    if (mergedCard.isLeech) mergedCard.needsReformulation = true;
 
     // DEDUP-01: thẻ phụ bị đánh dấu xoá sau khi gộp, nên trường nào chỉ thẻ phụ có
     // dữ liệu mà bản chính để trống là MẤT VĨNH VIỄN. Trước đây chỉ 5 trường được

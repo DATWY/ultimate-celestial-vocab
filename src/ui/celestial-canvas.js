@@ -40,6 +40,12 @@ let isSuspended = false;
 let isBoostMode = false;
 let isTypingActive = false;
 const IDLE_TIMEOUT_MS = 1200; // 1.2s without interaction -> graceful sleep to 0% GPU
+// Trước đây: hễ có input/textarea được focus là DỪNG HẲN vòng vẽ ⇒ cả bầu trời sao
+// đứng im, người dùng thấy như "app bị treo" trong lúc gõ từ. Nay VẪN vẽ nhưng hạ
+// nhịp để nhường frame budget cho bàn phím ảo / IME:
+//   desktop 30 FPS → 20 FPS khi gõ | mobile 20 FPS → 12 FPS khi gõ
+const TYPING_INTERVAL_DESKTOP_MS = 50; // 20 FPS
+const TYPING_INTERVAL_MOBILE_MS = 84; // ~12 FPS
 
 // Device detection helper: true only for real mobile screens/devices (never touch laptops)
 export function isMobileDevice() {
@@ -239,7 +245,7 @@ class ShootingStar {
 
 function wakeAndRecordActivity() {
     lastActivityTime = performance.now();
-    if (isBoostMode || isSuspended || !isTabVisible || document.hidden || isTypingActive) return;
+    if (isBoostMode || isSuspended || !isTabVisible || document.hidden) return;
     if (document.body.classList.contains('modal-active') || document.body.classList.contains('window-blurred')) return;
     if (document.querySelectorAll('.modal:not(.hidden)').length > 0) return;
     if (animFrameId) return; // Already running
@@ -254,7 +260,7 @@ export function suspendCelestialCanvas() {
 }
 
 export function resumeCelestialCanvas() {
-    if (isBoostMode || document.hidden || !isTabVisible || isTypingActive) return;
+    if (isBoostMode || document.hidden || !isTabVisible) return;
     if (document.body.classList.contains('modal-active') || document.body.classList.contains('window-blurred')) return;
     if (document.querySelectorAll('.modal:not(.hidden)').length > 0) return;
 
@@ -267,13 +273,14 @@ export function resumeCelestialCanvas() {
 }
 
 export function setTypingActive(active) {
-    isTypingActive = !!active;
-    if (isTypingActive) {
-        stopAnimationLoop();
-    } else {
-        if (!isBoostMode && isTabVisible && !isSuspended) {
-            wakeAndRecordActivity();
-        }
+    const next = !!active;
+    if (next === isTypingActive) return; // không làm gì nếu trạng thái không đổi
+    isTypingActive = next;
+    // Dù bật hay tắt: giữ nguyên vòng vẽ, chỉ đổi nhịp. Nhịp mới áp dụng ngay ở
+    // animate() nên không cần dừng/khởi động lại animation (tránh nháy 1 frame).
+    if (!isBoostMode && isTabVisible && !isSuspended) {
+        lastActivityTime = performance.now();
+        wakeAndRecordActivity();
     }
 }
 
@@ -332,6 +339,20 @@ function attachEventListeners() {
         }, 150);
     }, { passive: true });
     
+    // Gõ phím cũng là "hoạt động": nếu không tính, người dùng đang gõ mà rê chuột
+    // đứng yên thì engine sẽ tự ngủ sau 1.2s và sao đứng im (đúng triệu chứng
+    // "UI đứng khi đang gõ từ"). Chỉ nghe keydown, không đụng vào logic nhập liệu.
+    let lastKeyWake = 0;
+    window.addEventListener('keydown', (e) => {
+        if (isBoostMode) return;
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            const now = performance.now();
+            if (now - lastKeyWake < 120) return; // gộp: gõ nhanh không gọi wake liên tục
+            lastKeyWake = now;
+            wakeAndRecordActivity();
+        }
+    }, { passive: true });
+
     // Mouse movement only tracked on non-touch desktop to save CPU/GPU
     if (!isMobile) {
         let lastMouseWake = 0;
@@ -393,6 +414,24 @@ function attachEventListeners() {
             }
         }
     });
+}
+
+/**
+ * Trạng thái thật của engine sao — dùng cho chẩn đoán và test hồi quy.
+ * Trước đây không có cách nào biết "sao có đang vẽ hay không" từ bên ngoài nên
+ * lỗi "sao đứng khi gõ" không thể đo được.
+ */
+export function getCelestialDiagnostics() {
+    return {
+        animFrameId,
+        isSuspended,
+        isBoostMode,
+        isTypingActive,
+        isTabVisible,
+        stars: stars.length,
+        shootingStars: shootingStars.length,
+        idleMs: Math.round(performance.now() - lastActivityTime)
+    };
 }
 
 export function initCelestialCanvas() {
@@ -457,7 +496,7 @@ export function updateCanvasTheme(darkMode) {
 }
 
 function animate(timestamp) {
-    if (!ctx || !canvas || !isTabVisible || isSuspended || isBoostMode || isTypingActive) {
+    if (!ctx || !canvas || !isTabVisible || isSuspended || isBoostMode) {
         stopAnimationLoop();
         return;
     }
@@ -468,7 +507,9 @@ function animate(timestamp) {
     }
 
     const timeSinceActivity = timestamp - lastActivityTime;
-    const isIdle = timeSinceActivity > IDLE_TIMEOUT_MS;
+    // Đang gõ KHÔNG được coi là idle: nếu coi là idle thì sau 1.2s vòng vẽ tự ngủ
+    // và sao lại đứng im đúng lúc người dùng đang gõ.
+    const isIdle = !isTypingActive && timeSinceActivity > IDLE_TIMEOUT_MS;
     const hasActiveShootingStars = shootingStars.some(ss => ss.active);
 
     // Graceful Drain: If idle and in-flight shooting stars finished their path, pause RAF loop completely
@@ -481,9 +522,12 @@ function animate(timestamp) {
     // Desktop: 30 FPS active (33.3ms), 15 FPS idle (66.6ms)
     // Mobile:  20 FPS active (50.0ms), 10 FPS idle (100ms)
     const isMobile = cachedIsMobile();
-    const targetInterval = isMobile 
-        ? (isIdle ? 100 : 50) 
-        : (isIdle ? 66.6 : 33.33);
+    // Đang gõ: hạ nhịp nhưng KHÔNG dừng — sao vẫn trôi, chỉ tốn ít GPU hơn.
+    const targetInterval = isTypingActive
+        ? (isMobile ? TYPING_INTERVAL_MOBILE_MS : TYPING_INTERVAL_DESKTOP_MS)
+        : isMobile
+            ? (isIdle ? 100 : 50)
+            : (isIdle ? 66.6 : 33.33);
 
     const elapsed = timestamp - lastFrameTime;
     if (elapsed < targetInterval) {
