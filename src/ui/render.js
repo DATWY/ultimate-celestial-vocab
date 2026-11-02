@@ -445,9 +445,19 @@ export function displayCard(index, preserveFlipState = false) {
     DOM.flashcard?.classList.toggle('is-hard-card', isHardWord);
     DOM.cardHardBadge?.classList.toggle('hidden', !isLeechWord || isTypingCard);
     if (isLeechWord && DOM.cardHardBadge) {
-        // T1.4: gợi ý nhẹ ngay trên badge (không thêm modal, không sửa index.html).
-        DOM.cardHardBadge.title = 'Từ này đang chống lại bạn (đã quên ≥ 4 lần). '
-            + 'Thử đổi cách học: viết một câu với từ này hoặc nghe phát âm trước khi lật thẻ.';
+        // B′ (PHASE 9): thẻ vừa bị HOÃN vì sai 2 lần trong cùng ngày phải nói rõ là
+        // "cần viết lại thẻ", không chỉ "khó". Nhãn + title đổi theo trạng thái để
+        // người dùng biết phải LÀM GÌ, thay vì chỉ thấy một nhãn cảnh báo chung.
+        const needsRewrite = cardData.needsReformulation === true;
+        const label = DOM.cardHardBadge.querySelector('span');
+        if (label) label.textContent = needsRewrite ? 'Cần Viết Lại' : 'Cực Khó';
+        DOM.cardHardBadge.classList.toggle('needs-rewrite', needsRewrite);
+        DOM.cardHardBadge.title = needsRewrite
+            ? 'Thẻ này vừa bị tạm hoãn (sai 2 lần trong cùng ngày). Hãy VIẾT LẠI thẻ: '
+              + 'thêm mnemonic hoặc câu ví dụ của riêng bạn, hay tách thành 2 thẻ dễ hơn. '
+              + 'Ôn thêm lượt nữa hôm nay chỉ tạo cảm giác đã thuộc, không tăng trí nhớ dài hạn.'
+            : 'Từ này đang chống lại bạn (đã quên ≥ 4 lần). '
+              + 'Thử đổi cách học: viết một câu với từ này hoặc nghe phát âm trước khi lật thẻ.';
     }
 
     const starIcon = DOM.starBtn?.querySelector('i');

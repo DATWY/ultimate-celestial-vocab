@@ -217,3 +217,24 @@ test('UI: engine sao KHÔNG dừng vòng vẽ khi có input được focus', () 
     // Và phải có diagnostics để đo được (đã dùng cho probe)
     assert.match(src, /export function getCelestialDiagnostics\(\)/);
 });
+
+// ── B′ (PHASE 9): bề mặt hiển thị — nhãn + hành động, không chỉ chôn im lặng ──
+test('B′: badge đổi thành "Cần Viết Lại" khi thẻ vừa bị hoãn', () => {
+    const render = read('src/ui/render.js');
+    assert.match(render, /cardData\.needsReformulation === true/, 'badge phải đọc cờ needsReformulation');
+    assert.match(render, /'Cần Viết Lại' : 'Cực Khó'/, 'phải đổi nhãn theo trạng thái');
+    assert.match(render, /needs-rewrite/, 'phải có class riêng để khác sắc thái');
+    assert.match(render, /VIẾT LẠI thẻ/, 'title phải nói việc cần làm (viết lại thẻ)');
+});
+
+test('B′: khi thẻ bị hoãn phải có toast giải thích, không im lặng', () => {
+    const events = read('src/events.js');
+    assert.match(events, /updatedCard\.needsReformulation && updatedCard\.buriedOn/, 'phải phát hiện thẻ vừa bị hoãn');
+    assert.match(events, /buriedOn !== previousCard\.buriedOn/, 'chỉ báo MỘT lần cho mỗi lần bị hoãn');
+    assert.match(events, /hẹn lại vào sáng mai/, 'toast phải nói rõ điều gì đã xảy ra');
+    assert.match(events, /mnemonic/, 'toast phải gợi ý hành động cụ thể');
+});
+
+test('B′: có CSS riêng cho nhãn "Cần Viết Lại"', () => {
+    assert.match(read('src/css/style.css'), /\.card-hard-badge\.needs-rewrite\s*\{/);
+});

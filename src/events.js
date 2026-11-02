@@ -227,6 +227,18 @@ function processSrsFeedback(rating, autoAdvance = true) {
         playSound(soundToPlay);
 
 
+        // B′ (PHASE 9): vừa bị CHÔN tới sáng mai (sai 2 lần/ngày) ⇒ nói rõ lý do và
+        // việc cần làm. Im lặng thì người dùng chỉ thấy từ "biến mất" mà không hiểu vì sao.
+        if (updatedCard.needsReformulation && updatedCard.buriedOn
+            && updatedCard.buriedOn !== previousCard.buriedOn) {
+            showToast(
+                'Thẻ siêu khó — tạm hoãn',
+                'Sai 2 lần hôm nay nên thẻ được hẹn lại vào sáng mai. Nên viết lại thẻ: '
+                    + 'thêm mnemonic hoặc tách thành 2 thẻ dễ hơn.',
+                'ph-warning'
+            );
+        }
+
         const wasLearningInserted = (updatedCard.srsDueDate <= Date.now() + 10000);
         // Nâng cấp: Chèn lại thẻ nếu đang trong giai đoạn ươm mầm (Learning steps)
         // Nếu nextDueDate <= Date.now() + 10s (được hẹn ngay lập tức)

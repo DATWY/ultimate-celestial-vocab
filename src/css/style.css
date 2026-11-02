@@ -2627,6 +2627,13 @@ body:not(.dark-mode) .example-highlight {
     overflow: visible;
 }
 
+/* B′: thẻ vừa bị hoãn cần VIẾT LẠI — khác sắc thái với "Cực Khó" (chỉ là khó). */
+.card-hard-badge.needs-rewrite {
+    border-color: rgba(244, 114, 182, 0.75);
+    color: #fbcfe8;
+    background: rgba(131, 24, 67, 0.55);
+}
+
 .card-hard-badge::after {
     content: '';
     position: absolute;
