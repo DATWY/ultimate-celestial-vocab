@@ -207,11 +207,47 @@ Thay đổi:
 
 ---
 
+## §F. "Tạm ẩn" — cách trung thực để nói "tôi đã biết từ này", và 3 lỗi phát hiện dọc đường
+
+§C kết luận: muốn chiều "từ này tôi đã biết" thì dùng **tạm ẩn (suspend)**, đừng gọi
+là Mastered. Khi triển khai thì phát hiện tính năng này **chưa từng hoạt động**:
+
+| Nơi | Dòng (trước) | Hành vi |
+|---|---|---|
+| `src/core/card-merge.js` | 34 | `normalizeCard` hardcode `isSuspended: false` ⇒ **mọi lần nạp xoá cờ** |
+| `src/core/card-merge.js` | 103 | merge hai bản ghi: `result.isSuspended = false` |
+| `src/core/state.js` | 283–289 | migration "chế độ tạm ngưng đã bị hủy bỏ" xoá cờ của **mọi** thẻ |
+| `src/core/queue.js` | — | **không nơi nào đọc** `isSuspended` ⇒ cờ vô nghĩa với lịch ôn |
+
+Nói cách khác: trong nhiều phiên bản, người dùng **không có** cách nào nói "từ này
+tôi đã biết" ngoài đường tắt "Dễ → Mastered" — đúng cái sai khoa học ở §C. Đây là lý
+do §C không thể chỉ là "bác bỏ" mà phải kèm một lựa chọn thay thế **hoạt động được**.
+
+Đã sửa: parse đúng (`true`/`1`/`'true'`), merge theo nhóm **FLAGS** (cùng
+`flagsUpdatedAt` với `isStarred`) để bản mới hơn không ghi đè quyết định của người
+dùng, bỏ migration xoá cờ, lọc `isSuspended` ở **cả 5 vòng** dựng hàng đợi và trong
+`isNaturallyDue`, thêm ô tick trong form thêm/sửa và nhãn **"Tạm Ẩn"** trên thẻ.
+
+Đo end-to-end trên `dist` thật (Chrome headless):
+
+```
+form   : { formOpened: true, checkboxFound: true }
+submit : { saved: true, savedSuspended: true }        ← IDB nhận đúng cờ
+reload : { cardShown: "English Word", suspendedNotShown: true }  ← bị loại khỏi phiên học
+```
+
+Bài học giống §D: **cờ dữ liệu không được đọc ở đâu thì tính năng không tồn tại** —
+và chỉ phép đo end-to-end mới phát hiện được, đọc mã nguồn thì không.
+
+---
+
 ## §E. Điều gì KHÔNG được làm (để không tự phá kết quả)
 
 - Không nới trần interval để "bớt thẻ phải ôn" — đó là đánh đổi bằng trí nhớ.
 - Không reset `lapses` khi chôn/sửa thẻ; chỉ hạ `stability` và giữ lịch sử.
 - Không dùng "Dễ" như một đường tắt trạng thái.
+- Không xoá cờ "tạm ẩn" trong bất kỳ normalize/merge/migration nào: đó là quyết định
+  của người dùng, không phải dữ liệu suy ra được.
 - Không ẩn thẻ khó khỏi tầm mắt mà không có hành động sửa thẻ.
 - Không đo "sao có chạy" bằng cách so pixel (sao trôi chậm nên ảnh giống nhau) —
   phải đếm lệnh vẽ.
