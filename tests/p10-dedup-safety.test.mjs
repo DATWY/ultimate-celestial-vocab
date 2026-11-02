@@ -211,3 +211,46 @@ test('P10 CSS: có style cho nhãn chính sách, hành động và mobile 44px',
     }
     assert.match(css, /\.dedup-action-btn\s*\{[\s\S]{0,200}min-height:\s*44px/, 'nút phải >= 44px');
 });
+
+// ── 8. Light mode: KHÔNG được viết màu chỉ cho dark ──────────────────────────
+// Lỗi thật đã xảy ra: block CSS v1 chỉ có màu cho dark mode ⇒ ở light mode chữ
+// hồng nhạt trên nền hồng nhạt (đo 1,28:1) và nút header trắng-trên-trắng (1,00:1).
+// Nếu ai đó lại viết màu cứng không có biến thể light, test này phải đỏ.
+test('P10 CSS LIGHT mode: mọi token phải có biến thể body.dark-mode', () => {
+    const css = read('src/css/style.css');
+    const start = css.indexOf('P10 DEDUP SAFETY');
+    const end = css.indexOf('/P10 DEDUP SAFETY');
+    assert.ok(start > 0 && end > start, 'phải có block P10');
+    const block = css.slice(start, end);
+    // Mọi biến --dd-* khai báo trong #dedup-modal phải được override trong body.dark-mode
+    const lightVars = [...block.matchAll(/^\s{4}--(dd-[a-z-]+):/gm)].map(m => m[1]);
+    assert.ok(lightVars.length >= 15, 'phải khai báo token cho light mode, đang ' + lightVars.length);
+    const darkIdx = block.indexOf('body.dark-mode #dedup-modal');
+    assert.ok(darkIdx > 0, 'phải có block dark-mode');
+    const darkBlock = block.slice(darkIdx, block.indexOf('}', darkIdx));
+    const missing = lightVars.filter(v => !darkBlock.includes('--' + v + ':'));
+    assert.deepEqual(missing, [], 'token thiếu biến thể dark: ' + missing.join(', '));
+});
+
+test('P10 CSS: không còn màu chữ sáng cứng dùng chung cho cả 2 chế độ', () => {
+    const css = read('src/css/style.css');
+    const start = css.indexOf('P10 DEDUP SAFETY');
+    const end = css.indexOf('/P10 DEDUP SAFETY');
+    const full = css.slice(start, end);
+    // Bỏ khối dark-mode ra khỏi vùng kiểm: màu pastel trong đó là HỢP LỆ.
+    const darkStart = full.indexOf('body.dark-mode #dedup-modal');
+    const darkEnd = darkStart >= 0 ? full.indexOf('}', darkStart) : -1;
+    const block = darkStart >= 0 ? full.slice(0, darkStart) + full.slice(darkEnd) : full;
+    // các màu pastel chỉ dùng được trên nền tối
+    // Chỉ chặn việc DÙNG pastel làm MÀU CHỮ trực tiếp (viền/nền pastel là hợp lệ).
+    for (const bad of ['#fbcfe8', '#f9d5e5', '#a5b4fc', '#86efac', '#fcd34d']) {
+        const re = new RegExp('color:\\s*' + bad, 'gi');
+        const hits = block.match(re) || [];
+        assert.equal(hits.length, 0, 'dùng ' + bad + ' làm color: ngoài dark-mode ⇒ vô hình ở light mode');
+    }
+});
+
+test('P10 UI: nhãn preview không nói "sau khi gộp" với cặp không nên gộp', () => {
+    const modal = read('src/ui/modal.js');
+    assert.match(modal, /item\.mergePolicy === 'never' \? 'Nếu gộp, nghĩa sẽ thành:'/, 'phải dùng nhãn có điều kiện');
+});

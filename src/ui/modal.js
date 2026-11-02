@@ -726,7 +726,7 @@ export async function renderDedupPairs() {
             </div>
             ${item.suggestedVietnamese ? `
             <div class="dedup-preview-bar">
-                <span class="preview-label"><i class="ph-bold ph-sparkle"></i> Nghĩa sau khi gộp & làm sạch:</span>
+                <span class="preview-label"><i class="ph-bold ph-sparkle"></i> ${item.mergePolicy === 'never' ? 'Nếu gộp, nghĩa sẽ thành:' : 'Nghĩa sau khi gộp & làm sạch:'}</span>
                 <span class="preview-meaning">${escapeHTML(item.suggestedVietnamese)}</span>
             </div>` : ''}
             ${item.reason ? `<p class="dedup-reason"><i class="ph-bold ph-info"></i> ${escapeHTML(item.reason)}</p>` : ''}

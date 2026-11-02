@@ -17046,12 +17046,58 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
    giới hạn số toast trên máy hẹp để không che kín màn hình.                        */
 
 
-/* ===== P10 DEDUP SAFETY ====================================================
-   Nguyên tắc: màu phải nói đúng MỨC AN TOÀN của hành động, không chỉ "đẹp".
-   - Xanh  = gộp được (trùng thật)
-   - Hổ phách = cần xem tay (lệch chính tả)
-   - Hồng  = KHÔNG nên gộp (biến thể ngữ pháp)
+/* ===== P10 DEDUP SAFETY (v2) ==============================================
+   LỖI ĐÃ SỬA: bản v1 chỉ viết màu cho DARK mode. Ở light mode, chữ hồng nhạt
+   nằm trên nền hồng nhạt ⇒ đo được 1,28:1; nút header trắng trên trắng = 1,00:1.
+   Nay mọi màu đi qua token theo chế độ, mục tiêu >= 4.5:1 (WCAG AA) cho CẢ HAI.
+   Đo bằng scratch/probe_contrast.mjs: đọc màu chữ + nền đã resolve rồi tính tỉ lệ.
    ========================================================================= */
+#dedup-modal {
+    --dd-safe-fg: #15803d;
+    --dd-safe-bg: #dcfce7;
+    --dd-safe-bd: #86efac;
+    --dd-review-fg: #92400e;
+    --dd-review-bg: #fef3c7;
+    --dd-review-bd: #f59e0b;
+    --dd-never-fg: #9d174d;
+    --dd-never-bg: #fce7f3;
+    --dd-never-bd: #f472b6;
+    --dd-note-fg: #831843;
+    --dd-note-bg: #fdf2f8;
+    --dd-note-bd: #db2777;
+    --dd-muted: #475569;
+    --dd-link: #4338ca;
+    --dd-bulk-bg: #f1f5f9;
+    --dd-bulk-bd: #cbd5e1;
+    --dd-bulk-fg: #0f172a;
+    --dd-head-btn-fg: #4338ca;
+    --dd-head-btn-bg: #ede9fe;
+    --dd-head-btn-bd: #c4b5fd;
+}
+
+body.dark-mode #dedup-modal {
+    --dd-safe-fg: #86efac;
+    --dd-safe-bg: rgba(22, 101, 52, 0.5);
+    --dd-safe-bd: rgba(74, 222, 128, 0.5);
+    --dd-review-fg: #fcd34d;
+    --dd-review-bg: rgba(120, 53, 15, 0.5);
+    --dd-review-bd: rgba(251, 191, 36, 0.5);
+    --dd-never-fg: #fbcfe8;
+    --dd-never-bg: rgba(131, 24, 67, 0.55);
+    --dd-never-bd: rgba(244, 114, 182, 0.55);
+    --dd-note-fg: #fbd5e6;
+    --dd-note-bg: rgba(131, 24, 67, 0.28);
+    --dd-note-bd: rgba(244, 114, 182, 0.7);
+    --dd-muted: #94a3b8;
+    --dd-link: #a5b4fc;
+    --dd-bulk-bg: rgba(30, 41, 59, 0.6);
+    --dd-bulk-bd: rgba(148, 163, 184, 0.3);
+    --dd-bulk-fg: #e2e8f0;
+    --dd-head-btn-fg: #ddd6fe;
+    --dd-head-btn-bg: rgba(99, 80, 217, 0.24);
+    --dd-head-btn-bd: rgba(148, 163, 184, 0.4);
+}
+
 .dedup-policy-badge {
     display: inline-flex;
     align-items: center;
@@ -17061,24 +17107,25 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
     font-size: 0.72rem;
     font-weight: 700;
     white-space: nowrap;
+    border: 1px solid transparent;
 }
 
 .dedup-policy-badge.policy-safe {
-    color: #86efac;
-    background: rgba(22, 101, 52, 0.45);
-    border: 1px solid rgba(74, 222, 128, 0.45);
+    color: var(--dd-safe-fg);
+    background: var(--dd-safe-bg);
+    border-color: var(--dd-safe-bd);
 }
 
 .dedup-policy-badge.policy-review {
-    color: #fcd34d;
-    background: rgba(120, 53, 15, 0.45);
-    border: 1px solid rgba(251, 191, 36, 0.45);
+    color: var(--dd-review-fg);
+    background: var(--dd-review-bg);
+    border-color: var(--dd-review-bd);
 }
 
 .dedup-policy-badge.policy-never {
-    color: #fbcfe8;
-    background: rgba(131, 24, 67, 0.5);
-    border: 1px solid rgba(244, 114, 182, 0.5);
+    color: var(--dd-never-fg);
+    background: var(--dd-never-bg);
+    border-color: var(--dd-never-bd);
 }
 
 .dedup-reason {
@@ -17087,18 +17134,18 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
     gap: 6px;
     margin: 10px 2px 0;
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: var(--dd-muted);
 }
 
 .dedup-practice-note {
-    margin: 6px 2px 0;
-    padding: 8px 10px;
-    border-left: 3px solid rgba(244, 114, 182, 0.6);
-    border-radius: 6px;
-    background: rgba(131, 24, 67, 0.18);
-    font-size: 0.8rem;
-    line-height: 1.5;
-    color: #f9d5e5;
+    margin: 8px 2px 0;
+    padding: 9px 12px;
+    border-left: 3px solid var(--dd-note-bd);
+    border-radius: 8px;
+    background: var(--dd-note-bg);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--dd-note-fg);
 }
 
 .dedup-action-btn {
@@ -17109,22 +17156,17 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
     min-height: 44px;
     padding: 10px 18px;
     border-radius: 12px;
-    border: 1px solid rgba(244, 114, 182, 0.55);
-    background: rgba(131, 24, 67, 0.42);
-    color: #fbcfe8;
+    border: 1px solid var(--dd-never-bd);
+    background: var(--dd-never-bg);
+    color: var(--dd-never-fg);
     font-weight: 700;
     cursor: pointer;
-    transition: transform 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .dedup-action-btn:hover {
-    background: rgba(157, 23, 77, 0.55);
+    filter: brightness(0.97);
     transform: translateY(-1px);
-}
-
-.dedup-pair-actions .primary-btn {
-    min-height: 44px;
-    padding: 10px 18px;
 }
 
 .dedup-link-btn {
@@ -17132,7 +17174,7 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
     padding: 0 10px;
     border: 0;
     background: none;
-    color: #a5b4fc;
+    color: var(--dd-link);
     font-size: 0.82rem;
     font-weight: 600;
     text-decoration: underline;
@@ -17141,7 +17183,12 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
 }
 
 .dedup-link-btn:hover {
-    color: #c7d2fe;
+    filter: brightness(1.08);
+}
+
+.dedup-pair-actions .primary-btn {
+    min-height: 44px;
+    padding: 10px 18px;
 }
 
 .dedup-bulk-row {
@@ -17153,16 +17200,17 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
     margin-bottom: 14px;
     padding: 12px 14px;
     border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid var(--dd-bulk-bd);
+    background: var(--dd-bulk-bg);
+    color: var(--dd-bulk-fg);
 }
 
 .dedup-bulk-facts {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 14px;
+    gap: 8px 16px;
     font-size: 0.8rem;
-    color: #cbd5e1;
+    color: var(--dd-bulk-fg);
 }
 
 .dedup-fact strong {
@@ -17170,15 +17218,15 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
 }
 
 .dedup-fact.fact-safe {
-    color: #86efac;
+    color: var(--dd-safe-fg);
 }
 
 .dedup-fact.fact-never {
-    color: #fbcfe8;
+    color: var(--dd-never-fg);
 }
 
 .dedup-fact.fact-review {
-    color: #fcd34d;
+    color: var(--dd-review-fg);
 }
 
 .dedup-bulk-actions {
@@ -17194,34 +17242,36 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
     white-space: nowrap;
 }
 
-/* Nút "Gộp & dọn an toàn" ở header: không được là điểm nhấn thị giác mạnh nhất,
-   vì hành động chính giờ nằm ở hàng ngữ cảnh (chỉ rõ gộp bao nhiêu cặp). */
-#merge-all-dups-btn {
-    background: rgba(99, 80, 217, 0.22);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: none;
-    font-weight: 600;
-}
-
-#merge-all-dups-btn:hover {
-    background: rgba(99, 80, 217, 0.34);
-}
-
 .dedup-bulk-btn.secondary {
-    background: rgba(131, 24, 67, 0.4);
-    border: 1px solid rgba(244, 114, 182, 0.5);
-    color: #fbcfe8;
+    background: var(--dd-never-bg);
+    border: 1px solid var(--dd-never-bd);
+    color: var(--dd-never-fg);
 }
 
 .dedup-kept-count {
-    color: #94a3b8;
+    color: var(--dd-muted);
     font-weight: 500;
 }
 
 .dedup-empty-note {
     margin-top: 8px;
     font-size: 0.85rem;
-    color: #94a3b8;
+    color: var(--dd-muted);
+}
+
+/* Nút "Gộp & dọn an toàn" ở header: hành động chính nằm ở hàng ngữ cảnh, nên nút
+   này chỉ cần đủ tương phản và không tranh chấp thị giác — nhưng KHÔNG được vô hình. */
+#dedup-modal #merge-all-dups-btn {
+    margin-top: 6px;
+    box-shadow: none;
+    font-weight: 600;
+    color: var(--dd-head-btn-fg);
+    background: var(--dd-head-btn-bg);
+    border: 1px solid var(--dd-head-btn-bd);
+}
+
+#dedup-modal #merge-all-dups-btn:hover {
+    filter: brightness(1.05);
 }
 
 @media (max-width: 768px) {
@@ -17249,6 +17299,7 @@ body:not(.dark-mode) .header-menu-item:hover:not(:disabled) {
         min-height: 44px;
     }
 }
+
 /* ===== /P10 DEDUP SAFETY ===== */
 
 @media (max-width: 900px) {
