@@ -589,6 +589,56 @@ export function calculateSemanticSimilarity(vietnameseA, vietnameseB) {
  * Kiểm tra 2 thẻ có phải là trùng lặp (Duplicate) với thuật toán Tìm Kiếm Mờ v5.0
  * Có cơ chế bảo vệ ngăn chặn gộp nhầm Word Families (adj/adv, verb/noun) và từ khác nghĩa.
  */
+/**
+ * CHÍNH SÁCH GỘP (P10) — tách "trùng thật" khỏi "biến thể hình thái".
+ *
+ * Vì sao cần: bảng lọc trùng trước đây coi mọi cặp isDuplicate là như nhau và chỉ
+ * cho MỘT hành động "Gộp 2 thẻ này". Nhưng INFLECTION (facility⟷facilities,
+ * advise⟷advised, lease⟷leasing) là HAI DẠNG của cùng một từ — hai mục tiêu truy
+ * xuất khác nhau. Gộp chúng sẽ:
+ *   • xoá mất việc luyện đúng dạng khi dùng (thẻ "Advise" mất dạng bị động),
+ *   • tạo cue nhập nhằng (một đầu từ mang nhiều nghĩa khác vai trò ngữ pháp),
+ *   • trộn hai lịch sử FSRS có độ khó khác nhau.
+ * Khoa học trí nhớ: retrieval chỉ chuyển giao khi cue lúc ôn khớp cue lúc dùng.
+ */
+const MERGE_POLICY_BY_CATEGORY = {
+    EXACT: 'safe',      // cùng mặt chữ, cùng nghĩa ⇒ gộp được
+    FUZZY_TYPO: 'review', // lệch chính tả ⇒ phải người xác nhận
+    INFLECTION: 'never'   // hai dạng của một từ ⇒ KHÔNG gộp
+};
+
+const PRACTICE_NOTE_BY_CATEGORY = {
+    INFLECTION: 'Hai dạng của cùng một từ — giữ riêng để luyện đúng dạng khi dùng '
+        + '(ví dụ: advise ≠ advised, lease ≠ leasing).',
+    FUZZY_TYPO: 'Chỉ lệch chính tả — hãy kiểm tra đâu là từ đúng trước khi gộp; '
+        + 'gộp nhầm sẽ xoá một từ vĩnh viễn.',
+    EXACT: ''
+};
+
+/** Khoá cặp ổn định, không phụ thuộc thứ tự tham số (dùng cho "giữ riêng"). */
+export function dedupPairKey(cardA, cardB) {
+    const norm = card => String(card?.id ?? card?.english ?? '').trim().toLowerCase();
+    const a = norm(cardA);
+    const b = norm(cardB);
+    return a <= b ? a + '|' + b : b + '|' + a;
+}
+
+/**
+ * Bọc isDuplicateCard để trả thêm `mergePolicy` + `practiceNote`.
+ * Dùng hàm này ở UI/tests thay vì tự suy từ category.
+ */
+export function classifyDedupPair(cardA, cardB) {
+    const base = isDuplicateCard(cardA, cardB);
+    const mergePolicy = base.isDuplicate
+        ? (MERGE_POLICY_BY_CATEGORY[base.category] || 'review')
+        : 'never';
+    return {
+        ...base,
+        mergePolicy,
+        practiceNote: PRACTICE_NOTE_BY_CATEGORY[base.category] || ''
+    };
+}
+
 export function isDuplicateCard(cardA, cardB) {
     if (!cardA || !cardB || !cardA.english || !cardB.english) {
         return { isDuplicate: false, confidence: 0, category: 'DIFFERENT', reason: 'Không trùng lặp' };
@@ -882,13 +932,16 @@ function matchCandidatePairs(candidatePairsMap) {
         const check = isDuplicateCard(cA, cB);
         if (check.isDuplicate) {
             const cleanedSuggestedMeaning = cleanAndDeduplicateVietnamese(`${cA.vietnamese}, ${cB.vietnamese}`);
+            const policy = classifyDedupPair(cA, cB);
             duplicateGroups.push({
-                key: `${cA.english}_${cB.english}`,
+                key: dedupPairKey(cA, cB),
                 cardA: cA,
                 cardB: cB,
                 confidence: check.confidence,
                 category: check.category,
                 reason: check.reason,
+                mergePolicy: policy.mergePolicy,
+                practiceNote: policy.practiceNote,
                 suggestedVietnamese: cleanedSuggestedMeaning
             });
         }
@@ -955,13 +1008,16 @@ export async function findDuplicatePairsAsync(vocabulary, options = {}) {
         const [cA, cB] = entries[i];
         const check = isDuplicateCard(cA, cB);
         if (check.isDuplicate) {
+            const policy = classifyDedupPair(cA, cB);
             duplicateGroups.push({
-                key: `${cA.english}_${cB.english}`,
+                key: dedupPairKey(cA, cB),
                 cardA: cA,
                 cardB: cB,
                 confidence: check.confidence,
                 category: check.category,
                 reason: check.reason,
+                mergePolicy: policy.mergePolicy,
+                practiceNote: policy.practiceNote,
                 suggestedVietnamese: cleanAndDeduplicateVietnamese(`${cA.vietnamese}, ${cB.vietnamese}`)
             });
         }

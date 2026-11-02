@@ -17,6 +17,7 @@ function syncCardToFirebase(card) {
     if (!_syncModulePromise) _syncModulePromise = import('../core/sync.js');
     _syncModulePromise.then(module => module.syncCardToFirebase?.(card)).catch(() => {});
 }
+import { loadKeptSeparate, keepPairSeparate, keepPairsSeparate, clearKeptSeparate } from '../core/dedup-preferences.js';
 import { findDuplicatePairs, findDuplicatePairsAsync, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese, selectAutoMergePairs } from '../core/dedup.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from './celestial-canvas.js';
@@ -539,33 +540,87 @@ export async function renderDedupPairs() {
     });
     if (scanToken !== _dedupScanToken) return;
     _lastDedupScan = { vocabulary, dups };
+    // P10: cặp người dùng đã quyết định "giữ riêng" không được hiện lại (nếu không,
+    // sự dai dẳng sẽ ép người dùng bấm "Gộp" cho xong — và mất một từ).
+    const keptSeparate = loadKeptSeparate();
+    const actionable = dups.filter(d => !keptSeparate.has(d.key));
+    const keptCount = dups.length - actionable.length;
+    const mergeableCount = actionable.filter(d => d.mergePolicy === 'safe').length;
+    const variantCount = actionable.filter(d => d.mergePolicy === 'never').length;
+    const reviewCount = actionable.filter(d => d.mergePolicy === 'review').length;
     const internalDups = findInternalDuplicateCards(vocabulary);
     
     if (!DOM.dedupList || !DOM.dedupSummaryText) return;
     
     DOM.dedupList.innerHTML = '';
     
-    if (dups.length === 0 && internalDups.length === 0) {
+    if (actionable.length === 0 && internalDups.length === 0) {
         DOM.dedupSummaryText.innerHTML = `<strong>Tuyệt vời!</strong> Toàn bộ <strong>${vocabulary.filter(w => !w.isDeleted).length} từ</strong> trong kho từ vựng đều độc nhất và sạch sẽ 100%, không phát hiện từ trùng lặp nào.`;
         DOM.mergeAllDupsBtn?.classList.add('hidden');
+        const keptNote = keptCount > 0
+            ? `<p class="dedup-empty-note">${keptCount} cặp đã được bạn chọn <strong>giữ riêng</strong> (biến thể ngữ pháp) — không hiện lại nữa.`
+                + ` <button type="button" id="restore-kept-pairs-btn" class="dedup-link-btn">Hoàn tác</button></p>`
+            : '';
         DOM.dedupList.innerHTML = `
             <div class="dedup-empty-state">
                 <i class="ph-fill ph-check-circle"></i>
                 <p>Kho từ vựng đã được làm sạch và tối ưu hóa 100%!</p>
+                ${keptNote}
             </div>
         `;
+        DOM.dedupList.querySelector('#restore-kept-pairs-btn')?.addEventListener('click', () => {
+            clearKeptSeparate();
+            showToast('Đã hoàn tác', 'Toàn bộ cặp "giữ riêng" sẽ hiện lại trong danh sách.', 'ph-arrow-counter-clockwise');
+            void renderDedupPairs();
+        });
         return;
     }
     
     let summaryText = '';
-    if (dups.length > 0 && internalDups.length > 0) {
-        summaryText = `Phát hiện <strong>${dups.length} cặp từ trùng lặp</strong> và <strong>${internalDups.length} thẻ bị lặp từ trong phần nghĩa</strong>:`;
-    } else if (dups.length > 0) {
-        summaryText = `Phát hiện <strong>${dups.length} cặp từ trùng lặp</strong> cần xử lý:`;
+    if (actionable.length > 0 && internalDups.length > 0) {
+        summaryText = `Phát hiện <strong>${actionable.length} cặp cần xem</strong> và <strong>${internalDups.length} thẻ bị lặp từ trong phần nghĩa</strong>:`;
+    } else if (actionable.length > 0) {
+        summaryText = `Phát hiện <strong>${actionable.length} cặp cần xem</strong>:`;
     } else {
         summaryText = `Phát hiện <strong>${internalDups.length} thẻ có phần nghĩa tiếng Việt bị lặp từ</strong> cần làm sạch:`;
     }
+    if (keptCount > 0) {
+        summaryText += ` <span class="dedup-kept-count">(${keptCount} cặp đã giữ riêng)</span>`;
+    }
     DOM.dedupSummaryText.innerHTML = summaryText;
+
+    // ── Hàng hành động hàng loạt AN TOÀN ────────────────────────────────────
+    // Chỉ cặp EXACT (cùng mặt chữ, cùng nghĩa) mới được gộp hàng loạt; biến thể
+    // ngữ pháp chỉ có một hành động an toàn là "giữ riêng".
+    if (actionable.length > 0) {
+        const bulk = document.createElement('div');
+        bulk.className = 'dedup-bulk-row';
+        bulk.innerHTML = `
+            <div class="dedup-bulk-facts">
+                <span class="dedup-fact fact-safe"><strong>${mergeableCount}</strong> trùng thật (gộp được)</span>
+                <span class="dedup-fact fact-never"><strong>${variantCount}</strong> biến thể (giữ riêng)</span>
+                ${reviewCount > 0 ? `<span class="dedup-fact fact-review"><strong>${reviewCount}</strong> lệch chính tả (cần xem)</span>` : ''}
+            </div>
+            <div class="dedup-bulk-actions">
+                ${mergeableCount > 0 ? `<button type="button" id="bulk-merge-exact-btn" class="primary-btn dedup-bulk-btn"><i class="ph-bold ph-arrows-merge"></i> Gộp ${mergeableCount} cặp trùng thật</button>` : ''}
+                ${variantCount > 0 ? `<button type="button" id="bulk-keep-variants-btn" class="dedup-bulk-btn secondary"><i class="ph-bold ph-git-branch"></i> Giữ riêng ${variantCount} cặp biến thể</button>` : ''}
+                ${keptCount > 0 ? `<button type="button" id="bulk-restore-btn" class="dedup-link-btn">Hoàn tác ${keptCount} cặp đã giữ</button>` : ''}
+            </div>
+        `;
+        DOM.dedupList.appendChild(bulk);
+        bulk.querySelector('#bulk-merge-exact-btn')?.addEventListener('click', () => executeMergeAll());
+        bulk.querySelector('#bulk-keep-variants-btn')?.addEventListener('click', () => {
+            const keys = actionable.filter(d => d.mergePolicy === 'never').map(d => d.key);
+            const added = keepPairsSeparate(keys);
+            showToast('Đã giữ riêng', added + ' cặp biến thể ngữ pháp sẽ không hiện lại.', 'ph-git-branch');
+            void renderDedupPairs();
+        });
+        bulk.querySelector('#bulk-restore-btn')?.addEventListener('click', () => {
+            clearKeptSeparate();
+            showToast('Đã hoàn tác', 'Toàn bộ cặp "giữ riêng" sẽ hiện lại.', 'ph-arrow-counter-clockwise');
+            void renderDedupPairs();
+        });
+    }
     DOM.mergeAllDupsBtn?.classList.remove('hidden');
 
     // 1. Nếu có thẻ bị lặp nghĩa nội bộ, hiển thị hộp cảnh báo & nút 1-click làm sạch
@@ -604,8 +659,8 @@ export async function renderDedupPairs() {
         DOM.dedupList.appendChild(internalEl);
     }
     
-    // 2. Render danh sách các cặp từ trùng lặp
-    dups.forEach((item, idx) => {
+    // 2. Render danh sách các cặp từ trùng lặp (chỉ cặp chưa "giữ riêng")
+    actionable.forEach((item, idx) => {
         const pairEl = document.createElement('div');
         pairEl.className = 'dedup-pair-card';
         
@@ -620,6 +675,12 @@ export async function renderDedupPairs() {
         } else {
             categoryBadge = `<span class="dedup-category-badge badge-exact"><i class="ph-bold ph-sparkle"></i> Tương đồng cao</span>`;
         }
+        // P10: nói rõ cặp này CÓ ĐƯỢC GỘP HAY KHÔNG, ngay trong nhãn.
+        const policyBadge = item.mergePolicy === 'never'
+            ? '<span class="dedup-policy-badge policy-never"><i class="ph-bold ph-prohibit"></i> Không nên gộp</span>'
+            : (item.mergePolicy === 'review'
+                ? '<span class="dedup-policy-badge policy-review"><i class="ph-bold ph-magnifying-glass"></i> Cần xem tay</span>'
+                : '<span class="dedup-policy-badge policy-safe"><i class="ph-bold ph-check"></i> Gộp được</span>');
 
         const safeEngA = escapeHTML(item.cardA.english);
         const safeEngB = escapeHTML(item.cardB.english);
@@ -634,7 +695,8 @@ export async function renderDedupPairs() {
                 <span class="dedup-pair-key">${displayKey}</span>
                 <div class="dedup-badges-group">
                     ${categoryBadge}
-                    <span class="dedup-confidence-badge">${(item.confidence * 100).toFixed(0)}% tương đồng</span>
+                    ${policyBadge}
+                    ${item.category === 'EXACT' ? '' : `<span class="dedup-confidence-badge">${(item.confidence * 100).toFixed(0)}% tương đồng</span>`}
                 </div>
             </div>
             <div class="dedup-pair-grid">
@@ -667,13 +729,36 @@ export async function renderDedupPairs() {
                 <span class="preview-label"><i class="ph-bold ph-sparkle"></i> Nghĩa sau khi gộp & làm sạch:</span>
                 <span class="preview-meaning">${escapeHTML(item.suggestedVietnamese)}</span>
             </div>` : ''}
+            ${item.reason ? `<p class="dedup-reason"><i class="ph-bold ph-info"></i> ${escapeHTML(item.reason)}</p>` : ''}
+            ${item.practiceNote ? `<p class="dedup-practice-note">${escapeHTML(item.practiceNote)}</p>` : ''}
             <div class="dedup-pair-actions">
-                <button class="primary-btn merge-single-btn" data-key="${escapeHTML(item.key)}"><i class="ph-bold ph-arrows-merge"></i> Gộp 2 thẻ này</button>
+                ${item.mergePolicy === 'never'
+                    ? `<button class="dedup-action-btn keep-separate-btn" data-key="${escapeHTML(item.key)}"><i class="ph-bold ph-git-branch"></i> Giữ riêng (2 từ khác nhau)</button>
+                       <button class="dedup-link-btn force-merge-btn" data-key="${escapeHTML(item.key)}">Vẫn gộp…</button>`
+                    : (item.mergePolicy === 'review'
+                        ? `<button class="primary-btn merge-single-btn" data-key="${escapeHTML(item.key)}"><i class="ph-bold ph-arrows-merge"></i> Gộp (đã kiểm tra chính tả)</button>
+                           <button class="dedup-link-btn keep-separate-btn" data-key="${escapeHTML(item.key)}">Giữ riêng</button>`
+                        : `<button class="primary-btn merge-single-btn" data-key="${escapeHTML(item.key)}"><i class="ph-bold ph-arrows-merge"></i> Gộp 2 thẻ này</button>
+                           <button class="dedup-link-btn keep-separate-btn" data-key="${escapeHTML(item.key)}">Giữ riêng</button>`)}
             </div>
         `;
         
         pairEl.querySelector('.merge-single-btn')?.addEventListener('click', () => {
             executeMergeSingle(item.cardA, item.cardB);
+        });
+        pairEl.querySelector('.keep-separate-btn')?.addEventListener('click', () => {
+            keepPairSeparate(item.key);
+            showToast('Đã giữ riêng', `"${item.cardA.english}" và "${item.cardB.english}" sẽ không bị gộp và không hiện lại.`, 'ph-git-branch');
+            void renderDedupPairs();
+        });
+        pairEl.querySelector('.force-merge-btn')?.addEventListener('click', () => {
+            // Gộp biến thể là hành động PHÁ DỮ LIỆU HỌC: phải nói rõ hậu quả.
+            showConfirmation(
+                `"${item.cardA.english}" và "${item.cardB.english}" là hai DẠNG của cùng một từ. `
+                + 'Gộp sẽ xoá một dạng và nhập nghĩa của nó vào thẻ còn lại — bạn sẽ không còn luyện dạng đó nữa. '
+                + 'Chỉ nên gộp nếu bạn chắc chắn không cần học riêng dạng này. Vẫn gộp?',
+                () => executeMergeSingle(item.cardA, item.cardB)
+            );
         });
         
         DOM.dedupList.appendChild(pairEl);
