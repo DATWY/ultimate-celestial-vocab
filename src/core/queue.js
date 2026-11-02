@@ -111,7 +111,7 @@ function collectDueMasteredIndexes(vocabulary, filterLowerCase, now = Date.now()
     const due = [];
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted || word.srsStatus !== 'Mastered') continue;
+        if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Mastered') continue;
         if (!cardMatchesTopic(word, filterLowerCase)) continue;
         if (word.lastReviewDate && getLocalDateString(word.lastReviewDate) === todayStr) continue;
         if (!word.srsDueDate || word.srsDueDate <= endOfDay) due.push(i);
@@ -180,7 +180,7 @@ export function getPendingLearningCards(vocabulary, filterLowerCase = 'all') {
     const pending = [];
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted || word.srsStatus !== 'Learning') continue;
+        if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Learning') continue;
         const topicMatch = cardMatchesTopic(word, filterLowerCase);
         if (topicMatch) {
             pending.push({ index: i, dueDate: word.srsDueDate || 0 });
@@ -208,7 +208,7 @@ export function getSmartCramCards(vocabulary, filterLowerCase) {
 
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted || word.srsStatus !== 'Mastered') continue;
+        if (!word || word.isDeleted || word.isSuspended || word.srsStatus !== 'Mastered') continue;
 
         const topicMatch = cardMatchesTopic(word, filterLowerCase);
             
@@ -266,7 +266,7 @@ export function buildReviewQueue() {
     
     for (let i = 0; i < vocabulary.length; i++) {
         const word = vocabulary[i];
-        if (!word || word.isDeleted) continue;
+        if (!word || word.isDeleted || word.isSuspended) continue;
         
         const topicMatch = cardMatchesTopic(word, filterLowerCase);
             
@@ -415,7 +415,11 @@ export function triggerSmartCramming() {
  * nơi nào không muốn vậy thì tự kiểm tra srsDueDate trước khi gọi.
  */
 export function isNaturallyDue(word, now = Date.now()) {
-    if (!word || word.isDeleted) return false;
+    if (!word || word.isDeleted || word.isSuspended) return false;
+    // C′-thay-thế (PHASE 9): thẻ TẠM ẨN không bao giờ tới hạn. Trước đây cờ
+    // `isSuspended` có trong dữ liệu nhưng KHÔNG nơi nào đọc ⇒ không có cách
+    // trung thực nào để nói "từ này tôi đã biết" (ngoài đường tắt sai khoa học).
+    if (word.isSuspended) return false;
     if (!word.srsDueDate) return true;
     if (word.srsStatus === 'Mastered') {
         const reviewedToday = word.lastReviewDate &&

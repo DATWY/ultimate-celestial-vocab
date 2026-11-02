@@ -443,21 +443,30 @@ export function displayCard(index, preserveFlipState = false) {
     
     // Hard badge & card glow (Chỉ hiện cho từ Cực Khó khi không ở giao diện gõ)
     DOM.flashcard?.classList.toggle('is-hard-card', isHardWord);
-    DOM.cardHardBadge?.classList.toggle('hidden', !isLeechWord || isTypingCard);
-    if (isLeechWord && DOM.cardHardBadge) {
+    // C′-thay-thế (PHASE 9): thẻ TẠM ẨN cũng phải hiện nhãn — nếu không, "tạm ẩn"
+    // trở thành thao tác mù: từ biến khỏi lịch ôn mà người dùng không biết vì sao.
+    const isSuspendedCard = cardData.isSuspended === true;
+    DOM.cardHardBadge?.classList.toggle('hidden', !(isLeechWord || isSuspendedCard) || isTypingCard);
+    if ((isLeechWord || isSuspendedCard) && DOM.cardHardBadge) {
         // B′ (PHASE 9): thẻ vừa bị HOÃN vì sai 2 lần trong cùng ngày phải nói rõ là
         // "cần viết lại thẻ", không chỉ "khó". Nhãn + title đổi theo trạng thái để
         // người dùng biết phải LÀM GÌ, thay vì chỉ thấy một nhãn cảnh báo chung.
         const needsRewrite = cardData.needsReformulation === true;
         const label = DOM.cardHardBadge.querySelector('span');
-        if (label) label.textContent = needsRewrite ? 'Cần Viết Lại' : 'Cực Khó';
-        DOM.cardHardBadge.classList.toggle('needs-rewrite', needsRewrite);
-        DOM.cardHardBadge.title = needsRewrite
-            ? 'Thẻ này vừa bị tạm hoãn (sai 2 lần trong cùng ngày). Hãy VIẾT LẠI thẻ: '
-              + 'thêm mnemonic hoặc câu ví dụ của riêng bạn, hay tách thành 2 thẻ dễ hơn. '
-              + 'Ôn thêm lượt nữa hôm nay chỉ tạo cảm giác đã thuộc, không tăng trí nhớ dài hạn.'
-            : 'Từ này đang chống lại bạn (đã quên ≥ 4 lần). '
-              + 'Thử đổi cách học: viết một câu với từ này hoặc nghe phát âm trước khi lật thẻ.';
+        DOM.cardHardBadge.classList.toggle('is-suspended', isSuspendedCard);
+        DOM.cardHardBadge.classList.toggle('needs-rewrite', needsRewrite && !isSuspendedCard);
+        if (label) {
+            label.textContent = isSuspendedCard ? 'Tạm Ẩn' : (needsRewrite ? 'Cần Viết Lại' : 'Cực Khó');
+        }
+        DOM.cardHardBadge.title = isSuspendedCard
+            ? 'Thẻ này đang TẠM ẨN nên không xuất hiện trong lịch ôn. '
+              + 'Mở "Sửa" và bỏ dấu "Tạm ẩn" khi bạn muốn học lại từ này.'
+            : (needsRewrite
+                ? 'Thẻ này vừa bị tạm hoãn (sai 2 lần trong cùng ngày). Hãy VIẾT LẠI thẻ: '
+                  + 'thêm mnemonic hoặc câu ví dụ của riêng bạn, hay tách thành 2 thẻ dễ hơn. '
+                  + 'Ôn thêm lượt nữa hôm nay chỉ tạo cảm giác đã thuộc, không tăng trí nhớ dài hạn.'
+                : 'Từ này đang chống lại bạn (đã quên ≥ 4 lần). '
+                  + 'Thử đổi cách học: viết một câu với từ này hoặc nghe phát âm trước khi lật thẻ.');
     }
 
     const starIcon = DOM.starBtn?.querySelector('i');

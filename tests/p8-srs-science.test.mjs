@@ -238,3 +238,46 @@ test('B′: khi thẻ bị hoãn phải có toast giải thích, không im lặn
 test('B′: có CSS riêng cho nhãn "Cần Viết Lại"', () => {
     assert.match(read('src/css/style.css'), /\.card-hard-badge\.needs-rewrite\s*\{/);
 });
+
+// ── C′-thay-thế: TẠM ẨN — cách trung thực để nói "tôi đã biết từ này" ────────
+const { isNaturallyDue } = await import('../src/core/queue.js');
+
+test('Tạm ẩn: thẻ đã tạm ẩn KHÔNG BAO GIỜ tới hạn (kể cả khi quá hạn nặng)', () => {
+    const overdue = card({ srsStatus: 'New', srsDueDate: null });
+    assert.equal(isNaturallyDue(overdue, now), true, 'thẻ bình thường vẫn tới hạn');
+    assert.equal(isNaturallyDue({ ...overdue, isSuspended: true }, now), false, 'tạm ẩn phải bị loại');
+    const masteredOverdue = card({ srsDueDate: now - 30 * DAY });
+    assert.equal(isNaturallyDue(masteredOverdue, now), true);
+    assert.equal(isNaturallyDue({ ...masteredOverdue, isSuspended: true }, now), false);
+});
+
+test('Tạm ẩn: hàng đợi lọc isSuspended ở MỌI vòng (không chỉ hàm due)', () => {
+    const queue = read('src/core/queue.js');
+    const guards = queue.match(/word\.isDeleted \|\| word\.isSuspended/g) || [];
+    assert.ok(guards.length >= 5, `phải lọc ở >=5 chỗ, đang ${guards.length}`);
+});
+
+test('Tạm ẩn: form thêm/sửa có ô tick và submit ghi đúng cờ', () => {
+    const html = read('index.html');
+    assert.match(html, /id="input-suspended"/, 'phải có ô tick trong form');
+    assert.match(html, /Tạm ẩn \(không đưa vào lịch ôn\)/, 'nhãn phải giải thích rõ');
+    const modal = read('src/ui/modal.js');
+    assert.match(
+        modal,
+        /isSuspended: DOM\.inputSuspended \? DOM\.inputSuspended\.checked === true/,
+        'submit phải ghi cờ'
+    );
+    assert.match(
+        modal,
+        /inputSuspended\) DOM\.inputSuspended\.checked = wordData\.isSuspended === true/,
+        'mở form phải nạp lại trạng thái'
+    );
+});
+
+test('Tạm ẩn: thẻ đang tạm ẩn phải hiện nhãn, không biến mất im lặng', () => {
+    const render = read('src/ui/render.js');
+    assert.match(render, /const isSuspendedCard = cardData\.isSuspended === true;/);
+    assert.match(render, /'Tạm Ẩn'/, 'nhãn riêng cho trạng thái tạm ẩn');
+    assert.match(render, /is-suspended/, 'class riêng để CSS tách sắc thái');
+    assert.match(read('src/css/style.css'), /\.card-hard-badge\.is-suspended\s*\{/);
+});

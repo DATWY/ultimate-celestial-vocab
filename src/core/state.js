@@ -257,7 +257,6 @@ export async function loadVocabulary() {
 
     _allTags = new Set(['all']);
     resetVocabulary();
-    let hasSuspendedMigration = false;
 
     if (Array.isArray(savedVocab)) {
         savedVocab.forEach(word => {
@@ -280,20 +279,18 @@ export async function loadVocabulary() {
             word.reps = Number(word.reps) || 0;
             word.anchor = Number(word.anchor) || 0;
             word.modality = word.modality || 'en-vi';
-            // Tự động bỏ trạng thái tạm ngưng cho mọi từ vựng trong cơ sở dữ liệu (chế độ tạm ngưng đã bị hủy bỏ hoàn toàn)
-            if (word.isSuspended) {
-                word.isSuspended = false;
-                hasSuspendedMigration = true;
-            } else {
-                word.isSuspended = false;
-            }
+            // PHASE 9: BỎ migration xoá cờ tạm ngưng. Migration cũ ("chế độ tạm ngưng
+            // đã bị hủy bỏ hoàn toàn") khiến `isSuspended` thành dữ liệu chết: mọi lần
+            // nạp đều ghi đè về false, nên người dùng KHÔNG có cách trung thực nào để
+            // nói "từ này tôi đã biết" (ngoài đường tắt "Dễ → Mastered" sai khoa học).
+            // Giờ cờ được giữ nguyên; người dùng tự bật/tắt trong form thêm/sửa.
+            word.isSuspended = word.isSuspended === true
+                || word.isSuspended === 1
+                || word.isSuspended === 'true';
             if (!word.id) word.id = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).substring(2, 10));
             vocabulary.push(normalizeCard(word));
             word.tags.forEach(tag => _allTags.add(tag));
         });
-        if (hasSuspendedMigration) {
-            saveAllVocabularyToDB(vocabulary).catch(console.error);
-        }
     }
 
     // Load Daily Stats

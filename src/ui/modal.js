@@ -222,6 +222,7 @@ export function openAddEditModal(isEditing = false, wordData = null) {
         DOM.inputPronunciation.value = wordData.pronunciation || '';
         DOM.inputTags.value = wordData.tags?.join(', ') || '';
         DOM.inputExample.value = wordData.example || '';
+        if (DOM.inputSuspended) DOM.inputSuspended.checked = wordData.isSuspended === true;
         DOM.saveWordBtn.innerHTML = '<i class="ph-duotone ph-floppy-disk"></i> Lưu thay đổi';
         DOM.cancelEditBtn?.classList.remove('hidden');
     } else {
@@ -245,7 +246,10 @@ export function handleAddEditSubmit(event) {
     if (editing && !previous) { showPopup('Thẻ đã bị xóa hoặc thay đổi. Hãy mở lại từ kho từ vựng.', 'warning'); return; }
     const word = { ...(previous || { isStarred: false, srsStatus: 'New', srsInterval: 0, srsDueDate: null, lapses: 0, reps: 0 }),
         id, english, vietnamese, type: DOM.inputType.value.trim(), pronunciation: DOM.inputPronunciation.value.trim(),
-        example: DOM.inputExample.value.trim(), tags: [...new Set(DOM.inputTags.value.split(',').map(tag => tag.trim()).filter(Boolean))] };
+        example: DOM.inputExample.value.trim(), tags: [...new Set(DOM.inputTags.value.split(',').map(tag => tag.trim()).filter(Boolean))],
+        // C′-thay-thế: "tạm ẩn" là cách TRUNG THỰC để nói "tôi đã biết từ này",
+        // thay vì gọi nó là Mastered (điều sai về khoa học trí nhớ).
+        isSuspended: DOM.inputSuspended ? DOM.inputSuspended.checked === true : (previous?.isSuspended === true) };
     word.contentUpdatedAt = nextRevision(previous, 'contentUpdatedAt');
     word.updatedAt = Math.max(Date.now(), previous?.updatedAt || 0, word.contentUpdatedAt);
     const commit = async () => {

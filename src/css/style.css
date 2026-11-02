@@ -2627,6 +2627,37 @@ body:not(.dark-mode) .example-highlight {
     overflow: visible;
 }
 
+/* C′-thay-thế: thẻ TẠM ẨN — sắc thái trung tính, không phải cảnh báo. */
+.card-hard-badge.is-suspended {
+    border-color: rgba(148, 163, 184, 0.7);
+    color: #cbd5e1;
+    background: rgba(30, 41, 59, 0.6);
+}
+
+/* Ô "Tạm ẩn" trong form thêm/sửa — hàng gọn, mục tiêu chạm >= 44px trên mobile. */
+.form-group-checkbox {
+    margin-top: 2px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    cursor: pointer;
+    min-height: 44px;
+    padding: 6px 0;
+}
+
+.checkbox-label input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin-top: 2px;
+    accent-color: #8b5cf6;
+}
+
 /* B′: thẻ vừa bị hoãn cần VIẾT LẠI — khác sắc thái với "Cực Khó" (chỉ là khó). */
 .card-hard-badge.needs-rewrite {
     border-color: rgba(244, 114, 182, 0.75);

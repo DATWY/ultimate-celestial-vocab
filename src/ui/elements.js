@@ -100,6 +100,7 @@ export const DOM = {
     inputPronunciation: getEl('input-pronunciation'),
     inputTags: getEl('input-tags'),
     inputExample: getEl('input-example'),
+    inputSuspended: getEl('input-suspended'),
     saveWordBtn: getEl('save-word-btn'),
     cancelEditBtn: getEl('cancel-edit-btn'),
     manageModal: getEl('manage-modal'),

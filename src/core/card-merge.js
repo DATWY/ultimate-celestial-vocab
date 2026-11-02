@@ -31,7 +31,10 @@ export function normalizeCard(card) {
         contentUpdatedAt: card.contentUpdatedAt != null ? toMillis(card.contentUpdatedAt) : updatedAt,
         srsUpdatedAt: card.srsUpdatedAt != null ? toMillis(card.srsUpdatedAt) : toMillis(card.lastReviewDate),
         flagsUpdatedAt: card.flagsUpdatedAt != null ? toMillis(card.flagsUpdatedAt) : updatedAt,
-        isSuspended: false,
+        // LỖI ĐÃ SỬA (PHASE 9): trước đây hardcode `isSuspended: false` ⇒ mọi lần
+        // nạp lại là cờ "tạm ẩn" bị xoá sạch, nên không cách nào tạm ẩn một từ.
+        // Cờ này là FLAGS (đi cùng flagsUpdatedAt), không phải nội dung lẫn bộ nhớ.
+        isSuspended: card.isSuspended === true || card.isSuspended === 1 || card.isSuspended === 'true',
         isStarred: card.isStarred === true || card.isStarred === 1 || card.isStarred === 'true',
         isDeleted: card.isDeleted === true || card.isDeleted === 1 || card.isDeleted === 'true',
     };
@@ -76,7 +79,9 @@ export function mergeCardFields(local, remote) {
     if (!b) return a;
     const editorial = choose(a, b, 'contentUpdatedAt', CONTENT);
     const memory = choose(a, b, 'srsUpdatedAt', MEMORY);
-    const flags = choose(a, b, 'flagsUpdatedAt', ['isStarred']);
+    // PHASE 9: isSuspended là FLAGS (đi cùng flagsUpdatedAt) nên phải merge theo nhóm này,
+    // nếu không bản mới hơn sẽ ghi đè mất quyết định "tạm ẩn" của người dùng.
+    const flags = choose(a, b, 'flagsUpdatedAt', ['isStarred', 'isSuspended']);
     const newest = choose(a, b, 'updatedAt', [...CONTENT, ...MEMORY]);
     const result = { ...newest, id: a.id || b.id };
     // Missing values must not accidentally inherit stale data from another domain.
@@ -97,7 +102,7 @@ export function mergeCardFields(local, remote) {
     result.isDeleted = !!(a.isDeleted || b.isDeleted);
     result.deletedAt = Math.max(toMillis(a.deletedAt), toMillis(b.deletedAt),
         a.isDeleted ? a.updatedAt : 0, b.isDeleted ? b.updatedAt : 0);
-    result.isSuspended = false;
+    result.isSuspended = !!flags.isSuspended;
     // SYNC-01: KHÔNG xoá syncedAt. Đây là mốc "bản trên Cloud đã khớp", thứ duy nhất
     // giúp Phase 2 của smartSync phân biệt "thẻ chưa từng sync" với "thẻ đã sync rồi".
     // Xoá nó khiến mọi thẻ bị đẩy lại mỗi vòng: mỗi thẻ là một transaction.get (đốt
