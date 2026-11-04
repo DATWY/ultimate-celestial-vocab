@@ -9,6 +9,7 @@ import { calculateNextSrsState } from '../src/core/srs/index.js';
 import { escapeHTML } from '../src/core/utils/sanitize.js';
 import { compressLogs as compressReviewLogs, mergeReviewLogs as mergeLogSnapshots } from '../src/core/review-log-merge.js';
 import { superNormalize, stripVietnameseDiacritics } from '../src/features/typing.js';
+import { isCardReviewable, classifyReview, canSpendBudget, reviewBudgets, budgetBlockReason } from '../src/core/review-policy.js';
 
 const read = path => fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const quiet = { log() {}, warn() {}, error() {} };
@@ -118,6 +119,7 @@ function quizHarness(words = [{ id: 'a', english: 'cat', vietnamese: 'mèo', srs
     DOM.quizNumQuestions.value = 'all'; DOM.quizTimeLimit.value = '5';
     const state = { vocabulary: words, currentTopicFilter: 'all', gamification: {} };
     const saves = [];
+    const counted = [];
     const source = read('src/features/quiz.js').replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
     const c = context(source + `\nfunction inspectQuiz() { return { index: currentQuizQuestionIndex, incorrect: quizIncorrect, score: quizScore }; }`, {
         DOM, getState: () => state, document: { getElementById: node },
@@ -126,12 +128,18 @@ function quizHarness(words = [{ id: 'a', english: 'cat', vietnamese: 'mèo', srs
         calculateNextSrsState: (card, rating) => ({ newState: { ...card, lapses: (card.lapses || 0) + 1 }, log: null }),
         saveOneWord: card => saves.push(card), recordQuizAnswer() {}, addXP() {}, getComboMultiplier: () => 1,
         addReviewLog() {}, clearLastReviewSnapshot() {}, incrementNewCardsDone() {}, incrementDueCardsDone() {}, incrementLearningCardsDone() {},
-        updateQuizProgress() {}, playSound() {}, showPopup() {}, showConfirmation() {},
+        // AUDIT-3.1: applyQuizReview nay dùng chính sách ngân sách DÙNG CHUNG với Flashcard.
+        // Dùng hàm THẬT cho phần quyết định (thuần, không side-effect) và chỉ stub phần ghi state/UI.
+        isCardReviewable, classifyReview, canSpendBudget, reviewBudgets, budgetBlockReason,
+        getReviewBudget: () => ({ limit: 999, used: 0, reserved: 0, remaining: 999 }),
+        computeDailyNewLimit: () => 999,
+        incrementReviewBudget(category) { counted.push(category); return category; },
+        updateQuizProgress() {}, playSound() {}, showPopup() {}, showConfirmation() {}, showToast() {},
         suspendCelestialCanvas() {}, resumeCelestialCanvas() {}, escapeHTML, superNormalize, stripVietnameseDiacritics,
         animateNumber() {}, launchVictoryConfetti() {}, trackEvent() {}, saveGamification: async () => {},
     });
     c.startQuiz();
-    return { c, DOM, saves, timers, state, advance: () => [...timers.values()].find(timer => timer.ms === 1200)?.cb };
+    return { c, DOM, saves, timers, state, counted, advance: () => [...timers.values()].find(timer => timer.ms === 1200)?.cb };
 }
 test('rapid Skip grades and penalizes exactly once', () => {
     const h = quizHarness();
@@ -179,16 +187,23 @@ test('ending a quiz early never awards a perfect quiz; finalization is idempoten
 test('Undo decrements the appropriate daily category and does not subtract from a new day', async () => {
     const gamification = { userXP: 10, totalReviews: 2, activityHeatmap: { '2026-10-19': 1 }, stats: {} };
     const stats = { lastDate: '2026-10-19', todayTotal: 2, todayCorrect: 2, dueDoneToday: 2, learningDoneToday: 0 };
+    // AUDIT-3.1: Undo nay hoàn đúng NHÓM ngân sách mà lượt chấm đã tiêu (review-policy.js), thay vì
+    // suy lại từ isCorrect/countedDue — cách cũ bỏ sót lượt trả lời SAI và nhóm 'learning'.
+    const revertReviewBudget = category => {
+        const key = { new: 'newCardsDoneToday', due: 'dueDoneToday', learning: 'learningDoneToday' }[category];
+        if (key) stats[key] = Math.max(0, (stats[key] || 0) - 1);
+    };
     const c = context(fn('src/core/state.js', 'revertGamificationAfterUndo'), {
         _gamification: gamification, _dailyStats: stats,
         getLocalDateString: () => '2026-10-19', syncStreakFromHeatmap() {}, ensureDailyStats() {},
+        revertReviewBudget, revertReviewStats() {},
         saveGamification: async () => {}, saveDailyStats: async () => {}, CustomEvent: class {},
         document: { getElementById: () => null }, updateStats() {},
     });
-    await c.revertGamificationAfterUndo({ isCorrect: true, countedDue: true, timestamp: 1, previousCard: { srsStatus: 'Mastered' } });
+    await c.revertGamificationAfterUndo({ countedCategory: 'due', isCorrect: true, timestamp: 1, previousCard: { srsStatus: 'Mastered' } });
     assert.equal(stats.dueDoneToday, 1);
     stats.lastDate = '2026-10-20'; stats.todayTotal = 3;
-    await c.revertGamificationAfterUndo({ isCorrect: true, countedDue: true, timestamp: 1, previousCard: { srsStatus: 'Mastered' } });
+    await c.revertGamificationAfterUndo({ countedCategory: 'due', isCorrect: true, timestamp: 1, previousCard: { srsStatus: 'Mastered' } });
     assert.equal(stats.todayTotal, 3);
     assert.equal(stats.dueDoneToday, 1);
 });

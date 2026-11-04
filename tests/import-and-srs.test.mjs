@@ -94,7 +94,9 @@ test('the full optimizer evaluates a separate chronological holdout and gates re
     const logs = [];
     for (let review = 0; review < 8; review++) for (let id = 0; id < 60; id++) {
         logs.push({ id: `${id}-${review}`, cardId: String(id), rating: review && (id + review) % 5 === 0 ? 1 : 3,
-            t: review ? 1 : 0, ts: 1700000000000 + review * 86400000 + id * 1000 });
+            t: review ? 1 : 0, ts: 1700000000000 + review * 86400000 + id * 1000,
+            // AUDIT-R3.1: lượt đầu chuỗi có cờ first (định dạng log hiện tại).
+            first: review === 0 });
     }
     const result = optimizeParameters(logs, [], DEFAULT_FSRS7_PARAMS, { iterations: 4, budgetMs: 3000 });
     assert.ok(result.trainCount >= 100); assert.ok(result.validationCount >= 30);

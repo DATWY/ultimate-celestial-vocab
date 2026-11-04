@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { optimizeParameters } from '../src/core/srs/training.js';
+import { expandReviewLogRows } from '../src/core/review-log-merge.js';
 
 const args = process.argv.slice(2);
 const mergeAll = args.includes('--merge-all') || args.includes('-m');
@@ -22,7 +23,9 @@ if (!files.length || files.some(file => !fs.existsSync(file))) {
             const data = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
             const rows = Array.isArray(data) ? data : data.logs;
             if (!Array.isArray(rows)) throw new Error('Tệp không chứa danh sách lịch sử học.');
-            if (data.dict) rows.forEach(row => raw.push({ cardId: data.dict[row[0]], rating: row[1], t: row[2], ts: row[3], isTyping: !!row[4], id: row[5] }));
+            // AUDIT-R3.1: dùng CHUNG bộ mở rộng dòng nén với trainer trong app để cờ `first` giữ
+            // đủ ba trạng thái (1 = lượt đầu, 0 = biết chắc không phải, thiếu cột = chưa biết).
+            if (data.dict) raw.push(...expandReviewLogRows(data.dict, rows));
             else raw.push(...rows);
         }
         const vocabulary = [...new Map(raw.map(log => [log.cardId, { id: log.cardId, english: log.english || '' }])).values()];

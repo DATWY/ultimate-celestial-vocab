@@ -1,0 +1,85 @@
+{
+  "steps": [
+    {
+      "label": "API preview (DEV + ?audit=1)",
+      "hasApi": true,
+      "auditDb": true
+    },
+    {
+      "label": "bản ghi trong IDB (trước khi tải lại)",
+      "userXP": 0,
+      "totalReviews": 0,
+      "stats": {
+        "xpToday": 5
+      }
+    },
+    {
+      "label": "trước preview",
+      "hasOwn": true,
+      "dayKey": "",
+      "xpToday": 5,
+      "xpWeekTotal": 0,
+      "userXP": 0,
+      "previewMode": false
+    },
+    {
+      "label": "vào preview",
+      "ok": true,
+      "waitedMs": 1
+    },
+    {
+      "label": "trong preview",
+      "hasOwn": true,
+      "dayKey": "",
+      "xpToday": 5000,
+      "xpWeekTotal": 0,
+      "userXP": 0,
+      "previewMode": true
+    },
+    {
+      "label": "thoát preview",
+      "ok": true,
+      "waitedMs": 11,
+      "backupCleared": true
+    },
+    {
+      "label": "sau khôi phục (trước lượt chấm)",
+      "hasOwn": true,
+      "dayKey": "",
+      "xpToday": 5,
+      "xpWeekTotal": 0,
+      "userXP": 0,
+      "previewMode": false
+    },
+    {
+      "label": "sau A (đo qua snapshot trước A)",
+      "xpToday_truoc_A": 5
+    },
+    {
+      "label": "sau B",
+      "xp": 12,
+      "key": "2026-11-03",
+      "hasOwn": true,
+      "week": 12
+    },
+    {
+      "label": "sau Undo A",
+      "xp": 7,
+      "key": "2026-11-03",
+      "hasOwn": true,
+      "week": 7
+    },
+    {
+      "label": "sau +1",
+      "xp": 8,
+      "key": "2026-11-03",
+      "hasOwn": true,
+      "week": 8
+    },
+    {
+      "label": "bản ghi IDB sau khi thoát preview",
+      "xpTodayInDB": 5
+    }
+  ],
+  "ok": true
+}

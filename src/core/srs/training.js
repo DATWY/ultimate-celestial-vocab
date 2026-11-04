@@ -1,6 +1,29 @@
 import { calculateNextSrsState } from './index.js';
 import { dualTraceForgettingCurve } from './forgetting.js';
+import { expandReviewLogRows } from '../review-log-merge.js';
 import { DEFAULT_FSRS7_PARAMS, FSRS7_PARAM_BOUNDS, validFsrs7Params } from './constants.js';
+
+/**
+ * AUDIT-5.1 — Chiếu tham số về miền hợp lệ: clamp hộp rồi áp ràng buộc thứ tự (w0 ≤ w1 ≤ w2 ≤ w3,
+ * w26 ≥ w25), đúng như bước hậu xử lý của FSRS7ParameterClipper trong nguồn FSRS-7.
+ * Chỉ optimizer dùng (module này nằm trong worker, không vào entry bundle), nên nhập tay vẫn
+ * bị TỪ CHỐI ở validator thay vì bị tự ý sửa.
+ */
+export function projectFsrs7Params(params) {
+    if (!Array.isArray(params) || params.length !== FSRS7_PARAM_BOUNDS.length) return null;
+    const w = new Array(params.length);
+    for (let i = 0; i < params.length; i++) {
+        const n = Number(params[i]);
+        // AUDIT-R2.1: KHÔNG thay NaN/Infinity bằng biên min. Giá trị không hữu hạn nghĩa là phép
+        // tính trước đó đã hỏng; "chiếu" nó thành min chỉ che lỗi và âm thầm đổi tham số.
+        if (!Number.isFinite(n)) return null;
+        const [min, max] = FSRS7_PARAM_BOUNDS[i];
+        w[i] = Math.min(max, Math.max(min, n));
+    }
+    for (let i = 1; i < 4; i++) w[i] = Math.max(w[i], w[i - 1]);
+    w[26] = Math.max(w[26], w[25]);
+    return w;
+}
 
 // Ngưỡng để coi là "tốt hơn thật": phải giảm >=1% logloss trên holdout VÀ khoảng tin cậy
 // 95% của phần giảm (bootstrap theo từng lượt) không được chứa 0.
@@ -20,25 +43,69 @@ function mulberry32(a) {
 
 export function prepareTrainingData(logs, vocabulary = []) {
     const words = new Map(vocabulary.map(card => [card.id, card]));
-    const raw = Array.isArray(logs) ? logs : (logs.logs || []).map(row => ({
-        cardId: logs.dict?.[row[0]], rating: row[1], t: row[2], ts: row[3],
-        modality: row[4] ? 'typing' : 'en-vi', id: row[5]
-    }));
+    const raw = Array.isArray(logs) ? logs : expandReviewLogRows(logs.dict, logs.logs);
     const deleted = new Set(logs.deletedIds || []), seen = new Set();
-    const valid = raw.filter(log => {
+    const sorted = raw.filter(log => {
         if (!log?.cardId || ![1,2,3,4].includes(log.rating) || !Number.isFinite(log.t) || log.t < 0 || deleted.has(log.id)) return false;
         const identity = log.id || `${log.cardId}:${log.ts || log.reviewTime}:${log.rating}:${log.t}:${log.isTyping || log.modality === 'typing'}`;
         if (seen.has(identity)) return false;
         seen.add(identity);
         return Number.isFinite(log.ts || log.reviewTime) && (log.ts || log.reviewTime) > 0;
-    }).map(log => ({ ...log, ts: log.ts || log.reviewTime })).sort((a,b) => a.ts - b.ts).slice(-6000);
+    }).map(log => ({ ...log, ts: log.ts || log.reviewTime })).sort((a,b) => a.ts - b.ts);
+    // AUDIT-6.1: trước đây cắt im lặng 6.000 lượt rồi coi lượt ĐẦU CÒN GIỮ là lần chạm đầu đời của
+    // thẻ (elapsed = 0, srsStatus New). Với chuỗi đã bị cắt, điều đó dựng ra một trạng thái bộ
+    // nhớ không có thật, nên cả train lẫn holdout đều chấm trên bộ nhớ sai.
+    const LOG_HISTORY_LIMIT = 6000;
+    const logTrimmed = sorted.length > LOG_HISTORY_LIMIT;
+    const valid = sorted.slice(-LOG_HISTORY_LIMIT);
     const cards = new Map();
     for (const log of valid) {
         if (!cards.has(log.cardId)) cards.set(log.cardId, { id: log.cardId, english: words.get(log.cardId)?.english || '', type: words.get(log.cardId)?.type || '', reviews: [] });
         cards.get(log.cardId).reviews.push(log);
     }
+    const chains = [...cards.values()].filter(card => card.reviews.length >= 2);
+    // AUDIT-R2.5: `t` chỉ là THỜI GIAN ĐÃ TRÔI, không phải bằng chứng "lượt đầu đời": lượt thứ
+    // hai cùng timestamp (hoặc lệch đồng hồ) cũng có t = 0. Vì vậy:
+    //   • startVerified = cờ `first` do engine ghi ⇒ bằng chứng THẬT.
+    //   • startKnown    = cờ đó, HOẶC phỏng đoán cũ (t = 0) cho log legacy đã có trước khi có cờ.
+    //     Giữ phỏng đoán này để không vô hiệu hoá optimizer của người dùng cũ (log của họ không
+    //     thể có cờ), nhưng nó KHÔNG được coi là "đã xác minh".
+    // AUDIT-R2.5 + R3.1: ba trạng thái bằng chứng của lượt đầu chuỗi:
+    //   • first === true  ⇒ đã xác minh (engine biết chắc đây là lượt đầu đời).
+    //   • first === false ⇒ BIẾT CHẮC đây không phải lượt đầu ⇒ chuỗi bị cắt, LOẠI khỏi replay.
+    //     Không được "cứu" bằng t = 0: hai lượt cùng timestamp hoặc lệch đồng hồ cũng cho t = 0.
+    //   • first === undefined ⇒ log legacy chưa biết; chỉ dùng phỏng đoán cũ (t = 0) và đánh dấu
+    //     là CHƯA xác minh để phần quyết định áp dụng weights không dựa vào nó.
+    for (const chain of chains) {
+        const head = chain.reviews[0];
+        chain.startVerified = head?.first === true;
+        chain.startTruncated = head?.first === false || (!chain.startVerified && (Number(head?.t) || 0) > 1e-9);
+        chain.startKnown = !chain.startTruncated;
+    }
+    const usable = chains.filter(chain => chain.startKnown);
+    const verified = usable.filter(chain => chain.startVerified);
+    const assumed = usable.filter(chain => !chain.startVerified);
+    // AUDIT-R4.2: mốc chia 80/20 phải tính từ CHÍNH các lượt đáng tin. Nếu lấy từ toàn bộ log thì
+    // các chuỗi bị loại có timestamp muộn sẽ đẩy mốc chia về cuối, toàn bộ lượt đáng tin rơi vào
+    // phần train và validation rỗng ⇒ optimizer từ chối oan dù dữ liệu tốt vẫn đủ.
+    const trustedTimes = verified.flatMap(chain => chain.reviews.map(review => review.ts)).sort((a, b) => a - b);
+    const trustedSplit = trustedTimes.length
+        ? (trustedTimes[Math.floor(trustedTimes.length * 0.8)] || Infinity)
+        : Infinity;
     return { count: valid.length, split: valid[Math.floor(valid.length * .8)]?.ts || Infinity,
-        cards: [...cards.values()].filter(card => card.reviews.length >= 2) };
+        cards: usable,
+        // Tập ĐÁNG TIN: chỉ chuỗi có bằng chứng thật. Dùng cho quyết định áp dụng weights.
+        trustedCards: verified,
+        // Mốc chia dùng cho tập đáng tin (baseline/candidate/validation/bootstrap).
+        trustedSplit,
+        totalChains: chains.length,
+        truncatedChains: chains.length - usable.length,
+        verifiedChains: verified.length,
+        assumedStartChains: assumed.length,
+        logTrimmed,
+        rawCount: sorted.length,
+        // Chỉ gọi là "đầy đủ" khi MỌI chuỗi có bằng chứng lượt đầu và không bị cắt log.
+        historyComplete: !logTrimmed && chains.length > 0 && verified.length === chains.length };
 }
 
 export function evaluateParameters(data, weights, partition = 'train') {
@@ -120,31 +187,78 @@ export function bootstrapGain(baseline, candidate, rounds = BOOTSTRAP_ROUNDS) {
 }
 
 /**
- * P2: đạo hàm số một chiều có xử lý BIÊN.
+ * P2 + AUDIT-R2.1: đạo hàm số một chiều TÔN TRỌNG MIỀN RÀNG BUỘC.
  *
- * Bản cũ luôn tiến: north = min(1, value + fd). Tại value = 1 thì north === value,
- * mẫu số ~0 nên gradient luôn 0 và tham số kẹt vĩnh viễn ở biên trên. Nay nếu không
- * thể tiến đủ xa thì lấy sai phân LÙI (vẫn giữ nguyên số lần đánh giá).
+ * Bản trước luôn tiến (và lùi ở biên hộp), nhưng với ràng buộc thứ tự `w0 ≤ w1 ≤ …`, phía
+ * "tiến" có thể rơi ra ngoài miền: khi đó loss = Infinity ⇒ gradient = Infinity ⇒ bước Adam
+ * thành NaN và phép chiếu biến NaN thành min.
+ *
+ * Nay `evaluate` phân biệt ba khả năng:
+ *   • số hữu hạn  ⇒ dùng làm gradient;
+ *   • `null`      ⇒ hướng này KHÔNG khả thi (vi phạm ràng buộc) ⇒ thử hướng ngược lại;
+ *   • NaN/∞       ⇒ lỗi số THẬT (điểm khả thi nhưng không chấm được) ⇒ trả NaN để nơi gọi LOẠI
+ *                    bước, không được giả vờ là gradient 0.
+ * Không hướng nào khả thi ⇒ trả `null` (toạ độ bị ràng buộc kẹp), KHÔNG trả Infinity/0.
  *
  * @param {number} value     điểm đang xét (đã chuẩn hoá về [0,1])
  * @param {number} fd        bước sai phân
  * @param {number} current   loss tại 'value' (đã có sẵn, tránh đánh giá lại)
- * @param {(x:number)=>number} evaluate  hàm loss theo tham số chuẩn hoá
+ * @param {(x:number)=>number|null} evaluate  hàm loss theo tham số chuẩn hoá
+ * @returns {number|null} gradient, null = không có hướng khả thi, NaN = lỗi số thật
  */
 export function finiteDifferenceGradient(value, fd, current, evaluate) {
     const north = Math.min(1, value + fd);
-    if (north - value >= fd / 2) return (evaluate(north) - current) / Math.max(1e-9, north - value);
+    if (north - value >= fd / 2) {
+        const loss = evaluate(north);
+        if (Number.isFinite(loss)) return (loss - current) / Math.max(1e-9, north - value);
+        if (loss !== null && loss !== undefined) return NaN;
+    }
     const south = Math.max(0, value - fd);
-    return (current - evaluate(south)) / Math.max(1e-9, value - south);
+    if (value - south >= fd / 2) {
+        const loss = evaluate(south);
+        if (Number.isFinite(loss)) return (current - loss) / Math.max(1e-9, value - south);
+        if (loss !== null && loss !== undefined) return NaN;
+    }
+    return null;
 }
 
 export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS7_PARAMS, options = {}) {
     const data = prepareTrainingData(logs, vocabulary);
-    if (data.count < 400) return { improved: false, reason: 'insufficient-data', count: data.count };
+    // AUDIT-6.1: báo ĐỦ chẩn đoán để nơi gọi nói được vì sao không áp dụng, thay vì báo "cải thiện"
+    // dựa trên chuỗi bộ nhớ dựng sai.
+    const diagnostics = {
+        count: data.count, scoredChains: data.cards.length, totalChains: data.totalChains,
+        truncatedChains: data.truncatedChains, logTrimmed: data.logTrimmed, historyComplete: data.historyComplete,
+        verifiedChains: data.verifiedChains, assumedStartChains: data.assumedStartChains, trustedChains: data.trustedCards.length,
+        // 'verified' = mọi chuỗi có cờ first; 'mixed' = có cả chuỗi chưa xác minh; 'assumed' = không
+        // chuỗi nào có cờ nhưng vẫn replay được bằng phỏng đoán t = 0; 'none' = không chuỗi nào dùng được.
+        startEvidence: data.cards.length === 0 ? 'none'
+            : data.verifiedChains === data.totalChains ? 'verified'
+            : data.verifiedChains > 0 ? 'mixed' : 'assumed'
+    };
     const start = validFsrs7Params(initial) ? [...initial] : [...DEFAULT_FSRS7_PARAMS];
-    const baselineTrain = evaluateParameters(data, start);
-    const baselineValidation = evaluateParameters(data, start, 'validation');
-    if (baselineTrain.count < 100 || baselineValidation.count < 30) return { improved: false, reason: 'insufficient-history', count: data.count };
+    // AUDIT-R3.1 + R4.2: quyết định ÁP DỤNG phải dựa trên phần lịch sử ĐÁNG TIN (chuỗi có bằng
+    // chứng lượt đầu), với mốc chia tính từ chính phần đó. Số mẫu của phần đáng tin được đưa vào
+    // chẩn đoán của MỌI nhánh từ chối (kể cả `insufficient-data`) để log bị loại không bao giờ
+    // "trông như" đã giúp vượt ngưỡng.
+    const trustedData = { ...data, cards: data.trustedCards, split: data.trustedSplit };
+    const trustedRows = data.trustedCards.reduce((sum, card) => sum + card.reviews.length, 0);
+    const trustedTrain = evaluateParameters(trustedData, start);
+    const trustedValidation = evaluateParameters(trustedData, start, 'validation');
+    diagnostics.trustedRows = trustedRows;
+    diagnostics.trustedTrainCount = trustedTrain.count;
+    diagnostics.trustedValidationCount = trustedValidation.count;
+    if (data.cards.length === 0 && data.totalChains > 0) {
+        // Có lịch sử nhưng KHÔNG chuỗi nào chứng minh được điểm bắt đầu ⇒ replay không đáng tin.
+        return { improved: false, reason: 'truncated-history', ...diagnostics };
+    }
+    if (data.count < 400) return { improved: false, reason: 'insufficient-data', ...diagnostics };
+    if (trustedRows < 400 || trustedTrain.count < 100 || trustedValidation.count < 30) {
+        return { improved: false, reason: 'insufficient-verified-history', ...diagnostics };
+    }
+    const baselineTrain = trustedTrain;
+    const baselineValidation = trustedValidation;
+    if (baselineTrain.count < 100 || baselineValidation.count < 30) return { improved: false, reason: 'insufficient-history', ...diagnostics };
     // ── Tối ưu thật: ADAM trên gradient số, trong không gian tham số chuẩn hoá [0,1] ──
     // Vì sao đổi khỏi leo đồi toạ độ: đo trên LỊCH SỬ THẬT (5.693 lượt, 629 thẻ) thì
     // leo đồi toạ độ đạt val 0,91501 còn Adam đạt 0,87027 — tốt hơn 3,6 điểm logloss
@@ -167,33 +281,89 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
     });
     const lossOf = unit => {
         const weights = fromUnit(unit);
-        return validFsrs7Params(weights) ? evaluateParameters(data, weights).loss : Infinity;
+        return validFsrs7Params(weights) ? evaluateParameters(trustedData, weights).loss : Infinity;
     };
     const unit = toUnit(start);
     let current = lossOf(unit);
-    let best = [...start], bestScore = current;
+    if (!Number.isFinite(current)) {
+        // Ngay điểm xuất phát đã không chấm được ⇒ không có gradient nào đáng tin.
+        return { improved: false, reason: 'unscorable', ...diagnostics,
+            params: start, gradientFailures: 0, pinnedCoordinates: 0, rejectedSteps: 0 };
+    }
+    let best = [...start];
+    let bestScore = current;
     let bestUnit = [...unit];
     const m1 = new Float64Array(34), m2 = new Float64Array(34);
     const beta1 = 0.9, beta2 = 0.999, eps = 1e-8;
     let evaluations = 1, stale = 0, iteration = 0;
+    // AUDIT-R2.1: đếm riêng ba hiện tượng để (a) test khẳng định không có bước nhiễm độc,
+    // (b) người dùng thấy được optimizer có gặp biên ràng buộc hay lỗi số.
+    let gradientFailures = 0, pinnedCoordinates = 0, rejectedSteps = 0;
+    const backToBest = () => { unit.splice(0, unit.length, ...bestUnit); current = bestScore; };
     for (; iteration < maxIterations && Date.now() < deadline; iteration++) {
         const grad = new Float64Array(34);
+        let badGradient = false;
         for (let i = 0; i < 34; i++) {
             const saved = unit[i];
-            grad[i] = finiteDifferenceGradient(saved, fd, current, (x) => {
+            const g = finiteDifferenceGradient(saved, fd, current, (x) => {
                 unit[i] = x;
-                const loss = lossOf(unit);
+                const weights = fromUnit(unit);
                 unit[i] = saved;
                 evaluations++;
-                return loss;
+                // Hướng vi phạm ràng buộc ⇒ null (thử hướng ngược). Điểm hợp lệ nhưng không
+                // chấm được ⇒ NaN (lỗi số thật, nơi gọi phải loại bước).
+                if (!validFsrs7Params(weights)) return null;
+                const loss = evaluateParameters(trustedData, weights).loss;
+                return Number.isFinite(loss) ? loss : NaN;
             });
+            if (g === null) { grad[i] = 0; pinnedCoordinates++; continue; }  // toạ độ bị kẹp
+            if (!Number.isFinite(g)) { badGradient = true; break; }
+            grad[i] = g;
         }
+        if (badGradient) {
+            // KHÔNG cập nhật moment, KHÔNG di chuyển: đây không phải một bước tối ưu hợp lệ.
+            gradientFailures++;
+            backToBest();
+            if (++stale >= patience) break;
+            continue;
+        }
+        let stepOk = true;
         for (let i = 0; i < 34; i++) {
             m1[i] = beta1 * m1[i] + (1 - beta1) * grad[i];
             m2[i] = beta2 * m2[i] + (1 - beta2) * grad[i] * grad[i];
+            // Bất biến: gradient hữu hạn ⇒ moment hữu hạn; nếu không (tràn số) thì loại bước
+            // thay vì để NaN lan sang vòng sau.
+            if (!Number.isFinite(m1[i]) || !Number.isFinite(m2[i])) { stepOk = false; break; }
             const mHat = m1[i] / (1 - Math.pow(beta1, iteration + 1));
             const vHat = m2[i] / (1 - Math.pow(beta2, iteration + 1));
-            unit[i] = Math.min(1, Math.max(0, unit[i] - lr * mHat / (Math.sqrt(vHat) + eps)));
+            const candidate = unit[i] - lr * mHat / (Math.sqrt(vHat) + eps);
+            if (!Number.isFinite(candidate)) { stepOk = false; break; }
+            unit[i] = Math.min(1, Math.max(0, candidate));
+        }
+        if (!stepOk) {
+            // Moment của vòng này đã bị nhiễm ⇒ xoá về 0 thay vì mang rác sang vòng sau.
+            rejectedSteps++;
+            m1.fill(0); m2.fill(0);
+            backToBest();
+            if (++stale >= patience) break;
+            continue;
+        }
+        // AUDIT-5.1: Adam là phép chiếu theo TỪNG TỌA ĐỘ, nên một bước có thể sinh ra bộ vi phạm
+        // ràng buộc thứ tự (w0 ≤ w1 ≤ w2 ≤ w3, w26 ≥ w25). Chiếu lại về miền hợp lệ rồi đưa
+        // về không gian [0,1] để vòng sau vẫn tối ưu trên điểm HỢP LỆ. Ở đây ta CHIẾU (không
+        // từ chối) vì mục tiêu là tìm bộ tham số tốt, khác với ô nhập tay phải bị chặn.
+        {
+            const projected = projectFsrs7Params(fromUnit(unit));
+            if (!projected) {
+                // Không thể xảy ra khi mọi giá trị đã hữu hạn; nếu xảy ra thì đó là lỗi số thật.
+                rejectedSteps++;
+                m1.fill(0); m2.fill(0);
+                backToBest();
+                if (++stale >= patience) break;
+                continue;
+            }
+            const back = toUnit(projected);
+            for (let i = 0; i < 34; i++) unit[i] = back[i];
         }
         const next = lossOf(unit);
         evaluations++;
@@ -203,8 +373,8 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
             // Bước đi rơi vào vùng loss = Infinity/NaN: nếu chỉ bỏ qua 'next' thì 'unit'
             // VẪN ở điểm hỏng còn 'current' là loss cũ ⇒ gradient vòng sau tính quanh
             // một điểm không tồn tại. Quay lại điểm tốt nhất và tính là một bước cùn.
-            unit.splice(0, unit.length, ...bestUnit);
-            current = bestScore;
+            rejectedSteps++;
+            backToBest();
         }
         if (current < bestScore - 1e-7) {
             bestScore = current;
@@ -215,9 +385,12 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
         }
     }
     best = fromUnit(bestUnit);
-    const validation = evaluateParameters(data, best, 'validation');
-    const baselineLosses = collectValidationLosses(data, start);
-    const candidateLosses = collectValidationLosses(data, best);
+    const validation = evaluateParameters(trustedData, best, 'validation');
+    // AUDIT-R3.1: CI và kiểm tra hai nửa phải chấm trên CÙNG tập với `validation` (phần đáng tin),
+    // không phải toàn bộ log — nếu không, một chuỗi legacy chưa xác minh vẫn có thể góp phần làm
+    // cổng "có ý nghĩa" đạt trong khi mẫu so sánh lấy từ tập khác.
+    const baselineLosses = collectValidationLosses(trustedData, start);
+    const candidateLosses = collectValidationLosses(trustedData, best);
     const ci = bootstrapGain(baselineLosses, candidateLosses);
     // Kiểm tra thêm: phần giảm phải DƯƠNG ở cả hai nửa của holdout. Một bộ tham số
     // chỉ thắng nhờ một cụm thẻ hiếm thường lệch dấu giữa hai nửa — dấu hiệu overfit.
@@ -257,5 +430,11 @@ export function optimizeParameters(logs, vocabulary = [], initial = DEFAULT_FSRS
         gainHalfConsistent: consistent,
         trainLoss: baselineTrain.loss, trainLossBest: bestScore,
         trainCount: baselineTrain.count, validationCount: validation.count,
-        evaluations, iterations: iteration, count: data.count, model: 'dual-stability-34' };
+        evaluations, iterations: iteration, count: data.count,
+        scoredChains: diagnostics.scoredChains, truncatedChains: diagnostics.truncatedChains,
+        logTrimmed: diagnostics.logTrimmed, historyComplete: diagnostics.historyComplete,
+        verifiedChains: diagnostics.verifiedChains, assumedStartChains: diagnostics.assumedStartChains,
+        trustedChains: diagnostics.trustedChains,
+        startEvidence: diagnostics.startEvidence, gradientFailures, pinnedCoordinates, rejectedSteps,
+        model: 'dual-stability-34' };
 }

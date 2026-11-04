@@ -1,0 +1,5 @@
+﻿A (480 đáng tin) {"split":1793520024000,"trustedSplit":1793520024000,"dataCount":480,"trainCount":324,"validationCount":96,"improved":true,"reason":"validated","oldLoss":0.7056252807501106,"newLoss":0.5075217153460795,"p0":0.1104}
+B (A + 160 bị loại) {"split":1793865612000,"trustedSplit":1793520024000,"dataCount":640,"trainCount":324,"validationCount":96,"improved":true,"reason":"validated","oldLoss":0.7056252807501106,"newLoss":0.5075217153460795,"p0":0.1104}
+A′ (96 đáng tin) {"split":1793520004000,"trustedSplit":1793520004000,"count":96,"reason":"insufficient-data","trustedRows":96,"trustedTrainCount":64,"trustedValidationCount":20}
+B′ (+480 bị loại) {"split":1794297604000,"trustedSplit":1793520004000,"count":576,"reason":"insufficient-verified-history","trustedRows":96,"trustedTrainCount":64,"trustedValidationCount":20}
+{"reason":"validated","verifiedChains":60}

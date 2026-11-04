@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-03",
+  "timezone": "Asia/Saigon",
+  "confirmed": 9,
+  "results": [
+    {
+      "name": "TSV drops suspension",
+      "evidence": {
+        "before": true,
+        "after": false
+      }
+    },
+    {
+      "name": "Undo retains leech counters from undone review",
+      "evidence": {
+        "expectedLapsesToday": 1,
+        "actualLapsesToday": 2,
+        "needsReformulation": true
+      }
+    },
+    {
+      "name": "Newer editorial edit replaces leech counters from newer SRS",
+      "evidence": {
+        "srsClockRetained": true,
+        "expectedLapsesToday": 2,
+        "actualLapsesToday": 0
+      }
+    },
+    {
+      "name": "Dedup memory changes can lose against existing IDB record",
+      "evidence": {
+        "proposedLapses": 10,
+        "savedLapses": 9,
+        "sameSrsClock": true
+      }
+    },
+    {
+      "name": "Parameter validation accepts inverted initial stability",
+      "evidence": {
+        "accepted": true,
+        "againInitialStability": 100,
+        "easyInitialStability": 0.01
+      }
+    },
+    {
+      "name": "Burial jitter is identical for unrelated cards",
+      "evidence": {
+        "equalDueDates": true,
+        "releaseHour": 6
+      }
+    },
+    {
+      "name": "Training replay ignores elapsed time before retained history",
+      "evidence": {
+        "sameLossDespiteDifferentHistoricalElapsed": true,
+        "loss": 0.0351031949047356
+      }
+    },
+    {
+      "name": "Flashcard Again then Good never counts a newly introduced card",
+      "evidence": {
+        "statusAfterAgain": "Learning",
+        "countedFirst": false,
+        "countedSecond": false,
+        "method": "live engine + source guard"
+      }
+    },
+    {
+      "name": "Quiz applies SRS to a suspended card and ignores daily caps",
+      "evidence": {
+        "suspendedCardReviewed": true,
+        "newCount": 1,
+        "method": "actual extracted applyQuizReview with persistence stubs"
+      }
+    }
+  ]
+}

@@ -12,7 +12,7 @@ function getModalModule() {
 }
 import { setBoostMode, updateCanvasTheme } from './celestial-canvas.js';
 import { animateFlip, animateNumber } from '../core/animations.js';
-import { isFuzzySearchMatch } from '../core/dedup.js';
+import { isFuzzySearchMatch } from '../core/fuzzy-search.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { nextRevision } from '../core/card-merge.js';
 import { predictNextIntervals, isLeechCard } from '../core/srs/index.js';

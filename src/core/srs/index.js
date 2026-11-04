@@ -38,6 +38,23 @@ function readLearningStep(card) {
 }
 
 /**
+ * AUDIT-8.3 — Jitter chôn thẻ ỔN ĐỊNH THEO TỪNG THẺ (FNV-1a 32-bit trên `cardId|ngày`).
+ *
+ * Yêu cầu: (1) khác thẻ ⇒ khác mốc (để không dồn cả loạt vào một giờ), (2) cùng thẻ trong
+ * cùng ngày ⇒ cùng mốc (rebuild hàng đợi hoặc Undo rồi chấm lại phải cho cùng một lịch).
+ * Băm chuỗi đáp ứng cả hai; dùng Math.random() thì vi phạm (2), và `lapsesToday` (bản cũ) thì
+ * vi phạm (1).
+ *
+ * @returns {number} mili-giây trong khoảng [0, 3h)
+ */
+function burialJitterMs(cardId, dayKey) {
+    const seed = `${cardId || ''}|${dayKey || ''}`;
+    let hash = 2166136261;
+    for (let i = 0; i < seed.length; i++) hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619);
+    return (hash >>> 0) % 10800000;   // 0 … 3h
+}
+
+/**
  * T1.1 — Learning steps thật cho thẻ đang ở pha New/Learning.
  * Chỉ quyết định LỊCH (status / learningStep / khoảng cách), không đụng vào trạng thái bộ nhớ FSRS.
  *
@@ -133,7 +150,9 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             newState.lapsesToday = 0;
         }
     }
-    // Cờ "cần viết lại" tự hết khi thẻ đã trả lời đúng 2 lần liên tiếp sau đó.
+    // Cờ "cần viết lại" tự hết khi thẻ được trả lời đúng trong một ngày KHÔNG còn lần sai nào
+    // (lapsesToday = 0). Đây là hành vi thực tế từ trước; comment cũ ghi "2 lần liên tiếp" nên
+    // đã được sửa lại cho khớp code thay vì đổi hành vi.
     if (rating > 1 && (Number(newState.lapsesToday) || 0) === 0) {
         newState.needsReformulation = false;
     }
@@ -154,6 +173,16 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
     newState.lastReviewDate = now;
 
     const isFirstReview = newState.srsStatus === 'New' && (card.reps === undefined || card.reps === null || card.reps === 0 || card.reps === '0');
+    // AUDIT-R3.1: `isFirstReview` chỉ nói "thẻ đang ở trạng thái New và chưa có bộ đếm reps" —
+    // KHÔNG đủ để khẳng định đây là lượt đầu đời. Thẻ Mastered legacy (TSV/đồng bộ cũ) thường
+    // thiếu cả `reps` lẫn `lastReviewDate` nhưng đã có lịch sử: engine suy ra `lastReviewDate`
+    // từ `srsDueDate - srsInterval` nên `actualDaysElapsed > 0` (ca đã kiểm: t = 15) trong khi
+    // cờ cũ vẫn ghi first = true. Bằng chứng lượt đầu phải là: trạng thái New, không có reps,
+    // không có lastReviewDate, VÀ không có thời gian đã trôi.
+    const hasPriorReviewEvidence = Number(card.reps) > 0
+        || Number(card.lastReviewDate) > 0
+        || actualDaysElapsed > 1e-9;
+    const firstReviewEvidence = newState.srsStatus === 'New' && !hasPriorReviewEvidence;
 
     // 3. First review initialization (New Card)
     if (isFirstReview) {
@@ -285,8 +314,12 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             const release = new Date(now);
             release.setDate(release.getDate() + 1);
             release.setHours(BURIED_RELEASE_HOUR, 0, 0, 0);
-            // jitter 0–3h để 62 thẻ leech không dồn hết vào 04:00
-            const jitterMs = Math.round((lapsesToday * 37) % 3 * 3600000);
+            // AUDIT-8.3: jitter phải phân tán THEO TỪNG THẺ. Bản cũ dùng (lapsesToday * 37) % 3 nên
+            // mọi thẻ cùng số lần sai trong ngày nhận ĐÚNG một jitter (thường là +2h ⇒ 06:00),
+            // tức toàn bộ thẻ bị chôn vẫn dồn một mốc — trái hẳn mục đích ở comment cũ.
+            // Nay băm ổn định theo (cardId, ngày): cùng thẻ trong cùng ngày luôn ra cùng mốc
+            // (rebuild hàng đợi / Undo rồi chấm lại không nhảy lịch), khác thẻ thì rải 0–3h.
+            const jitterMs = burialJitterMs(card.id, todayKey);
             nextIntervalDays = Math.max(0, (release.getTime() + jitterMs - now) / DAY_MS);
             newState.buriedOn = todayKey;
             // Chôn KHÔNG phải xoá: thẻ vẫn tồn tại, chỉ không quay lại hôm nay.
@@ -350,7 +383,11 @@ export function calculateNextSrsState(card, rating, modality = 'en-vi', anchorSt
             rating: rating,
             t: actualDaysElapsed,
             modality: modality,
-            reviewTime: now
+            reviewTime: now,
+            // AUDIT-R2.5 + R3.1: `t` là THỜI GIAN ĐÃ TRÔI, không phải bằng chứng "lượt đầu đời".
+            // Cờ này chỉ bật khi ba điều kiện cùng đúng (New, không reps, không lastReviewDate,
+            // elapsed = 0); thẻ đã học mà thiếu trường thì KHÔNG được coi là lượt đầu.
+            first: firstReviewEvidence
         };
     }
 

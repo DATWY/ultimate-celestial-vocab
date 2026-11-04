@@ -40,8 +40,9 @@
 // Muốn entry gzip giảm thật thì phải bỏ kiểu import namespace đó ở nơi gọi
 // (ngoài phạm vi T4.5b) hoặc xoá 25 export không ai dùng (trái yêu cầu giữ API).
 
-import { compressLogs as compressReviewLogs, mergeReviewLogs as mergeLogSnapshots } from './review-log-merge.js';
+import { compressLogs as compressReviewLogs, mergeReviewLogs as mergeLogSnapshots, buildReviewLogsExport } from './review-log-merge.js';
 import { normalizeCard, mergeCardFields, nextRevision } from './card-merge.js';
+import { revertReviewStats } from './stats-rollback.js';
 import { initializeProgress } from './progress-merge.js';
 import { validFsrs7Params } from './srs/constants.js';
 import { announceSyncStatus } from './sync-status.js';
@@ -55,7 +56,7 @@ import { ttsVoice, ttsRate, ttsSource, loadTtsSettings } from './state/tts-setti
 import { skipPersistence } from './state/preview-mode.js';
 import { safeUpdateStats, safeShowPopup, safeShowToast } from './state/ui-notify.js';
 import { isCardLeech, isHardCard, isLearningCard, isLongWord, matchesTypingFilter } from './state/typing-filter.js';
-import { ensureDailyStats, checkStreakStatusOnLoad, saveDailyStats, saveGamification, syncStreakFromHeatmap } from './state/gamification.js';
+import { ensureDailyStats, checkStreakStatusOnLoad, saveDailyStats, saveGamification, syncStreakFromHeatmap, revertReviewBudget } from './state/gamification.js';
 export { getLocalDateString, getOffsetDateString } from './utils/date.js';
 
 /** Bí danh giữ đúng tên `updateStats()` mà revertGamificationAfterUndo() gọi. */
@@ -333,7 +334,10 @@ export async function loadVocabulary() {
     _userLapseParams = await getSettingFromDB('userLapseParams') || null;
     _userFsrs7Params = await getSettingFromDB('userFsrs7Params') || null;
     _userFsrs7TrainedAt = await getSettingFromDB('userFsrs7TrainedAt') || null;
-    if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = _userFsrs7Params;
+    // AUDIT-5.1: bộ tham số CŨ có thể vi phạm ràng buộc thứ tự mới. Không xoá dữ liệu người dùng:
+    // chỉ ngừng đưa nó cho engine (window flag), giữ nguyên bản ghi trong IndexedDB.
+    if (_userFsrs7Params && !validFsrs7Params(_userFsrs7Params)) console.warn('[FSRS-7] stored params invalid; using defaults');
+    if (typeof window !== 'undefined') window.__USER_FSRS7_PARAMS__ = validFsrs7Params(_userFsrs7Params) ? _userFsrs7Params : null;
 
     // T2.5: giọng + tốc độ TTS (cùng store settings, không tạo store mới).
     await loadTtsSettings();
@@ -360,7 +364,14 @@ export async function addReviewLog(log) {
         _reviewLogs.dict.push(log.cardId);
     }
 
-    _reviewLogs.logs.push([dictIndex, log.rating, log.t, log.reviewTime || Date.now(), log.modality === 'typing' ? 1 : 0, log.id || crypto.randomUUID()]);
+    // AUDIT-R2.5 + R3.1: cột 6 = cờ "lượt đầu đời" ba trạng thái. Engine luôn trả boolean nên
+    // dòng mới luôn có cột; nếu vì lý do nào đó cờ vắng mặt thì KHÔNG ghi 0 (0 là khẳng định
+    // "biết chắc không phải lượt đầu"), mà bỏ cột để giữ trạng thái "chưa biết".
+    const row = [dictIndex, log.rating, log.t, log.reviewTime || Date.now(),
+        log.modality === 'typing' ? 1 : 0, log.id || crypto.randomUUID()];
+    if (log.first === true) row.push(1);
+    else if (log.first === false) row.push(0);
+    _reviewLogs.logs.push(row);
 
     if (_reviewLogs.logs.length > 10000) {
         _reviewLogs.logs = _reviewLogs.logs.slice(_reviewLogs.logs.length - 10000);
@@ -431,8 +442,12 @@ export async function revertGamificationAfterUndo(snapshot) {
         _gamification.totalReviews -= 1;
     }
 
-    // 3. Khôi phục chuỗi Combo ban đầu
-    _gamification.consecutiveCorrect = snapshot.comboBefore || 0;
+    // 3. Khôi phục chuỗi Combo ban đầu — CHỈ khi combo hiện tại vẫn đúng là giá trị lượt chấm đã
+    //    để lại. Nếu một lượt khác đã đổi combo sau đó thì giữ nguyên (AUDIT-R3.2).
+    //    Snapshot cũ (tạo trước bản vá) không có `comboAfter` ⇒ giữ hành vi cũ.
+    if (snapshot.comboAfter === undefined || (_gamification.consecutiveCorrect || 0) === snapshot.comboAfter) {
+        _gamification.consecutiveCorrect = snapshot.comboBefore || 0;
+    }
 
     // 4. Trừ Heatmap của ngày hôm nay
     const today = getLocalDateString(snapshot.timestamp);
@@ -449,22 +464,16 @@ export async function revertGamificationAfterUndo(snapshot) {
     if (_dailyStats.lastDate === today) {
         if (_dailyStats.todayTotal > 0) _dailyStats.todayTotal -= 1;
         if (snapshot.isCorrect && _dailyStats.todayCorrect > 0) _dailyStats.todayCorrect -= 1;
-        if (snapshot.wasNewCard && snapshot.isCorrect && _dailyStats.newCardsDoneToday > 0) {
-            _dailyStats.newCardsDoneToday -= 1;
-        }
+        // AUDIT-3.1: hoàn ĐÚNG suất ngân sách đã tiêu — kể cả lượt trả lời SAI (ngân sách tính theo
+        // sự kiện đã gặp thẻ) và kể cả nhóm 'learning' (ngoài cap nhưng vẫn là tiến trình).
+        revertReviewBudget(snapshot.countedCategory);
     }
 
-    if (_dailyStats.lastDate === today && snapshot.isCorrect) {
-        const key = snapshot.previousCard?.srsStatus === 'Learning' ? 'learningDoneToday'
-            : snapshot.countedDue ? 'dueDoneToday' : null;
-        if (key) _dailyStats[key] = Math.max(0, (_dailyStats[key] || 0) - 1);
-    }
-
-    // 6. Trừ bớt event stats nếu có
-    if (_gamification.stats) {
-        if (snapshot.rating === 4 && _gamification.stats.easyPresses > 0) _gamification.stats.easyPresses -= 1;
-        if (snapshot.rating === 2 && _gamification.stats.hardPresses > 0) _gamification.stats.hardPresses -= 1;
-    }
+    // 6. AUDIT-R2.2: hoàn phần thống kê mà lượt chấm đã thay đổi. `snapshot.statsBefore` được
+    // chụp ở ĐẦU handler (trước trackEvent/addXP) nên delta bao gồm cả easyPresses/hardPresses
+    // và xpToday/xpWeekTotal. `revertReviewStats` phân biệt bộ đếm cộng dồn với mốc thời gian /
+    // streak / max, và bỏ qua bộ đếm đã rollover sang ngày/tuần/tháng mới.
+    revertReviewStats(_gamification.stats, snapshot.statsBefore, snapshot.statsDelta, getLocalDateString());
 
     await saveGamification();
     await saveDailyStats();
@@ -501,27 +510,11 @@ export async function setUserFsrs7Params(params34, trainedAtTimestamp = null) {
 }
 
 export function exportReviewLogsAsJson() {
-    let rawList = [];
-    if (_reviewLogs && _reviewLogs.dict && Array.isArray(_reviewLogs.logs)) {
-        const vocabMap = new Map();
-        vocabulary.forEach(w => {
-            if (w.id) vocabMap.set(w.id, w.english || '');
-        });
-        rawList = _reviewLogs.logs.map((log, idx) => {
-            const cardId = _reviewLogs.dict[log[0]];
-            return {
-                cardId,
-                english: vocabMap.get(cardId) || '',
-                rating: log[1],
-                t: log[2],
-                ts: log[3] || (Date.now() - 1000000 + idx),
-                isTyping: log[4] === 1,
-                id: log[5]
-            };
-        });
-    } else if (Array.isArray(_reviewLogs)) {
-        rawList = _reviewLogs;
-    }
+    // AUDIT-R2.5: phần dựng danh sách tách sang hàm thuần (review-log-merge.js) để test được,
+    // và để cờ "lượt đầu đời" chắc chắn có mặt trong file xuất.
+    const rawList = (_reviewLogs && _reviewLogs.dict && Array.isArray(_reviewLogs.logs))
+        ? buildReviewLogsExport(_reviewLogs, vocabulary)
+        : (Array.isArray(_reviewLogs) ? _reviewLogs : []);
 
     if (rawList.length === 0) {
         return { success: false, count: 0 };
@@ -602,6 +595,8 @@ export {
     incrementNewCardsDone,
     incrementDueCardsDone,
     incrementLearningCardsDone,
+    incrementReviewBudget,
+    revertReviewBudget,
     recordReviewResult,
     recordQuizAnswer,
     saveGamification,

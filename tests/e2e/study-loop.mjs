@@ -188,7 +188,10 @@ try {
         if (undone?.step !== 1) bad.push('Ctrl+Z không trả về bước 1: ' + JSON.stringify(undone));
     } else {
         if (cardUi.badgeHidden !== true) bad.push('badge CỰC KHÓ hiện trên thẻ thường');
-        if (JSON.stringify(flipped.labels) !== JSON.stringify(['1p', '10p', '10p', '7 ngày'])) bad.push('nhãn thẻ New sai: ' + flipped.labels.join('/'));
+        // SRS-01 (đặc tả hiện hành): "Khó" LẶP LẠI đúng bước hiện tại (Anki: Hard repeats the
+        // current step), nên ở bước 0 nhãn Khó là 1p chứ không phải 10p. Unit test
+        // tests/learning-steps.test.mjs đã khẳng định hành vi này; E2E cũ giữ kỳ vọng trước SRS-01.
+        if (JSON.stringify(flipped.labels) !== JSON.stringify(['1p', '1p', '10p', '7 ngày'])) bad.push('nhãn thẻ New sai: ' + flipped.labels.join('/'));
         if (after?.status !== 'Learning' || after?.step !== 1 || !(after.dueInMin >= 9 && after.dueInMin <= 11)) bad.push('chấm Nhớ không hẹn +10 phút: ' + JSON.stringify(after));
         if (undone?.status !== 'New') bad.push('Ctrl+Z không trả về New: ' + JSON.stringify(undone));
     }

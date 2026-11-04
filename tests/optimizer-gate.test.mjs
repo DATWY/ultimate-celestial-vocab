@@ -61,7 +61,8 @@ function syntheticLogs(seed = 1, cards = 70, reviews = 6) {
             const elapsed = r === 0 ? 0 : Math.max(0.3, (state.stability || 1) * (0.8 + rnd() * 0.7));
             const p = r === 0 ? 0 : dualTraceForgettingCurve(elapsed, state.stability, state.stabilityShort, state.difficulty, DEFAULT_FSRS7_PARAMS);
             const rating = r === 0 ? 3 : (rnd() < p ? (rnd() < 0.75 ? 3 : 4) : (rnd() < 0.6 ? 1 : 2));
-            logs.push({ id: `l${id++}`, cardId: `c${c}`, rating, t: elapsed, ts, modality: 'en-vi' });
+            // AUDIT-R3.1: dữ liệu kiểu MỚI — lượt đầu mỗi chuỗi có cờ first do engine ghi, nên chuỗi được coi là đáng tin.
+            logs.push({ id: `l${id++}`, cardId: `c${c}`, rating, t: elapsed, ts, modality: 'en-vi', first: r === 0 });
             state = calculateNextSrsState(state, rating, 'en-vi', 0, DEFAULT_FSRS7_PARAMS, true, { now: ts, memoryOnly: true }).newState;
             ts += Math.max(0.3, state.stability || 1) * DAY * (0.8 + rnd() * 0.5);
         }

@@ -1272,6 +1272,11 @@ document.getElementById('app-container')?.addEventListener('gamification:xp_adde
 if (import.meta.env?.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('audit') === '1') {
 window.__testGamification = {
     _backup: null,
+    // Mỗi phiên preview có một số hiệu. Callback bất đồng bộ (nạp badges, nạp state) phải
+    // kiểm lại số hiệu trước khi ghi vào state, nếu không chúng chạy sau reset() và bơm
+    // dữ liệu giả trở lại object vừa được khôi phục.
+    _session: 0,
+    _rankTimer: null,
     
     triggerEvent: function(eventName, amount = 1) {
         import('../core/state.js').then(s => {
@@ -1286,12 +1291,16 @@ window.__testGamification = {
      * Firebase KHÔNG bị ảnh hưởng.
      */
     previewAllBadges: function() {
+        const session = this._session;   // reset() sẽ tăng số hiệu ⇒ callback cũ tự huỷ
         import('../core/state.js').then(s => {
+            if (this._session !== session) return; // reset() đã chạy trong lúc chờ nạp module
             s.setPreviewMode(true);
             const state = s.getState();
-            
-            // 1. Sao lưu state gốc (deep clone)
-            this._backup = JSON.parse(JSON.stringify(state.gamification));
+
+            // 1. Sao lưu state gốc (deep clone) — CHỈ lần đầu của phiên.
+            //    Ghi đè mỗi lần gọi thì lần gọi thứ hai sẽ chụp lại chính dữ liệu giả,
+            //    và reset() sẽ "khôi phục" về dữ liệu giả đó.
+            if (!this._backup) this._backup = JSON.parse(JSON.stringify(state.gamification));
             
             // 2. Bơm dữ liệu giả vào RAM (KHÔNG gọi saveGamification)
             if (!state.gamification.stats) state.gamification.stats = {};
@@ -1353,6 +1362,8 @@ window.__testGamification = {
 
             // 3. Tạm thêm tất cả special badge IDs vào unlockedBadges (chỉ trong RAM)
             import('../features/badges.js').then(({ SPECIAL_BADGES }) => {
+                // reset()/phiên mới đã chạy trong lúc chờ nạp module ⇒ không được đụng vào state.
+                if (this._session !== session || !this._backup) return;
                 if (!state.gamification.unlockedBadges) state.gamification.unlockedBadges = [];
                 SPECIAL_BADGES.forEach(b => {
                     if (!state.gamification.unlockedBadges.includes(b.id)) {
@@ -1376,7 +1387,9 @@ window.__testGamification = {
      * @param {number} level - Cấp độ muốn test (vd: 5 = Đồng, 15 = Bạc, 25 = Vàng, 35 = Bạch Kim, 50 = Kim Cương)
      */
     previewRank: function(level = 50) {
+        const session = this._session;   // reset() sẽ tăng số hiệu ⇒ callback cũ tự huỷ
         import('../core/state.js').then(s => {
+            if (this._session !== session) return; // reset() đã chạy trong lúc chờ nạp module
             s.setPreviewMode(true);
             const state = s.getState();
             if (!this._backup) {
@@ -1414,10 +1427,17 @@ window.__testGamification = {
             clearInterval(this._rankTimer);
             this._rankTimer = null;
         }
+        // Huỷ mọi callback preview còn đang chờ nạp module: chúng không được ghi dữ liệu
+        // giả vào object vừa khôi phục.
+        this._session++;
         if (!this._backup) {
             console.log('%c⚠️ Không có gì để khôi phục. Bạn chưa chạy preview.', 'color: #FF9800;');
             return;
         }
+        // reset() thay TOÀN BỘ object gamification bằng bản sao trước preview. Cập nhật hợp lệ
+        // đến từ tab khác trong lúc preview (broadcast/merge) sẽ bị bỏ — chấp nhận được vì
+        // preview là công cụ DEV trên kho audit tách biệt, và mọi lượt học thật đều đã ghi
+        // xuống DB trước đó.
         import('../core/state.js').then(s => {
             s.setPreviewMode(false);
             s.setGamification(this._backup);

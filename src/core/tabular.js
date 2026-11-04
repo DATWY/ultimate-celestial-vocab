@@ -47,12 +47,17 @@ export function cardFromParts(parts) {
     if (!['New', 'Learning', 'Mastered'].includes(status)) throw new Error('Trạng thái chỉ nhận New, Learning hoặc Mastered.');
     const starred = parts[5]?.trim().toLowerCase() || 'false';
     if (!['true', 'false', '1', '0'].includes(starred)) throw new Error('isStarred chỉ nhận true/false hoặc 1/0.');
+    // AUDIT-4.1: "Tạm ẩn" phải đọc/ghi THẬT. Bản cũ hardcode false ở cả hai chiều nên một thẻ
+    // đang tạm ẩn, sau khi xuất rồi khôi phục vào kho rỗng, quay lại lịch ôn mà không báo.
+    // Ô trống được hiểu là false để tương thích file cũ (chưa từng có giá trị khác false).
+    const suspended = parts[10]?.trim().toLowerCase() || 'false';
+    if (!['true', 'false', '1', '0'].includes(suspended)) throw new Error('isSuspended chỉ nhận true/false hoặc 1/0.');
     const card = {
         english: english.trim(), vietnamese: vietnamese.trim(), type: parts[2]?.trim() || '',
         pronunciation: parts[3]?.trim() || '', example: parts[4] || '', isStarred: ['true', '1'].includes(starred),
         srsStatus: status, srsDueDate: numeric(parts[7], 'Ngày đến hạn', null, 0, 8640000000000000),
         tags: [...new Set((parts[8] || '').split(',').map(tag => tag.trim()).filter(Boolean))],
-        lapses: numeric(parts[9], 'Số lần quên', 0, 0, 100000000, true), isSuspended: false,
+        lapses: numeric(parts[9], 'Số lần quên', 0, 0, 100000000, true), isSuspended: ['true', '1'].includes(suspended),
         srsInterval: numeric(parts[11], 'Khoảng ôn', 0, 0, 36500),
         srsEaseFactor: numeric(parts[12], 'Hệ số dễ', 2.5, 0.01, 10),
         difficulty: numeric(parts[13], 'Độ khó', undefined, 1, 10),
@@ -97,7 +102,7 @@ export function exportVocabularyTsv(vocabulary) {
         if (name === 'Pronunciation') return card.pronunciation;
         if (name === 'Example') return card.example;
         if (name === 'Tags') return (card.tags || []).join(',');
-        if (name === 'isSuspended') return false;
+        if (name === 'isSuspended') return card.isSuspended === true;
         if (name === 'srsStatus') return card.srsStatus || 'New';
         return card[name];
     }));

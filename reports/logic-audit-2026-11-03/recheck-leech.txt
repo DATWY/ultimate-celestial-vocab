@@ -1,0 +1,93 @@
+
+> ultimate-celestial-vocab@0.0.0 test:e2e
+> node tests/e2e/study-loop.mjs
+
+{
+  "mode": "leech",
+  "steps": [
+    {
+      "name": "seed",
+      "cards": 7
+    },
+    {
+      "name": "thẻ đầu tiên",
+      "english": "obfuscate",
+      "badgeHidden": false,
+      "badgeTitle": "Từ này đang chống lại bạn (đã quên ≥ 4 lần). Thử đ",
+      "hardClass": true
+    },
+    {
+      "name": "sau khi lật",
+      "buttonsVisible": true,
+      "labels": [
+        "10p",
+        "10p",
+        "1 ngày",
+        "2 ngày"
+      ],
+      "answerVisible": true
+    },
+    {
+      "name": "state trước khi chấm",
+      "status": "Learning",
+      "step": 1,
+      "interval": 0.0069,
+      "dueInMin": -2
+    },
+    {
+      "name": "sau khi chấm Nhớ (3)",
+      "status": "Learning",
+      "step": 2,
+      "interval": 1,
+      "dueInMin": 1440
+    },
+    {
+      "name": "sau Ctrl+Z",
+      "status": "Learning",
+      "step": 1,
+      "interval": 0.0069,
+      "dueInMin": -2
+    },
+    {
+      "name": "mở Hub",
+      "ok": true
+    },
+    {
+      "name": "mở wordlist",
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "expectedAuthRejections": 1,
+  "authEndpoints": [
+    "accounts:signInWithPassword",
+    "accounts:signInWithPassword",
+    "accounts:signUp",
+    "accounts:signUp",
+    "accounts:lookup",
+    "accounts:lookup"
+  ],
+  "summary": {
+    "card": "obfuscate",
+    "labels": [
+      "10p",
+      "10p",
+      "1 ngày",
+      "2 ngày"
+    ],
+    "afterGood": {
+      "status": "Learning",
+      "step": 2,
+      "interval": 1,
+      "dueInMin": 1440
+    },
+    "afterUndo": {
+      "status": "Learning",
+      "step": 1,
+      "interval": 0.0069,
+      "dueInMin": -2
+    }
+  },
+  "failures": [],
+  "ok": true
+}

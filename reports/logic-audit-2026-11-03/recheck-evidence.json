@@ -1,0 +1,37 @@
+{
+  "confirmed": 5,
+  "results": [
+    {
+      "issue": "Undo snapshot is taken after rating and XP stats",
+      "afterUndo": {
+        "userXP": 0,
+        "easyPresses": 1,
+        "xpToday": 5,
+        "xpWeekTotal": 5
+      }
+    },
+    {
+      "issue": "Quiz ignores independent new-card cap",
+      "limit": 15,
+      "newCardsDoneToday": 16,
+      "saves": 1
+    },
+    {
+      "issue": "Dedicated typing opens suspended card",
+      "displayed": 0,
+      "isSuspended": true
+    },
+    {
+      "issue": "Finite differences cross ordering constraint and contaminate Adam",
+      "gradient": "Infinity",
+      "step": "NaN",
+      "silentlyProjectedW0": 0.01
+    },
+    {
+      "issue": "Truncated chain with zero elapsed accepted as complete",
+      "firstReviewRemoved": true,
+      "retainedFirstElapsed": 0,
+      "historyComplete": true
+    }
+  ]
+}

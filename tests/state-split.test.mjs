@@ -29,12 +29,13 @@ const PUBLIC_API = [
     'getState', 'getStreakRecoveryStatus', 'getTtsSettings', 'getTypingFilterStats',
     'getVocabById', 'getVocabIndexById',
     'incrementDueCardsDone', 'incrementLearningCardsDone', 'incrementNewCardsDone',
+    'incrementReviewBudget',
     'isCardLeech', 'isDayStreakQualified', 'isInitialSyncDone', 'isPreviewMode',
     'loadTtsSettings', 'loadVocabulary', 'logActivity', 'measureReviewLogBytes',
     'mergeReviewLogs', 'normalizeTtsRate', 'normalizeTtsSource', 'normalizeTtsVoice', 'popLastReviewLog',
     'prepareProgress', 'prepareReviewLogsForCloud', 'pruneReviewLogs', 'pushCardToVocabulary',
     'reconcileStreakFreeze', 'recordQuizAnswer', 'recordReviewResult', 'removeReviewLog',
-    'revertGamificationAfterUndo', 'saveDailyStats', 'saveGamification', 'saveOneWord',
+    'revertGamificationAfterUndo', 'revertReviewBudget', 'saveDailyStats', 'saveGamification', 'saveOneWord',
     'saveVocabulary', 'seedIsolatedDemoVocabulary',
     'setAllTags', 'setCurrentCardIndex', 'setCurrentTopicFilter', 'setDailyStats',
     'setGamification', 'setInitialSyncDone', 'setIsBoostMode', 'setIsDarkMode', 'setIsFlipped',
@@ -86,7 +87,10 @@ test('T4.5b — barrel state.js giữ đúng bộ API công khai (không rơi, k
     assert.deepEqual(Object.keys(stateModule).sort(), [...PUBLIC_API].sort());
     // 93 → 96 (UI-FIX): thêm ttsSource / normalizeTtsSource / setTtsSource để
     // modal giọng đọc chọn được nguồn Cloud vs giọng máy (live binding + lưu).
-    assert.equal(Object.keys(stateModule).length, 96);
+    // 96 → 98 (AUDIT-3.1/U1): thêm incrementReviewBudget / revertReviewBudget để Flashcard và Quiz
+    // dùng CHUNG một định nghĩa "một lượt chấm tiêu ngân sách nào" (review-policy.js), và để
+    // Undo hoàn lại đúng suất ngân sách đã tiêu.
+    assert.equal(Object.keys(stateModule).length, 98);
 });
 
 test('T4.5b — mọi module con đều được barrel re-export, không trùng tên giữa 2 module', async () => {

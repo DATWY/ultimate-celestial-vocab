@@ -1,0 +1,140 @@
+﻿{
+  "when": "2026-11-03T14:25:19.591Z",
+  "passed": 19,
+  "failed": 0,
+  "results": [
+    {
+      "id": "1a",
+      "label": "log.first của thẻ Mastered legacy",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "id": "1a",
+      "label": "historyComplete",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "id": "1a",
+      "label": "verifiedChains",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "id": "1a",
+      "label": "số chuỗi dùng được",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "id": "1b",
+      "label": "assumedStartChains",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "id": "1b",
+      "label": "số chuỗi dùng được",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "id": "1b",
+      "label": "improved",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "id": "1b",
+      "label": "reason",
+      "expected": "truncated-history",
+      "actual": "truncated-history",
+      "ok": true
+    },
+    {
+      "id": "1b",
+      "label": "worker apply",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "id": "2",
+      "label": "xpToday sau Undo A",
+      "expected": 7,
+      "actual": 7,
+      "ok": true
+    },
+    {
+      "id": "2",
+      "label": "lastXPDate sau Undo A",
+      "expected": "2026-11-03",
+      "actual": "2026-11-03",
+      "ok": true
+    },
+    {
+      "id": "2",
+      "label": "xpWeekTotal sau Undo A (50 hôm qua + 7 của B)",
+      "expected": 57,
+      "actual": 57,
+      "ok": true
+    },
+    {
+      "id": "2",
+      "label": "xpToday sau khi cộng thêm 1",
+      "expected": 8,
+      "actual": 8,
+      "ok": true
+    },
+    {
+      "id": "3",
+      "label": "isNaturallyDue",
+      "expected": true,
+      "actual": true,
+      "ok": true
+    },
+    {
+      "id": "3",
+      "label": "classifyReview",
+      "expected": "due",
+      "actual": "due",
+      "ok": true
+    },
+    {
+      "id": "3",
+      "label": "log ở 200/200",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "id": "3",
+      "label": "lưu thẻ ở 200/200",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "id": "3",
+      "label": "log ở 199/200",
+      "expected": 1,
+      "actual": 1,
+      "ok": true
+    },
+    {
+      "id": "3",
+      "label": "suất due đã tiêu ở 199/200",
+      "expected": 1,
+      "actual": 1,
+      "ok": true
+    }
+  ]
+}

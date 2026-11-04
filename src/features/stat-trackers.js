@@ -127,8 +127,14 @@ export function trackReview({ stats, card, updatedCard, rating, now = Date.now()
         s.leechesHealed = num(s.leechesHealed) + 1;
     }
 
-    // 6. Chế độ gõ: chuỗi không dùng gợi ý, số lần xoá hết ô nhập, số lần gặp leech
+    // 6. Chế độ gõ: thành tích gắn với CÂU TRẢ LỜI (đúng / đúng nhanh) và chuỗi không gợi ý,
+    //    số lần xoá hết ô nhập, số lần gặp leech.
+    //    AUDIT-R3.2: `typingTotalCorrect`/`typingFastAnswers` được ghi Ở ĐÂY (sau snapshot Undo
+    //    của handler) thay vì trong `evaluateTyping`; nếu cộng lúc đánh giá thì Undo không hoàn
+    //    được và câu trả lời bị chặn ngân sách vẫn được tính công.
     if (isTyping) {
+        if (correct) s.typingTotalCorrect = num(s.typingTotalCorrect) + 1;
+        if (rating === 4) s.typingFastAnswers = num(s.typingFastAnswers) + 1;
         if (inputCleared) s.typingClearedInput = num(s.typingClearedInput) + 1;
         if (card?.isLeech) s.typingLeechRepeats = num(s.typingLeechRepeats) + 1;
         s.typingNoHintStreak = correct && !hintUsed ? num(s.typingNoHintStreak) + 1 : 0;
@@ -262,3 +268,4 @@ export function trackLevelUp(stats, now = Date.now()) {
     s.justLeveledUp = now;
     return s;
 }
+

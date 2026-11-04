@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-11-04T00:44:36.194Z",
+  "steps": {
+    "dev: trước khi gửi": {
+      "userXP": 0,
+      "xpToday": 0
+    },
+    "dev: sau thông điệp KIỂU CŨ (không domain) — kỳ vọng KHÔNG đổi": {
+      "userXP": 0,
+      "xpToday": 0
+    },
+    "dev: sau thông điệp CÓ domain=default — kỳ vọng ÁP DỤNG": {
+      "userXP": 333,
+      "xpToday": 333
+    },
+    "prod: trước khi gửi": {
+      "totalXpText": "0",
+      "api": false
+    },
+    "prod: sau thông điệp KIỂU CŨ — kỳ vọng ÁP DỤNG (tương thích bản trước)": {
+      "totalXpText": "8.888",
+      "api": false
+    }
+  },
+  "failures": [],
+  "errors": [],
+  "ok": true
+}

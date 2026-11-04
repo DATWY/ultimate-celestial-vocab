@@ -18,7 +18,26 @@ function syncCardToFirebase(card) {
     _syncModulePromise.then(module => module.syncCardToFirebase?.(card)).catch(() => {});
 }
 import { loadKeptSeparate, keepPairSeparate, keepPairsSeparate, clearKeptSeparate } from '../core/dedup-preferences.js';
-import { findDuplicatePairs, findDuplicatePairsAsync, mergeDuplicateCards, findInternalDuplicateCards, cleanAndDeduplicateVietnamese, selectAutoMergePairs } from '../core/dedup.js';
+import { cleanAndDeduplicateVietnamese } from '../core/text-normalize.js';
+// AUDIT-7.1: engine gộp trùng (~1.100 dòng) chỉ cần khi người dùng MỞ trình gộp trùng, nên nạp động —
+// entry bundle không phải mang nó lúc khởi động (đo được ~6 kB gzip). Mọi hàm dùng nó đều đã
+// async hoặc được gọi từ listener (không ai dùng giá trị trả về đồng bộ).
+//
+// Nếu chunk không tải được (mất mạng ở lần đầu, Service Worker cũ), KHÔNG cache promise bị
+// reject — lần bấm sau phải thử lại được — và trả null kèm thông báo thay vì ném lỗi, để các
+// listener không tạo unhandled rejection mà người dùng không hiểu gì.
+let _dedupModule = null;
+async function loadDedup() {
+    if (_dedupModule) return _dedupModule;
+    try {
+        _dedupModule = await import('../core/dedup.js');
+        return _dedupModule;
+    } catch (error) {
+        console.warn('Không tải được bộ máy gộp trùng:', error);
+        showPopup('Không tải được bộ máy gộp trùng. Hãy kiểm tra kết nối rồi thử lại.');
+        return null;
+    }
+}
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from './celestial-canvas.js';
 
@@ -530,6 +549,12 @@ export function openDedupModal() {
 export async function renderDedupPairs() {
     const scanToken = ++_dedupScanToken;
     const { vocabulary } = getState();
+    const dedup = await loadDedup();
+    if (!dedup) {
+        if (DOM.dedupSummaryText) DOM.dedupSummaryText.textContent = 'Không tải được bộ máy gộp trùng. Hãy kiểm tra kết nối rồi thử lại.';
+        return;
+    }
+    const { findDuplicatePairsAsync, findInternalDuplicateCards } = dedup;
     const dups = await findDuplicatePairsAsync(vocabulary, {
         onProgress: (phase, done, total) => {
             if (scanToken !== _dedupScanToken || !DOM.dedupSummaryText) return;
@@ -765,8 +790,11 @@ export async function renderDedupPairs() {
     });
 }
 
-export function executeCleanAllInternalMeanings() {
+export async function executeCleanAllInternalMeanings() {
     const { vocabulary } = getState();
+    const dedup = await loadDedup();
+    if (!dedup) return;
+    const { findInternalDuplicateCards } = dedup;
     const internalDups = findInternalDuplicateCards(vocabulary);
     if (internalDups.length === 0) return;
 
@@ -796,8 +824,11 @@ export function executeCleanAllInternalMeanings() {
     renderDedupPairs();
 }
 
-export function executeMergeSingle(cardA, cardB) {
+export async function executeMergeSingle(cardA, cardB) {
     const { vocabulary } = getState();
+    const dedup = await loadDedup();
+    if (!dedup) return;
+    const { mergeDuplicateCards } = dedup;
     const { mergedCard, deletedCardId } = mergeDuplicateCards(cardA, cardB);
 
     const newVocab = vocabulary.map(w => {
@@ -819,8 +850,11 @@ export function executeMergeSingle(cardA, cardB) {
     void renderDedupPairs();
 }
 
-export function executeMergeAll() {
+export async function executeMergeAll() {
     const { vocabulary } = getState();
+    const dedup = await loadDedup();
+    if (!dedup) return;
+    const { findDuplicatePairs, findInternalDuplicateCards, selectAutoMergePairs, mergeDuplicateCards } = dedup;
     // Dùng lại kết quả quét vừa hiển thị nếu vocabulary chưa đổi, tránh quét lại 1,3 s.
     const dups = _lastDedupScan.vocabulary === vocabulary ? _lastDedupScan.dups : findDuplicatePairs(vocabulary);
     const internalDups = findInternalDuplicateCards(vocabulary);

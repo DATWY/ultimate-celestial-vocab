@@ -1,0 +1,46 @@
+﻿{
+  "case1a": {
+    "cardInput": {
+      "srsStatus": "Mastered",
+      "srsInterval": 15,
+      "srsDueDate": 1793692800000
+    },
+    "logElapsed": 15,
+    "logFirst": true,
+    "historyComplete": true,
+    "verifiedChains": 1,
+    "cards": 1
+  },
+  "case1b": {
+    "totalChains": 60,
+    "verifiedChains": 0,
+    "assumedStartChains": 60,
+    "historyComplete": false,
+    "cardsUsedForReplay": 60,
+    "improved": true,
+    "reason": "validated",
+    "startEvidence": "assumed",
+    "paramsReturnedAreStart": false
+  },
+  "case2": {
+    "expected": {
+      "afterUndoXpToday": 7,
+      "lastXPDate": "2026-11-03",
+      "plusOne": 8
+    },
+    "actual": {
+      "xpToday": 57,
+      "lastXPDate": "2026-11-02",
+      "xpWeekTotal": 57,
+      "plusOne": 1
+    }
+  },
+  "case3": {
+    "isNaturallyDue": true,
+    "classifyReview": null,
+    "logsWritten": 1,
+    "savesWritten": 1,
+    "dueDoneToday": 0,
+    "srsStatusAfter": "Mastered"
+  }
+}

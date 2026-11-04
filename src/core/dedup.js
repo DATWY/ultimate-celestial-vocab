@@ -1,5 +1,12 @@
 // src/core/dedup.js
 import { nextRevision } from './card-merge.js';
+import { LEECH_LAPSE_THRESHOLD } from './srs/constants.js';
+import { removeVietnameseTones, cleanAndDeduplicateVietnamese } from './text-normalize.js';
+import { levenshteinDistance, isFuzzySearchMatch } from './fuzzy-search.js';
+// AUDIT-7.1: hai nhóm hàm trên đã tách sang module nhỏ để ui/render.js + ui/modal.js dùng được mà
+// không kéo cả engine gộp trùng vào entry bundle. Re-export để API công khai của dedup.js
+// không đổi (import-plan.js, các test và mã cũ vẫn import từ đây).
+export { removeVietnameseTones, cleanAndDeduplicateVietnamese, levenshteinDistance, isFuzzySearchMatch };
 // Next-Gen Intelligent Deduplication & Semantic Matching Engine v5.0 (Fuzzy & Morphological)
 
 const VI_STOPWORDS = new Set([
@@ -143,33 +150,6 @@ export function isDerivationalVariant(wordA, wordB, posA = 'unknown', posB = 'un
 
 const candidatesRestoreE = (stem) => /[^aeiou][aeiou][^aeiou]$/.test(stem);
 
-export function levenshteinDistance(s1, s2) {
-    if (s1 === s2) return 0;
-    const len1 = s1.length;
-    const len2 = s2.length;
-    if (len1 === 0) return len2;
-    if (len2 === 0) return len1;
-
-    let prevRow = new Array(len2 + 1);
-    let currRow = new Array(len2 + 1);
-    for (let j = 0; j <= len2; j++) prevRow[j] = j;
-
-    for (let i = 1; i <= len1; i++) {
-        currRow[0] = i;
-        const char1 = s1.charCodeAt(i - 1);
-        for (let j = 1; j <= len2; j++) {
-            const cost = char1 === s2.charCodeAt(j - 1) ? 0 : 1;
-            currRow[j] = Math.min(
-                currRow[j - 1] + 1,      // insertion
-                prevRow[j] + 1,          // deletion
-                prevRow[j - 1] + cost    // substitution
-            );
-        }
-        [prevRow, currRow] = [currRow, prevRow];
-    }
-    return prevRow[len2];
-}
-
 /**
  * Tính tỷ lệ tương đồng ký tự (0.0 -> 1.0)
  */
@@ -178,61 +158,6 @@ export function stringSimilarity(s1, s2) {
     if (maxLen === 0) return 1.0;
     const dist = levenshteinDistance(s1, s2);
     return Math.max(0, (maxLen - dist) / maxLen);
-}
-
-/**
- * Loại bỏ dấu tiếng Việt (ví dụ: "thị phạm" -> "thi pham", "chứng minh" -> "chung minh")
- */
-export function removeVietnameseTones(str) {
-    if (!str) return '';
-    return str.normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd').replace(/Đ/g, 'D')
-        .toLowerCase();
-}
-
-/**
- * Tìm kiếm mờ thông minh cho ô tìm kiếm từ vựng (hỗ trợ không dấu, multi-token, typo Levenshtein)
- */
-export function isFuzzySearchMatch(query, english, vietnamese) {
-    if (!query) return true;
-    const q = query.trim().toLowerCase();
-    const eng = (english || '').toLowerCase();
-    const vie = (vietnamese || '').toLowerCase();
-
-    // 1. Khớp chuỗi trực tiếp
-    if (eng.includes(q) || vie.includes(q)) return true;
-
-    // 2. Tiếng Việt không dấu
-    const qNoTone = removeVietnameseTones(q);
-    const vieNoTone = removeVietnameseTones(vie);
-    if (vieNoTone.includes(qNoTone)) return true;
-
-    // 3. Khớp đa từ khóa (Multi-token match)
-    const tokens = qNoTone.split(/\s+/).filter(Boolean);
-    if (tokens.length > 1) {
-        const engTokens = eng.replace(/[^a-z0-9]/g, ' ').split(/\s+/);
-        const vieTokens = vieNoTone.replace(/[^a-z0-9]/g, ' ').split(/\s+/);
-        const allTokens = [...engTokens, ...vieTokens];
-        const allTokensMatch = tokens.every(tok => allTokens.some(t => t.includes(tok)));
-        if (allTokensMatch) return true;
-    }
-
-    // 4. Tìm kiếm mờ tiếng Anh (Levenshtein Fuzzy Match)
-    if (q.length >= 4) {
-        const engWords = eng.replace(/[^a-z0-9]/g, ' ').split(/\s+/);
-        for (const w of engWords) {
-            if (w.length >= 4 && Math.abs(w.length - q.length) <= 2) {
-                const dist = levenshteinDistance(q, w);
-                const maxLen = Math.max(q.length, w.length);
-                if (dist <= 1 || (maxLen >= 8 && dist <= 2)) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
 }
 
 /**
@@ -444,50 +369,6 @@ export function canonicalPartOfSpeech(typeStr, englishText = '') {
     }
 
     return t;
-}
-
-/**
- * Làm sạch, chuẩn hóa và khử trùng lặp nghĩa tiếng Việt triệt để (Case-insensitive)
- * Khắc phục hoàn toàn lỗi lặp: "Thị phạm, chứng minh, Chứng minh, giải thích" -> "Thị phạm, chứng minh, giải thích"
- */
-export function cleanAndDeduplicateVietnamese(rawText) {
-    if (!rawText) return '';
-    // Tách theo dấu phẩy, chấm phẩy, xuống dòng, gạch chéo
-    const parts = rawText.split(/[,;\n\/]+/).map(p => p.trim()).filter(Boolean);
-    const uniqueMap = new Map();
-
-    for (const part of parts) {
-        // Gọt sạch các ký tự rác ở đầu/cuối: bullet, gạch ngang, dấu chấm, dấu phẩy
-        const cleanPart = part.replace(/^[\-\•\*\s\d\.\)]+|[\.\;\,\s\-]+$/g, '').trim();
-        if (!cleanPart) continue;
-
-        // Chuẩn hóa key so sánh: chữ thường và thu gọn khoảng trắng
-        const normKey = cleanPart.toLowerCase().replace(/\s+/g, ' ');
-        if (!uniqueMap.has(normKey)) {
-            uniqueMap.set(normKey, cleanPart);
-        } else {
-            // Giữ lại định dạng đầy đủ hơn hoặc có chú thích nếu có
-            const existing = uniqueMap.get(normKey);
-            if (cleanPart.length > existing.length) {
-                uniqueMap.set(normKey, cleanPart);
-            }
-        }
-    }
-
-    const list = Array.from(uniqueMap.values());
-    if (list.length === 0) return '';
-
-    // Viết hoa chữ cái đầu tiên của cụm từ đầu tiên
-    list[0] = list[0].charAt(0).toUpperCase() + list[0].slice(1);
-    
-    // Các cụm từ tiếp theo: viết thường chữ cái đầu trừ khi là từ viết hoa toàn bộ (viết tắt)
-    for (let i = 1; i < list.length; i++) {
-        if (list[i].length > 1 && list[i][0] === list[i][0].toUpperCase() && list[i][1] === list[i][1].toLowerCase()) {
-            list[i] = list[i].charAt(0).toLowerCase() + list[i].slice(1);
-        }
-    }
-
-    return list.join(', ');
 }
 
 /**
@@ -1197,6 +1078,10 @@ export function mergeDuplicateCards(cardA, cardB) {
         pronunciation: mergedPron,
         tags: Array.from(tagSet),
         isStarred: primary.isStarred || secondary.isStarred,
+        // "Tạm ẩn" gộp theo OR giống isStarred: nếu MỘT trong hai bản đang bị người dùng ẩn thì
+        // bản gộp phải giữ trạng thái ẩn. Trước đây trường này bị bỏ quên nên kết quả phụ thuộc
+        // THỨ TỰ tham số (gộp (đang học, đã ẩn) ⇒ sống lại; đảo lại ⇒ bị ẩn).
+        isSuspended: primary.isSuspended === true || secondary.isSuspended === true,
         updatedAt: Date.now(),
         contentUpdatedAt: nextRevision({ contentUpdatedAt: Math.max(primary.contentUpdatedAt || primary.updatedAt || 0, secondary.contentUpdatedAt || secondary.updatedAt || 0) }, 'contentUpdatedAt'),
         flagsUpdatedAt: nextRevision({ flagsUpdatedAt: Math.max(primary.flagsUpdatedAt || primary.updatedAt || 0, secondary.flagsUpdatedAt || secondary.updatedAt || 0) }, 'flagsUpdatedAt')
@@ -1223,8 +1108,16 @@ export function mergeDuplicateCards(cardA, cardB) {
         mergedCard.srsDueDate = mergedDue;
     }
     if (mergedLastReview != null) mergedCard.lastReviewDate = mergedLastReview;
-    mergedCard.srsUpdatedAt = Math.max(num(cardA.srsUpdatedAt) || 0, num(cardB.srsUpdatedAt) || 0) || Date.now();
-    mergedCard.isLeech = mergedLapses >= 4;
+    // DEDUP-02: gộp là một SỰ KIỆN BỘ NHỚ MỚI, nên phải có revision LỚN HƠN cả hai đầu vào.
+    // Bản cũ đặt srsUpdatedAt = max(hai đầu vào) ⇒ đồng hồ bằng bản đang lưu trong IDB, và
+    // saveWordToDB() (mergeCardFields) rơi vào tie-break so chuỗi JSON: kết quả gộp có thể bị
+    // bản cũ ghi đè ngay khi lưu (lapses 9 + 1 = 10 thua "9"). nextRevision() bảo đảm bản gộp
+    // luôn thắng, giống cách contentUpdatedAt/flagsUpdatedAt ở trên đã làm.
+    mergedCard.srsUpdatedAt = nextRevision(
+        { srsUpdatedAt: Math.max(num(cardA.srsUpdatedAt) || 0, num(cardB.srsUpdatedAt) || 0) },
+        'srsUpdatedAt'
+    );
+    mergedCard.isLeech = mergedLapses >= LEECH_LAPSE_THRESHOLD;
     if (mergedCard.isLeech) mergedCard.needsReformulation = true;
 
     // DEDUP-01: thẻ phụ bị đánh dấu xoá sau khi gộp, nên trường nào chỉ thẻ phụ có

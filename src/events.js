@@ -3,13 +3,16 @@ import { escapeHTML } from './core/utils/sanitize.js';
 import { isEditableTarget, shouldHandleUndoShortcut, matchBoostCommand } from './core/utils/keyboard.js';
 import { trackReview, trackHourBonus, trackDarkMode } from './features/stat-trackers.js';
 import { restoreCardReview } from './core/card-merge.js';
+import { snapshotReviewStats, diffReviewStats } from './core/stats-rollback.js';
 // src/events.js
 
 import { DOM } from './ui/elements.js';
-import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary } from './core/state.js';
+import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementReviewBudget, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary, getLocalDateString } from './core/state.js';
+import { classifyReview, budgetBlockReason, isCardReviewable, reviewBudgets } from './core/review-policy.js';
 import { calculateNextSrsState } from './core/srs/index.js';
 import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
-import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming } from './core/queue.js';
+import { buildTypingPool } from './features/typing-session.js';
+import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming, getReviewBudget, computeDailyNewLimit } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
 import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, showToast, handleAddEditSubmit, cancelEdit, openManageModal, switchHubTab, openDedupModal, executeMergeAll } from './ui/modal.js';
 import { playSound, speakText } from './core/sound.js';
@@ -146,32 +149,52 @@ function processSrsFeedback(rating, autoAdvance = true) {
 
     try {
         const currentCard = vocabulary[currentCardIndex];
+        // AUDIT-R2.4: cửa chấm phải tự kiểm điều kiện, không tin hàng đợi đã dựng trước đó.
+        // Thẻ có thể bị tạm ẩn/xoá sau khi vào queue (đổi ở tab khác, hoặc người dùng bấm ẩn).
+        if (!isCardReviewable(currentCard)) {
+            setIsTransitioning(false);
+            showToast('Thẻ đã thay đổi', 'Thẻ này đã bị tạm ẩn hoặc xoá nên không được chấm.', 'ph-info');
+            return;
+        }
         const previousCard = JSON.parse(JSON.stringify(currentCard));
+        // AUDIT-R2.2: chụp thống kê TRƯỚC mọi thay đổi của lượt chấm. Bản trước chụp SAU
+        // trackEvent(easy/hard) và addXP, nên Undo bỏ sót easyPresses/hardPresses/xpToday/
+        // xpWeekTotal (đúng những khoá mà trackEvent/addXP ghi).
+        const statsBefore = snapshotReviewStats(getState().gamification?.stats, getLocalDateString());
         const comboBefore = getState().gamification?.consecutiveCorrect || 0;
         const isNewCard = currentCard.srsStatus === 'New' && (!currentCard.learningStep || currentCard.learningStep === 0);
         
         const modality = shouldCardUseTyping(currentCard) ? 'typing' : 'en-vi';
         const { newState: updatedCard, log } = calculateNextSrsState(currentCard, rating, modality, 0, getState().userFsrs7Params);
         const reviewLogId = log ? crypto.randomUUID() : null;
+
+        // AUDIT-R2.3: chốt ngân sách tại ĐÚNG cửa ghi SRS. Hàng đợi có thể đã cũ (đổi cap,
+        // đồng bộ từ thiết bị khác, hoặc pool luyện gõ dựng từ trước) nên không thể chỉ dựa
+        // vào lúc buildReviewQueue. Hai ngân sách ĐỘC LẬP: suất từ mới và suất tổng.
+        const budget = getReviewBudget();
+        const countedCategory = classifyReview(previousCard);
+        const dailyStats = getState().dailyStats;
+        const blockedBy = budgetBlockReason(countedCategory, reviewBudgets({
+            limit: budget.limit, used: budget.used,
+            newLimit: computeDailyNewLimit(dailyStats),
+            newUsed: dailyStats?.newCardsDoneToday
+        }));
+        if (blockedBy) {
+            setIsTransitioning(false);
+            showToast(
+                blockedBy === 'new' ? 'Đã hết suất từ mới hôm nay' : 'Đã chạm giới hạn ôn hôm nay',
+                'Lượt chấm này không được ghi vì đã hết suất. Tăng giới hạn trong phần cài đặt ôn tập nếu muốn tiếp tục.',
+                'ph-info'
+            );
+            return;
+        }
         if (log) void addReviewLog({ ...log, id: reviewLogId });
 
-        // Record stats & Gamification
-        if (isNewCard && rating > 1) { 
-            incrementNewCardsDone();
-        }
-        
-        // NÂNG CẤP: Tracking tiến trình theo ngày cho thanh Progress Bar
-        if (rating > 1) {
-            if (previousCard.srsStatus === 'Learning') {
-                incrementLearningCardsDone();
-            } else if (previousCard.srsStatus === 'Mastered') {
-                const endOfDay = new Date().setHours(23, 59, 59, 999);
-                // Chỉ tính những thẻ thực sự đến hạn (không phải cramming vớ vẩn hay thẻ chưa đến hạn)
-                if (previousCard.srsDueDate && previousCard.srsDueDate <= endOfDay) {
-                    incrementDueCardsDone();
-                }
-            }
-        }
+        // AUDIT-3.1: ngân sách ngày tiêu theo SỰ KIỆN (đã giới thiệu/gặp thẻ), không theo đúng/sai.
+        // Trước đây chỉ `rating > 1` mới cộng, nên "New + Quên" (chuyển ngay sang Learning)
+        // không bao giờ tiêu suất từ mới ⇒ mở thẻ mới không giới hạn. Quiz thì lại cộng bất kể
+        // đúng/sai. Nay cả hai đi qua review-policy.js nên cùng một định nghĩa.
+        incrementReviewBudget(countedCategory);
         
         if (rating === 4) trackEvent('easyPresses');
         if (rating === 2) trackEvent('hardPresses');
@@ -204,6 +227,11 @@ function processSrsFeedback(rating, autoAdvance = true) {
         // GAME-01: gom mọi bộ đếm của một lượt chấm vào MỘT chỗ (stat-trackers.js)
         // thay vì rải rác — 25 khoá stats trước đây không có nơi ghi nên 33 huy hiệu
         // đặc biệt không bao giờ mở được.
+        //
+        // AUDIT-R2.2: `statsBefore` đã chụp ở đầu handler, TRƯỚC trackEvent/addXP. Ở đây chỉ
+        // ghi thêm bộ đếm của trackReview/trackHourBonus rồi lấy hiệu — nên delta bao trùm
+        // toàn bộ lượt chấm (easyPresses, hardPresses, xpToday, xpWeekTotal, ...).
+        let statsDelta = null;
         {
             const stats = getState().gamification?.stats;
             trackHourBonus(stats);
@@ -214,6 +242,7 @@ function processSrsFeedback(rating, autoAdvance = true) {
                 rating,
                 isTyping: modality === 'typing'
             });
+            statsDelta = diffReviewStats(statsBefore, getState().gamification?.stats);
         }
 
         // Typing mode keeps the same card on screen, so refresh the dock now.
@@ -261,6 +290,16 @@ function processSrsFeedback(rating, autoAdvance = true) {
             wasNewCard: isNewCard,
             isCorrect: rating > 1,
             wasLearningInserted: wasLearningInserted,
+            // AUDIT-3.1 + AUDIT-R2.2: Undo phải hoàn lại đúng suất ngân sách và đúng các bộ
+            // đếm đã cộng. Cần CẢ giá trị trước (`statsBefore`) lẫn thay đổi (`statsDelta`) vì
+            // mốc thời gian/streak chỉ khôi phục được khi biết giá trị cũ.
+            countedCategory: countedCategory,
+            statsBefore: statsBefore,
+            statsDelta: statsDelta,
+            // AUDIT-R3.2: `recordReviewResult` đổi combo (cộng 1 hoặc rơi về 0/10). Ghi lại giá trị
+            // SAU lượt chấm để Undo chỉ khôi phục combo khi nơi khác chưa đổi nó — gán thẳng
+            // `snapshot.comboBefore` sẽ xoá mất thay đổi hợp lệ xảy ra xen giữa.
+            comboAfter: getState().gamification?.consecutiveCorrect || 0,
             timestamp: Date.now()
         });
         updateUndoButtonState();
@@ -539,21 +578,9 @@ export function setupEventListeners() {
         const { vocabulary, typingFilter } = getState();
         const activeFilter = typingFilter === 'off' ? 'leech' : typingFilter;
 
-        const candidates = [];
-        for (let i = 0; i < vocabulary.length; i++) {
-            const card = vocabulary[i];
-            if (!card || card.isDeleted) continue;
-
-            let matches = false;
-            if (activeFilter === 'leech') matches = isCardLeech(card);
-            else if (activeFilter === 'hard') matches = (card.difficulty !== undefined && card.difficulty >= 6.5) || isCardLeech(card);
-            else if (activeFilter === 'learning') matches = card.srsStatus === 'New' || card.srsStatus === 'Learning';
-            else if (activeFilter === 'starred') matches = !!card.isStarred;
-            else if (activeFilter === 'long') matches = (card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8;
-            else matches = true;
-
-            if (matches) candidates.push(i);
-        }
+        // AUDIT-R2.4: dùng CÙNG điều kiện hợp lệ với Flashcard (isCardReviewable) — bản trước
+        // chỉ lọc isDeleted nên phiên luyện gõ vẫn mở thẻ đang "Tạm ẩn" và ghi SRS cho nó.
+        const candidates = buildTypingPool(vocabulary, activeFilter, isCardLeech);
 
         if (candidates.length === 0) {
             // showPopup(message, type) — bản cũ truyền (title, message) nên câu giải

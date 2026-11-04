@@ -30,7 +30,11 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
         learningDesc = "Bạn có xu hướng muốn ôn lại từ mới trong 24 giờ đầu để kiến thức kịp ăn sâu vào trí nhớ dài hạn.";
     }
 
-    // 2. ĐỘ BỀN KÝ ỨC (Memory Stamina) - Dựa vào sinc (p[7], base = 1.98x)
+    // 2. ĐỘ BỀN KÝ ỨC (Memory Stamina) - Dựa vào sinc_base (p[7], base = 1.98)
+    // LƯU Ý CÁCH DIỄN GIẢI: p[7] là hằng số bên trong exp(w7 - 1.5) của công thức tăng độ bền,
+    // KHÔNG phải "hệ số nhân chu kỳ nhớ mỗi lượt đúng". Độ tăng thật còn phụ thuộc exp(w7-1.5),
+    // (11 - D), S^-w8 và (exp((1-R)*w9) - 1). Vì vậy phần mô tả chỉ nói XU HƯỚNG so với mức
+    // tham chiếu, không quy ra bội số cụ thể.
     const sinc = p[7];
     const sincDelta = getDeltaPct(sinc, base[7]);
     const staminaScore = Math.min(99, Math.max(50, Math.round(75 + (sincDelta * 0.7))));
@@ -38,13 +42,15 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
     let staminaDesc = "Mỗi khi trả lời đúng liên tiếp, khoảng cách ngày ôn giãn cách đều đặn, không sợ bị quên rơi rụng.";
     if (sincDelta >= 15) {
         staminaStatus = "Siêu bền dài hạn";
-        staminaDesc = "Chu kỳ nhớ của bạn nhân lên " + sinc.toFixed(1) + "x mỗi lượt đúng! Từ vựng một khi đã thuộc thì khắc sâu như tạc vào đá.";
+        staminaDesc = "Sau mỗi lần trả lời đúng, mô hình giãn khoảng ôn mạnh hơn mức tham chiếu — từ vựng một khi đã thuộc thì rất lâu mới rơi.";
     } else if (sincDelta <= -10) {
         staminaStatus = "Giữ nhịp an toàn";
-        staminaDesc = "Khoảng cách ôn tập được thuật toán giữ ở nhịp độ thận trọng " + sinc.toFixed(1) + "x để bạn luôn an tâm không bị quên.";
+        staminaDesc = "Khoảng cách ôn được giữ thận trọng hơn mức tham chiếu để bạn luôn an tâm không bị quên.";
     }
 
-    // 3. SỨC BẬT PHỤC HỒI (Bounce Back) - Dựa vào failBase (p[10], base = 0.702)
+    // 3. SỨC BẬT PHỤC HỒI (Bounce Back) - Dựa vào fail_base (p[10], base = 0.702)
+    // p[10] là hệ số trong w10 * ((S+1)^w11 - 1) * exp((1-R)*w12) rồi bị chặn trên bởi
+    // min(S_trước, giá trị đó) — KHÔNG phải "phần trăm dấu vết được giữ lại".
     const failBase = p[10];
     const failDelta = getDeltaPct(failBase, base[10]);
     const bounceScore = Math.min(99, Math.max(50, Math.round(75 + (failDelta * 0.7))));
@@ -52,7 +58,7 @@ export function analyzeFsrs7Persona(userParams, trainedAtTimestamp) {
     let bounceDesc = "Khi lỡ bấm 'Quên', não bạn vẫn giữ lại gốc rễ ký ức, chỉ cần ôn lướt 1 lần là lấy lại phong độ ngay!";
     if (failDelta >= 15) {
         bounceStatus = "Phục hồi thần tốc";
-        bounceDesc = "Khả năng phục hồi siêu việt! Khi quên, bạn vẫn lưu giữ " + (failBase * 100).toFixed(0) + "% dấu vết cũ, không bao giờ phải học lại từ con số 0.";
+        bounceDesc = "Khi quên, mô hình vẫn giữ lại một phần độ bền cũ thay vì đưa thẻ về mức đầu — bạn không phải học lại từ con số 0.";
     } else if (failDelta <= -10) {
         bounceStatus = "Cần ôn kỹ khi quên";
         bounceDesc = "Khi gặp từ đã quên, não bạn muốn xây lại nền móng vững chắc, nên dành thêm 5 giây đọc kỹ ví dụ để nhớ sâu hơn.";

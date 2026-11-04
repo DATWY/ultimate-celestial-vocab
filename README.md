@@ -1,4 +1,4 @@
-﻿# Ultimate Celestial Vocab
+# Ultimate Celestial Vocab
 
 ![Version](https://img.shields.io/badge/version-DATWY.V2.261028.22-8a2be2.svg?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-380%2F380%20PASS-brightgreen.svg?style=flat-square)
@@ -22,14 +22,15 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 
 | Hạng mục | Số đo | Cách đo |
 |---|---|---|
-| Test | **380 pass / 380**, 0 fail, 0 skip | `npm test` |
-| File test | **43** (	ests/*.test.mjs) + 1 E2E | `Get-ChildItem tests -File` |
-| Lint | **0 error**, 105 warning (đều là `no-console`/escape cố ý) | `npm run lint` |
-| File nguồn | **65** file, **38.135** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
-| Entry `assets/index-*.js` | 230,2 kB thô → **76,16 kB gzip** (92,9% ngân sách 82 kB) | `npm run budget` |
-| Chunk Firebase lớn nhất | 492.097 B thô → **113,65 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
-| CSS do Vite sinh | **325.071 B thô** / **58,84 kB gzip** (92,9% ngân sách 350 kB) | `npm run budget` |
-| Toàn bộ `dist/` | **2.111,98 kB thô / 41 file** (ngân sách 2.700 kB) | `npm run budget` |
+| Test | **600 pass / 600**, 0 fail, 0 skip | `npm test` |
+| File test | **66** (`tests/*.test.mjs`) + 1 E2E | `Get-ChildItem tests -File` |
+| Lint | **0 error**, 108 warning (đều là `no-console`/escape cố ý) | `npm run lint` |
+| File nguồn | **74** file, **36.461** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
+| Entry `assets/index-*.js` | 238.320 B thô → **78,27 kB gzip** (95,4% ngân sách 82 kB) | `npm run budget` |
+| Chunk `assets/dedup-*.js` (lazy) | 17.876 B thô → **6,60 kB gzip** — chỉ tải khi mở trình gộp trùng | `npm run budget` |
+| Chunk Firebase lớn nhất | 492.570 B thô → **113,65 kB gzip** (94,7% ngân sách 120 kB) | `npm run budget` |
+| CSS do Vite sinh | **332.004 B thô** / **60,86 kB gzip** (94,9% ngân sách 350 kB) | `npm run budget` |
+| Toàn bộ `dist/` | **2.155,39 kB thô / 42 file** (ngân sách 2.700 kB) | `npm run budget` |
 | Precache Service Worker | **36 URL** | đếm `url:"` trong `dist/sw.js` |
 | Khai báo `!important` | **264** trong `src/css` (đã giảm từ 1.920) | regex trên `src/css/**/*.css` |
 | Font Lexend self-host | **87.996 B / 3 file** `woff2` | `public/fonts/lexend-*.woff2` |
@@ -38,7 +39,9 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 | Mã đồng bộ | **20 ký tự**, bảng chữ `A-Z` bỏ `I/O` + `2-9` | `src/core/firebase.js:141-142` |
 | Trần khoảng cách ôn | **365 ngày** (áp sau fuzz, cho mọi lần chấm) | `src/core/srs/constants.js:6` |
 
-Con số "92,9% ngân sách" là **cảnh báo**, không phải thành tích: entry chỉ còn ~5,8 kB dư địa.
+Số đo trên lấy từ `dist/` build ngày **2026-11-03** (sau đợt sửa lỗi logic-audit).
+Con số "95,4% ngân sách" là **cảnh báo**, không phải thành tích: entry chỉ còn ~3,7 kB dư địa (82,00 − 78,27).
+Engine gộp trùng đã được tách thành chunk lazy (6,60 kB gzip) nên entry không còn mang nó lúc khởi động.
 
 ---
 

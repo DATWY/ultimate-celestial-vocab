@@ -1,0 +1,291 @@
+{
+  "startedAt": "2026-11-04T00:46:25.332Z",
+  "rounds": 6,
+  "modes": {
+    "default(parallel)": [
+      {
+        "round": 1,
+        "ms": 5218,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 2,
+        "ms": 5056,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 3,
+        "ms": 5092,
+        "runs": [
+          {
+            "code": 1,
+            "pass": 597,
+            "fail": 1,
+            "deserialize": true,
+            "fileLevel": true
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 1,
+        "fileLevel": 1
+      },
+      {
+        "round": 4,
+        "ms": 5051,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 5,
+        "ms": 5273,
+        "runs": [
+          {
+            "code": 1,
+            "pass": 591,
+            "fail": 1,
+            "deserialize": true,
+            "fileLevel": true
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 1,
+        "fileLevel": 1
+      },
+      {
+        "round": 6,
+        "ms": 5086,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      }
+    ],
+    "serial(--test-concurrency=1)": [
+      {
+        "round": 1,
+        "ms": 14585,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 2,
+        "ms": 15729,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 3,
+        "ms": 14706,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 4,
+        "ms": 14473,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 5,
+        "ms": 14059,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 6,
+        "ms": 15859,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      }
+    ]
+  },
+  "cpu": 22,
+  "summary": {
+    "default(parallel)": {
+      "suiteRuns": 12,
+      "deserializeHits": 2,
+      "fileLevelFailures": 2,
+      "allPass": false,
+      "avgMsPerPair": 5129
+    },
+    "serial(--test-concurrency=1)": {
+      "suiteRuns": 12,
+      "deserializeHits": 0,
+      "fileLevelFailures": 0,
+      "allPass": true,
+      "avgMsPerPair": 14902
+    }
+  }
+}

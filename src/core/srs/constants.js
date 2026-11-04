@@ -88,9 +88,35 @@ export const FSRS7_PARAM_BOUNDS = [
     [0, 2], [0, 2], [0, 2], [0, 2], [0, 2]
 ];
 
+/**
+ * AUDIT-5.1 — Ràng buộc THỨ TỰ giữa các tham số, không chỉ biên từng số.
+ *
+ * Nguồn FSRS-7 (srs-benchmark models/fsrs_v7.py, FSRS7ParameterClipper) áp các ràng buộc này
+ * SAU bước clamp hộp:
+ *     w1 = max(w1, w0); w2 = max(w2, w1); w3 = max(w3, w2); w26 = max(w26, w25)
+ * Thiếu chúng, validator chấp nhận w[0]=100 và w[3]=0.01 — tức "Quên" cho độ bền ban đầu
+ * 100 ngày còn "Dễ" chỉ 0.01 ngày, đảo ngược ngữ nghĩa rating.
+ *
+ * Trả về thông điệp lỗi đầu tiên (string) hoặc null nếu hợp lệ.
+ */
+export function fsrs7OrderingError(params) {
+    if (!Array.isArray(params) || params.length !== 34) return null;
+    for (let i = 0; i < 3; i++) {
+        if (params[i] > params[i + 1]) return `tham số S0 phải tăng dần theo rating (w${i + 1} ≥ w${i})`;
+    }
+    if (params[25] > params[26]) return 'w26 (base2) phải ≥ w25 (base1) theo ràng buộc FSRS-7';
+    return null;
+}
+
+/**
+ * Chiếu một bộ tham số về miền hợp lệ: clamp hộp rồi áp ràng buộc thứ tự.
+ * (Nằm ở training.js — chỉ optimizer dùng; tách khỏi entry bundle.)
+ */
+
 export function validFsrs7Params(params) {
     return Array.isArray(params) && params.length === 34 && params.every((value, i) =>
-        Number.isFinite(value) && value >= FSRS7_PARAM_BOUNDS[i][0] && value <= FSRS7_PARAM_BOUNDS[i][1]);
+        Number.isFinite(value) && value >= FSRS7_PARAM_BOUNDS[i][0] && value <= FSRS7_PARAM_BOUNDS[i][1])
+        && fsrs7OrderingError(params) === null;
 }
 
 /**
@@ -131,6 +157,11 @@ export function parseAndValidateFsrs7Params(rawText) {
             return { valid: false, error: `Tham số thứ ${i + 1} phải trong khoảng ${min}–${max}` };
         }
     }
+
+    // AUDIT-5.1: nhập tay bị TỪ CHỐI (không tự chiếu) để người dùng thấy lý do, khác với optimizer
+    // — nơi bước tối ưu được CHIẾU về miền hợp lệ thay vì hủy cả vòng lặp.
+    const orderingError = fsrs7OrderingError(parsed);
+    if (orderingError) return { valid: false, error: orderingError };
 
     return { valid: true, params: parsed };
 }

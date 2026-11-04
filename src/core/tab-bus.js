@@ -1,9 +1,17 @@
 // src/core/tab-bus.js — High-Performance Cross-Tab Bus (<2ms) & Web Locks Leader Election
 import { getDeviceId } from './device.js';
 import { mergeCardFields } from './card-merge.js';
+import { storageDomain } from './idb.js';
+import { channelNameFor, leaderLockNameFor, acceptsMessage } from './transport-domain.js';
 
-const CHANNEL_NAME = 'celestial_tab_bus';
-const LEADER_LOCK_NAME = 'celestial_sync_leader';
+// Tên kênh/khoá lock đi theo miền lưu trữ: tab audit (?audit=1) có kênh riêng nên không
+// trao đổi card/progress với tab thường, và không giữ lock leader đồng bộ của tab thường.
+const CHANNEL_NAME = channelNameFor(storageDomain);
+const LEADER_LOCK_NAME = leaderLockNameFor(storageDomain);
+// DEV: tab audit của mã CŨ cũng gửi thông điệp KHÔNG có `domain` trên kênh cũ ⇒ từ chối mọi
+// thông điệp không khai báo miền. Production: không có audit, nên thông điệp không khai báo
+// miền chỉ có thể từ tab thường bản deploy trước ⇒ vẫn nhận để không phá đồng bộ liên phiên bản.
+const ALLOW_LEGACY_MESSAGES = !(typeof import.meta !== 'undefined' && import.meta.env?.DEV);
 
 let _channel = null;
 let _tabId = null;
@@ -39,6 +47,8 @@ export function broadcastTabMessage(type, payload = {}) {
         _channel.postMessage({
             type,
             payload,
+            // Khai báo miền để tab khác lọc được kể cả khi tên kênh bị trùng (tab bản cũ).
+            domain: storageDomain,
             senderTabId: getTabId(),
             deviceId: getDeviceId(),
             ts: Date.now()
@@ -73,6 +83,9 @@ export function initTabBus() {
             _channel.onmessage = async (event) => {
                 const data = event.data;
                 if (!data || data.senderTabId === getTabId()) return; // Ignore own messages
+                // Tab audit và tab thường là hai miền lưu trữ khác nhau ⇒ không trao đổi gì.
+                // Thông điệp cũ không có `domain` bị coi là miền `default` (tương thích ngược).
+                if (!acceptsMessage(storageDomain, data.domain, ALLOW_LEGACY_MESSAGES)) return;
 
                 switch (data.type) {
                     case 'CARD_UPDATED': {

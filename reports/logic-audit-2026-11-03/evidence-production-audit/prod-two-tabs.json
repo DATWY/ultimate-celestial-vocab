@@ -1,0 +1,111 @@
+{
+  "startedAt": "2026-11-04T00:33:26.137Z",
+  "steps": {
+    "prod: ?audit=1 bị bỏ qua?": {
+      "xpToday": null,
+      "xpWeekTotal": null,
+      "userXP": null,
+      "reviewed": [],
+      "dbs": [
+        "audio-db-v2",
+        "celestial-vocab-idb",
+        "firebase-heartbeat-database",
+        "firebaseLocalStorageDb"
+      ],
+      "hasTestApi": false
+    },
+    "tab1 sau 1 lượt": {
+      "xpToday": 5,
+      "xpWeekTotal": 5,
+      "userXP": 5,
+      "reviewed": [
+        {
+          "id": "prod-2",
+          "status": "Learning",
+          "reps": 1
+        }
+      ],
+      "dbs": [
+        "audio-db-v2",
+        "celestial-vocab-idb",
+        "firebase-heartbeat-database",
+        "firebaseLocalStorageDb",
+        "workbox-expiration"
+      ],
+      "hasTestApi": false
+    },
+    "tab2 lúc mở": {
+      "xpToday": 5,
+      "xpWeekTotal": 5,
+      "userXP": 5,
+      "reviewed": [
+        {
+          "id": "prod-2",
+          "status": "Learning",
+          "reps": 1
+        }
+      ],
+      "dbs": [
+        "audio-db-v2",
+        "celestial-vocab-idb",
+        "firebase-heartbeat-database",
+        "firebaseLocalStorageDb",
+        "workbox-expiration"
+      ],
+      "hasTestApi": false
+    },
+    "tab2 sau lượt của chính nó": {
+      "xpToday": 10,
+      "xpWeekTotal": 10,
+      "userXP": 10,
+      "reviewed": [
+        {
+          "id": "prod-0",
+          "status": "Learning",
+          "reps": 1
+        },
+        {
+          "id": "prod-2",
+          "status": "Learning",
+          "reps": 1
+        }
+      ],
+      "dbs": [
+        "audio-db-v2",
+        "celestial-vocab-idb",
+        "firebase-heartbeat-database",
+        "firebaseLocalStorageDb",
+        "workbox-expiration"
+      ],
+      "hasTestApi": false
+    },
+    "tab1 sau reload": {
+      "xpToday": 10,
+      "xpWeekTotal": 10,
+      "userXP": 10,
+      "reviewed": [
+        {
+          "id": "prod-0",
+          "status": "Learning",
+          "reps": 1
+        },
+        {
+          "id": "prod-2",
+          "status": "Learning",
+          "reps": 1
+        }
+      ],
+      "dbs": [
+        "audio-db-v2",
+        "celestial-vocab-idb",
+        "firebase-heartbeat-database",
+        "firebaseLocalStorageDb",
+        "workbox-expiration"
+      ],
+      "hasTestApi": false
+    }
+  },
+  "failures": [],
+  "errors": [],
+  "ok": true
+}

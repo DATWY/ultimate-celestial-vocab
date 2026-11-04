@@ -194,7 +194,10 @@ export function evaluateTyping(inputStr, targetStr) {
     const responseTime = getResponseTime();
 
     if (d === 0) {
-        trackEvent('typingTotalCorrect');
+        // AUDIT-R3.2: KHÔNG cộng thống kê ở đây. `typingTotalCorrect`/`typingFastAnswers` là
+        // thành tích gắn với CÂU TRẢ LỜI đã chấm, nên được ghi trong `trackReview` (sau khi
+        // handler chụp snapshot Undo). Cộng tại đây thì Undo không thể hoàn (đã cộng trước
+        // snapshot) và câu trả lời bị chặn ngân sách vẫn được tính công.
 
         // 1. Thời gian nhận thức (đọc đề + nhớ ra chữ cái đầu tiên): cho phép tối đa 2500ms
         const retrievalMs = getCognitiveRetrievalTime();
@@ -210,7 +213,6 @@ export function evaluateTyping(inputStr, targetStr) {
         const isFastRecallAndFluentTyping = (retrievalMs <= 2500) && (typingExecutionMs <= maxTypingExecutionMs);
 
         if (responseTime <= fastTotalThreshold || isFastRecallAndFluentTyping) {
-            trackEvent('typingFastAnswers');
             return { rating: 4, distance: d, message: "Hoàn hảo!", status: "perfect_fast" };
         } else {
             return { rating: 3, distance: d, message: "Chính xác!", status: "perfect" };

@@ -1,0 +1,84 @@
+{
+  "startedAt": "2026-11-04T01:04:48.027Z",
+  "project": "demo-celestial",
+  "endpoint": "http://127.0.0.1:8080/v1/projects/demo-celestial/databases/(default)/documents",
+  "cases": [
+    {
+      "name": "uid A tạo users/A/cards/x",
+      "expected": 200,
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "uid A đọc users/A/cards/x",
+      "expected": 200,
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "uid B đọc users/A/cards/x",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nfalse for 'get' @ L26\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "uid B ghi users/A/cards/y",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nfalse for 'create' @ L26, false for 'update' @ L26\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "ẩn danh đọc users/A/cards/x",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nfalse for 'get' @ L26\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "uid A tạo legacy có _ownerUid=A",
+      "expected": 200,
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "uid B đọc legacy của A",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nevaluation error at L35:22 for 'get' @ L35, false for 'get' @ L35\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "uid B ghi legacy với _ownerUid=A",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nfalse for 'create' @ L36, false for 'update' @ L39\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "uid A tạo legacy THIẾU _ownerUid",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nProperty _ownerUid is undefined on object. for 'create' @ L36, evaluation error at L39:24 for 'update' @ L39, Property _ownerUid is undefined on object. for 'create' @ L36\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "uid A tạo legacy thiếu trường english",
+      "expected": 403,
+      "status": 403,
+      "pass": true,
+      "body": "{\"error\":{\"code\":403,\"message\":\"\\nfalse for 'create' @ L36, false for 'update' @ L39\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    {
+      "name": "uid A cập nhật legacy của mình",
+      "expected": 200,
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "failures": [],
+  "skipped": false,
+  "finishedAt": "2026-11-04T01:04:49.648Z",
+  "ok": true
+}

@@ -92,6 +92,28 @@ export function ensureDailyStats() {
     return dailyStats;
 }
 
+const REVIEW_BUDGET_KEYS = {
+    new: 'newCardsDoneToday',
+    due: 'dueDoneToday',
+    learning: 'learningDoneToday'
+};
+
+/**
+ * Tiêu/hoàn ngân sách của MỘT lượt chấm theo đúng nhóm mà review-policy.js phân loại.
+ * Trả về khóa daily-stats đã đổi (để snapshot Undo hoàn lại chính xác suất đó), hoặc null
+ * nếu lượt chấm không tiêu ngân sách nào (ôn sớm / cram).
+ */
+function bumpReviewBudget(category, sign) {
+    const key = REVIEW_BUDGET_KEYS[category];
+    if (!key) return null;
+    ensureDailyStats();
+    dailyStats[key] = Math.max(0, (dailyStats[key] || 0) + sign);
+    void saveDailyStats();
+    return key;
+}
+export const incrementReviewBudget = category => bumpReviewBudget(category, 1);
+export const revertReviewBudget = category => bumpReviewBudget(category, -1);
+
 export function incrementNewCardsDone() {
     ensureDailyStats();
     dailyStats.newCardsDoneToday += 1;

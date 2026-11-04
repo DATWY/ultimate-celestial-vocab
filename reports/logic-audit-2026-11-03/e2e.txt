@@ -1,0 +1,95 @@
+
+> ultimate-celestial-vocab@0.0.0 test:e2e
+> node tests/e2e/study-loop.mjs
+
+{
+  "mode": "new-card",
+  "steps": [
+    {
+      "name": "seed",
+      "cards": 6
+    },
+    {
+      "name": "thẻ đầu tiên",
+      "english": "eclipse",
+      "badgeHidden": true,
+      "badgeTitle": "Từ này có độ khó rất cao hoặc từng bị quên nhiều l",
+      "hardClass": false
+    },
+    {
+      "name": "sau khi lật",
+      "buttonsVisible": true,
+      "labels": [
+        "1p",
+        "1p",
+        "10p",
+        "7 ngày"
+      ],
+      "answerVisible": true
+    },
+    {
+      "name": "state trước khi chấm",
+      "status": "New",
+      "step": null,
+      "interval": 0,
+      "dueInMin": 0
+    },
+    {
+      "name": "sau khi chấm Nhớ (3)",
+      "status": "Learning",
+      "step": 1,
+      "interval": 0.006944444444444444,
+      "dueInMin": 10
+    },
+    {
+      "name": "sau Ctrl+Z",
+      "status": "New",
+      "step": 0,
+      "interval": 0,
+      "dueInMin": 0
+    },
+    {
+      "name": "mở Hub",
+      "ok": true
+    },
+    {
+      "name": "mở wordlist",
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "expectedAuthRejections": 1,
+  "authEndpoints": [
+    "accounts:signInWithPassword",
+    "accounts:signInWithPassword",
+    "accounts:signUp",
+    "accounts:signUp",
+    "accounts:lookup",
+    "accounts:lookup"
+  ],
+  "summary": {
+    "card": "eclipse",
+    "labels": [
+      "1p",
+      "1p",
+      "10p",
+      "7 ngày"
+    ],
+    "afterGood": {
+      "status": "Learning",
+      "step": 1,
+      "interval": 0.006944444444444444,
+      "dueInMin": 10
+    },
+    "afterUndo": {
+      "status": "New",
+      "step": 0,
+      "interval": 0,
+      "dueInMin": 0
+    }
+  },
+  "failures": [
+    "nhãn thẻ New sai: 1p/1p/10p/7 ngày"
+  ],
+  "ok": false
+}

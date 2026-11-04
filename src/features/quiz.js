@@ -1,11 +1,12 @@
 import { DOM } from '../ui/elements.js';
 import { getState } from '../core/state.js';
-import { showPopup, showConfirmation } from '../ui/modal.js';
+import { showPopup, showConfirmation, showToast } from '../ui/modal.js';
 import { playSound } from '../core/sound.js';
 import { calculateNextSrsState } from '../core/srs/index.js';
-import { buildReviewQueue, getNextCardToReview } from '../core/queue.js';
+import { buildReviewQueue, getNextCardToReview, getReviewBudget, computeDailyNewLimit } from '../core/queue.js';
 import { displayCard, launchVictoryConfetti } from '../ui/render.js';
-import { saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent, saveGamification, addReviewLog, clearLastReviewSnapshot, incrementNewCardsDone, incrementDueCardsDone, incrementLearningCardsDone } from '../core/state.js';
+import { saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent, saveGamification, addReviewLog, clearLastReviewSnapshot, incrementReviewBudget } from '../core/state.js';
+import { isCardReviewable, classifyReview, reviewBudgets, budgetBlockReason } from '../core/review-policy.js';
 import { animateNumber } from '../core/animations.js';
 import { superNormalize, stripVietnameseDiacritics } from './typing.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
@@ -82,7 +83,9 @@ function startQuiz() {
     const timeLimitMinutes = parseInt(DOM.quizTimeLimit?.value, 10) || 5;
     const filterLower = (currentTopicFilter || 'all').toLowerCase();
     const potentialQuizVocab = vocabulary.filter(w => {
-        if (!w || w.isDeleted) return false;
+        // AUDIT-3.1: thẻ "Tạm ẩn" không được vào quiz — trước đây chỉ lọc isDeleted nên quiz vẫn
+        // chấm và ghi SRS cho thẻ người dùng đã chủ động ẩn khỏi lịch ôn.
+        if (!w || w.isDeleted || w.isSuspended === true) return false;
         if (filterLower === 'all') return true;
         const tagsArr = Array.isArray(w.tags) ? w.tags : (typeof w.tags === 'string' ? w.tags.split(',') : []);
         return tagsArr.some(t => t && String(t).trim().toLowerCase() === filterLower);
@@ -240,14 +243,50 @@ function checkQuizAnswer() {
     goToNextQuizQuestion();
 }
 
+let quizBudgetNoticeShown = false;
+
 function applyQuizReview(word, rating) {
     const { vocabulary } = getState();
     const index = vocabulary.findIndex(card => card.id === word.id && !card.isDeleted);
     if (index < 0) return;
     const current = vocabulary[index];
-    if (current.srsStatus === 'New') incrementNewCardsDone();
-    else if (current.srsStatus === 'Learning') incrementLearningCardsDone();
-    else if (current.srsDueDate && current.srsDueDate <= new Date().setHours(23,59,59,999)) incrementDueCardsDone();
+    // AUDIT-3.1: kiểm tra lại trạng thái tại ĐÚNG thời điểm áp dụng câu trả lời — thẻ có thể đã bị
+    // "Tạm ẩn" (hoặc xoá) sau khi pool quiz được dựng. Quiz không được ghi SRS cho thẻ tạm ẩn.
+    if (!isCardReviewable(current)) return;
+    // Quiz ghi SRS thật nên phải dùng CÙNG ngân sách ngày với Flashcard. Hết ngân sách thì
+    // KHÔNG âm thầm vượt: giữ điểm quiz nhưng không đổi lịch ôn, và nói rõ một lần.
+    const category = classifyReview(current);
+    // `remaining` của getReviewBudget() đã trừ `reserved` — một suất GIỮ CHỖ cho thẻ Mastered
+    // đang mở trước mặt (để rebuild queue không vượt trần). Trong quiz, suất đó không được dùng
+    // cho thẻ đang mở, nên dùng nó sẽ chặn quiz sớm đúng 1 lượt. Vì vậy lúc chấm thật ta so với
+    // `limit - used`, còn `reserved` chỉ có nghĩa khi dựng hàng đợi.
+    //
+    // AUDIT-R2.3: còn phải kiểm HẠN MỨC TỪ MỚI (computeDailyNewLimit) — một ngân sách ĐỘC LẬP
+    // với trần tổng. Trước đây quiz chỉ so trần tổng nên vẫn giới thiệu thẻ New thứ 16 khi hạn
+    // mức từ mới là 15.
+    const budget = getReviewBudget();
+    const dailyStats = getState().dailyStats;
+    const budgets = reviewBudgets({
+        limit: budget.limit,
+        used: budget.used,
+        newLimit: computeDailyNewLimit(dailyStats),
+        newUsed: dailyStats?.newCardsDoneToday
+    });
+    const blockedBy = budgetBlockReason(category, budgets);
+    if (blockedBy) {
+        if (!quizBudgetNoticeShown) {
+            quizBudgetNoticeShown = true;
+            showToast(
+                blockedBy === 'new' ? 'Đã hết suất từ mới hôm nay' : 'Đã chạm giới hạn ôn hôm nay',
+                blockedBy === 'new'
+                    ? 'Câu trả lời vẫn được tính điểm quiz nhưng không thay đổi lịch ôn, vì hạn mức từ mới của hôm nay đã dùng hết. Tăng hạn mức trong phần cài đặt ôn tập nếu muốn tiếp tục.'
+                    : 'Câu trả lời vẫn được tính điểm quiz nhưng không thay đổi lịch ôn. Tăng giới hạn trong phần cài đặt ôn tập nếu muốn tiếp tục.',
+                'ph-info'
+            );
+        }
+        return;
+    }
+    incrementReviewBudget(category);
     const { newState, log } = calculateNextSrsState(current, rating, 'quiz', 0, getState().userFsrs7Params);
     vocabulary[index] = newState;
     void saveOneWord(newState);

@@ -8,6 +8,9 @@ let dbPromise;
 const auditMode = import.meta.env?.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('audit') === '1';
 const DB_NAME = auditMode ? 'celestial-vocab-audit-idb' : 'celestial-vocab-idb';
 export const isIsolatedStorage = auditMode;
+// Miền vận chuyển giữa các tab phải đi theo ĐÚNG nguồn lưu trữ ở trên: tab audit và tab
+// thường không được trao đổi card/progress (xem transport-domain.js).
+export const storageDomain = auditMode ? 'audit' : 'default';
 const VOCAB_STORE = 'vocabulary';
 const SETTINGS_STORE = 'settings';
 const OUTBOX_STORE = 'outbox';

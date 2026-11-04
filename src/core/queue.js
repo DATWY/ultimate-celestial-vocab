@@ -1,5 +1,6 @@
 import { getState, setReviewQueue, ensureDailyStats } from './state.js';
 import { getLocalDateString } from './utils/date.js';
+import { isCardReviewable } from './review-policy.js';
 import { isLeechCard } from './srs/index.js';
 import { getSettingFromDB, saveSettingToDB } from './idb.js';
 import { skipPersistence } from './state/preview-mode.js';
@@ -342,8 +343,10 @@ export function getNextCardToReview() {
             nextIndex !== undefined && 
             nextIndex >= 0 && 
             nextIndex < vocabulary.length && 
-            vocabulary[nextIndex] && 
-            !vocabulary[nextIndex].isDeleted
+            // AUDIT-R2.4: thẻ có thể bị "Tạm ẩn" sau khi đã vào hàng đợi (đổi ở tab khác). Bỏ
+            // qua bằng CÙNG điều kiện hợp lệ với cửa chấm, thay vì chỉ kiểm isDeleted rồi để
+            // processSrsFeedback ghi SRS cho thẻ người dùng đã ẩn.
+            isCardReviewable(vocabulary[nextIndex])
         ) {
             return nextIndex;
         }
@@ -420,13 +423,17 @@ export function isNaturallyDue(word, now = Date.now()) {
     // `isSuspended` có trong dữ liệu nhưng KHÔNG nơi nào đọc ⇒ không có cách
     // trung thực nào để nói "từ này tôi đã biết" (ngoài đường tắt sai khoa học).
     if (word.isSuspended) return false;
-    if (!word.srsDueDate) return true;
+    // AUDIT-R3.3: thẻ Mastered phải xét "đã ôn hôm nay" TRƯỚC khi xét ngày hẹn. Bản trước trả
+    // `true` ngay cho mọi thẻ thiếu `srsDueDate`, kể cả thẻ vừa ôn xong trong ngày — vừa mâu
+    // thuẫn với `classifyReview`, vừa khiến thẻ legacy không ngày hẹn bị mời ôn lặp lại.
     if (word.srsStatus === 'Mastered') {
         const reviewedToday = word.lastReviewDate &&
             getLocalDateString(word.lastReviewDate) === getLocalDateString(now);
         if (reviewedToday) return false;
+        if (!word.srsDueDate) return true;      // legacy: không có ngày hẹn ⇒ coi là đến hạn
         const endOfDay = new Date(now).setHours(23, 59, 59, 999);
         return word.srsDueDate <= endOfDay;
     }
+    if (!word.srsDueDate) return true;
     return word.srsDueDate <= now;
 }

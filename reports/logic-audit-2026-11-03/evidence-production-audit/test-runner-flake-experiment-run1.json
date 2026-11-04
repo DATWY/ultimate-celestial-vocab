@@ -1,0 +1,159 @@
+{
+  "startedAt": "2026-11-04T00:48:38.523Z",
+  "rounds": 3,
+  "modes": {
+    "default(parallel)": [
+      {
+        "round": 1,
+        "ms": 5239,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 2,
+        "ms": 5269,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 3,
+        "ms": 5129,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      }
+    ],
+    "serial(--test-concurrency=1)": [
+      {
+        "round": 1,
+        "ms": 14845,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 2,
+        "ms": 15667,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      },
+      {
+        "round": 3,
+        "ms": 14480,
+        "runs": [
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          },
+          {
+            "code": 0,
+            "pass": 600,
+            "fail": 0,
+            "deserialize": false,
+            "fileLevel": false
+          }
+        ],
+        "deserialize": 0,
+        "fileLevel": 0
+      }
+    ]
+  },
+  "cpu": 22,
+  "summary": {
+    "default(parallel)": {
+      "suiteRuns": 6,
+      "deserializeHits": 0,
+      "fileLevelFailures": 0,
+      "allPass": true,
+      "avgMsPerPair": 5212
+    },
+    "serial(--test-concurrency=1)": {
+      "suiteRuns": 6,
+      "deserializeHits": 0,
+      "fileLevelFailures": 0,
+      "allPass": true,
+      "avgMsPerPair": 14997
+    }
+  }
+}

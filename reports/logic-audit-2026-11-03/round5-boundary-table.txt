@@ -1,0 +1,11 @@
+﻿| đường vào | trước snapshot | sau Undo A | sau +1 |
+|---|---|---|---|
+IDB cũ {xpToday:5} → khởi động thật | hasOwn=true key="" xp=5 | xp=7 key=2026-11-03 | xp=8
+  (bản ghi đọc từ IDB: {"xpToday":5}) | hasOwn=false key=undefined xp=5 | xp=- key=undefined | xp=-
+{xpToday:3} → khởi động thật | hasOwn=true key="" xp=3 | xp=7 key=2026-11-03 | xp=8
+{xpToday:5, lastXPDate:""} → khởi động thật | hasOwn=true key="" xp=5 | xp=7 key=2026-11-03 | xp=8
+{xpToday:5, lastXPDate:hôm qua} → khởi động thật | hasOwn=true key="2026-11-02" xp=5 | xp=7 key=2026-11-03 | xp=8
+ĐỐI CHỨNG: bỏ khối khởi động | hasOwn=false key=undefined xp=5 | xp=12 key=2026-11-03 | xp=13
+ĐỐI CHỨNG: bỏ khởi động, {xpToday:3} | hasOwn=false key=undefined xp=3 | xp=10 key=2026-11-03 | xp=11
+| mergeProgress(local,remote) | hasOwn=true key="" xp=5 | (không chấm) | (không chấm) |
+| mergeProgress(remote,local) | hasOwn=true key="" xp=5 | (không chấm) | (không chấm) |

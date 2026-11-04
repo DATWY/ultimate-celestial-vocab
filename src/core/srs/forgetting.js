@@ -90,7 +90,23 @@ export function nextIntervalNewton(s_long, s_short, d = 5.0, desiredRetention = 
     const safeShort = Number.isFinite(s_short) ? Math.min(S_MAX, Math.max(S_MIN, s_short)) : 0.8 * safeLong;
     const safeD = Math.min(D_MAX, Math.max(D_MIN, Number.isFinite(d) ? d : 5.0));
     const target = Math.min(0.99, Math.max(0.70, Number.isFinite(desiredRetention) ? desiredRetention : DESIRED_RETENTION));
-    
+
+    // AUDIT-5.2 — Ba tình huống phải phân biệt, trước đây gộp làm một:
+    //   (a) nghiệm nằm TRONG miền thời gian  → Newton, rồi kiểm tra sai số, thiếu thì chia đôi;
+    //   (b) mục tiêu nằm NGOÀI miền (R tại biên đã thấp/cao hơn mục tiêu) → trả BIÊN, đây là
+    //       câu trả lời ĐÚNG chứ không phải "Newton không hội tụ";
+    //   (c) Newton dừng sớm nhưng nghiệm vẫn trong miền → chia đôi để chắc chắn.
+    // Ghi chú kiểm chứng: 24/400 ca từng bị báo là "sai số lớn" đều thuộc (b) — mục tiêu ngoài
+    // miền — nên không được dùng con số đó làm tỷ lệ lỗi hội tụ.
+    const T_MIN = 1.0 / 86400.0;
+    const T_MAX = S_MAX;
+    const rAt = (tt) => dualTraceForgettingCurve(tt, safeLong, safeShort, safeD, w);
+    const rAtMin = rAt(T_MIN);
+    if (!Number.isFinite(rAtMin)) return T_MIN;
+    // Mục tiêu nằm NGOÀI miền: trả biên là câu trả lời ĐÚNG, không phải "Newton không hội tụ".
+    if (target >= rAtMin) return T_MIN;
+    if (target <= rAt(T_MAX)) return T_MAX;
+
     // Initial guess starting point in log(t) space
     let t = Math.max(1.0 / 86400.0, safeLong * 0.6);
     let u = Math.log(t);
@@ -114,7 +130,26 @@ export function nextIntervalNewton(s_long, s_short, d = 5.0, desiredRetention = 
         t = Math.exp(u);
     }
 
-    return Math.min(S_MAX, Math.max(1.0 / 86400.0, t));
+    // AUDIT-5.2(c): Newton có thể dừng ở điểm chưa đạt (bước bị chặn, đạo hàm ~0, hoặc hết vòng lặp).
+    // Nếu sai số còn lớn mà mục tiêu nằm TRONG miền (đã bảo đảm bởi hai guard ở trên) thì
+    // tìm lại bằng chia đôi trong log(t).
+    if (Math.abs(rAt(t) - target) > 5e-4) t = bisectIntervalForRetention(safeLong, safeShort, safeD, target, w);
+
+    return Math.min(T_MAX, Math.max(T_MIN, t));
+}
+
+/**
+ * Chia đôi trong log(t) để tìm khoảng ôn cho một mức retention, dùng làm phương án dự phòng khi
+ * Newton không đạt sai số. R giảm đơn điệu theo t trên [1 phút, S_MAX] nên chỉ cần BRACKET đúng:
+ * R(lo) > target > R(hi). Hàm không tự kiểm bracket (người gọi đã bảo đảm) và trả về mid cuối.
+ */
+export function bisectIntervalForRetention(sLong, sShort, d, target, w, lo = 1.0 / 86400.0, hi = S_MAX) {
+    const rAt = tt => dualTraceForgettingCurve(tt, sLong, sShort, d, w);
+    for (let i = 0; i < 80; i++) {
+        const mid = Math.sqrt(lo * hi);
+        if (rAt(mid) > target) lo = mid; else hi = mid;
+    }
+    return Math.sqrt(lo * hi);
 }
 
 /**
