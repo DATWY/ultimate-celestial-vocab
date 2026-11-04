@@ -1,0 +1,66 @@
+{
+  "startedAt": "2026-11-04T01:18:43.653Z",
+  "url": "https://chat-wywy--staging-audit-i8313vle.web.app",
+  "steps": {
+    "khởi động": {
+      "xpToday": null,
+      "userXP": null,
+      "reviewed": [],
+      "devApi": false,
+      "sw": {
+        "scope": "https://chat-wywy--staging-audit-i8313vle.web.app/",
+        "active": true,
+        "controlled": true
+      }
+    },
+    "sau khi seed + reload": {
+      "xpToday": null,
+      "userXP": null,
+      "reviewed": [],
+      "devApi": false,
+      "sw": {
+        "scope": "https://chat-wywy--staging-audit-i8313vle.web.app/",
+        "active": true,
+        "controlled": true
+      }
+    },
+    "sau chấm Nhớ": {
+      "xpToday": 5,
+      "userXP": 5,
+      "reviewed": [
+        "stg-0"
+      ],
+      "devApi": false,
+      "sw": {
+        "scope": "https://chat-wywy--staging-audit-i8313vle.web.app/",
+        "active": true,
+        "controlled": true
+      }
+    },
+    "sau Ctrl+Z": {
+      "xpToday": 0,
+      "userXP": 0,
+      "reviewed": [],
+      "devApi": false,
+      "sw": {
+        "scope": "https://chat-wywy--staging-audit-i8313vle.web.app/",
+        "active": true,
+        "controlled": true
+      }
+    },
+    "sau reload cuối": {
+      "xpToday": 0,
+      "userXP": 0,
+      "reviewed": [],
+      "devApi": false,
+      "sw": {
+        "scope": "https://chat-wywy--staging-audit-i8313vle.web.app/",
+        "active": true,
+        "controlled": true
+      }
+    }
+  },
+  "failures": [],
+  "errors": [],
+  "ok": true
+}

@@ -242,3 +242,27 @@ profile, ghi ở A → đọc ở B; tắt mạng ở B, ghi tiếp, mở mạng
 | `scratch/rules-emulator-check.mjs` | **mới** — kiểm `firestore.rules` trên emulator bằng REST + JWT không chữ ký |
 | `reports/.../evidence-production-audit/firestore-rules-emulator.json` | **mới** — 11/11 ca rules |
 | `reports/.../evidence-production-audit/emulator-firestore-startup.log` | **mới** — log khởi động emulator (đã tắt sau khi đo) |
+
+## 7. Bản phát hành staging (2026-11-04)
+
+| Mục | Giá trị |
+|---|---|
+| Commit | `25b067f` — `fix(audit): vá rò dữ liệu audit⇄tab thường và snapshot preview; chốt audit phát hành` (đã push `origin/main`) |
+| Phiên bản | `DATWY.V3.261104.08` (`version_seq.json` seq **3`) |
+| Build | `index-CzuPUeSu.js` 238,50 kB thô / **78,35 kB gzip**; budget 4/4 |
+| Cổng trước deploy | test **600/600**, lint **0 error/108 warning**, E2E NEW + LEECH xanh, `dist` không có API dev |
+| Kênh staging | **https://chat-wywy--staging-audit-i8313vle.web.app** (hết hạn 2026-11-11), project `chat-wywy` |
+| Production | **KHÔNG đổi** — `https://chat-wywy.web.app/version.json` vẫn `DATWY.V2.261102.09` (seq 2) |
+
+Kiểm trên hosting thật (kênh staging, Chrome + CDP, `evidence-production-audit/channel-*.json`):
+
+| Bước | Kết quả |
+|---|---|
+| Khởi động | app-ready, `__testGamification` **undefined**, SW active + controlled |
+| Seed 3 thẻ rồi reload | đọc đúng dữ liệu IDB |
+| Chấm "Nhớ" | `xpToday = 5`, `userXP = 5`, thẻ sang `Learning` |
+| Ctrl+Z | `xpToday = 0`, `userXP = 0`, thẻ về `New` |
+| Reload cuối | trạng thái sau Undo **bền vững** |
+| Lỗi console | không có |
+
+Việc promotion lên production là một lệnh (`firebase deploy --only hosting`), **chưa chạy** — chờ quyết định của bạn vì kết luận vẫn là "chỉ đủ điều kiện staging" cho tới khi làm xong A→B và hai thiết bị.
