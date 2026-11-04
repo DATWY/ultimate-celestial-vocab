@@ -265,4 +265,20 @@ Kiểm trên hosting thật (kênh staging, Chrome + CDP, `evidence-production-a
 | Reload cuối | trạng thái sau Undo **bền vững** |
 | Lỗi console | không có |
 
-Việc promotion lên production là một lệnh (`firebase deploy --only hosting`), **chưa chạy** — chờ quyết định của bạn vì kết luận vẫn là "chỉ đủ điều kiện staging" cho tới khi làm xong A→B và hai thiết bị.
+### 7.1 Promotion lên production (2026-11-04, theo yêu cầu)
+
+`firebase deploy --only hosting --project chat-wywy` → **release complete**. Đã kiểm sau deploy:
+
+| Kiểm | Kết quả |
+|---|---|
+| `https://chat-wywy.web.app/version.json` | **`DATWY.V3.261104.08`, seq 3** (trước đó V2/seq 2) |
+| Asset phục vụ | `assets/index-CzuPUeSu.js` (đúng bản đã kiểm trên kênh staging) |
+| Header | CSP đầy đủ, `Cache-Control: no-cache` cho `index.html` |
+| Bundle production | **không** chứa `__testGamification`/`previewAllBadges` |
+| Chrome E2E trên production | app-ready; SW **active + controlled** sau reload; chấm → `xpToday 5`; Ctrl+Z → `0`; reload giữ đúng; không lỗi console |
+| Bằng chứng | `evidence-production-audit/channel-chat-wywy_web_app.json` |
+
+Hệ quả với người dùng đang mở bản V2: `version.json` đổi ⇒ toast "Có bản cập nhật mới"; SW
+`autoUpdate` nạp bundle mới ở lần mở kế tiếp. **Chưa** có phép thử A→B có kiểm soát (giữ tab V2
+rồi deploy V3 trong cùng profile) — lần cập nhật thật của người dùng chính là phép thử đầu tiên;
+logic dọn cache/reload/guard không đổi so với bản trước.
