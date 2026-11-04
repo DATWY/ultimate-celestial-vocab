@@ -517,3 +517,101 @@ body.boost-mode .shipper-curtain-container {
     50% { transform: rotate(180deg) scale(1.08); filter: drop-shadow(0 0 22px rgba(245, 158, 11, 1)) drop-shadow(0 0 32px rgba(251, 146, 60, 0.75)); }
     100% { transform: rotate(360deg) scale(1); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.8)); }
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   Chuyển giao diện bằng View Transitions (từ 2026-11-04)
+   Đường tròn lan ra từ đúng nút người dùng bấm, 620 ms; hạt sáng bay kèm.
+   Không hỗ trợ API này ⇒ events.js quay lại đường màn khép bên dưới.
+   ══════════════════════════════════════════════════════════════════════════ */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+html.theme-vt-run::view-transition-old(root) {
+    z-index: 1;
+}
+
+html.theme-vt-run::view-transition-new(root) {
+    z-index: 2;
+    animation: theme-vt-reveal 620ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes theme-vt-reveal {
+    from {
+        clip-path: circle(0px at var(--theme-vt-x, 50%) var(--theme-vt-y, 50%));
+    }
+    to {
+        clip-path: circle(var(--theme-vt-r, 150vmax) at var(--theme-vt-x, 50%) var(--theme-vt-y, 50%));
+    }
+}
+
+/* Lớp hạt sáng: sao (vào tối) / tia nắng (ra sáng) */
+.theme-burst {
+    position: fixed;
+    inset: 0;
+    z-index: 999998;
+    pointer-events: none;
+    overflow: hidden;
+    contain: strict;
+}
+
+.theme-burst::before {
+    content: "";
+    position: absolute;
+    left: var(--x, 50%);
+    top: var(--y, 50%);
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .78);
+    box-shadow: 0 0 26px rgba(255, 255, 255, .5), inset 0 0 14px rgba(255, 255, 255, .4);
+    animation: theme-vt-ring 620ms cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.theme-burst span {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    opacity: 0;
+    transform: translate3d(var(--x, 50%), var(--y, 50%), 0) scale(.4);
+    animation: theme-vt-spark 700ms cubic-bezier(.16, 1, .3, 1) var(--d, 0ms) forwards;
+}
+
+.theme-burst.is-to-dark span {
+    background: radial-gradient(circle, #ffffff 0%, #a8dcff 55%, rgba(168, 220, 255, 0) 72%);
+    box-shadow: 0 0 12px rgba(168, 220, 255, .9);
+}
+
+.theme-burst.is-to-light span {
+    width: 4px;
+    height: 12px;
+    border-radius: 2px;
+    background: radial-gradient(circle, #fffdf2 0%, #ffd479 60%, rgba(255, 212, 121, 0) 75%);
+    box-shadow: 0 0 14px rgba(255, 212, 121, .85);
+}
+
+@keyframes theme-vt-ring {
+    from { opacity: .95; transform: scale(.4); }
+    to { opacity: 0; transform: scale(9); }
+}
+
+@keyframes theme-vt-spark {
+    0% { opacity: 0; transform: translate3d(var(--x, 50%), var(--y, 50%), 0) scale(.35); }
+    22% { opacity: 1; }
+    100% {
+        opacity: 0;
+        transform: translate3d(calc(var(--x, 50%) + var(--dx, 40px)), calc(var(--y, 50%) + var(--dy, -40px)), 0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.theme-vt-run::view-transition-new(root) { animation-duration: 1ms; }
+    .theme-burst { display: none !important; }
+}
+
+body.boost-mode .theme-burst { display: none !important; }

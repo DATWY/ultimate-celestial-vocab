@@ -22,8 +22,8 @@ Nếu bạn sửa code, hãy chạy lại các lệnh ở [§9](#9-lệnh--scrip
 
 | Hạng mục | Số đo | Cách đo |
 |---|---|---|
-| Test | **600 pass / 600**, 0 fail, 0 skip | `npm test` |
-| File test | **66** (`tests/*.test.mjs`) + 1 E2E | `Get-ChildItem tests -File` |
+| Test | **609 pass / 609**, 0 fail, 0 skip | `npm test` |
+| File test | **67** (`tests/*.test.mjs`) + 1 E2E | `Get-ChildItem tests -File` |
 | Lint | **0 error**, 108 warning (đều là `no-console`/escape cố ý) | `npm run lint` |
 | File nguồn | **74** file, **36.461** dòng (gồm cả `src/css`) | `Get-ChildItem src -Recurse -File` |
 | Entry `assets/index-*.js` | 238.320 B thô → **78,27 kB gzip** (95,4% ngân sách 82 kB) | `npm run budget` |

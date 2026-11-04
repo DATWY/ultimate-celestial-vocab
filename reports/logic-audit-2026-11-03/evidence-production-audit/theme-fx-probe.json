@@ -1,0 +1,95 @@
+{
+  "startedAt": "2026-11-04T05:11:33.892Z",
+  "steps": {
+    "0. ban đầu": {
+      "dark": true,
+      "pressed": "true",
+      "label": "Giao diện: Tối",
+      "vtClasses": [],
+      "burst": false,
+      "fx": {
+        "vt": 0,
+        "osc": 0,
+        "buffer": 0,
+        "burstSeen": false,
+        "errors": []
+      }
+    },
+    "1. giữa chuyển cảnh (260ms)": {
+      "dark": false,
+      "pressed": "false",
+      "label": "Giao diện: Sáng",
+      "vtClasses": [
+        "theme-vt-run",
+        "theme-vt-to-light"
+      ],
+      "burst": true,
+      "fx": {
+        "vt": 1,
+        "osc": 8,
+        "buffer": 1,
+        "burstSeen": true,
+        "errors": []
+      }
+    },
+    "2. sau chuyển cảnh (dark → light)": {
+      "dark": false,
+      "pressed": "false",
+      "label": "Giao diện: Sáng",
+      "vtClasses": [],
+      "burst": false,
+      "fx": {
+        "vt": 1,
+        "osc": 8,
+        "buffer": 1,
+        "burstSeen": true,
+        "errors": []
+      }
+    },
+    "3. sau chuyển cảnh (light → dark)": {
+      "dark": true,
+      "pressed": "true",
+      "label": "Giao diện: Tối",
+      "vtClasses": [],
+      "burst": false,
+      "fx": {
+        "vt": 2,
+        "osc": 16,
+        "buffer": 2,
+        "burstSeen": true,
+        "errors": []
+      }
+    },
+    "4. giảm chuyển động (120ms sau bấm)": {
+      "dark": false,
+      "pressed": "false",
+      "label": "Giao diện: Sáng",
+      "vtClasses": [],
+      "burst": false,
+      "fx": {
+        "vt": 2,
+        "osc": 17,
+        "buffer": 2,
+        "burstSeen": true,
+        "errors": []
+      }
+    },
+    "4b. trạng thái trước khi bấm": {
+      "dark": true,
+      "pressed": "true",
+      "label": "Giao diện: Tối",
+      "vtClasses": [],
+      "burst": false,
+      "fx": {
+        "vt": 2,
+        "osc": 16,
+        "buffer": 2,
+        "burstSeen": true,
+        "errors": []
+      }
+    }
+  },
+  "failures": [],
+  "errors": [],
+  "ok": true
+}

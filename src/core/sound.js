@@ -414,6 +414,47 @@ function scheduleSynthVoices(ctx, soundName) {
     {
         const now = ctx.currentTime;
 
+        /** Đuôi "lấp lánh": vài sine rất cao, rơi chậm — dùng cho chuyển giao diện. */
+        const addShimmer = (startAt, freqs, peak = 0.05, dur = 1.0) => {
+            if (typeof ctx.createOscillator !== 'function') return;
+            freqs.forEach((freq, idx) => {
+                try {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    const at = startAt + idx * 0.07;
+                    osc.frequency.setValueAtTime(freq, at);
+                    gain.gain.setValueAtTime(0.0001, at);
+                    gain.gain.exponentialRampToValueAtTime(peak, at + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+                    osc.connect(gain);
+                    gain.connect(synthGainNode);
+                    cleanupOnEnded(osc, [gain]);
+                    osc.start(at);
+                    osc.stop(at + dur + 0.02);
+                } catch (_) { /* thiếu node thì bỏ qua, không phá âm chính */ }
+            });
+        };
+
+        /** Glissando mềm giữa hai tần số (dùng để "mở màn" khi ra sáng). */
+        const addGlide = (startAt, from, to, peak = 0.12, dur = 0.5) => {
+            try {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(from, startAt);
+                osc.frequency.exponentialRampToValueAtTime(to, startAt + dur);
+                gain.gain.setValueAtTime(0.0001, startAt);
+                gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.0001, startAt + dur);
+                osc.connect(gain);
+                gain.connect(synthGainNode);
+                cleanupOnEnded(osc, [gain]);
+                osc.start(startAt);
+                osc.stop(startAt + dur + 0.02);
+            } catch (_) {}
+        };
+
         switch (soundName) {
             case 'flip': {
                 // Classic crisp sine sweep (320Hz -> 140Hz, 80ms) from backup
@@ -869,6 +910,22 @@ function scheduleSynthVoices(ctx, soundName) {
                     chordOsc.start(now);
                     chordOsc.stop(now + 0.76);
                 });
+                // Sub-bass rất trầm cho cảm giác "mặt trời lặn" + đuôi sao lấp lánh.
+                try {
+                    const sub = ctx.createOscillator();
+                    const subGain = ctx.createGain();
+                    sub.type = 'sine';
+                    sub.frequency.setValueAtTime(55, now);
+                    subGain.gain.setValueAtTime(0.0001, now);
+                    subGain.gain.exponentialRampToValueAtTime(0.14, now + 0.04);
+                    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.95);
+                    sub.connect(subGain);
+                    subGain.connect(synthGainNode);
+                    cleanupOnEnded(sub, [subGain]);
+                    sub.start(now);
+                    sub.stop(now + 0.97);
+                } catch (_) {}
+                addShimmer(now + 0.18, [1568.0, 2093.0, 2637.02], 0.045, 1.25);
                 return true;
             }
 
@@ -892,6 +949,65 @@ function scheduleSynthVoices(ctx, soundName) {
                     cleanupOnEnded(chimeOsc, [voiceGain]);
                     chimeOsc.start(startTime);
                     chimeOsc.stop(now + 0.86);
+                });
+                // Đuôi "lấp lánh": hai sine rất cao, rơi chậm — tạo cảm giác nắng lên.
+                addShimmer(now + 0.12, [2093.0, 2637.02], 0.055, 1.15);
+                // Glissando nhẹ đi lên để mở màn.
+                addGlide(now, 660, 1320, 0.18, 0.5);
+                return true;
+            }
+
+            case 'themeWhoosh': {
+                // Tiếng "vút" của màn chuyển: nhiễu lọc bandpass quét 320 → 2600 Hz.
+                if (typeof ctx.createBuffer !== 'function' || typeof ctx.createBufferSource !== 'function') return false;
+                const dur = 0.42;
+                const frames = Math.max(1, Math.floor((ctx.sampleRate || 44100) * dur));
+                const buffer = ctx.createBuffer(1, frames, ctx.sampleRate || 44100);
+                const data = typeof buffer.getChannelData === 'function' ? buffer.getChannelData(0) : null;
+                for (let i = 0; i < frames; i++) {
+                    const k = i / frames;
+                    const fade = (1 - k) * (1 - k);
+                    data[i] = (Math.random() * 2 - 1) * fade;
+                }
+                const src = ctx.createBufferSource();
+                src.buffer = buffer;
+                const band = ctx.createBiquadFilter ? ctx.createBiquadFilter() : null;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.16, now + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+                if (band) {
+                    band.type = 'bandpass';
+                    band.Q = 1.1;
+                    band.frequency.setValueAtTime(320, now);
+                    band.frequency.exponentialRampToValueAtTime(2600, now + dur);
+                    src.connect(band);
+                    band.connect(gain);
+                } else {
+                    src.connect(gain);
+                }
+                gain.connect(synthGainNode);
+                cleanupOnEnded(src, [gain, band].filter(Boolean));
+                src.start(now);
+                src.stop(now + dur);
+                return true;
+            }
+
+            case 'undo': {
+                // Hoàn tác: hai nốt đi XUỐNG, ngắn, mềm — nghe như "tua lại".
+                [[880, 0], [587.33, 0.09]].forEach(([freq, offset], idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + offset);
+                    gain.gain.setValueAtTime(0.0001, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(idx === 0 ? 0.16 : 0.12, now + offset + 0.008);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.26);
+                    osc.connect(gain);
+                    gain.connect(synthGainNode);
+                    cleanupOnEnded(osc, [gain]);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.28);
                 });
                 return true;
             }

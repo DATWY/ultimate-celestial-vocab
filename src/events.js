@@ -18,6 +18,7 @@ import { openModal, closeModal, openAddEditModal, showConfirmation, showPopup, s
 import { playSound, speakText } from './core/sound.js';
 import { animateCardOut, animateCardIn } from './core/animations.js';
 import { setTypingActive } from './ui/celestial-canvas.js';
+import { pickThemeTransitionStrategy, originFromElement, runThemeTransition } from './ui/theme-transition.js';
 
 // Cloud nạp động: events.js nằm trong entry chunk, không kéo firebase 547 kB vào.
 function runCloudSync(options) {
@@ -120,7 +121,7 @@ export async function undoLastReview() {
         isTypoRetry = false;
         setCurrentCardIndex(targetIndex);
         displayCard(targetIndex);
-        playSound('click');
+        playSound('undo');
         
         // Cập nhật lại danh sách quản lý từ nếu modal đang mở
         updatePanelWordList();
@@ -626,16 +627,42 @@ export function setupEventListeners() {
         // Boost mode or Reduced Motion: instantaneous clean transition
         const isBoost = getState().isBoostMode || document.body.classList.contains('boost-mode');
         const isReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        if (isBoost || isReducedMotion) {
+        const applyAndTrack = () => {
             applyDarkMode(targetModeIsDark);
             if (targetModeIsDark) {
                 const hour = new Date().getHours();
                 if (hour === 0 && new Date().getMinutes() === 0) trackEvent('stargazer');
                 if (getState().soundMode === 'off') trackEvent('eclipse');
             }
+        };
+
+        const strategy = pickThemeTransitionStrategy({
+            supportsViewTransition: typeof document.startViewTransition === 'function',
+            reduceMotion: !!isReducedMotion,
+            boostMode: !!isBoost
+        });
+
+        if (strategy === 'instant') {
+            applyAndTrack();
             return;
         }
+
+        if (strategy === 'view-transition') {
+            // Đường tròn lan từ nút bấm + hạt sáng; âm thanh chạy cùng nhịp.
+            void runThemeTransition({
+                isDark: targetModeIsDark,
+                origin: originFromElement(DOM.toggleDarkModeBtn, window.innerWidth, window.innerHeight),
+                apply: applyAndTrack,
+                onSwap: () => playSound(targetModeIsDark ? 'themeEclipse' : 'themeDawn'),
+                onDone: () => { isTransitioning = false; setIsTransitioning(false); }
+            });
+            playSound('themeWhoosh');
+            isTransitioning = true;
+            setIsTransitioning(true);
+            return;
+        }
+
+        playSound('themeWhoosh');
 
         isTransitioning = true;
         setIsTransitioning(true);
