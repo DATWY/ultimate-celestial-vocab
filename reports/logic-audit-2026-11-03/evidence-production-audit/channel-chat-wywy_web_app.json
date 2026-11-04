@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-11-04T05:13:58.745Z",
+  "startedAt": "2026-11-04T06:45:59.567Z",
   "url": "https://chat-wywy.web.app",
   "steps": {
     "khởi động": {
@@ -20,21 +20,21 @@
       "devApi": false,
       "sw": {
         "scope": "https://chat-wywy.web.app/",
-        "active": true,
-        "controlled": true
+        "active": false,
+        "controlled": false
       }
     },
     "sau chấm Nhớ": {
       "xpToday": 5,
       "userXP": 5,
       "reviewed": [
-        "stg-2"
+        "stg-1"
       ],
       "devApi": false,
       "sw": {
         "scope": "https://chat-wywy.web.app/",
-        "active": true,
-        "controlled": true
+        "active": false,
+        "controlled": false
       }
     },
     "sau Ctrl+Z": {
@@ -44,8 +44,8 @@
       "devApi": false,
       "sw": {
         "scope": "https://chat-wywy.web.app/",
-        "active": true,
-        "controlled": true
+        "active": false,
+        "controlled": false
       }
     },
     "sau reload cuối": {
@@ -55,12 +55,14 @@
       "devApi": false,
       "sw": {
         "scope": "https://chat-wywy.web.app/",
-        "active": true,
-        "controlled": true
+        "active": false,
+        "controlled": false
       }
     }
   },
-  "failures": [],
+  "failures": [
+    "Service Worker không active/controlled sau reload: {\"scope\":\"https://chat-wywy.web.app/\",\"active\":false,\"controlled\":false}"
+  ],
   "errors": [],
-  "ok": true
+  "ok": false
 }

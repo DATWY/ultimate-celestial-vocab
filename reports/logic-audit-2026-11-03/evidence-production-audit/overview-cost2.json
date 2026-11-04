@@ -1,0 +1,137 @@
+{
+  "startedAt": "2026-11-04T08:43:36.451Z",
+  "withContain": {
+    "avg": {
+      "TaskDuration": 0.926,
+      "ScriptDuration": 0.074,
+      "RecalcStyleDuration": 0.307,
+      "RecalcStyleCount": 60.4,
+      "LayoutDuration": 0.146,
+      "LayoutCount": 37.2,
+      "TaskOtherDuration": 0.396
+    },
+    "runs": [
+      {
+        "TaskDuration": 0.774,
+        "ScriptDuration": 0.138,
+        "RecalcStyleDuration": 0.224,
+        "RecalcStyleCount": 55,
+        "LayoutDuration": 0.15,
+        "LayoutCount": 30,
+        "TaskOtherDuration": 0.26
+      },
+      {
+        "TaskDuration": 0.827,
+        "ScriptDuration": 0.052,
+        "RecalcStyleDuration": 0.239,
+        "RecalcStyleCount": 79,
+        "LayoutDuration": 0.097,
+        "LayoutCount": 60,
+        "TaskOtherDuration": 0.436
+      },
+      {
+        "TaskDuration": 0.756,
+        "ScriptDuration": 0.057,
+        "RecalcStyleDuration": 0.237,
+        "RecalcStyleCount": 75,
+        "LayoutDuration": 0.082,
+        "LayoutCount": 58,
+        "TaskOtherDuration": 0.377
+      },
+      {
+        "TaskDuration": 1.096,
+        "ScriptDuration": 0.064,
+        "RecalcStyleDuration": 0.375,
+        "RecalcStyleCount": 60,
+        "LayoutDuration": 0.222,
+        "LayoutCount": 22,
+        "TaskOtherDuration": 0.432
+      },
+      {
+        "TaskDuration": 1.177,
+        "ScriptDuration": 0.061,
+        "RecalcStyleDuration": 0.462,
+        "RecalcStyleCount": 33,
+        "LayoutDuration": 0.178,
+        "LayoutCount": 16,
+        "TaskOtherDuration": 0.473
+      }
+    ],
+    "info": {
+      "modalOpen": true,
+      "paneVisible": false,
+      "paneActive": false,
+      "nodes": 2417,
+      "animations": 2,
+      "heatCells": 130,
+      "forecastNodes": 36
+    }
+  },
+  "withoutContain": {
+    "avg": {
+      "TaskDuration": 0.948,
+      "ScriptDuration": 0.078,
+      "RecalcStyleDuration": 0.3,
+      "RecalcStyleCount": 64.4,
+      "LayoutDuration": 0.125,
+      "LayoutCount": 49.2,
+      "TaskOtherDuration": 0.442
+    },
+    "runs": [
+      {
+        "TaskDuration": 1.539,
+        "ScriptDuration": 0.168,
+        "RecalcStyleDuration": 0.471,
+        "RecalcStyleCount": 45,
+        "LayoutDuration": 0.228,
+        "LayoutCount": 31,
+        "TaskOtherDuration": 0.669
+      },
+      {
+        "TaskDuration": 0.822,
+        "ScriptDuration": 0.057,
+        "RecalcStyleDuration": 0.281,
+        "RecalcStyleCount": 54,
+        "LayoutDuration": 0.105,
+        "LayoutCount": 40,
+        "TaskOtherDuration": 0.373
+      },
+      {
+        "TaskDuration": 0.799,
+        "ScriptDuration": 0.056,
+        "RecalcStyleDuration": 0.249,
+        "RecalcStyleCount": 74,
+        "LayoutDuration": 0.11,
+        "LayoutCount": 59,
+        "TaskOtherDuration": 0.382
+      },
+      {
+        "TaskDuration": 0.79,
+        "ScriptDuration": 0.058,
+        "RecalcStyleDuration": 0.243,
+        "RecalcStyleCount": 76,
+        "LayoutDuration": 0.085,
+        "LayoutCount": 58,
+        "TaskOtherDuration": 0.401
+      },
+      {
+        "TaskDuration": 0.792,
+        "ScriptDuration": 0.052,
+        "RecalcStyleDuration": 0.257,
+        "RecalcStyleCount": 73,
+        "LayoutDuration": 0.095,
+        "LayoutCount": 58,
+        "TaskOtherDuration": 0.385
+      }
+    ],
+    "info": {
+      "modalOpen": true,
+      "paneVisible": false,
+      "paneActive": false,
+      "nodes": 2418,
+      "animations": 2,
+      "heatCells": 130,
+      "forecastNodes": 36
+    }
+  }
+}

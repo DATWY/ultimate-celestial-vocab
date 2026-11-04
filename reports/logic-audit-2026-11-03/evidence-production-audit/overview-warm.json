@@ -1,0 +1,38 @@
+{
+  "firstOpen": {
+    "active": true,
+    "cells": 101,
+    "bars": 36
+  },
+  "firstCost": {
+    "TaskDuration": 1.426,
+    "RecalcStyleDuration": 0.406,
+    "LayoutDuration": 0.417,
+    "ScriptDuration": 0.127
+  },
+  "tagged": 137,
+  "secondOpen": {
+    "active": true,
+    "cells": 101,
+    "bars": 36
+  },
+  "secondCost": {
+    "TaskDuration": 1.235,
+    "RecalcStyleDuration": 0.391,
+    "LayoutDuration": 0.114,
+    "ScriptDuration": 0.058
+  },
+  "survived": {
+    "kept": 137,
+    "total": 137
+  },
+  "afterDataChange": {
+    "active": true,
+    "cells": 101,
+    "bars": 36
+  },
+  "survivedAfterChange": {
+    "kept": 0,
+    "total": 137
+  }
+}

@@ -6746,6 +6746,8 @@ body.dark-mode .manage-nav-tab[data-tab="badges"].active::after {
 .manage-tab-pane {
     flex: 1;
     min-height: 0;
+    /* PERF: cô lập layout của từng tab — đổi tab không phải tính lại cả modal. */
+    contain: layout style;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -17384,3 +17386,8 @@ body.dark-mode #dedup-modal {
 
 /* Toast trên máy hẹp: số lượng giới hạn trong JS (maxVisibleToasts) — ẩn bằng CSS
    sẽ khiến container vẫn ĐẾM toast bị ẩn và hàng đợi không bao giờ rút. */
+
+/* PERF: layer compositor chỉ tồn tại khi modal đang mở (animateModalOpen cần nó). */
+.modal:not(.hidden) .modal-content {
+    will-change: transform, opacity;
+}

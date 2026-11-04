@@ -9,6 +9,7 @@ import { escapeHTML } from '../core/utils/sanitize.js';
 // Removed static import for BADGES to use dynamic import for BADGE_TRACKS and SPECIAL_BADGES
 import { animateNumber, animateForecastChart, animateHeatmap, animateOverviewEntrance } from '../core/animations.js';
 import { renderFsrsPersonaUI } from './fsrsPersona.js';
+import { heatmapSignature, forecastSignature } from './overview-signature.js';
 
 export function renderFsrsPersonaTab() {
     const panePersona = document.getElementById('profile-view-persona');
@@ -741,15 +742,24 @@ function renderBadges(unlockedBadges) {
 }
 
 
+let _heatmapSignature = null;
+let _forecastSignature = null;
+
 function renderHeatmap(activityHeatmap = {}, isBackgroundUpdate = false) {
     if (!DOM.activityHeatmap) return;
-    DOM.activityHeatmap.innerHTML = ''; // Clear old
 
     const gamification = getState().gamification || {};
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = getLocalDateString(today);
+
+    // Dữ liệu không đổi + DOM còn nguyên ⇒ không dựng lại (mở lại tab rất nhanh).
+    const sig = heatmapSignature(activityHeatmap, todayStr);
+    if (sig === _heatmapSignature && DOM.activityHeatmap.childElementCount > 0) return;
+    _heatmapSignature = sig;
+
+    DOM.activityHeatmap.innerHTML = ''; // Clear old
 
     // Chuẩn ISO tuần: Thứ 2 = 0, ..., Chủ Nhật = 6
     const todayDayOfWeek = (today.getDay() + 6) % 7;
@@ -1081,6 +1091,12 @@ export function getForecastStatusLabel(counts, average) {
 
 function renderForecast(vocabulary, isBackgroundUpdate = false) {
     if (!DOM.forecastChart) return;
+
+    // Dữ liệu không đổi + biểu đồ còn nguyên ⇒ không dựng lại.
+    const sig = forecastSignature(vocabulary, getLocalDateString());
+    if (sig === _forecastSignature && DOM.forecastChart.childElementCount > 0) return;
+    _forecastSignature = sig;
+
     DOM.forecastChart.innerHTML = '';
 
     const forecast = buildReviewForecast(vocabulary);

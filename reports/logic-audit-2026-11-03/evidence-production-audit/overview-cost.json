@@ -1,0 +1,50 @@
+{
+  "startedAt": "2026-11-04T08:39:24.154Z",
+  "runs": {
+    "1. mở Tổng quan (lần đầu)": {
+      "TaskDuration": 0.894,
+      "ScriptDuration": 0.178,
+      "RecalcStyleDuration": 0.218,
+      "RecalcStyleCount": 50,
+      "LayoutDuration": 0.133,
+      "LayoutCount": 18,
+      "TaskOtherDuration": 0.361,
+      "info": {
+        "opened": true,
+        "paneActive": false,
+        "nodes": 2021,
+        "animations": 2
+      }
+    },
+    "2. đóng rồi mở lại": {
+      "TaskDuration": 0.671,
+      "ScriptDuration": 0.07,
+      "RecalcStyleDuration": 0.102,
+      "RecalcStyleCount": 88,
+      "LayoutDuration": 0.061,
+      "LayoutCount": 69,
+      "TaskOtherDuration": 0.434,
+      "info": {
+        "opened": true,
+        "paneActive": false,
+        "nodes": 2021,
+        "animations": 2
+      }
+    },
+    "3. mở lại, KHÔNG backdrop-filter": {
+      "TaskDuration": 0.739,
+      "ScriptDuration": 0.149,
+      "RecalcStyleDuration": 0.11,
+      "RecalcStyleCount": 93,
+      "LayoutDuration": 0.067,
+      "LayoutCount": 70,
+      "TaskOtherDuration": 0.409,
+      "info": {
+        "opened": true,
+        "paneActive": false,
+        "nodes": 2022,
+        "animations": 2
+      }
+    }
+  }
+}

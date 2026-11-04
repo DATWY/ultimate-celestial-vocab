@@ -1,0 +1,106 @@
+{
+  "startedAt": "2026-11-04T08:37:30.215Z",
+  "totalMs": 1607,
+  "top": [
+    {
+      "fn": "(idle) @ :0",
+      "ms": 1489945
+    },
+    {
+      "fn": "(program) @ :0",
+      "ms": 36181
+    },
+    {
+      "fn": "f @ index-446byLbp.js:61",
+      "ms": 32029
+    },
+    {
+      "fn": "xe @ gamification-DbgGkrXX.js:166",
+      "ms": 7711
+    },
+    {
+      "fn": "ve @ gamification-DbgGkrXX.js:2",
+      "ms": 4152
+    },
+    {
+      "fn": "requestAnimationFrame @ :0",
+      "ms": 2966
+    },
+    {
+      "fn": "Ce @ gamification-DbgGkrXX.js:401",
+      "ms": 2373
+    },
+    {
+      "fn": "querySelector @ :0",
+      "ms": 1779
+    },
+    {
+      "fn": "(anon) @ index-446byLbp.js:253",
+      "ms": 1779
+    },
+    {
+      "fn": "Qs @ index-446byLbp.js:61",
+      "ms": 1779
+    },
+    {
+      "fn": "appendChild @ :0",
+      "ms": 1779
+    },
+    {
+      "fn": "I.i.tick @ vendor-Bkwwwe2o.js:1",
+      "ms": 1779
+    },
+    {
+      "fn": "n @ vendor-Bkwwwe2o.js:1",
+      "ms": 1779
+    },
+    {
+      "fn": "(anon) @ :1",
+      "ms": 1186
+    },
+    {
+      "fn": "ge @ vendor-Bkwwwe2o.js:1",
+      "ms": 1186
+    },
+    {
+      "fn": "(anon) @ vendor-Bkwwwe2o.js:1",
+      "ms": 1186
+    },
+    {
+      "fn": "De @ gamification-DbgGkrXX.js:411",
+      "ms": 1186
+    },
+    {
+      "fn": "D @ vendor-Bkwwwe2o.js:1",
+      "ms": 1186
+    },
+    {
+      "fn": "update @ index-446byLbp.js:61",
+      "ms": 1186
+    },
+    {
+      "fn": "(garbage collector) @ :0",
+      "ms": 1186
+    },
+    {
+      "fn": "i @ vendor-Bkwwwe2o.js:1",
+      "ms": 1186
+    },
+    {
+      "fn": "ke @ gamification-DbgGkrXX.js:166",
+      "ms": 593
+    },
+    {
+      "fn": "ye @ gamification-DbgGkrXX.js:2",
+      "ms": 593
+    },
+    {
+      "fn": "Tn @ index-446byLbp.js:61",
+      "ms": 593
+    },
+    {
+      "fn": "jr @ vendor-Bkwwwe2o.js:1",
+      "ms": 593
+    }
+  ]
+}
