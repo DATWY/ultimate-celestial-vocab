@@ -282,3 +282,14 @@ Hệ quả với người dùng đang mở bản V2: `version.json` đổi ⇒ t
 `autoUpdate` nạp bundle mới ở lần mở kế tiếp. **Chưa** có phép thử A→B có kiểm soát (giữ tab V2
 rồi deploy V3 trong cùng profile) — lần cập nhật thật của người dùng chính là phép thử đầu tiên;
 logic dọn cache/reload/guard không đổi so với bản trước.
+
+## 8. Tài liệu trực quan so sánh V2 → V3
+
+`IMPACT-VISUAL-V2-V3.html` — một tệp HTML tự chứa (không CDN, không phụ thuộc mạng), mở trực tiếp
+bằng trình duyệt. Nội dung: 6 chỉ số chính, hai lỗi rò dữ liệu với số đo trước/sau, mô phỏng gói tin
+giữa hai tab (bấm đổi V2/V3), bảng 8 kịch bản, 7 nhóm nâng cấp kèm mức tác động, cổng chất lượng,
+dung lượng bundle, timeline 6 vòng audit, và hộp "những gì chưa chứng minh".
+
+Đã kiểm hiển thị: desktop 1425 px và mobile 430 px (device metrics thật) — `scrollWidth` bằng đúng
+`innerWidth` (không tràn ngang), bảng dài tự cuộn trong khung, số KPI và thanh tỉ lệ có giá trị cuối
+kể cả khi in hoặc không cuộn tới (lưới an toàn sau 2 giây + `beforeprint`).
