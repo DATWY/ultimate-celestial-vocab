@@ -255,7 +255,17 @@ button {
     border: none;
     background: none;
     color: inherit;
-    transition: all var(--transition-fast);
+    /* PERF: `all` khiến trình duyệt theo dõi transition cho MỌI thuộc tính của mọi nút.
+       Chỉ khai báo đúng những thuộc tính trạng thái hover/active thực sự đổi. */
+    transition:
+        background-color var(--transition-fast),
+        background-image var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        transform var(--transition-fast),
+        opacity var(--transition-fast),
+        filter var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
 }
 }
@@ -351,7 +361,8 @@ body.modal-active .celestial-stats-dock *::after {
     position: sticky;
     top: 12px;
     z-index: 100;
-    transition: all 0.25s ease;
+    /* PERF: header chỉ đổi màu viền/bóng/độ trong suốt khi đổi theme hoặc cuộn. */
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease, background-color 0.25s ease;
     flex-wrap: nowrap;
     gap: 10px;
     width: 98%;

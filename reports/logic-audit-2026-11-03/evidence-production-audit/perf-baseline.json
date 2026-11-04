@@ -1,0 +1,117 @@
+{
+  "startedAt": "2026-11-04T05:59:32.638Z",
+  "url": "http://127.0.0.1:5241/",
+  "runs": {
+    "desktop-1x": {
+      "throttle": 1,
+      "idle": {
+        "frames": 76,
+        "fps": 87,
+        "avgMs": 11.55,
+        "p95Ms": 8.5,
+        "worstMs": 191.3,
+        "longTasks": 0,
+        "longTaskMaxMs": 0
+      },
+      "scroll": {
+        "fps": 120,
+        "p95Ms": 8.5
+      },
+      "flip": {
+        "fps": 1000,
+        "p95Ms": 0,
+        "worstMs": 0
+      },
+      "metricsDelta": {
+        "TaskDuration": 0.67,
+        "ScriptDuration": 0.25,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 0.16,
+        "JSHeapUsedSize": 1063376,
+        "Nodes": 853,
+        "Documents": 0,
+        "LayoutObjects": 0,
+        "Frames": 0
+      },
+      "nodes": 4245
+    },
+    "desktop-4x": {
+      "throttle": 4,
+      "idle": {
+        "frames": 172,
+        "fps": 113,
+        "avgMs": 8.87,
+        "p95Ms": 9.1,
+        "worstMs": 25,
+        "longTasks": 0,
+        "longTaskMaxMs": 0
+      },
+      "scroll": {
+        "fps": 107,
+        "p95Ms": 16.7
+      },
+      "flip": {
+        "fps": 1000,
+        "p95Ms": 0,
+        "worstMs": 0
+      },
+      "metricsDelta": {
+        "TaskDuration": 2.41,
+        "ScriptDuration": 0.14,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 1.13,
+        "JSHeapUsedSize": 441336,
+        "Nodes": 11,
+        "Documents": 0,
+        "LayoutObjects": 0,
+        "Frames": 0
+      },
+      "nodes": 4231
+    },
+    "boost-mode-1x": {
+      "throttle": 1,
+      "idle": {
+        "frames": 173,
+        "fps": 115,
+        "avgMs": 8.72,
+        "p95Ms": 8.6,
+        "worstMs": 66.9,
+        "longTasks": 1,
+        "longTaskMaxMs": 79
+      },
+      "scroll": {
+        "fps": 120,
+        "p95Ms": 8.6
+      },
+      "flip": {
+        "fps": 1000,
+        "p95Ms": 0,
+        "worstMs": 0
+      },
+      "metricsDelta": {
+        "TaskDuration": 0.48,
+        "ScriptDuration": 0.15,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 0.08,
+        "JSHeapUsedSize": 1176780,
+        "Nodes": 868,
+        "Documents": 0,
+        "LayoutObjects": 1,
+        "Frames": 0
+      },
+      "nodes": 4249
+    }
+  },
+  "env": {
+    "nodes": 1060,
+    "css": [
+      "http://127.0.0.1:5241/phosphor-subset.css",
+      "http://127.0.0.1:5241/assets/index-gkjvtZhg.css"
+    ],
+    "dpr": 1,
+    "ua": ") HeadlessChrome/156.0.0.0 Safari/537.36",
+    "dark": true,
+    "boost": false
+  },
+  "bootMs": 337
+}

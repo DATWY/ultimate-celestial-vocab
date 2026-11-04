@@ -656,13 +656,13 @@ export function setupEventListeners() {
                 onSwap: () => playSound(targetModeIsDark ? 'themeEclipse' : 'themeDawn'),
                 onDone: () => { isTransitioning = false; setIsTransitioning(false); }
             });
-            playSound('themeWhoosh');
+            playSound(targetModeIsDark ? 'themeWhoosh' : 'themeWhooshUp');
             isTransitioning = true;
             setIsTransitioning(true);
             return;
         }
 
-        playSound('themeWhoosh');
+        playSound(targetModeIsDark ? 'themeWhoosh' : 'themeWhooshUp');
 
         isTransitioning = true;
         setIsTransitioning(true);

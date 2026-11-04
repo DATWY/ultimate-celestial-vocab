@@ -9,7 +9,7 @@
 //
 // Phần THUẦN (toán đường tròn, chọn chiến lược) tách riêng để test Node không cần DOM.
 
-export const VT_DURATION_MS = 620;
+export const VT_DURATION_MS = 900;
 
 /** Nhịp của đường màn khép dự phòng (ms) — ngắn hơn bản cũ 1,9 s. */
 export const CURTAIN_TIMING = { cover: 620, dwell: 240, reveal: 540 };
@@ -18,6 +18,8 @@ export const VT_CLASS = 'theme-vt-run';
 export const VT_CLASS_DARK = 'theme-vt-to-dark';
 export const VT_CLASS_LIGHT = 'theme-vt-to-light';
 export const BURST_CLASS = 'theme-burst';
+/** Lớp tắt transition toàn cục trong lúc đổi theme (màn chuyển cảnh đang phủ). */
+export const SWITCHING_CLASS = 'theme-switching';
 
 /**
  * Bán kính cần thiết để đường tròn phủ hết khung nhìn khi tâm đặt tại (cx, cy).
@@ -56,21 +58,27 @@ export function pickThemeTransitionStrategy({ supportsViewTransition, reduceMoti
     return supportsViewTransition === true ? 'view-transition' : 'curtain';
 }
 
-/** Lớp hạt sáng: sao khi vào tối, tia nắng khi ra sáng. Trả null nếu không có DOM. */
-export function createBurst(doc, x, y, isDark, count = 14) {
+/** Lớp hạt sáng: sao khi vào tối, tia nắng khi ra sáng + đĩa sáng bung ở tâm. */
+export function createBurst(doc, x, y, isDark, count = 18) {
     if (!doc || typeof doc.createElement !== 'function' || !doc.body) return null;
     const wrap = doc.createElement('div');
     wrap.className = `${BURST_CLASS} ${isDark ? 'is-to-dark' : 'is-to-light'}`;
     wrap.setAttribute('aria-hidden', 'true');
     wrap.style.setProperty('--x', `${Math.round(x)}px`);
     wrap.style.setProperty('--y', `${Math.round(y)}px`);
+    // Đĩa sáng bung ra ở tâm (tạo "độ nặng" cho khoảnh khắc chuyển).
+    const orb = doc.createElement('div');
+    orb.className = 'theme-burst__orb';
+    wrap.appendChild(orb);
     for (let i = 0; i < count; i++) {
         const dot = doc.createElement('span');
         const angle = (Math.PI * 2 * i) / count + (isDark ? 0.2 : -0.2);
-        const dist = 60 + ((i * 37) % 90);
+        const dist = 70 + ((i * 37) % 120);
         dot.style.setProperty('--dx', `${Math.round(Math.cos(angle) * dist)}px`);
         dot.style.setProperty('--dy', `${Math.round(Math.sin(angle) * dist)}px`);
-        dot.style.setProperty('--d', `${(i % 5) * 26}ms`);
+        dot.style.setProperty('--d', `${(i % 7) * 24}ms`);
+        // Mỗi 5 hạt là một "vệt sao" dài hơn để có nhịp điệu.
+        if (i % 5 === 0) dot.className = 'is-streak';
         wrap.appendChild(dot);
     }
     doc.body.appendChild(wrap);
@@ -106,9 +114,13 @@ export async function runThemeTransition({
     root.style.setProperty('--theme-vt-y', `${Math.round(y)}px`);
     root.style.setProperty('--theme-vt-r', `${circleRevealRadius(x, y, vw, vh)}px`);
     root.classList.add(VT_CLASS, isDark ? VT_CLASS_DARK : VT_CLASS_LIGHT);
+    // Trong lúc đổi theme, tắt transition của MỌI phần tử: hàng trăm phần tử đổi màu cùng lúc
+    // sẽ tạo ra một đợt transition khổng lồ (đo được 75 lần recalc cho 6 lần đổi theme).
+    // Màn chuyển cảnh đang phủ nên người dùng không thấy khác biệt.
+    root.classList.add(SWITCHING_CLASS);
 
     const cleanup = () => {
-        root.classList.remove(VT_CLASS, VT_CLASS_DARK, VT_CLASS_LIGHT);
+        root.classList.remove(VT_CLASS, VT_CLASS_DARK, VT_CLASS_LIGHT, SWITCHING_CLASS);
         root.style.removeProperty('--theme-vt-x');
         root.style.removeProperty('--theme-vt-y');
         root.style.removeProperty('--theme-vt-r');

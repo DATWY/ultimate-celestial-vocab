@@ -455,6 +455,64 @@ function scheduleSynthVoices(ctx, soundName) {
             } catch (_) {}
         };
 
+        /** Nhiễu lọc bandpass quét tần số — "tiếng vút" của màn chuyển giao diện. */
+        const noiseSweep = (from, to, dur = 0.55, peak = 0.17) => {
+            try {
+                if (typeof ctx.createBuffer !== 'function' || typeof ctx.createBufferSource !== 'function') return false;
+                const frames = Math.max(1, Math.floor((ctx.sampleRate || 44100) * dur));
+                const buffer = ctx.createBuffer(1, frames, ctx.sampleRate || 44100);
+                const data = typeof buffer.getChannelData === 'function' ? buffer.getChannelData(0) : null;
+                for (let i = 0; i < frames; i++) {
+                    const k = i / frames;
+                    const fade = (1 - k) * (1 - k);
+                    data[i] = (Math.random() * 2 - 1) * fade;
+                }
+                const src = ctx.createBufferSource();
+                src.buffer = buffer;
+                const band = ctx.createBiquadFilter ? ctx.createBiquadFilter() : null;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(peak, now + dur * 0.18);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+                if (band) {
+                    band.type = 'bandpass';
+                    band.Q = 1.2;
+                    band.frequency.setValueAtTime(from, now);
+                    band.frequency.exponentialRampToValueAtTime(to, now + dur);
+                    src.connect(band);
+                    band.connect(gain);
+                } else {
+                    src.connect(gain);
+                }
+                gain.connect(synthGainNode);
+                cleanupOnEnded(src, [gain, band].filter(Boolean));
+                src.start(now);
+                src.stop(now + dur);
+                return true;
+            } catch (_) { return false; }
+        };
+
+        /** Arpeggio ngắn: dãy nốt đi lên/xuống, mỗi nốt một "hạt" chuông. */
+        const addArpeggio = (startAt, freqs, { gap = 0.1, peak = 0.14, dur = 0.9 } = {}) => {
+            freqs.forEach((freq, idx) => {
+                try {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    const at = startAt + idx * gap;
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, at);
+                    gain.gain.setValueAtTime(0.0001, at);
+                    gain.gain.exponentialRampToValueAtTime(peak, at + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+                    osc.connect(gain);
+                    gain.connect(synthGainNode);
+                    cleanupOnEnded(osc, [gain]);
+                    osc.start(at);
+                    osc.stop(at + dur + 0.02);
+                } catch (_) {}
+            });
+        };
+
         switch (soundName) {
             case 'flip': {
                 // Classic crisp sine sweep (320Hz -> 140Hz, 80ms) from backup
@@ -926,6 +984,8 @@ function scheduleSynthVoices(ctx, soundName) {
                     sub.stop(now + 0.97);
                 } catch (_) {}
                 addShimmer(now + 0.18, [1568.0, 2093.0, 2637.02], 0.045, 1.25);
+                // Ba nốt đi XUỐNG, chậm — cảm giác mặt trời lặn dần.
+                addArpeggio(now + 0.10, [659.25, 493.88, 329.63], { gap: 0.115, peak: 0.1, dur: 1.2 });
                 return true;
             }
 
@@ -950,6 +1010,8 @@ function scheduleSynthVoices(ctx, soundName) {
                     chimeOsc.start(startTime);
                     chimeOsc.stop(now + 0.86);
                 });
+                // Ba nốt đi LÊN, mở màn cho chùm chuông.
+                addArpeggio(now + 0.02, [392.0, 523.25, 659.25], { gap: 0.1, peak: 0.085, dur: 1.0 });
                 // Đuôi "lấp lánh": hai sine rất cao, rơi chậm — tạo cảm giác nắng lên.
                 addShimmer(now + 0.12, [2093.0, 2637.02], 0.055, 1.15);
                 // Glissando nhẹ đi lên để mở màn.
@@ -958,39 +1020,13 @@ function scheduleSynthVoices(ctx, soundName) {
             }
 
             case 'themeWhoosh': {
-                // Tiếng "vút" của màn chuyển: nhiễu lọc bandpass quét 320 → 2600 Hz.
-                if (typeof ctx.createBuffer !== 'function' || typeof ctx.createBufferSource !== 'function') return false;
-                const dur = 0.42;
-                const frames = Math.max(1, Math.floor((ctx.sampleRate || 44100) * dur));
-                const buffer = ctx.createBuffer(1, frames, ctx.sampleRate || 44100);
-                const data = typeof buffer.getChannelData === 'function' ? buffer.getChannelData(0) : null;
-                for (let i = 0; i < frames; i++) {
-                    const k = i / frames;
-                    const fade = (1 - k) * (1 - k);
-                    data[i] = (Math.random() * 2 - 1) * fade;
-                }
-                const src = ctx.createBufferSource();
-                src.buffer = buffer;
-                const band = ctx.createBiquadFilter ? ctx.createBiquadFilter() : null;
-                const gain = ctx.createGain();
-                gain.gain.setValueAtTime(0.0001, now);
-                gain.gain.exponentialRampToValueAtTime(0.16, now + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-                if (band) {
-                    band.type = 'bandpass';
-                    band.Q = 1.1;
-                    band.frequency.setValueAtTime(320, now);
-                    band.frequency.exponentialRampToValueAtTime(2600, now + dur);
-                    src.connect(band);
-                    band.connect(gain);
-                } else {
-                    src.connect(gain);
-                }
-                gain.connect(synthGainNode);
-                cleanupOnEnded(src, [gain, band].filter(Boolean));
-                src.start(now);
-                src.stop(now + dur);
-                return true;
+                // Vào Tối: nhiễu quét XUỐNG (2800 → 300 Hz) — nghe như bầu trời tối sầm lại.
+                return noiseSweep(2800, 300, 0.55, 0.17);
+            }
+
+            case 'themeWhooshUp': {
+                // Ra Sáng: nhiễu quét LÊN (300 → 2800 Hz) — nghe như ánh sáng tràn vào.
+                return noiseSweep(300, 2800, 0.55, 0.17);
             }
 
             case 'undo': {

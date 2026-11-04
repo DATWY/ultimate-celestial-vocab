@@ -1,0 +1,93 @@
+{
+  "startedAt": "2026-11-04T06:33:25.800Z",
+  "throttle": 4,
+  "variants": {
+    "baseline": {
+      "TaskDuration": 2.78,
+      "ScriptDuration": 0.33,
+      "RecalcStyleDuration": 1.15,
+      "RecalcStyleCount": 94,
+      "LayoutDuration": 0.01,
+      "LayoutCount": 6,
+      "TaskOtherDuration": 1.27
+    },
+    "no-backdrop": {
+      "TaskDuration": 3.03,
+      "ScriptDuration": 0.05,
+      "RecalcStyleDuration": 1.4,
+      "RecalcStyleCount": 68,
+      "LayoutDuration": 0.02,
+      "LayoutCount": 6,
+      "TaskOtherDuration": 1.57
+    },
+    "no-canvas": {
+      "TaskDuration": 2.05,
+      "ScriptDuration": 0.05,
+      "RecalcStyleDuration": 1.03,
+      "RecalcStyleCount": 82,
+      "LayoutDuration": 0.01,
+      "LayoutCount": 6,
+      "TaskOtherDuration": 0.95
+    },
+    "no-anim": {
+      "TaskDuration": 1.14,
+      "ScriptDuration": 0.02,
+      "RecalcStyleDuration": 0.53,
+      "RecalcStyleCount": 6,
+      "LayoutDuration": 0.01,
+      "LayoutCount": 6,
+      "TaskOtherDuration": 0.58
+    },
+    "no-shadow": {
+      "TaskDuration": 1.71,
+      "ScriptDuration": 0.03,
+      "RecalcStyleDuration": 0.82,
+      "RecalcStyleCount": 96,
+      "LayoutDuration": 0.01,
+      "LayoutCount": 7,
+      "TaskOtherDuration": 0.83
+    },
+    "no-blur-filter": {
+      "TaskDuration": 1.42,
+      "ScriptDuration": 0.01,
+      "RecalcStyleDuration": 0.7,
+      "RecalcStyleCount": 82,
+      "LayoutDuration": 0.01,
+      "LayoutCount": 6,
+      "TaskOtherDuration": 0.7
+    }
+  },
+  "css": {},
+  "notes": [
+    {
+      "variant": "no-backdrop",
+      "taskDeltaPct": -9,
+      "recalcDeltaPct": -22,
+      "otherDeltaPct": -24
+    },
+    {
+      "variant": "no-canvas",
+      "taskDeltaPct": 26,
+      "recalcDeltaPct": 10,
+      "otherDeltaPct": 25
+    },
+    {
+      "variant": "no-anim",
+      "taskDeltaPct": 59,
+      "recalcDeltaPct": 54,
+      "otherDeltaPct": 54
+    },
+    {
+      "variant": "no-shadow",
+      "taskDeltaPct": 38,
+      "recalcDeltaPct": 29,
+      "otherDeltaPct": 35
+    },
+    {
+      "variant": "no-blur-filter",
+      "taskDeltaPct": 49,
+      "recalcDeltaPct": 39,
+      "otherDeltaPct": 45
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-11-04T05:11:33.892Z",
+  "startedAt": "2026-11-04T06:43:59.935Z",
   "steps": {
     "0. ban đầu": {
       "dark": true,
@@ -26,7 +26,7 @@
       "burst": true,
       "fx": {
         "vt": 1,
-        "osc": 8,
+        "osc": 11,
         "buffer": 1,
         "burstSeen": true,
         "errors": []
@@ -40,7 +40,7 @@
       "burst": false,
       "fx": {
         "vt": 1,
-        "osc": 8,
+        "osc": 11,
         "buffer": 1,
         "burstSeen": true,
         "errors": []
@@ -54,7 +54,7 @@
       "burst": false,
       "fx": {
         "vt": 2,
-        "osc": 16,
+        "osc": 22,
         "buffer": 2,
         "burstSeen": true,
         "errors": []
@@ -68,7 +68,7 @@
       "burst": false,
       "fx": {
         "vt": 2,
-        "osc": 17,
+        "osc": 23,
         "buffer": 2,
         "burstSeen": true,
         "errors": []
@@ -82,7 +82,7 @@
       "burst": false,
       "fx": {
         "vt": 2,
-        "osc": 16,
+        "osc": 22,
         "buffer": 2,
         "burstSeen": true,
         "errors": []
@@ -91,5 +91,6 @@
   },
   "failures": [],
   "errors": [],
+  "server": "dist-static",
   "ok": true
 }

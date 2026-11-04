@@ -1,0 +1,122 @@
+{
+  "startedAt": "2026-11-04T06:15:38.450Z",
+  "throttle": 4,
+  "variants": {
+    "baseline": {
+      "TaskDuration": 1.65,
+      "ScriptDuration": 0.63,
+      "RecalcStyleDuration": 0.08,
+      "RecalcStyleCount": 5,
+      "LayoutDuration": 0,
+      "LayoutCount": 0,
+      "TaskOtherDuration": 0.93
+    },
+    "no-backdrop": {
+      "TaskDuration": 0.76,
+      "ScriptDuration": 0.03,
+      "RecalcStyleDuration": 0,
+      "RecalcStyleCount": 0,
+      "LayoutDuration": 0,
+      "LayoutCount": 0,
+      "TaskOtherDuration": 0.72
+    },
+    "no-canvas": {
+      "TaskDuration": 1.05,
+      "ScriptDuration": 0.08,
+      "RecalcStyleDuration": 0,
+      "RecalcStyleCount": 0,
+      "LayoutDuration": 0,
+      "LayoutCount": 0,
+      "TaskOtherDuration": 0.96
+    },
+    "no-anim": {
+      "TaskDuration": 0.81,
+      "ScriptDuration": 0.06,
+      "RecalcStyleDuration": 0,
+      "RecalcStyleCount": 0,
+      "LayoutDuration": 0,
+      "LayoutCount": 0,
+      "TaskOtherDuration": 0.71
+    },
+    "no-shadow": {
+      "TaskDuration": 0.51,
+      "ScriptDuration": 0.04,
+      "RecalcStyleDuration": 0.01,
+      "RecalcStyleCount": 4,
+      "LayoutDuration": 0.01,
+      "LayoutCount": 2,
+      "TaskOtherDuration": 0.43
+    },
+    "no-blur-filter": {
+      "TaskDuration": 0.33,
+      "ScriptDuration": 0.04,
+      "RecalcStyleDuration": 0,
+      "RecalcStyleCount": 0,
+      "LayoutDuration": 0,
+      "LayoutCount": 0,
+      "TaskOtherDuration": 0.27
+    }
+  },
+  "css": {
+    "sheets": [
+      {
+        "href": "phosphor-subset.css",
+        "rules": 998
+      },
+      {
+        "href": "index-gkjvtZhg.css",
+        "rules": 609
+      }
+    ],
+    "totalRules": 1607,
+    "cssBytes": 398011,
+    "cssFiles": [
+      {
+        "name": "phosphor-subset.css",
+        "bytes": 64054
+      },
+      {
+        "name": "index-gkjvtZhg.css",
+        "bytes": 333957
+      }
+    ]
+  },
+  "notes": [
+    {
+      "variant": "no-backdrop",
+      "taskDeltaPct": 54,
+      "recalcDeltaPct": 100,
+      "otherDeltaPct": 23
+    },
+    {
+      "variant": "no-canvas",
+      "taskDeltaPct": 36,
+      "recalcDeltaPct": 100,
+      "otherDeltaPct": -3
+    },
+    {
+      "variant": "no-anim",
+      "taskDeltaPct": 51,
+      "recalcDeltaPct": 100,
+      "otherDeltaPct": 24
+    },
+    {
+      "variant": "no-shadow",
+      "taskDeltaPct": 69,
+      "recalcDeltaPct": 88,
+      "otherDeltaPct": 54
+    },
+    {
+      "variant": "no-blur-filter",
+      "taskDeltaPct": 80,
+      "recalcDeltaPct": 100,
+      "otherDeltaPct": 71
+    }
+  ],
+  "state": {
+    "hasCards": 0,
+    "onboardingVisible": false,
+    "runningAnimations": 0,
+    "animNames": []
+  }
+}

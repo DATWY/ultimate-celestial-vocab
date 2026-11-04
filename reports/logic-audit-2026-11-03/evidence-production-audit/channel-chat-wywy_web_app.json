@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-11-04T01:20:55.889Z",
+  "startedAt": "2026-11-04T05:13:58.745Z",
   "url": "https://chat-wywy.web.app",
   "steps": {
     "khởi động": {
@@ -28,7 +28,7 @@
       "xpToday": 5,
       "userXP": 5,
       "reviewed": [
-        "stg-0"
+        "stg-2"
       ],
       "devApi": false,
       "sw": {

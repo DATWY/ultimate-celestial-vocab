@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-11-04T06:36:24.207Z",
+  "runs": {
+    "A. bấm nút (có tắt transition + View Transition)": {
+      "TaskDuration": 2.85,
+      "ScriptDuration": 0.7,
+      "RecalcStyleDuration": 1,
+      "RecalcStyleCount": 112,
+      "TaskOtherDuration": 1.13,
+      "LayoutCount": 12
+    },
+    "B. đổi class trực tiếp (mô phỏng bản cũ)": {
+      "TaskDuration": 2.31,
+      "ScriptDuration": 0.01,
+      "RecalcStyleDuration": 1.41,
+      "RecalcStyleCount": 60,
+      "TaskOtherDuration": 0.88,
+      "LayoutCount": 3
+    }
+  },
+  "visual": {
+    "dark": false,
+    "transitionsLeft": false,
+    "bg": "rgb(253, 252, 251)",
+    "headerBg": "radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.88"
+  }
+}

@@ -35,6 +35,10 @@ function scheduleNextFrame(delayMs = 0) {
     }
 }
 let lastActivityTime = performance.now();
+// Cuộn trang: tạm ngưng vẽ để nhường frame budget (xem animate()).
+let lastScrollAt = 0;
+const SCROLL_QUIET_MS = 140;
+const SCROLL_FRAME_INTERVAL_MS = 90;
 let isTabVisible = true;
 let isSuspended = false;
 let isBoostMode = false;
@@ -299,6 +303,7 @@ export function setBoostMode(enabled) {
     } else {
         if (!canvas) {
             canvas = document.getElementById('celestial-canvas');
+    if (typeof window !== 'undefined') window.addEventListener('scroll', onWindowScroll, { passive: true });
         }
         if (canvas) {
             canvas.style.display = 'block';
@@ -495,6 +500,9 @@ export function updateCanvasTheme(darkMode) {
     wakeAndRecordActivity();
 }
 
+/** Ghi nhận thời điểm cuộn gần nhất: animate() sẽ tạm nhường frame budget. */
+function onWindowScroll() { lastScrollAt = performance.now(); }
+
 function animate(timestamp) {
     if (!ctx || !canvas || !isTabVisible || isSuspended || isBoostMode) {
         stopAnimationLoop();
@@ -522,6 +530,13 @@ function animate(timestamp) {
     // Desktop: 30 FPS active (33.3ms), 15 FPS idle (66.6ms)
     // Mobile:  20 FPS active (50.0ms), 10 FPS idle (100ms)
     const isMobile = cachedIsMobile();
+    // Đang cuộn: nhường frame budget cho nội dung cuộn. Bầu sao đứng yên ~140 ms
+    // (mắt gần như không nhận ra khi trang đang trôi) rồi tự chạy tiếp.
+    const scrollingRecently = timestamp - lastScrollAt < SCROLL_QUIET_MS;
+    if (scrollingRecently && !isTypingActive) {
+        scheduleNextFrame(SCROLL_FRAME_INTERVAL_MS);
+        return;
+    }
     // Đang gõ: hạ nhịp nhưng KHÔNG dừng — sao vẫn trôi, chỉ tốn ít GPU hơn.
     const targetInterval = isTypingActive
         ? (isMobile ? TYPING_INTERVAL_MOBILE_MS : TYPING_INTERVAL_DESKTOP_MS)

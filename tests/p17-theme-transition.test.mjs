@@ -64,7 +64,7 @@ test('P17-5: events.js dùng đúng chiến lược, tâm nút bấm và âm tha
     assert.match(src, /pickThemeTransitionStrategy\(\{/, 'phải chọn chiến lược thay vì hard-code');
     assert.match(src, /runThemeTransition\(\{/, 'phải chạy đường View Transitions');
     assert.match(src, /originFromElement\(DOM\.toggleDarkModeBtn/, 'tâm đường tròn phải là nút người dùng bấm');
-    assert.match(src, /playSound\('themeWhoosh'\)/, 'phải có tiếng "vút" khi bắt đầu chuyển');
+    assert.match(src, /playSound\(targetModeIsDark \? 'themeWhoosh' : 'themeWhooshUp'\)/, 'tiếng "vút" phải đúng chiều chuyển');
     assert.match(src, /playSound\(targetModeIsDark \? 'themeEclipse' : 'themeDawn'\)/, 'phải phát chime đúng chiều');
     assert.match(src, /playSound\('undo'\)/, 'undo phải có âm riêng');
     // Đường màn khép cũ vẫn còn làm dự phòng
@@ -86,6 +86,8 @@ test('P17-6: CSS có luật View Transitions, hạt sáng và tôn trọng giả
 test('P17-7: sound.js có voice cho themeWhoosh/undo và đuôi lấp lánh cho hai chime', () => {
     const src = read('src/core/sound.js');
     assert.match(src, /case 'themeWhoosh':/);
+    assert.match(src, /case 'themeWhooshUp':/);
+    assert.match(src, /const addArpeggio = /);
     assert.match(src, /case 'undo':/);
     assert.match(src, /const addShimmer = /);
     assert.match(src, /addShimmer\(now \+ 0\.18/, 'themeEclipse phải có shimmer');

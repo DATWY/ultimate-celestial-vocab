@@ -534,7 +534,7 @@ html.theme-vt-run::view-transition-old(root) {
 
 html.theme-vt-run::view-transition-new(root) {
     z-index: 2;
-    animation: theme-vt-reveal 620ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: theme-vt-reveal 900ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 @keyframes theme-vt-reveal {
@@ -567,7 +567,7 @@ html.theme-vt-run::view-transition-new(root) {
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, .78);
     box-shadow: 0 0 26px rgba(255, 255, 255, .5), inset 0 0 14px rgba(255, 255, 255, .4);
-    animation: theme-vt-ring 620ms cubic-bezier(.16, 1, .3, 1) forwards;
+    animation: theme-vt-ring 900ms cubic-bezier(.16, 1, .3, 1) forwards;
 }
 
 .theme-burst span {
@@ -579,7 +579,7 @@ html.theme-vt-run::view-transition-new(root) {
     border-radius: 50%;
     opacity: 0;
     transform: translate3d(var(--x, 50%), var(--y, 50%), 0) scale(.4);
-    animation: theme-vt-spark 700ms cubic-bezier(.16, 1, .3, 1) var(--d, 0ms) forwards;
+    animation: theme-vt-spark 1100ms cubic-bezier(.16, 1, .3, 1) var(--d, 0ms) forwards;
 }
 
 .theme-burst.is-to-dark span {
@@ -615,3 +615,62 @@ html.theme-vt-run::view-transition-new(root) {
 }
 
 body.boost-mode .theme-burst { display: none !important; }
+
+/* Đĩa sáng bung ở tâm: tạo "độ nặng" cho khoảnh khắc đổi theme. */
+.theme-burst__orb {
+    position: absolute;
+    left: var(--x, 50%);
+    top: var(--y, 50%);
+    width: 96px;
+    height: 96px;
+    margin: -48px 0 0 -48px;
+    border-radius: 50%;
+    opacity: .9;
+    transform: scale(.2);
+    animation: theme-vt-orb 900ms cubic-bezier(.16, 1, .3, 1) forwards;
+    will-change: transform, opacity;
+}
+
+.theme-burst.is-to-dark .theme-burst__orb {
+    background: radial-gradient(circle, #ffffff 0%, #9ad8ff 38%, rgba(120, 170, 255, .35) 62%, transparent 72%);
+    filter: blur(2px);
+}
+
+.theme-burst.is-to-light .theme-burst__orb {
+    background: radial-gradient(circle, #fffdf5 0%, #ffd479 40%, rgba(255, 190, 90, .35) 64%, transparent 74%);
+    filter: blur(2px);
+}
+
+@keyframes theme-vt-orb {
+    0% { opacity: .95; transform: scale(.2); }
+    55% { opacity: .55; transform: scale(2.6); }
+    100% { opacity: 0; transform: scale(4.2); }
+}
+
+/* Vệt sao: dài và có đuôi, khác hạt tròn. */
+.theme-burst span.is-streak {
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    animation-duration: 1250ms;
+}
+
+.theme-burst.is-to-dark span.is-streak {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #cfe9ff 55%, #ffffff 100%);
+}
+
+.theme-burst.is-to-light span.is-streak {
+    width: 3px;
+    height: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffe6a8 50%, #ffd479 100%);
+}
+
+/* Đổi theme: tắt transition toàn cục trong lúc màn chuyển cảnh đang phủ.
+   Không có bước này, hàng trăm phần tử đổi màu cùng lúc sẽ tự chạy transition
+   (đo được 75 lần recalc cho 6 lần đổi theme, Task 3,88 s ở CPU 4×). */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+    transition: none !important;
+}
