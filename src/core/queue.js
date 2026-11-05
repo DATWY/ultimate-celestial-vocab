@@ -325,7 +325,8 @@ export function buildReviewQueue() {
 export function getNextCardToReview() {
     let loopCount = 0;
     while (loopCount < 1000) { 
-        let { currentReviewQueue, vocabulary } = getState(); 
+        let { currentReviewQueue } = getState();
+        const { vocabulary } = getState(); 
         
         if (currentReviewQueue.length === 0) {
             buildReviewQueue();
@@ -418,11 +419,8 @@ export function triggerSmartCramming() {
  * nơi nào không muốn vậy thì tự kiểm tra srsDueDate trước khi gọi.
  */
 export function isNaturallyDue(word, now = Date.now()) {
+    // C′-thay-thế (PHASE 9): thẻ TẠM ẨN không bao giờ tới hạn.
     if (!word || word.isDeleted || word.isSuspended) return false;
-    // C′-thay-thế (PHASE 9): thẻ TẠM ẨN không bao giờ tới hạn. Trước đây cờ
-    // `isSuspended` có trong dữ liệu nhưng KHÔNG nơi nào đọc ⇒ không có cách
-    // trung thực nào để nói "từ này tôi đã biết" (ngoài đường tắt sai khoa học).
-    if (word.isSuspended) return false;
     // AUDIT-R3.3: thẻ Mastered phải xét "đã ôn hôm nay" TRƯỚC khi xét ngày hẹn. Bản trước trả
     // `true` ngay cho mọi thẻ thiếu `srsDueDate`, kể cả thẻ vừa ôn xong trong ngày — vừa mâu
     // thuẫn với `classifyReview`, vừa khiến thẻ legacy không ngày hẹn bị mời ôn lặp lại.

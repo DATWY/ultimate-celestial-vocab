@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isDuplicateCard, findDuplicatePairs, mergeDuplicateCards } from '../src/core/dedup.js';
+import { isDuplicateCard, findDuplicatePairs } from '../src/core/dedup.js';
 
 test('dedup accuracy: confusables must NOT be flagged as duplicates (0 false positives)', () => {
     const confusables = [

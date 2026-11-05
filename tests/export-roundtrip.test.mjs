@@ -28,7 +28,7 @@ const fixture = [
     }
 ];
 
-const pick = (card) => {
+const _pick = (card) => {
     const out = {};
     for (const column of VOCAB_COLUMNS) {
         const key = column.charAt(0).toLowerCase() + column.slice(1);

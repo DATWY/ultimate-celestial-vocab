@@ -3,7 +3,7 @@
 // Tìm kiếm mờ cho ô tìm kiếm từ vựng: khớp trực tiếp, khớp tiếng Việt không dấu, khớp nhiều
 // token và sửa lỗi gõ (Levenshtein). Tách khỏi dedup.js để entry bundle không phải nạp toàn bộ
 // engine gộp trùng chỉ vì ui/render.js cần đúng hai hàm ở đây. Hành vi giữ nguyên từng dòng.
-import { removeVietnameseTones } from './text-normalize.js';
+import { removeVietnameseTones, normalizeSmartPunctuation } from './text-normalize.js';
 
 export function levenshteinDistance(s1, s2) {
     if (s1 === s2) return 0;
@@ -35,9 +35,9 @@ export function levenshteinDistance(s1, s2) {
 /** Tìm kiếm mờ thông minh cho ô tìm kiếm từ vựng (hỗ trợ không dấu, multi-token, typo Levenshtein) */
 export function isFuzzySearchMatch(query, english, vietnamese) {
     if (!query) return true;
-    const q = query.trim().toLowerCase();
-    const eng = (english || '').toLowerCase();
-    const vie = (vietnamese || '').toLowerCase();
+    const q = normalizeSmartPunctuation(query).trim().toLowerCase();
+    const eng = normalizeSmartPunctuation(english || '').toLowerCase();
+    const vie = normalizeSmartPunctuation(vietnamese || '').toLowerCase();
 
     // 1. Khớp chuỗi trực tiếp
     if (eng.includes(q) || vie.includes(q)) return true;

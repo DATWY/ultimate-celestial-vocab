@@ -119,7 +119,10 @@ export async function runThemeTransition({
     // Màn chuyển cảnh đang phủ nên người dùng không thấy khác biệt.
     root.classList.add(SWITCHING_CLASS);
 
+    let cleaned = false;
     const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
         root.classList.remove(VT_CLASS, VT_CLASS_DARK, VT_CLASS_LIGHT, SWITCHING_CLASS);
         root.style.removeProperty('--theme-vt-x');
         root.style.removeProperty('--theme-vt-y');

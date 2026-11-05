@@ -255,12 +255,15 @@ server.listen(PORT, async () => {
     console.log('======================================================\n');
 
     cdp.close();
+    process.exitCode = 0;
   } catch (err) {
     console.error('TEST ERROR:', err);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     try { chrome.kill(); } catch (e) {}
+    try { server.closeAllConnections?.(); } catch (e) {}
     server.close();
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+    process.exit(process.exitCode ?? 0);
   }
 });

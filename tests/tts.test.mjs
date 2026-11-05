@@ -43,9 +43,8 @@ globalThis.fetch = (...args) => fetchImpl(...args);
 
 const sound = await import('../src/core/sound.js');
 
-let db = null;
 before(async () => {
-    db = await initAppDB();
+    await initAppDB();
 });
 
 /** Chờ microlit: speakText không await phần toast (fire-and-forget). */

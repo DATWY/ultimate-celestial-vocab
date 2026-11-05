@@ -336,7 +336,7 @@ function renderPenanceQuestion() {
 }
 
 function handlePenanceAnswer(selectedAnswer, correctAnswer, allButtons) {
-    allButtons.forEach(b => b.disabled = true);
+    allButtons.forEach(b => { b.disabled = true; });
 
     const isCorrect = selectedAnswer === correctAnswer;
     allButtons.forEach(b => {

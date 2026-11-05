@@ -15,6 +15,7 @@ import { setupEventListeners } from './events.js';
 import { openManageModal, openAddEditModal, openDedupModal, openModal, showPopup } from './ui/modal.js';
 import { checkAppVersion } from './core/versionCheck.js';
 import { initTabBus } from './core/tab-bus.js';
+import { initCelestialCanvas, isMobileDevice, getCelestialDiagnostics } from './ui/celestial-canvas.js';
 
 // Cloud (firebase 547 kB) được nạp SAU khi giao diện sẵn sàng, không nằm trên
 // critical path của entry chunk. Trước đây main.js import tĩnh firebase nên mọi
@@ -125,9 +126,6 @@ window.__celestialAudit = {
 };
 
 }
-
-import { initCelestialCanvas, isMobileDevice } from './ui/celestial-canvas.js';
-import { getCelestialDiagnostics } from './ui/celestial-canvas.js';
 
 async function initializeApp() {
     console.log("Initializing Celestial Vocab App...");

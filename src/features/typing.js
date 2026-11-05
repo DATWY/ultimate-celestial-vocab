@@ -1,4 +1,6 @@
 // src/features/typing.js
+import { normalizeSmartPunctuation } from '../core/text-normalize.js';
+export { normalizeSmartPunctuation };
 
 let typingStartTime = 0;
 let cognitiveRetrievalTime = -1; // Chốt thời gian nhận thức ròng ngay tại ký tự hợp lệ đầu tiên
@@ -104,13 +106,13 @@ const KEEP_ISE_WORDS = new Set([
 
 export function superNormalize(str) {
     if (!str) return "";
-    let s = str.toLowerCase().trim();
+    let s = normalizeSmartPunctuation(str).toLowerCase().trim();
 
     // 1a. Đổi dấu gạch nối, gạch chéo thành khoảng trắng (bảo toàn ranh giới từ: well-known -> well known)
-    s = s.replace(/[\-_\/]+/g, " ");
+    s = s.replace(/[-_/]+/g, " ");
 
-    // 1b. Bóc tách các dấu câu còn lại
-    s = s.replace(/['\.,#!$%\^&\*;:{}=`~()]/g, "");
+    // 1b. Bóc tách các dấu câu còn lại (bao gồm cả nháy đơn, nháy kép ASCII và dấu ngoặc)
+    s = s.replace(/['".,#!$%^&*;:{}=`~()]/g, "");
 
     // 2. Chuẩn hóa Anh - Mỹ có kiểm soát O(1) Set (hỗ trợ cả dạng nguyên mẫu và số nhiều -s)
     s = s.replace(/\b([a-z]+)our(s?)\b/g, (match, prefix, plural) => {
@@ -174,11 +176,6 @@ export function evaluateTyping(inputStr, targetStr) {
     const input = String(inputStr ?? '').slice(0, MAX_TYPING_INPUT).trim();
     const target = String(targetStr ?? '').trim();
 
-    // 1. Accidental Submit Guard
-    if (input.length < 0.4 * target.length) {
-        return { rating: 0, distance: -1, message: "Hãy gõ tiếp...", status: "too_short" };
-    }
-
     let normInput = superNormalize(input);
     const normTarget = superNormalize(target);
 
@@ -188,6 +185,12 @@ export function evaluateTyping(inputStr, targetStr) {
     // eslint-disable-next-line no-control-regex
     if (/^[\x00-\x7F\s]+$/.test(normTarget)) {
         normInput = stripVietnameseDiacritics(normInput);
+    }
+
+    // 1. Accidental Submit Guard: chỉ chặn khi đầu vào chưa đủ độ dài VÀ chưa khớp với mục tiêu
+    // (tránh chặn oan các từ ngắn có dấu nháy/ngoặc như "I", "a" trong “I”, “a” khi người dùng đã gõ đúng)
+    if (normInput !== normTarget && normInput.length < 0.4 * normTarget.length) {
+        return { rating: 0, distance: -1, message: "Hãy gõ tiếp...", status: "too_short" };
     }
 
     const d = damerauLevenshtein(normInput, normTarget);

@@ -411,6 +411,7 @@ export function displayCard(index, preserveFlipState = false) {
 
     // Thiết lập trạng thái và giao diện cho thẻ
     setCurrentCardIndex(index);
+    if (!DOM.cardEnglish || typeof document === 'undefined') return;
     if (!preserveFlipState || !getState().isFlipped) {
         setIsFlipped(false);
         // Reset animation và class của flashcard

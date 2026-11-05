@@ -18,17 +18,37 @@ export function removeVietnameseTones(str) {
 }
 
 /**
+ * Chuẩn hoá các ký tự dấu câu thông minh (smart punctuation) từ bàn phím iOS/macOS
+ * về các ký tự ASCII tiêu chuẩn tương ứng (dấu nháy đơn, nháy kép, gạch ngang).
+ * Giúp các từ viết tắt (contractions như don't, can't, it's, let's) và trích dẫn
+ * không bị chấm sai hoặc nhận diện lệch giữa các nền tảng.
+ */
+export function normalizeSmartPunctuation(str) {
+    if (!str) return '';
+    return str
+        // Xoá ký tự tàng hình / zero-width gây sai lệch độ dài và khoảng cách gõ
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        // Smart single quotes / apostrophes (don’t, it’s, ‘quote’, prime ′, single guillemets ‹›, modifier letters, etc.) -> '
+        .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035\u2039\u203A\u02BB\u02BC\u02BD\u02C8\u02CA\u02CB\u055A\uFF07\uFF40`´]/g, "'")
+        // Smart double quotes (“quote”, „quote”, «quote», double prime ″, etc.) -> "
+        .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036\u00AB\u00BB\uFF02]/g, '"')
+        // Smart dashes / hyphens (en-dash, em-dash, minus, fullwidth hyphen －, small hyphens, soft hyphen) -> -
+        .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFE58\uFE63\uFF0D\u00AD]/g, '-');
+}
+
+/**
  * Làm sạch chuỗi nghĩa tiếng Việt: tách theo dấu phẩy/chấm phẩy/xuống dòng/gạch chéo, gọt ký tự
  * rác ở hai đầu, bỏ trùng không phân biệt hoa-thường và giữ biến thể dài hơn (nhiều chú thích hơn).
  */
 export function cleanAndDeduplicateVietnamese(rawText) {
     if (!rawText) return '';
-    const parts = rawText.split(/[,;\n\/]+/).map(p => p.trim()).filter(Boolean);
+    const normalized = normalizeSmartPunctuation(rawText);
+    const parts = normalized.split(/[,;\n/]+/).map(p => p.trim()).filter(Boolean);
     const uniqueMap = new Map();
 
     for (const part of parts) {
-        // Gọt sạch các ký tự rác ở đầu/cuối: bullet, gạch ngang, dấu chấm, dấu phẩy
-        const cleanPart = part.replace(/^[\-\•\*\s\d\.\)]+|[\.\;\,\s\-]+$/g, '').trim();
+        // Gọt sạch các ký tự rác ở đầu/cuối: bullet, gạch ngang, dấu chấm, dấu phẩy, dấu nháy
+        const cleanPart = part.replace(/^[-•*\s\d.)"']+|[.;,\s-"']+$/g, '').trim();
         if (!cleanPart) continue;
 
         // Chuẩn hóa key so sánh: chữ thường và thu gọn khoảng trắng

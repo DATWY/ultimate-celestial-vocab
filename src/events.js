@@ -10,7 +10,7 @@ import { DOM } from './ui/elements.js';
 import { getState, setCurrentTopicFilter, toggleStarOnCurrentCard, saveVocabulary, saveOneWord, setVocabulary, incrementReviewBudget, recordReviewResult, addXP, logActivity, getComboMultiplier, trackEvent, setTypingFilter, shouldCardUseTyping, isCardLeech, setIsTransitioning, getLastReviewSnapshot, setLastReviewSnapshot, clearLastReviewSnapshot, removeReviewLog, addReviewLog, revertGamificationAfterUndo, setCurrentCardIndex, setReviewQueue, seedIsolatedDemoVocabulary, getLocalDateString } from './core/state.js';
 import { classifyReview, budgetBlockReason, isCardReviewable, reviewBudgets } from './core/review-policy.js';
 import { calculateNextSrsState } from './core/srs/index.js';
-import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke } from './features/typing.js';
+import { evaluateTyping, handleVisibilityChange, handleBlur, handleFocus, recordFirstKeystroke, normalizeSmartPunctuation } from './features/typing.js';
 import { buildTypingPool } from './features/typing-session.js';
 import { getNextCardToReview, buildReviewQueue, insertCardForLearningStep, triggerSmartCramming, getReviewBudget, computeDailyNewLimit } from './core/queue.js';
 import { displayCard, flipCard, applyDarkMode, applySoundSetting, applyBoostMode, populateTopicFilters, updatePanelWordList, updateCustomTopicUI, updateCustomTypingUI, updateUndoButtonState, updateStats } from './ui/render.js';
@@ -970,10 +970,11 @@ export function setupEventListeners() {
         if (!word) return '';
         if (word.length <= 2) return word;
 
-        const tokens = word.split(/(\s+|-|')/);
+        const normalizedWord = normalizeSmartPunctuation(word);
+        const tokens = normalizedWord.split(/(\s+|-|'|")/);
         
         return tokens.map(token => {
-            if (/^(\s+|-|')$/.test(token)) {
+            if (/^(\s+|-|'|")$/.test(token)) {
                 return token === ' ' ? '  ' : token;
             }
             

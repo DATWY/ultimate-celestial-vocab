@@ -78,8 +78,13 @@ function attachTtsUiListeners() {
         const synth = (typeof window !== 'undefined' && window.speechSynthesis)
             || (typeof globalThis !== 'undefined' && globalThis.speechSynthesis)
             || null;
-        if (synth && typeof synth.addEventListener === 'function') {
-            synth.addEventListener('voiceschanged', () => refreshTtsSettingsUI());
+        if (synth) {
+            const onVoices = () => refreshTtsSettingsUI();
+            if (typeof synth.addEventListener === 'function') {
+                synth.addEventListener('voiceschanged', onVoices);
+            } else {
+                synth.onvoiceschanged = onVoices;
+            }
         }
     } catch (_) {}
 }

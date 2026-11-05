@@ -769,10 +769,12 @@ async function runPerformanceLifecycleTests() {
   } finally {
     if (client) client.close();
     chrome.kill('SIGKILL');
+    try { server.closeAllConnections?.(); } catch (e) {}
     server.close();
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch (e) {}
+    process.exit(process.exitCode ?? 0);
   }
 }
 

@@ -1411,6 +1411,8 @@ export function initializeSound() {
     // sàng trước lần bấm đầu tiên (hành vi tải giống bản trước).
     mountTtsSettingsUI();
     installTtsPanelTrigger();
+    // Prime giọng máy sớm để sự kiện voiceschanged kích hoạt trước khi người dùng thao tác
+    try { getSpeechSynthesisApi()?.getVoices?.(); } catch (_) {}
     // KHÔNG preload MP3 ở đây (T3.3): mở app không phát sinh request âm thanh.
     // Sample chỉ được tải/giải mã sau tương tác đầu tiên hoặc sau 3 s rảnh —
     // xem scheduleSfxWarmUp(). Người dùng đã tắt âm thanh hoặc chỉ dùng TTS
@@ -1500,7 +1502,7 @@ async function getAudioDataURL(text) {
     } catch (error) {
         TTS_DIAG.proxyFailures++;
         TTS_DIAG.lastError = String(error?.message || error);
-        console.error('TTS Fetch Error:', error);
+        console.warn('TTS Fetch Warning (falling back to native):', error?.message || error);
         throw new Error(`Không thể lấy âm thanh: ${error.message}`);
     }
 }

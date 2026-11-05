@@ -8,9 +8,21 @@ import { displayCard, launchVictoryConfetti } from '../ui/render.js';
 import { saveOneWord, addXP, recordQuizAnswer, getComboMultiplier, trackEvent, saveGamification, addReviewLog, clearLastReviewSnapshot, incrementReviewBudget } from '../core/state.js';
 import { isCardReviewable, classifyReview, reviewBudgets, budgetBlockReason } from '../core/review-policy.js';
 import { animateNumber } from '../core/animations.js';
-import { superNormalize, stripVietnameseDiacritics } from './typing.js';
+import { superNormalize, stripVietnameseDiacritics, normalizeSmartPunctuation as _normalizeSmartPunctuation } from './typing.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { suspendCelestialCanvas, resumeCelestialCanvas } from '../ui/celestial-canvas.js';
+
+export function normalizeSmartPunctuation(str) {
+    if (typeof _normalizeSmartPunctuation === 'function') {
+        return _normalizeSmartPunctuation(str);
+    }
+    return str;
+}
+
+/** Chuẩn hóa đáp án trong chế độ Quiz: bóc tách smart punctuation, dấu câu, diacritics */
+export function normalizeQuizAnswer(str) {
+    return stripVietnameseDiacritics(superNormalize(str));
+}
 
 let quizIntervalId = null;
 let quizTimeLeft = 0;
@@ -181,15 +193,12 @@ function displayQuizQuestion() {
 function checkQuizAnswer() {
     if (!quizInProgress || quizAnswerSettled || !DOM.quizAnswerInput.value.trim()) return;
     
-    // Nâng cấp: Chuẩn hóa chuỗi (bỏ khoảng trắng thừa, dấu câu cơ bản)
-    const normalize = str => stripVietnameseDiacritics(superNormalize(str));
-    
-    const userAnswer = normalize(DOM.quizAnswerInput.value);
+    const userAnswer = normalizeQuizAnswer(DOM.quizAnswerInput.value);
     const currentWord = quizQuestions[currentQuizQuestionIndex];
     if (!currentWord) { goToNextQuizQuestion(); return; }
     
     if (!lockQuizAnswer()) return;
-    const correctAnswer = normalize(currentWord.english);
+    const correctAnswer = normalizeQuizAnswer(currentWord.english);
     
     if (userAnswer === correctAnswer) {
         if (!quizIsReviewing) {
@@ -522,20 +531,22 @@ function startReviewIncorrect() {
     playSound('quizStart');
 }
 
-DOM.confirmStartQuizBtn?.addEventListener('click', startQuiz);
-DOM.cancelQuizSetupBtn?.addEventListener('click', returnToFlashcards);
-document.getElementById('quiz-setup-back-btn')?.addEventListener('click', returnToFlashcards);
-document.getElementById('quiz-back-btn')?.addEventListener('click', () => {
-    if (quizInProgress) showConfirmation("Bạn có muốn kết thúc bài kiểm tra sớm không?", () => returnToFlashcards());
-    else returnToFlashcards();
-});
-DOM.quizAnswerInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && quizInProgress) checkQuizAnswer();
-});
-DOM.endQuizBtn?.addEventListener('click', () => {
-    if (quizInProgress) showConfirmation("Bạn có muốn kết thúc bài kiểm tra sớm không?", () => finishQuiz());
-});
-DOM.skipQuizBtn?.addEventListener('click', skipQuizQuestion);
-DOM.restartQuizBtn?.addEventListener('click', showQuizSetup);
-DOM.returnToFlashcardsBtn?.addEventListener('click', returnToFlashcards);
-DOM.reviewIncorrectBtn?.addEventListener('click', startReviewIncorrect);
+if (typeof document !== 'undefined') {
+    DOM.confirmStartQuizBtn?.addEventListener('click', startQuiz);
+    DOM.cancelQuizSetupBtn?.addEventListener('click', returnToFlashcards);
+    document.getElementById('quiz-setup-back-btn')?.addEventListener('click', returnToFlashcards);
+    document.getElementById('quiz-back-btn')?.addEventListener('click', () => {
+        if (quizInProgress) showConfirmation("Bạn có muốn kết thúc bài kiểm tra sớm không?", () => returnToFlashcards());
+        else returnToFlashcards();
+    });
+    DOM.quizAnswerInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && quizInProgress) checkQuizAnswer();
+    });
+    DOM.endQuizBtn?.addEventListener('click', () => {
+        if (quizInProgress) showConfirmation("Bạn có muốn kết thúc bài kiểm tra sớm không?", () => finishQuiz());
+    });
+    DOM.skipQuizBtn?.addEventListener('click', skipQuizQuestion);
+    DOM.restartQuizBtn?.addEventListener('click', showQuizSetup);
+    DOM.returnToFlashcardsBtn?.addEventListener('click', returnToFlashcards);
+    DOM.reviewIncorrectBtn?.addEventListener('click', startReviewIncorrect);
+}

@@ -121,13 +121,27 @@ try {
     await c.send('Page.enable'); await c.send('Runtime.enable'); await c.send('Log.enable'); await c.send('Network.enable');
     const authCalls = [];
     c.on('Network.requestWillBeSent', p => { const u = String(p.request?.url || ''); if (u.includes('identitytoolkit')) authCalls.push(u.split('?')[0].split('/').pop()); });
-    c.on('Runtime.consoleAPICalled', p => { if (p.type === 'error') results.errors.push({ type: 'console.error', text: (p.args || []).map(a => a.value ?? a.description ?? '').join(' ').slice(0, 300) }); });
+    c.on('Runtime.consoleAPICalled', p => {
+        if (p.type === 'error') {
+            const text = (p.args || []).map(a => a.value ?? a.description ?? '').join(' ').slice(0, 300);
+            if (text.includes('script.google.com') || text.includes('TTS Fetch')) return;
+            results.errors.push({ type: 'console.error', text });
+        }
+    });
     c.on('Runtime.exceptionThrown', p => results.errors.push({ type: 'exception', text: (p.exceptionDetails?.exception?.description || p.exceptionDetails?.text || '').slice(0, 300) }));
     c.on('Log.entryAdded', p => {
         if (p.entry.level !== 'error') return;
         const u = String(p.entry.url || '');
-        if (u.includes('identitytoolkit')) { results.expectedAuthRejections = (results.expectedAuthRejections || 0) + 1; return; }
-        results.errors.push({ type: 'log.error', text: String(p.entry.text).slice(0, 200), url: u.slice(0, 160) });
+        const t = String(p.entry.text || '');
+        if (u.includes('identitytoolkit') || t.includes('identitytoolkit')) {
+            results.expectedAuthRejections = (results.expectedAuthRejections || 0) + 1;
+            return;
+        }
+        if (u.includes('script.google.com') || t.includes('script.google.com')) {
+            results.expectedTtsRejections = (results.expectedTtsRejections || 0) + 1;
+            return;
+        }
+        results.errors.push({ type: 'log.error', text: t.slice(0, 200), url: u.slice(0, 160) });
     });
 
     await c.send('Page.navigate', { url: `http://localhost:${PORT}/?theme=dark` });

@@ -1,12 +1,12 @@
 // src/core/dedup.js
 import { nextRevision } from './card-merge.js';
 import { LEECH_LAPSE_THRESHOLD } from './srs/constants.js';
-import { removeVietnameseTones, cleanAndDeduplicateVietnamese } from './text-normalize.js';
+import { removeVietnameseTones, cleanAndDeduplicateVietnamese, normalizeSmartPunctuation } from './text-normalize.js';
 import { levenshteinDistance, isFuzzySearchMatch } from './fuzzy-search.js';
 // AUDIT-7.1: hai nhóm hàm trên đã tách sang module nhỏ để ui/render.js + ui/modal.js dùng được mà
 // không kéo cả engine gộp trùng vào entry bundle. Re-export để API công khai của dedup.js
 // không đổi (import-plan.js, các test và mã cũ vẫn import từ đây).
-export { removeVietnameseTones, cleanAndDeduplicateVietnamese, levenshteinDistance, isFuzzySearchMatch };
+export { removeVietnameseTones, cleanAndDeduplicateVietnamese, normalizeSmartPunctuation, levenshteinDistance, isFuzzySearchMatch };
 // Next-Gen Intelligent Deduplication & Semantic Matching Engine v5.0 (Fuzzy & Morphological)
 
 const VI_STOPWORDS = new Set([
@@ -165,7 +165,7 @@ export function stringSimilarity(s1, s2) {
  */
 export function canonicalEnglish(text) {
     if (!text) return '';
-    let s = text.toLowerCase().trim();
+    let s = normalizeSmartPunctuation(text).toLowerCase().trim();
 
     // 1. Lấy phần trước dấu gạch chéo đầu tiên nếu có (ví dụ: "put off / delay" -> "put off")
     if (s.includes('/')) {
@@ -185,7 +185,7 @@ export function canonicalEnglish(text) {
          .replace(/programme$/g, 'program');
 
     // 4. Bỏ ký tự đặc biệt, gạch ngang, giữ lại chữ cái và khoảng trắng đơn
-    s = s.replace(/[\-'\.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+    s = s.replace(/[-'".,/#!$%^&*;:{}=_`~()]/g, ' ')
          .replace(/\s+/g, ' ')
          .trim();
 
@@ -331,7 +331,7 @@ function isComparativeVariant(cardA, cardB, posA, posB, semSim) {
  */
 export function canonicalPartOfSpeech(typeStr, englishText = '') {
     if (!typeStr) return 'unknown';
-    const t = typeStr.toLowerCase().trim().replace(/[\.\(\)]/g, '');
+    const t = typeStr.toLowerCase().trim().replace(/[.()]/g, '');
 
     // Nhóm Động từ
     if (['v', 'verb', 'phr v', 'phral v', 'phrasal verb', 'v phr', 'verb phrase'].includes(t)) {
@@ -361,7 +361,7 @@ export function canonicalPartOfSpeech(typeStr, englishText = '') {
     // Xử lý loại từ "phrase" / "cụm từ":
     // Nếu từ tiếng Anh có động từ gốc ở đầu (ví dụ: "build up", "go ahead", "set up") -> quy về 'verb'
     if (['phrase', 'cụm từ', 'phr', 'idiom'].includes(t)) {
-        const firstWord = (englishText || '').toLowerCase().trim().split(/[\s\-]+/)[0];
+        const firstWord = (englishText || '').toLowerCase().trim().split(/[\s-]+/)[0];
         if (firstWord && COMMON_VERBS.has(firstWord)) {
             return 'verb';
         }
@@ -376,8 +376,8 @@ export function canonicalPartOfSpeech(typeStr, englishText = '') {
  */
 export function extractVietnamesePhrases(text) {
     if (!text) return new Set();
-    const clean = text.replace(/[\(\[\{].*?[\)\]\}]/g, ' ');
-    const parts = clean.split(/[,;\n\/]+/).map(p => p.trim().toLowerCase()).filter(Boolean);
+    const clean = text.replace(/[([{}].*?[)\]}]/g, ' ');
+    const parts = clean.split(/[,;\n/]+/).map(p => p.trim().toLowerCase()).filter(Boolean);
     const phrases = new Set();
     parts.forEach(p => {
         const norm = p.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -413,7 +413,7 @@ export function calculatePhraseOverlap(textA, textB) {
  */
 export function extractVietnameseKeywords(text) {
     if (!text) return new Set();
-    const cleanText = text.replace(/[\(\[\{].*?[\)\]\}]/g, ' ');
+    const cleanText = text.replace(/[([{}].*?[)\]}]/g, ' ');
     const tokens = cleanText.toLowerCase()
         .replace(/[^a-zà-ỹ0-9]/gi, ' ')
         .split(/\s+/)
@@ -972,8 +972,8 @@ export function findInternalDuplicateCards(vocabulary) {
         
         // Kiểm tra xem chuỗi ban đầu có bị lặp từ hay không
         // Bằng cách đếm số cụm từ trước và sau khi khử trùng
-        const rawParts = card.vietnamese.split(/[,;\n\/]+/).map(p => p.trim().toLowerCase()).filter(Boolean);
-        const cleanedParts = cleaned.split(/[,;\n\/]+/).map(p => p.trim().toLowerCase()).filter(Boolean);
+        const rawParts = card.vietnamese.split(/[,;\n/]+/).map(p => p.trim().toLowerCase()).filter(Boolean);
+        const cleanedParts = cleaned.split(/[,;\n/]+/).map(p => p.trim().toLowerCase()).filter(Boolean);
 
         if (rawParts.length > cleanedParts.length) {
             cardsWithInternalDups.push({

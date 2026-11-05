@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_FSRS7_PARAMS, S_MIN, S_MAX, MAX_INTERVAL_DAYS } from '../src/core/srs/constants.js';
+import { S_MIN, S_MAX, MAX_INTERVAL_DAYS } from '../src/core/srs/constants.js';
 import { initDifficulty, nextDifficulty } from '../src/core/srs/difficulty.js';
 import { nextStability } from '../src/core/srs/stability.js';
-import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton } from '../src/core/srs/forgetting.js';
+import { dualTraceForgettingCurve, nextIntervalNewton } from '../src/core/srs/forgetting.js';
 import { calculateNextSrsState, predictNextIntervals } from '../src/core/srs/index.js';
 
 const DAY_MS = 86400000;

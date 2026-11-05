@@ -125,7 +125,7 @@ function quizHarness(words = [{ id: 'a', english: 'cat', vietnamese: 'mèo', srs
         DOM, getState: () => state, document: { getElementById: node },
         setTimeout: (cb, ms) => { timers.set(++timerId, { cb, ms }); return timerId; }, clearTimeout: id => timers.delete(id),
         setInterval: () => ++timerId, clearInterval() {},
-        calculateNextSrsState: (card, rating) => ({ newState: { ...card, lapses: (card.lapses || 0) + 1 }, log: null }),
+        calculateNextSrsState: (card, _rating) => ({ newState: { ...card, lapses: (card.lapses || 0) + 1 }, log: null }),
         saveOneWord: card => saves.push(card), recordQuizAnswer() {}, addXP() {}, getComboMultiplier: () => 1,
         addReviewLog() {}, clearLastReviewSnapshot() {}, incrementNewCardsDone() {}, incrementDueCardsDone() {}, incrementLearningCardsDone() {},
         // AUDIT-3.1: applyQuizReview nay dùng chính sách ngân sách DÙNG CHUNG với Flashcard.

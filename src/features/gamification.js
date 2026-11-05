@@ -717,16 +717,16 @@ function renderBadges(unlockedBadges) {
                 const specialItems = badgeWrapperContainer.querySelectorAll('.special-badge-item');
 
                 if (filter === 'all') {
-                    trackItems.forEach(item => item.style.display = 'flex');
+                    trackItems.forEach(item => { item.style.display = 'flex'; });
                     if (specialSection) specialSection.style.display = 'block';
-                    specialItems.forEach(item => item.style.display = 'flex');
+                    specialItems.forEach(item => { item.style.display = 'flex'; });
                 } else if (filter === 'tracks') {
-                    trackItems.forEach(item => item.style.display = 'flex');
+                    trackItems.forEach(item => { item.style.display = 'flex'; });
                     if (specialSection) specialSection.style.display = 'none';
                 } else if (filter === 'specials') {
-                    trackItems.forEach(item => item.style.display = 'none');
+                    trackItems.forEach(item => { item.style.display = 'none'; });
                     if (specialSection) specialSection.style.display = 'block';
-                    specialItems.forEach(item => item.style.display = 'flex');
+                    specialItems.forEach(item => { item.style.display = 'flex'; });
                 } else if (filter === 'unlocked') {
                     trackItems.forEach(item => {
                         item.style.display = item.getAttribute('data-unlocked') === 'true' ? 'flex' : 'none';

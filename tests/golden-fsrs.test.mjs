@@ -26,7 +26,7 @@ import { calculateNextSrsState } from '../src/core/srs/index.js';
 import { S_MIN, S_MAX, D_MIN, D_MAX, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS } from '../src/core/srs/constants.js';
 
 const NOW = 1_700_000_000_000; // cố định: 2023-11-14T22:13:20Z
-const MIN = 60_000;
+const _MIN = 60_000;
 const DAY = 86_400_000;
 
 // ─────────────────────────────────────────────────────────────────────────────

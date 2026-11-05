@@ -18,7 +18,7 @@ function syncCardToFirebase(card) {
     _syncModulePromise.then(module => module.syncCardToFirebase?.(card)).catch(() => {});
 }
 import { loadKeptSeparate, keepPairSeparate, keepPairsSeparate, clearKeptSeparate } from '../core/dedup-preferences.js';
-import { cleanAndDeduplicateVietnamese } from '../core/text-normalize.js';
+import { cleanAndDeduplicateVietnamese, normalizeSmartPunctuation } from '../core/text-normalize.js';
 // AUDIT-7.1: engine gộp trùng (~1.100 dòng) chỉ cần khi người dùng MỞ trình gộp trùng, nên nạp động —
 // entry bundle không phải mang nó lúc khởi động (đo được ~6 kB gzip). Mọi hàm dùng nó đều đã
 // async hoặc được gọi từ listener (không ai dùng giá trị trả về đồng bộ).
@@ -301,7 +301,8 @@ export function handleAddEditSubmit(event) {
             showPopup('Chưa lưu được từ vựng. Nội dung vẫn được giữ trong biểu mẫu để bạn thử lại.', 'error');
         } finally { if (button) button.disabled = false; }
     };
-    if (!editing && getState().vocabulary.some(card => !card.isDeleted && card.english.toLowerCase() === english.toLowerCase())) {
+    const normEng = normalizeSmartPunctuation(english).toLowerCase();
+    if (!editing && getState().vocabulary.some(card => !card.isDeleted && (((card.english || '').toLowerCase() === english.toLowerCase()) || normalizeSmartPunctuation(card.english || '').toLowerCase() === normEng))) {
         showConfirmation(`Từ "${english}" đã có. Bạn muốn thêm một nghĩa hoặc từ loại khác?`, commit);
     } else void commit();
 }
@@ -497,13 +498,15 @@ function renderToast({ title, message, iconClass }) {
     });
 
     // Tự động ẩn và xóa sau 4 giây
-    setTimeout(() => {
+    const hideTimer = setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => {
+        const cleanupTimer = setTimeout(() => {
             if (toast.parentElement) toast.parentElement.removeChild(toast);
             drainToastQueue(); // hiện toast kế tiếp trong hàng đợi
         }, 400); // Đợi CSS transition chạy xong
+        cleanupTimer?.unref?.();
     }, 4000);
+    hideTimer?.unref?.();
 }
 
 function drainToastQueue() {
@@ -846,6 +849,9 @@ export async function executeMergeSingle(cardA, cardB) {
     if (delWord) saveOneWord(delWord);
 
     updatePanelWordList(false);
+    // UI-02: gộp xong hàng đợi ôn phải dựng lại ngay — thẻ vừa bị gộp (isDeleted)
+    // có thể đang là thẻ hiện tại trên màn hình học.
+    refreshStudyAfterVocabularyChange(deletedCardId ? [deletedCardId] : []);
     showToast('Đã gộp thành công!', `Đã hợp nhất thẻ "${mergedCard.english}".`, 'ph-sparkle');
     void renderDedupPairs();
 }

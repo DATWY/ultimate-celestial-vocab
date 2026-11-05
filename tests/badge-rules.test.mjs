@@ -96,7 +96,7 @@ const POSITIVE = {
     special_incognito: { stats: { darkModeDays: 7 } },
     special_watcher: { stats: { profileViews: 1 } },
     special_debugger: { stats: { accidentCount: 5 } },
-    special_chef: { vocabulary: cards(1, i => ({ tags: Array.from({ length: 20 }, (_, n) => 'tag' + n) })) },
+    special_chef: { vocabulary: cards(1, _i => ({ tags: Array.from({ length: 20 }, (_, n) => 'tag' + n) })) },
     special_genesis: { stats: { manualWordsAdded: 1 } },
     special_hurricane: { stats: { wordsAddedToday: 100 } },
     special_bounty_hunter: { stats: { xpToday: 5000 } },

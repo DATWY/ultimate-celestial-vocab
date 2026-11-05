@@ -12,7 +12,6 @@ import assert from 'node:assert/strict';
 import {
     ensureStats,
     rolloverDailyStats,
-    trackAppOpen,
     trackReview,
     trackXP,
     trackWordAdded,

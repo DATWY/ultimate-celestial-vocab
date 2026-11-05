@@ -99,6 +99,10 @@ test('UI-02: xoá từ và gộp trùng đều dựng lại hàng đợi ôn', (
     assert.ok(render.includes('refreshStudyAfterVocabularyChange([current.id])'), 'handler xoá thẻ phải gọi refresh');
     const modal = read('src/ui/modal.js');
     assert.ok(/refreshStudyAfterVocabularyChange\(/.test(modal), 'gộp trùng (executeMergeAll) phải gọi refresh');
+    assert.ok(
+        modal.includes('refreshStudyAfterVocabularyChange(deletedCardId ? [deletedCardId] : [])'),
+        'gộp đơn (executeMergeSingle) phải gọi refresh loại bỏ deletedCardId khỏi bàn học'
+    );
 });
 
 test('UI-03: lệnh Boost cần tiền tố "/" nên gõ chữ thường không bắn phím B/S', () => {
