@@ -41,7 +41,8 @@ const clampBias = (value) => Math.min(DIFFICULTY_BIAS_MAX, Math.max(DIFFICULTY_B
  * @param {string} word - Từ tiếng Anh (viết thường)
  * @returns {number} Số âm tiết ước lượng (tối thiểu 1)
  */
-function estimateSyllables(word) {
+export function estimateSyllables(word) {
+    if (!word || typeof word !== 'string') return 1;
     // Xén hết ký tự không phải chữ cái (dấu câu, số, v.v.)
     const w = word.toLowerCase().replace(/[^a-z]/g, '');
     if (w.length <= 2) return 1;
@@ -50,18 +51,33 @@ function estimateSyllables(word) {
     const vowelGroups = w.match(/[aeiouy]+/gi);
     let count = vowelGroups ? vowelGroups.length : 1;
 
-    // Trừ chữ "e" câm ở cuối từ (silent e)
-    // VD: "cake" -> ca-ke -> 2, nhưng thực tế là 1
-    // Bao gồm "-le" ending (simple, bottle) vì đã xử lý đúng bởi vowel cluster
-    if (w.endsWith('e') && !w.endsWith('le') && !w.endsWith('ie') && count > 1) {
+    // Trừ chữ "e" câm ở cuối từ (silent e):
+    // 1. Đuôi "-ee" (coffee, agree, referee, degree) KHÔNG phải e câm (/iː/), không trừ.
+    // 2. Đuôi "-ie" (pie, tie) đã tính đúng cụm nguyên âm.
+    // 3. Đuôi "-le":
+    //    - Phụ âm + "le" (bottle, simple, table) tạo âm tiết riêng [l̩] nên KHÔNG trừ.
+    //    - Nguyên âm + "le" (scale, hole, whale, mile, stole) hoặc "isle" (silent s: aisle, isle)
+    //      là "e" câm kéo dài nguyên âm -> CẦN TRỪ.
+    const isSilentE = w.endsWith('e') &&
+        !w.endsWith('ee') &&
+        !w.endsWith('ie') &&
+        (!w.endsWith('le') || /(?:[aeiouy]|is)le$/.test(w));
+
+    if (isSilentE && count > 1) {
         count--;
     }
 
-    // Trừ "es" và "ed" cuối từ nếu không tạo âm tiết mới
-    if (w.endsWith('es') && !w.endsWith('ses') && !w.endsWith('zes') && count > 1) {
+    // Trừ "es" và "ed" cuối từ nếu không tạo âm tiết mới:
+    // - Đuôi "-ees" (agrees, coffees, degrees, referees) và "-ies" (babies, parties, studies)
+    //   đã có nguyên âm /iː/ hoặc /i/ nằm trong cụm nguyên âm hợp lệ -> KHÔNG TRỪ.
+    // - Đuôi sibilants "-es" sau s, z, x, ch, sh tạo âm tiết [ɪz] (boxes, watches, wishes) -> KHÔNG TRỪ.
+    if (w.endsWith('es') && !w.endsWith('ees') && !w.endsWith('ies') && !/(?:[szx]|ch|sh)es$/.test(w) && count > 1) {
         count--;
     }
-    if (w.endsWith('ed') && !w.endsWith('ted') && !w.endsWith('ded') && count > 1) {
+    // - Đuôi "-eed" (agreed, proceed, exceed, decreed) và "-ied" (studied, worried, replied, denied)
+    //   đã có nguyên âm trong cụm -> KHÔNG TRỪ.
+    // - Đuôi "-ed" sau t/d (waited, needed) tạo âm tiết [ɪd] -> KHÔNG TRỪ.
+    if (w.endsWith('ed') && !w.endsWith('eed') && !w.endsWith('ied') && !w.endsWith('ted') && !w.endsWith('ded') && count > 1) {
         count--;
     }
 

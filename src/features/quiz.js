@@ -42,6 +42,16 @@ let quizDeadline = 0;
 let quizOriginalTotal = 0;
 let quizOriginalDuration = 0;
 let quizQuestionStartTime = 0;
+let quizQuestionMode = 'mc';
+let currentMcOptions = [];
+
+export function getQuizQuestionMode() {
+    return quizQuestionMode;
+}
+
+export function setQuizQuestionMode(mode) {
+    quizQuestionMode = mode === 'typing' ? 'typing' : 'mc';
+}
 
 function resetQuizFlow() {
     clearTimeout(quizAdvanceTimer);
@@ -49,6 +59,7 @@ function resetQuizFlow() {
     quizAdvanceTimer = null;
     quizSessionId++;
     quizAnswerSettled = false;
+    currentMcOptions = [];
 }
 
 function lockQuizAnswer() {
@@ -56,6 +67,10 @@ function lockQuizAnswer() {
     quizAnswerSettled = true;
     if (DOM.quizAnswerInput) DOM.quizAnswerInput.disabled = true;
     if (DOM.skipQuizBtn) DOM.skipQuizBtn.disabled = true;
+    if (DOM.quizMcGrid) {
+        const btns = DOM.quizMcGrid.querySelectorAll('.quiz-mc-btn');
+        btns.forEach(b => { b.disabled = true; });
+    }
     return true;
 }
 
@@ -145,6 +160,7 @@ function startQuiz() {
         return;
     }
     resetQuizFlow();
+    quizQuestionMode = DOM.quizQuestionMode ? DOM.quizQuestionMode.value : (DOM.quizMcGrid ? 'mc' : 'typing');
     quizInProgress = true;
     quizOriginalTotal = quizQuestions.length;
     quizOriginalDuration = 0;
@@ -167,6 +183,178 @@ function startQuiz() {
     playSound('quizStart');
 }
 
+/**
+ * Sinh danh sách 4 lựa chọn trắc nghiệm cho Đấu Trường Trắc Nghiệm.
+ * 1 đáp án đúng (từ hiện tại) + 3 distractors phân tán từ kho từ vựng.
+ * Ưu tiên chọn distractor có cùng chủ đề hoặc cùng loại từ để tăng tính phân biệt.
+ *
+ * @param {Object} currentWord - Từ đang được hỏi
+ * @param {Array<Object>} vocabulary - Toàn bộ kho từ vựng
+ * @param {number} [count=4] - Số lượng lựa chọn
+ * @returns {Array<{ id: string, text: string, isCorrect: boolean, key: string }>}
+ */
+export function generateQuizOptions(currentWord, vocabulary, count = 4) {
+    if (!currentWord) return [];
+
+    const correctText = (currentWord.english || '').trim();
+    const correctOption = {
+        id: currentWord.id || 'correct',
+        text: correctText,
+        isCorrect: true
+    };
+
+    if (!Array.isArray(vocabulary) || vocabulary.length <= 1) {
+        return [{ ...correctOption, key: '1' }];
+    }
+
+    const currentTags = new Set(
+        (Array.isArray(currentWord.tags) ? currentWord.tags : (typeof currentWord.tags === 'string' ? currentWord.tags.split(',') : []))
+            .map(t => String(t || '').trim().toLowerCase())
+            .filter(Boolean)
+    );
+    const currentType = (currentWord.type || '').trim().toLowerCase();
+
+    const candidates = [];
+    const seenTexts = new Set([normalizeQuizAnswer(correctText)]);
+
+    for (const card of vocabulary) {
+        if (!card || card.isDeleted || card.isSuspended || card.id === currentWord.id) continue;
+        const norm = normalizeQuizAnswer(card.english);
+        if (!norm || seenTexts.has(norm)) continue;
+        seenTexts.add(norm);
+
+        let relevanceScore = 0;
+        if (currentType && card.type && card.type.trim().toLowerCase() === currentType) {
+            relevanceScore += 3;
+        }
+        if (currentTags.size > 0) {
+            const cardTags = (Array.isArray(card.tags) ? card.tags : (typeof card.tags === 'string' ? card.tags.split(',') : []))
+                .map(t => String(t || '').trim().toLowerCase());
+            for (const t of cardTags) {
+                if (currentTags.has(t)) {
+                    relevanceScore += 2;
+                    break;
+                }
+            }
+        }
+        if (Math.abs((card.english || '').length - correctText.length) <= 3) {
+            relevanceScore += 1;
+        }
+
+        candidates.push({ card, score: relevanceScore + Math.random() * 0.5 });
+    }
+
+    candidates.sort((a, b) => b.score - a.score);
+
+    const neededDistractors = count - 1;
+    const selectedDistractors = candidates.slice(0, neededDistractors).map(c => ({
+        id: c.card.id || String(Math.random()),
+        text: (c.card.english || '').trim(),
+        isCorrect: false
+    }));
+
+    const options = [correctOption, ...selectedDistractors];
+    shuffleArray(options);
+
+    const keys = ['1', '2', '3', '4'];
+    return options.map((opt, idx) => ({
+        ...opt,
+        key: keys[idx] || String(idx + 1)
+    }));
+}
+
+function renderQuizMcOptions(word) {
+    if (!DOM.quizMcGrid) return;
+    DOM.quizMcGrid.innerHTML = '';
+    const { vocabulary } = getState();
+    currentMcOptions = generateQuizOptions(word, vocabulary, 4);
+
+    currentMcOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quiz-mc-btn';
+        btn.dataset.key = opt.key;
+        btn.dataset.correct = opt.isCorrect ? 'true' : 'false';
+        btn.setAttribute('aria-label', `Đáp án ${opt.key}: ${opt.text}`);
+        btn.innerHTML = `
+            <span class="mc-key-badge">${opt.key}</span>
+            <span class="mc-word">${escapeHTML(opt.text)}</span>
+        `;
+        btn.addEventListener('click', () => {
+            selectQuizOption(opt, btn);
+        });
+        DOM.quizMcGrid.appendChild(btn);
+    });
+}
+
+export function selectQuizOption(opt, btnEl) {
+    if (!quizInProgress || quizAnswerSettled || !opt) return;
+    const currentWord = quizQuestions[currentQuizQuestionIndex];
+    if (!currentWord) { goToNextQuizQuestion(); return; }
+
+    if (!lockQuizAnswer()) return;
+
+    if (DOM.quizMcGrid) {
+        const btns = DOM.quizMcGrid.querySelectorAll('.quiz-mc-btn');
+        btns.forEach(b => {
+            b.disabled = true;
+            if (b.dataset.correct === 'true') {
+                b.classList.add('mc-reveal');
+            }
+        });
+    }
+
+    if (opt.isCorrect) {
+        if (btnEl) btnEl.classList.add('mc-correct');
+        if (!quizIsReviewing) {
+            quizScore++;
+            const isMastered = currentWord.srsStatus === 'Mastered';
+            const isNotDue = currentWord.srsDueDate && currentWord.srsDueDate > Date.now();
+
+            if (isMastered && isNotDue) {
+                addXP(1, "+1 XP (Quá dễ)");
+                quizSessionXP += 1;
+            } else {
+                const wordLength = currentWord.english.trim().length;
+                const baseExp = 2 + Math.floor(wordLength / 4);
+                const combo = getComboMultiplier();
+                const finalExp = Math.floor(baseExp * combo);
+                let floatText = `+${finalExp} XP`;
+                if (combo > 1) floatText += ` (Combo x${combo})`;
+                addXP(finalExp, floatText);
+                quizSessionXP += finalExp;
+            }
+
+            recordQuizAnswer(true);
+            const elapsedMs = Date.now() - (quizQuestionStartTime || Date.now());
+            const wordLen = currentWord.english.trim().length;
+            const isFast = elapsedMs <= Math.max(3500, wordLen * 350);
+            const isHard = elapsedMs > 15000;
+            const quizRating = isFast ? 4 : (isHard ? 2 : 3);
+            applyQuizReview(currentWord, quizRating);
+        }
+        DOM.quizFeedback.textContent = "Chính xác!";
+        DOM.quizFeedback.className = 'quiz-feedback correct';
+        playSound('correct');
+    } else {
+        if (btnEl) btnEl.classList.add('mc-incorrect');
+        if (!quizIsReviewing) {
+            quizIncorrect++;
+            recordQuizAnswer(false);
+            quizIncorrectWordsInfo.push(currentWord);
+            applyQuizReview(currentWord, 1);
+        } else {
+            quizQuestions.push(currentWord);
+        }
+        DOM.quizFeedback.innerHTML = `Sai! Đáp án đúng: <strong>${escapeHTML(currentWord.english)}</strong>`;
+        DOM.quizFeedback.className = 'quiz-feedback incorrect';
+        playSound('incorrect');
+    }
+
+    updateQuizProgress();
+    goToNextQuizQuestion();
+}
+
 function displayQuizQuestion() {
     if (!quizInProgress || currentQuizQuestionIndex >= quizQuestions.length) {
         finishQuiz();
@@ -177,11 +365,22 @@ function displayQuizQuestion() {
     const word = quizQuestions[currentQuizQuestionIndex];
     if (!word) { goToNextQuizQuestion(); return; }
     if (DOM.quizVietnamesePrompt) DOM.quizVietnamesePrompt.textContent = word.vietnamese;
-    if (DOM.quizAnswerInput) {
-        DOM.quizAnswerInput.value = '';
-        DOM.quizAnswerInput.disabled = false;
-        setTimeout(() => DOM.quizAnswerInput.focus(), 50);
+
+    const isMcMode = quizQuestionMode === 'mc' && !!DOM.quizMcGrid;
+    if (isMcMode) {
+        DOM.quizMcContainer?.classList.remove('hidden');
+        DOM.quizAnswerInput?.classList.add('hidden');
+        renderQuizMcOptions(word);
+    } else {
+        DOM.quizMcContainer?.classList.add('hidden');
+        if (DOM.quizAnswerInput) {
+            DOM.quizAnswerInput.classList.remove('hidden');
+            DOM.quizAnswerInput.value = '';
+            DOM.quizAnswerInput.disabled = false;
+            setTimeout(() => DOM.quizAnswerInput.focus(), 50);
+        }
     }
+
     if (DOM.quizFeedback) {
         DOM.quizFeedback.textContent = '';
         DOM.quizFeedback.className = 'quiz-feedback';
@@ -531,6 +730,29 @@ function startReviewIncorrect() {
     playSound('quizStart');
 }
 
+export function handleQuizKeyDown(e) {
+    if (!quizInProgress || quizAnswerSettled) return;
+    const isMcMode = quizQuestionMode === 'mc' && !!DOM.quizMcGrid && !DOM.quizMcContainer?.classList.contains('hidden');
+    if (!isMcMode) return;
+
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    const key = ['1', '2', '3', '4'].includes(e.key)
+        ? e.key
+        : (/^(?:Digit|Numpad)([1-4])$/.exec(e.code || '')?.[1] || null);
+
+    if (key) {
+        e.preventDefault();
+        const targetOpt = currentMcOptions.find(opt => String(opt.key) === key);
+        if (targetOpt && DOM.quizMcGrid) {
+            const btnEl = DOM.quizMcGrid.querySelector(`.quiz-mc-btn[data-key="${key}"]`);
+            selectQuizOption(targetOpt, btnEl);
+        }
+    }
+}
+
 if (typeof document !== 'undefined') {
     DOM.confirmStartQuizBtn?.addEventListener('click', startQuiz);
     DOM.cancelQuizSetupBtn?.addEventListener('click', returnToFlashcards);
@@ -542,6 +764,7 @@ if (typeof document !== 'undefined') {
     DOM.quizAnswerInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && quizInProgress) checkQuizAnswer();
     });
+    document.addEventListener?.('keydown', handleQuizKeyDown);
     DOM.endQuizBtn?.addEventListener('click', () => {
         if (quizInProgress) showConfirmation("Bạn có muốn kết thúc bài kiểm tra sớm không?", () => finishQuiz());
     });

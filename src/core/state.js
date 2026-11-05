@@ -169,7 +169,8 @@ export function getTypingFilterStats() {
         hard: 0,
         learning: 0,
         starred: 0,
-        long: 0
+        long: 0,
+        cloze: 0
     };
 
     for (let i = 0; i < vocabulary.length; i++) {
@@ -182,6 +183,7 @@ export function getTypingFilterStats() {
         if (isLearningCard(card)) stats.learning++;
         if (card.isStarred) stats.starred++;
         if (isLongWord(card)) stats.long++;
+        if (matchesTypingFilter(card, 'cloze')) stats.cloze++;
     }
     return stats;
 }

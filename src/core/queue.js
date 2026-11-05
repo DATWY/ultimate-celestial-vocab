@@ -85,6 +85,149 @@ export async function setMaxReviewsPerDay(value, updatedAt = Date.now()) {
     return _maxReviewsPerDay;
 }
 
+// ─── T2.1 — HÀNG ĐỢI ÔN HỌC XEN KẼ (INTERLEAVED PRACTICE QUEUE) ───────────────
+export const QUEUE_INTERLEAVE_SETTINGS_KEY = 'queueInterleaveSettings';
+export const INTERLEAVE_MODES = ['balanced', 'topic', 'blocked'];
+export const INTERLEAVE_MODE_DEFAULT = 'balanced';
+
+let _interleavedPracticeEnabled = false;
+let _interleavedPracticeMode = INTERLEAVE_MODE_DEFAULT;
+let _interleavedPracticeUpdatedAt = 0;
+
+export function normalizeInterleavedPractice(value) {
+    if (typeof value === 'boolean') {
+        return { enabled: value, mode: INTERLEAVE_MODE_DEFAULT, updatedAt: 0 };
+    }
+    const enabled = Boolean(value?.enabled);
+    const rawMode = String(value?.mode || '').toLowerCase();
+    const mode = INTERLEAVE_MODES.includes(rawMode) ? rawMode : INTERLEAVE_MODE_DEFAULT;
+    const numeric = Number(value?.updatedAt);
+    const updatedAt = Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+    return { enabled, mode, updatedAt };
+}
+
+export function getInterleavedPracticeSettings() {
+    return {
+        enabled: _interleavedPracticeEnabled,
+        mode: _interleavedPracticeMode,
+        updatedAt: _interleavedPracticeUpdatedAt
+    };
+}
+
+export function mergeInterleavedPracticeSettings(local, remote) {
+    const a = normalizeInterleavedPractice(local);
+    const b = normalizeInterleavedPractice(remote);
+    return b.updatedAt && (!a.updatedAt || b.updatedAt > a.updatedAt) ? b : a;
+}
+
+async function persistInterleavedPracticeSettings() {
+    if (skipPersistence()) return;
+    await saveSettingToDB(QUEUE_INTERLEAVE_SETTINGS_KEY, getInterleavedPracticeSettings()).catch(() => {});
+}
+
+export async function loadInterleavedPracticeSettings() {
+    const saved = await getSettingFromDB(QUEUE_INTERLEAVE_SETTINGS_KEY).catch(() => null);
+    if (saved) {
+        const loaded = normalizeInterleavedPractice(saved);
+        _interleavedPracticeEnabled = loaded.enabled;
+        _interleavedPracticeMode = loaded.mode;
+        _interleavedPracticeUpdatedAt = loaded.updatedAt;
+    }
+    return getInterleavedPracticeSettings();
+}
+
+export async function setInterleavedPractice(enabledOrSettings, updatedAt = Date.now()) {
+    const config = typeof enabledOrSettings === 'boolean'
+        ? { enabled: enabledOrSettings, mode: _interleavedPracticeMode, updatedAt }
+        : normalizeInterleavedPractice({ ...enabledOrSettings, updatedAt });
+    _interleavedPracticeEnabled = config.enabled;
+    _interleavedPracticeMode = config.mode;
+    _interleavedPracticeUpdatedAt = config.updatedAt;
+    await persistInterleavedPracticeSettings();
+    return getInterleavedPracticeSettings();
+}
+
+/**
+ * Trộn và xen kẽ các bucket trong hàng đợi học theo khoa học nhận thức (Interleaved Practice).
+ * Thay vì học dồn cứng nhắc (blocked: hết thẻ đến hạn mới tới thẻ mới), cơ chế xen kẽ phân bổ
+ * đồng đều các dạng thẻ để kích hoạt tư duy phân biệt và tối ưu hoá củng cố trí nhớ dài hạn.
+ *
+ * @param {Object} buckets
+ * @param {number[]} [buckets.learning] - Thẻ đang trong bước ngắn hạn (luôn ưu tiên)
+ * @param {number[]} [buckets.due] - Thẻ đã thuộc đến hạn ôn
+ * @param {number[]} [buckets.new] - Thẻ từ vựng mới
+ * @param {Object} [options]
+ * @param {string} [options.mode='balanced'] - 'balanced' | 'topic' | 'blocked'
+ * @param {Array<Object>} [options.vocabulary] - Danh sách từ để hỗ trợ phân tán chủ đề (topic mode)
+ * @returns {number[]} Hàng đợi đã được xen kẽ
+ */
+export function interleaveBuckets(buckets = {}, options = {}) {
+    const learning = Array.isArray(buckets.learning) ? buckets.learning : [];
+    const due = Array.isArray(buckets.due) ? buckets.due : [];
+    const newCards = Array.isArray(buckets.new) ? buckets.new : [];
+    const mode = options.mode || 'balanced';
+    const vocabulary = options.vocabulary || null;
+
+    if (mode === 'blocked') {
+        return [...learning, ...due, ...newCards];
+    }
+
+    const D = due.length;
+    const N = newCards.length;
+
+    let mixed = [];
+    if (D === 0) {
+        mixed = [...newCards];
+    } else if (N === 0) {
+        mixed = [...due];
+    } else {
+        // Thuật toán phân bố tỷ lệ Bresenham (Proportional Interleaving)
+        let dIdx = 0;
+        let nIdx = 0;
+        const total = D + N;
+
+        for (let i = 0; i < total; i++) {
+            const pickDue = (nIdx >= N) || (dIdx < D && ((2 * dIdx + 1) * N <= (2 * nIdx + 1) * D));
+            if (pickDue) {
+                mixed.push(due[dIdx++]);
+            } else {
+                mixed.push(newCards[nIdx++]);
+            }
+        }
+    }
+
+    // Chế độ Topic Interleaving (Anti-clustering phân tán chủ đề liên tiếp)
+    // Áp dụng kể cả khi chỉ có due hoặc chỉ có new hoặc kết hợp cả hai
+    if (mode === 'topic' && Array.isArray(vocabulary) && mixed.length > 2) {
+        const getCardTag = (idx) => {
+            const card = vocabulary[idx];
+            if (!card) return '';
+            const t = Array.isArray(card.tags) ? card.tags[0] : (typeof card.tags === 'string' ? card.tags.split(',')[0] : card.tags);
+            return String(t || '').trim().toLowerCase();
+        };
+
+        for (let i = 0; i < mixed.length - 1; i++) {
+            const tagA = getCardTag(mixed[i]);
+            const tagB = getCardTag(mixed[i + 1]);
+
+            if (tagA && tagB && tagA === tagB) {
+                for (let j = i + 2; j < mixed.length; j++) {
+                    const tagC = getCardTag(mixed[j]);
+                    if (!tagC || tagC !== tagA) {
+                        const temp = mixed[i + 1];
+                        mixed[i + 1] = mixed[j];
+                        mixed[j] = temp;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return [...learning, ...mixed];
+}
+
+
 /**
  * Ngân sách còn lại của ngày. `used` = thẻ mới đã chấm đạt + thẻ Mastered đến
  * hạn đã chấm đạt. Thẻ Learning sub-day không nằm trong ngân sách này.
@@ -245,7 +388,7 @@ export function getSmartCramCards(vocabulary, filterLowerCase) {
     return candidates.slice(0, CRAMMING_MAX).map(item => item.index);
 }
 
-export function buildReviewQueue() {
+export function buildReviewQueue(options = {}) {
     ensureDailyStats();
     const state = getState();
     const vocabulary = state.vocabulary;
@@ -302,7 +445,19 @@ export function buildReviewQueue() {
     const newToAddCount = Math.min(buckets.new.length, newCardsRemaining, reviewBudget.remaining);
     const dueToAddCount = Math.min(buckets.due.length, Math.max(0, reviewBudget.remaining - newToAddCount));
     const deferredDue = buckets.due.length - dueToAddCount;
-    let newQueue = [...buckets.learning, ...buckets.due.slice(0, dueToAddCount), ...buckets.new.slice(0, newToAddCount)];
+
+    const shouldInterleave = (options.interleaved !== undefined)
+        ? Boolean(options.interleaved)
+        : _interleavedPracticeEnabled;
+    const interleaveMode = options.mode || _interleavedPracticeMode || 'balanced';
+
+    let newQueue = shouldInterleave
+        ? interleaveBuckets({
+            learning: buckets.learning,
+            due: buckets.due.slice(0, dueToAddCount),
+            new: buckets.new.slice(0, newToAddCount)
+        }, { mode: interleaveMode, vocabulary })
+        : [...buckets.learning, ...buckets.due.slice(0, dueToAddCount), ...buckets.new.slice(0, newToAddCount)];
     
     // LEARN AHEAD: chỉ nạp thẻ Đang học ĐÃ tới hạn.
     // Từ T1.1 thẻ Learning có bước 1 phút / 10 phút; nạp sớm sẽ vô hiệu hoá bước học

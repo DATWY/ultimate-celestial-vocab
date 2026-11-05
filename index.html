@@ -209,6 +209,10 @@
                                     <span class="hint-label">Gợi ý nghĩa</span>
                                     <span id="typing-hint-text"></span>
                                 </div>
+                                <div id="typing-cloze-box" class="typing-cloze-box hidden" aria-label="Câu ngữ cảnh điền từ">
+                                    <span class="cloze-quote-icon"><i class="ph-duotone ph-textbox"></i></span>
+                                    <p id="typing-cloze-sentence" class="typing-cloze-sentence"></p>
+                                </div>
                                 <div id="typing-area" class="typing-container">
                                     <div class="typing-input-wrapper">
                                         <input type="text" id="typing-input" maxlength="64" placeholder="Gõ từ tiếng Anh..." aria-label="Gõ từ tiếng Anh" aria-describedby="typing-hint-text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" />
@@ -526,7 +530,11 @@
             </div>
             <div class="quiz-question-area hidden">
                 <p class="quiz-prompt">Nghĩa của từ sau là gì?</p>
-                <h3 id="quiz-vietnamese-prompt">Meaning</h3><input type="text" id="quiz-answer-input" aria-label="Nhập từ tiếng Anh"
+                <h3 id="quiz-vietnamese-prompt">Meaning</h3>
+                <div id="quiz-mc-container" class="quiz-mc-container">
+                    <div id="quiz-mc-grid" class="quiz-mc-grid" role="group" aria-label="Các lựa chọn đáp án"></div>
+                </div>
+                <input type="text" id="quiz-answer-input" aria-label="Nhập từ tiếng Anh"
                     placeholder="Gõ từ tiếng Anh...">
                 <p id="quiz-feedback" class="quiz-feedback" aria-live="polite"></p>
             </div>
@@ -621,6 +629,17 @@
                 </div>
 
                 <div class="quiz-setup-options">
+                    <div class="setup-option-card">
+                        <div class="option-icon"><i class="ph-duotone ph-squares-four"></i></div>
+                        <div class="option-content">
+                            <label for="quiz-question-mode">Hình thức làm bài</label>
+                            <select id="quiz-question-mode">
+                                <option value="mc" selected>Trắc nghiệm 4 đáp án (Phản xạ nhanh)</option>
+                                <option value="typing">Tự gõ đáp án (Thử thách chính tả)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="setup-option-card">
                         <div class="option-icon"><i class="ph-duotone ph-list-numbers"></i></div>
                         <div class="option-content">

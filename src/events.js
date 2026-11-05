@@ -1425,7 +1425,8 @@ function handleGlobalShortcuts(e) {
         }
     }
 
-    if (isModalOpen || isTyping) return;
+    const isQuizActive = DOM.quizArea && !DOM.quizArea.classList.contains('hidden');
+    if (isModalOpen || isTyping || isQuizActive) return;
     if (getState().isTransitioning) return;
 
     if (globalKeystrokeTimer) clearTimeout(globalKeystrokeTimer);

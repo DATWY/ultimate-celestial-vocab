@@ -10,6 +10,7 @@ import { escapeHTML } from '../core/utils/sanitize.js';
 import { animateNumber, animateForecastChart, animateHeatmap, animateOverviewEntrance } from '../core/animations.js';
 import { renderFsrsPersonaUI } from './fsrsPersona.js';
 import { heatmapSignature, forecastSignature } from './overview-signature.js';
+import { computeAverageRetrievability } from '../core/srs/forgetting.js';
 
 export function renderFsrsPersonaTab() {
     const panePersona = document.getElementById('profile-view-persona');
@@ -119,13 +120,16 @@ export function renderGamificationUI(options = {}) {
     });
 
     const avgStabilityNum = stabilityCount > 0 ? (totalStability / stabilityCount) : (totalReviews > 0 ? 1.0 : 0);
-    // GAME-01: bản cũ kẹp cứng [82.0, 99.4], nên hai nhánh cảnh báo "< 88%" và "< 75%"
-    // bên dưới là DEAD CODE, và người mới (totalReviews = 0) được hiển thị 94.2% kèm
-    // "Đang nhớ rất sâu" dù chưa ôn câu nào. Giờ: chưa có dữ liệu ⇒ null (UI hiện "—"),
-    // còn khi đã có thì để số thật (chỉ kẹp [0, 100] cho an toàn hiển thị).
-    const retentionRateNum = totalReviews > 0
-        ? Math.min(100, Math.max(0, 100 - (totalLapses / totalReviews) * 100))
-        : null;
+    // Đo lường sức khỏe trí nhớ thời gian thực (Time-Decayed Retrievability Rate R̄):
+    // Thay thế công thức đếm lapses tĩnh (100 - lapses/reviews*100) bằng trung bình xác suất truy hồi
+    // thực tế từ hàm FSRS-7 dualTraceForgettingCurve suy giảm theo thời gian trôi qua trên toàn kho từ.
+    const realTimeRetention = computeAverageRetrievability(vocab, {
+        now: Date.now(),
+        params: state.settings?.fsrsParameters || state.userFsrs7Params
+    });
+    const retentionRateNum = realTimeRetention !== null
+        ? realTimeRetention
+        : (totalReviews > 0 ? Math.min(100, Math.max(0, 100 - (totalLapses / totalReviews) * 100)) : null);
     const hasRetention = retentionRateNum !== null;
 
     const elRetention = document.getElementById('profile-retention-rate');

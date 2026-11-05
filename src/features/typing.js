@@ -1,5 +1,5 @@
-// src/features/typing.js
 import { normalizeSmartPunctuation } from '../core/text-normalize.js';
+import { escapeHTML } from '../core/utils/sanitize.js';
 export { normalizeSmartPunctuation };
 
 let typingStartTime = 0;
@@ -249,3 +249,103 @@ export function evaluateTyping(inputStr, targetStr) {
         }
     }
 }
+
+/**
+ * Tạo câu điền khuyết ngữ cảnh (Cloze Deletion in Sentence).
+ * Ẩn từ mục tiêu (và các biến thể hình thái) trong câu ví dụ của thẻ,
+ * tạo chỗ trống trực quan [ ______ ] giúp người học liên kết ngữ cảnh thực tế.
+ *
+ * @param {string} example - Câu ví dụ của thẻ
+ * @param {string} englishWord - Từ/cụm từ tiếng Anh mục tiêu
+ * @returns {{ hasCloze: boolean, clozeHtml: string, targetWord: string, originalExample: string }}
+ */
+export function generateClozeDeletion(example, englishWord) {
+    if (!example || example === 'N/A' || !englishWord) {
+        return {
+            hasCloze: false,
+            clozeHtml: '',
+            targetWord: englishWord || '',
+            originalExample: example || ''
+        };
+    }
+
+    const safeExample = escapeHTML(example);
+    const candidateTerms = new Set();
+
+    // 1. Trích xuất các biến thể trong ngoặc đơn (ví dụ: "bring (brought, brought)" hoặc "take (took)")
+    const parenMatches = englishWord.match(/\(([^)]+)\)/g);
+    if (parenMatches) {
+        for (const p of parenMatches) {
+            const inner = p.slice(1, -1).trim();
+            inner.split(/[/,;]/).map(t => t.trim().replace(/\s+/g, ' ')).filter(Boolean).forEach(t => candidateTerms.add(t));
+        }
+    }
+
+    // 2. Trích xuất các từ cơ sở bên ngoài ngoặc đơn
+    const baseText = englishWord.replace(/\([^)]*\)/g, ' ').trim();
+    baseText.split(/[/,;]/).map(t => t.trim().replace(/\s+/g, ' ')).filter(Boolean).forEach(t => candidateTerms.add(t));
+
+    const patterns = [];
+
+    for (const term of candidateTerms) {
+        const safeClean = escapeHTML(term);
+        const escaped = safeClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        if (escaped.includes(' ')) {
+            const words = escaped.split(/\s+/).filter(Boolean);
+            patterns.push(words.join('\\s+'));
+        } else {
+            const termLower = term.toLowerCase();
+            const termPatterns = [escaped];
+            if (termLower.endsWith('y') && termLower.length > 2 && !/[aeiou]y$/.test(termLower)) {
+                const stem = escaped.slice(0, -1);
+                termPatterns.push(stem + 'ies', stem + 'ied', escaped + 'ing');
+            } else if (termLower.endsWith('e') && termLower.length > 2) {
+                const stem = escaped.slice(0, -1);
+                termPatterns.push(escaped + 's', escaped + 'd', stem + 'ing');
+            } else {
+                termPatterns.push(escaped + 's', escaped + 'es', escaped + 'ed', escaped + 'ing');
+                const lastChar = termLower[termLower.length - 1];
+                if (termLower.length >= 3 && /[bcdfghjklmnpqrstvwxyz]/.test(lastChar) && /[aeiou]/.test(termLower[termLower.length - 2]) && !/[aeiou]/.test(termLower[termLower.length - 3] || '')) {
+                    termPatterns.push(escaped + lastChar + 'ed', escaped + lastChar + 'ing');
+                }
+            }
+            termPatterns.sort((a, b) => b.length - a.length);
+            patterns.push('\\b(?:' + termPatterns.join('|') + ')\\b');
+        }
+    }
+
+    if (patterns.length === 0) {
+        return {
+            hasCloze: false,
+            clozeHtml: safeExample,
+            targetWord: englishWord,
+            originalExample: example
+        };
+    }
+
+    try {
+        patterns.sort((a, b) => b.length - a.length);
+        const combinedRegex = new RegExp('(' + patterns.join('|') + ')', 'gi');
+        let matchFound = false;
+        const clozeHtml = safeExample.replace(combinedRegex, () => {
+            matchFound = true;
+            return `<span class="cloze-gap" data-target="${escapeHTML(englishWord)}"><span class="cloze-blank">[ ______ ]</span></span>`;
+        });
+
+        return {
+            hasCloze: matchFound,
+            clozeHtml: matchFound ? clozeHtml : safeExample,
+            targetWord: englishWord,
+            originalExample: example
+        };
+    } catch (e) {
+        return {
+            hasCloze: false,
+            clozeHtml: safeExample,
+            targetWord: englishWord,
+            originalExample: example
+        };
+    }
+}
+

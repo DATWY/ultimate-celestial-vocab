@@ -8,9 +8,9 @@
 
 import { isCardReviewable } from '../core/review-policy.js';
 
-/** Thẻ có khớp bộ lọc typing đang chọn hay không (không xét tính hợp lệ). */
 export function matchesTypingFilter(card, activeFilter, isLeech) {
     if (!card) return false;
+    if (activeFilter === 'cloze') return typeof card.example === 'string' && card.example.trim().length > 0 && card.example.trim() !== 'N/A';
     if (activeFilter === 'leech') return isLeech(card);
     if (activeFilter === 'hard') return (card.difficulty !== undefined && card.difficulty >= 6.5) || isLeech(card);
     if (activeFilter === 'learning') return card.srsStatus === 'New' || card.srsStatus === 'Learning';

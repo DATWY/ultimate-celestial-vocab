@@ -186,6 +186,9 @@ export default defineConfig({
           if (id.includes('node_modules/animejs') || id.includes('node_modules/idb')) {
             return 'vendor';
           }
+          if (id.includes('celestial-canvas')) {
+            return 'celestial-canvas';
+          }
         }
       }
     }

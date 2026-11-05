@@ -1,7 +1,8 @@
 // src/core/srs/index.js — FSRS-7 Dual-Stability Engine Coordinator
 
 import { DEFAULT_FSRS7_PARAMS, DESIRED_RETENTION, S_MIN, S_MAX, D_MIN, D_MAX, FUZZ_PERCENTAGE, MAX_INITIAL_INTERVAL, MAX_INTERVAL_DAYS, MAX_GRADUATION_INTERVAL_DAYS, LEARNING_STEPS_MS, D0_BIAS_SCALE, LEECH_LAPSE_THRESHOLD, LEECH_RELEARNING_INTERVAL_MS, LEECH_RELEARNING_STEP, POST_LAPSE_GRADUATION_CAP_DAYS, LEECH_MAX_SAME_DAY_LAPSES, BURIED_RELEASE_HOUR } from './constants.js';
-import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton } from './forgetting.js';
+import { dualTraceForgettingCurve, shortComponentRecall, nextIntervalNewton, computeAverageRetrievability } from './forgetting.js';
+export { computeAverageRetrievability };
 import { initDifficulty, nextDifficulty } from './difficulty.js';
 import { nextStability } from './stability.js';
 import { getDifficultyBias, getStabilityMultiplier } from './heuristics.js';

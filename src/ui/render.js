@@ -16,7 +16,7 @@ import { isFuzzySearchMatch } from '../core/fuzzy-search.js';
 import { escapeHTML } from '../core/utils/sanitize.js';
 import { nextRevision } from '../core/card-merge.js';
 import { predictNextIntervals, isLeechCard } from '../core/srs/index.js';
-import { startTypingTimer } from '../features/typing.js';
+import { startTypingTimer, generateClozeDeletion } from '../features/typing.js';
 import { trackDeletion } from '../features/stat-trackers.js';
 
 /**
@@ -508,7 +508,9 @@ export function displayCard(index, preserveFlipState = false) {
         DOM.typingFrontUi.classList.toggle('hidden', !isTypingCard);
         if (isTypingCard && DOM.typingHintText) {
             let badgeHtml = '';
-            if (isCardLeech(cardData)) {
+            if (typingFilter === 'cloze') {
+                badgeHtml = '<span class="typing-adaptive-badge cloze"><i class="ph-bold ph-textbox"></i> Điền Khuyết Ngữ Cảnh</span>';
+            } else if (isCardLeech(cardData)) {
                 badgeHtml = '<span class="typing-adaptive-badge leech"><i class="ph-bold ph-fire"></i> Từ Leech (Active Recall)</span>';
             } else if (typingFilter === 'hard') {
                 badgeHtml = '<span class="typing-adaptive-badge hard"><i class="ph-bold ph-warning-circle"></i> Từ Thử thách</span>';
@@ -522,6 +524,19 @@ export function displayCard(index, preserveFlipState = false) {
                 badgeHtml = '<span class="typing-adaptive-badge normal"><i class="ph-bold ph-keyboard"></i> Luyện gõ</span>';
             }
             DOM.typingHintText.innerHTML = `${badgeHtml}<span class="typing-hint-meaning">${escapeHTML(cardData.vietnamese || 'N/A')}</span>`;
+
+            // Điền Khuyết Ngữ Cảnh (Cloze Deletion in Sentence)
+            if (DOM.typingClozeBox && DOM.typingClozeSentence) {
+                const hasEx = cardData.example && cardData.example !== 'N/A' && cardData.example.trim() !== '';
+                const cloze = hasEx ? generateClozeDeletion(cardData.example, cardData.english) : null;
+                if (cloze && cloze.hasCloze) {
+                    DOM.typingClozeSentence.innerHTML = cloze.clozeHtml;
+                    DOM.typingClozeBox.classList.remove('hidden');
+                } else {
+                    DOM.typingClozeSentence.textContent = '';
+                    DOM.typingClozeBox.classList.add('hidden');
+                }
+            }
         }
     }
 
@@ -937,6 +952,17 @@ export function updateCustomTypingUI() {
             desc: 'Tự động bắt gõ cho các từ hay quên (Lapses ≥ 2 hoặc cực khó), từ đã thuộc sẽ lật thẻ.',
             count: stats.leech,
             tag: 'Khuyên dùng (80/20)',
+            isRec: true
+        },
+        {
+            id: 'cloze',
+            icon: 'ph-textbox',
+            label: 'Gõ: Điền khuyết',
+            badgeText: 'Ngữ cảnh',
+            title: 'Gõ điền khuyết câu ví dụ (Cloze Deletion)',
+            desc: 'Ẩn từ mục tiêu trong câu ví dụ, rèn luyện kết nối ngữ cảnh thực tế thay vì chỉ nhớ nghĩa từ đơn lẻ.',
+            count: stats.cloze,
+            tag: 'Ngữ cảnh sâu',
             isRec: true
         },
         {

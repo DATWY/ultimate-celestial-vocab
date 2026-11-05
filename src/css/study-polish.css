@@ -639,3 +639,258 @@ body:not(.dark-mode) .track-level-badge {
     }
 }
 }
+
+
+/* ==========================================================================
+   UPGRADE: CLOZE DELETION & MULTIPLE CHOICE QUIZ ARENA
+   ========================================================================== */
+
+/* --- Cloze Deletion in Sentence --- */
+.typing-option-icon-wrap.cloze {
+    background: rgba(14, 165, 233, 0.15);
+    color: #38bdf8;
+}
+
+.typing-adaptive-badge.cloze {
+    background: rgba(14, 165, 233, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.45);
+    box-shadow: 0 0 12px rgba(14, 165, 233, 0.25);
+}
+
+body:not(.dark-mode) .typing-adaptive-badge.cloze {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+    border-color: rgba(14, 165, 233, 0.35);
+}
+
+.typing-cloze-box {
+    margin: 8px auto 14px auto;
+    width: 100%;
+    max-width: 520px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(168, 85, 247, 0.06));
+    border: 1px dashed rgba(14, 165, 233, 0.45);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    box-sizing: border-box;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.dark-mode .typing-cloze-box {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(168, 85, 247, 0.08));
+    border-color: rgba(56, 189, 248, 0.5);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+body:not(.dark-mode) .typing-cloze-box {
+    background: linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(245, 243, 255, 0.9));
+    border-color: rgba(14, 165, 233, 0.4);
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.08);
+}
+
+.typing-cloze-icon {
+    font-size: 1.25rem;
+    color: #38bdf8;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+body:not(.dark-mode) .typing-cloze-icon {
+    color: #0284c7;
+}
+
+.typing-cloze-sentence {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-color);
+    margin: 0;
+    font-style: italic;
+    flex-grow: 1;
+}
+
+.cloze-blank {
+    display: inline-block;
+    padding: 1px 8px;
+    margin: 0 2px;
+    font-weight: 700;
+    font-style: normal;
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.18);
+    border-bottom: 2px dashed #0284c7;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+body.dark-mode .cloze-blank {
+    color: #7dd3fc;
+    background: rgba(14, 165, 233, 0.25);
+    border-bottom-color: #38bdf8;
+}
+
+/* --- Multiple Choice Arena --- */
+.quiz-mc-container {
+    width: 100%;
+    max-width: 580px;
+    margin: 0 auto 20px auto;
+}
+
+.quiz-mc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+}
+
+@media (max-width: 520px) {
+    .quiz-mc-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+.quiz-mc-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    min-height: 58px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border-color, rgba(255, 255, 255, 0.15));
+    background: rgba(30, 41, 59, 0.65);
+    color: var(--text-color, #f8fafc);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body:not(.dark-mode) .quiz-mc-btn {
+    background: #ffffff;
+    border-color: rgba(226, 232, 240, 0.9);
+    color: #1e293b;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.quiz-mc-btn:hover:not(:disabled) {
+    border-color: var(--primary-color, #8b5cf6);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.12);
+}
+
+body:not(.dark-mode) .quiz-mc-btn:hover:not(:disabled) {
+    background: #f5f3ff;
+    border-color: #7c3aed;
+    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.15);
+}
+
+.quiz-mc-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.quiz-mc-btn:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+}
+
+.mc-key-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #a78bfa;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+body:not(.dark-mode) .mc-key-badge {
+    background: #ede9fe;
+    border-color: #ddd6fe;
+    color: #6d28d9;
+}
+
+.quiz-mc-btn:hover:not(:disabled) .mc-key-badge {
+    background: #8b5cf6;
+    color: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.mc-word {
+    flex-grow: 1;
+    word-break: break-word;
+}
+
+/* MC Option States */
+.quiz-mc-btn.mc-correct {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.25));
+    border-color: #10b981;
+    color: #34d399;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+    transform: scale(1.02);
+}
+
+body:not(.dark-mode) .quiz-mc-btn.mc-correct {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #047857;
+}
+
+.quiz-mc-btn.mc-correct .mc-key-badge {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+}
+
+.quiz-mc-btn.mc-incorrect {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(220, 38, 38, 0.25));
+    border-color: #ef4444;
+    color: #f87171;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
+    animation: mcShake 0.35s ease-in-out;
+}
+
+body:not(.dark-mode) .quiz-mc-btn.mc-incorrect {
+    background: #fef2f2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.quiz-mc-btn.mc-incorrect .mc-key-badge {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #ffffff;
+}
+
+.quiz-mc-btn.mc-reveal {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+body:not(.dark-mode) .quiz-mc-btn.mc-reveal {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+@keyframes mcShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}

@@ -34,6 +34,12 @@ export function isLongWord(card) {
     return (card.english || '').replace(/[^a-zA-Z]/g, '').length >= 8;
 }
 
+/** Thẻ có câu ví dụ để điền khuyết ngữ cảnh (Cloze Deletion in Sentence). */
+function hasExampleSentence(card) {
+    if (!card) return false;
+    return typeof card.example === 'string' && card.example.trim().length > 0 && card.example.trim() !== 'N/A';
+}
+
 /**
  * Quyết định thuần cho một bộ lọc cụ thể.
  * Lưu ý: KHÔNG kiểm tra `off` — nơi gọi phải tự chặn 'off' trước, đúng như
@@ -41,6 +47,8 @@ export function isLongWord(card) {
  */
 export function matchesTypingFilter(card, filter) {
     switch (filter) {
+        case 'cloze':
+            return hasExampleSentence(card);
         case 'leech':
             return isCardLeech(card);
         case 'hard':

@@ -160,3 +160,57 @@ export function getRetrievability(s_long, elapsedDays, s_short = null, d = 5.0, 
     return dualTraceForgettingCurve(elapsedDays, s_long, actualShort, d, w);
 }
 
+/**
+ * Tính tỉ lệ truy hồi trung bình thời gian thực (Time-Decayed Retrievability Rate R̄)
+ * trên toàn bộ kho từ vựng đã học dựa trên mô hình hàm suy giảm kép FSRS-7.
+ * 
+ * R̄ = (1/N) * ∑ dualTraceForgettingCurve(t_i, S_long_i, S_short_i, D_i, w) * 100
+ *
+ * @param {Array<Object>} vocabulary - Danh sách thẻ trong kho từ
+ * @param {Object} [options]
+ * @param {number} [options.now] - Mốc thời gian tính toán (mặc định Date.now())
+ * @param {Array<number>} [options.params] - Trọng số FSRS-7 34 tham số (mặc định DEFAULT_FSRS7_PARAMS)
+ * @returns {number|null} Tỉ lệ phần trăm trung bình [0, 100] (vd: 91.4) hoặc null nếu chưa có thẻ nào được học
+ */
+export function computeAverageRetrievability(vocabulary, { now = Date.now(), params = DEFAULT_FSRS7_PARAMS } = {}) {
+    if (!Array.isArray(vocabulary) || vocabulary.length === 0) return null;
+
+    const w = (Array.isArray(params) && params.length === 34) ? params : DEFAULT_FSRS7_PARAMS;
+    let sumR = 0;
+    let count = 0;
+
+    for (let i = 0; i < vocabulary.length; i++) {
+        const card = vocabulary[i];
+        if (!card || card.isDeleted) continue;
+
+        // Chỉ tính các thẻ ĐÃ HỌC (có reps > 0 hoặc stability hợp lệ hoặc không phải New)
+        const hasBeenReviewed = (typeof card.reps === 'number' && card.reps > 0) ||
+            (typeof card.stability === 'number' && card.stability > 0) ||
+            (card.srsStatus && card.srsStatus !== 'New');
+
+        if (!hasBeenReviewed) continue;
+
+        const sLong = (typeof card.stability === 'number' && card.stability > 0) ? card.stability : 1.0;
+        const sShort = (typeof card.stabilityShort === 'number' && card.stabilityShort > 0) ? card.stabilityShort : 0.8 * sLong;
+        const d = (typeof card.difficulty === 'number' && card.difficulty >= 1) ? card.difficulty : 5.0;
+
+        // Tính số ngày trôi qua từ lần ôn tập cuối
+        let lastReview = card.lastReviewDate;
+        if (!lastReview && card.srsDueDate && typeof card.srsInterval === 'number') {
+            lastReview = card.srsDueDate - (card.srsInterval * 86400000);
+        }
+        const elapsedDays = lastReview ? Math.max(0, (now - lastReview) / 86400000) : 0;
+
+        const r = dualTraceForgettingCurve(elapsedDays, sLong, sShort, d, w);
+        if (Number.isFinite(r)) {
+            sumR += r;
+            count++;
+        }
+    }
+
+    if (count === 0) return null;
+    const avgPercent = (sumR / count) * 100;
+    return Math.min(100, Math.max(0, avgPercent));
+}
+
+
